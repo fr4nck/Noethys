@@ -144,10 +144,11 @@ class ListView(FastObjectListView):
                 montant = FloatToDecimal(montant)
                 regle = dictVentilation.get(IDprestation, FloatToDecimal(0.0))
                 impaye = montant - regle
+                key = (label, IDactivite)
                     
                 # Mémorisation
-                if (label in dictPrestations) == False :
-                    dictPrestations[label] = {
+                if (key in dictPrestations) == False :
+                    dictPrestations[key] = {
                         "nomActivite" : nomActivite, "IDactivite" : IDactivite, 
                         "nbre_total" : 0, "montant_total" : FloatToDecimal(0.0), 
                         "nbre_regle" : 0, "montant_regle" : FloatToDecimal(0.0),
@@ -155,25 +156,25 @@ class ListView(FastObjectListView):
                         "prestations" : [],
                         }
                 
-                dictPrestations[label]["nbre_total"] += 1
-                dictPrestations[label]["montant_total"] += montant
+                dictPrestations[key]["nbre_total"] += 1
+                dictPrestations[key]["montant_total"] += montant
                 
-                dictPrestations[label]["montant_regle"] += regle
+                dictPrestations[key]["montant_regle"] += regle
                 if regle > FloatToDecimal(0.0) :
-                    dictPrestations[label]["nbre_regle"] += 1
+                    dictPrestations[key]["nbre_regle"] += 1
                 
-                dictPrestations[label]["montant_impaye"] += impaye
+                dictPrestations[key]["montant_impaye"] += impaye
                 if impaye > FloatToDecimal(0.0) :
-                    dictPrestations[label]["nbre_impaye"] += 1
+                    dictPrestations[key]["nbre_impaye"] += 1
                 
-                dictPrestations[label]["prestations"].append({
+                dictPrestations[key]["prestations"].append({
                     "IDprestation" : IDprestation, "IDcompte_payeur" : IDcompte_payeur, "IDfamille" : IDfamille, 
                     "IDindividu" : IDindividu, "nom" : nom, "prenom" : prenom, "date_naiss" : date_naiss, "IDcivilite" : IDcivilite,
                     "montant" : montant, "regle" : regle, "impaye" : impaye})
         
-        # Regroupement des prestations par label
+        # Regroupement des prestations par key
         listeListeView = []
-        for label, dictValeurs in dictPrestations.items() :
+        for (label, IDactivite), dictValeurs in dictPrestations.items() :
             track = Track(label, dictValeurs)
             listeListeView.append(track)
         return listeListeView
