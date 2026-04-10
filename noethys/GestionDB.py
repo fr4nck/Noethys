@@ -469,13 +469,11 @@ class DB:
         
     def ReqDEL(self, nomTable="", nomChampID="", ID="", commit=True, IDestChaine=False):
         """ Suppression d'un enregistrement """
-        # if IDestChaine == False:
-        #     req = "DELETE FROM %s WHERE %s=%d" % (nomTable, nomChampID, ID)
-        # else:
-        #     req = "DELETE FROM %s WHERE %s='%s'" % (nomTable, nomChampID, ID)
+        if IDestChaine == False:
+            req = "DELETE FROM %s WHERE %s=%d" % (nomTable, nomChampID, ID)
+        else:
+            req = "DELETE FROM %s WHERE %s='%s'" % (nomTable, nomChampID, ID)
         try:
-            sql = "DELETE FROM %s WHERE %s=?" % (nomTable, nomChampID)
-            self.cursor.execute(sql, (ID,))
             self.cursor.execute(req)
             if commit == True :
                 self.Commit()
