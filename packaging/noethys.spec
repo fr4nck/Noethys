@@ -20,6 +20,7 @@ for package in (
     "paramiko",
     "comtypes",
     "pyttsx3",
+    "mysql.connector",
     "Crypto",
     "Cryptodome",
 ):
@@ -28,6 +29,11 @@ for package in (
 # Le code historique importe pyttsx ; noethys/pyttsx.py redirige vers pyttsx3.
 # Le pilote SAPI5 reste chargé dynamiquement sous Windows.
 hiddenimports += ["pyttsx3.drivers", "pyttsx3.drivers.sapi5"]
+
+# mysqlclient reste pris en charge quand MySQLdb est disponible. Le connecteur
+# officiel pur Python est aussi embarqué comme solution de repli déjà prévue
+# par GestionDB.py, ce qui évite de rendre le package dépendant d'une DLL native.
+hiddenimports += ["mysql", "mysql.connector", "mysql.connector.constants", "mysql.connector.conversion"]
 
 # Chemins.py recherche ces ressources à côté de Noethys.exe lorsque
 # l'application est figée. Elles doivent donc être placées à la racine
@@ -42,6 +48,7 @@ datas += collect_data_files("matplotlib")
 datas += collect_data_files("pytz")
 datas += collect_data_files("reportlab")
 
+a = None
 runtime_hooks = [
     str(ROOT / "packaging" / "runtime_wx_compat.py"),
     str(ROOT / "packaging" / "runtime_sqlite_path_compat.py"),
