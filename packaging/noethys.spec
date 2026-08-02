@@ -49,7 +49,7 @@ analysis = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=[str(ROOT / "packaging" / "runtime_sqlite_path_compat.py")],
     excludes=["tkinter", "PyQt5", "PyQt6", "PySide2", "PySide6"],
     noarchive=False,
 )
