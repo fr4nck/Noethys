@@ -32,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -45,6 +47,10 @@ jobs:
         # Fail si des appels Python 2 non gardés (unicode(), basestring()…) sont détectés.
         # Les autres motifs (RESULT_UNGUARDED, DB_UNCLOSED, BARE_EXCEPT) sont informatifs.
         run: python scripts/audit_runtime_patterns.py --fail-on PY2_BUILTINS
+
+      - name: Vérifier l'absence de migration implicite du schéma
+        if: github.event_name == 'pull_request'
+        run: python scripts/check_schema_compatibility.py "${{ github.event.pull_request.base.sha }}" HEAD
 
   # ── 2. Validation Windows frugale ────────────────────────────────────────────────
   windows-smoke:
