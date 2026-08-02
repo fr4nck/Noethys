@@ -1,3 +1,10 @@
 -r requirements.txt
-wxPython
+
+# Versions de build volontairement conservatrices pour le code historique.
+# Elles évitent les ruptures majeures déjà connues de NumPy 2, Pillow 10+
+# et SQLAlchemy 2 avant adaptation explicite du code.
+numpy<2
+Pillow<10
+SQLAlchemy<2
+wxPython==4.3.1
 pyinstaller>=6.0,<7
