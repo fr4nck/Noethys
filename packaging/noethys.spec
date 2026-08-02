@@ -48,7 +48,6 @@ datas += collect_data_files("matplotlib")
 datas += collect_data_files("pytz")
 datas += collect_data_files("reportlab")
 
-a = None
 runtime_hooks = [
     str(ROOT / "packaging" / "runtime_wx_compat.py"),
     str(ROOT / "packaging" / "runtime_sqlite_path_compat.py"),
