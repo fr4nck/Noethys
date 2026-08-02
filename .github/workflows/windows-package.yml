@@ -29,6 +29,9 @@ jobs:
       - name: Compiler les sources
         run: python -m compileall -q noethys
 
+      - name: Inventorier les API anciennes
+        run: python scripts/audit_modern_api_compat.py noethys
+
       - name: Construire le dossier portable
         run: pyinstaller --noconfirm --clean packaging/noethys.spec
 
