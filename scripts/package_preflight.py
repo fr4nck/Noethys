@@ -13,6 +13,7 @@ CHECKS = (
     ("Compatibilité Python 3", [sys.executable, "scripts/audit_python3_compat.py", "noethys"], False),
     ("API modernes", [sys.executable, "scripts/audit_modern_api_compat.py", "noethys"], False),
     ("Imports critiques", [sys.executable, "scripts/smoke_import_dependencies.py"], True),
+    ("Hooks runtime", [sys.executable, "scripts/smoke_runtime_hooks.py"], True),
     ("Compilation", [sys.executable, "-m", "compileall", "-q", "noethys"], True),
 )
 
