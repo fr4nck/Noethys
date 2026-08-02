@@ -29,7 +29,13 @@ jobs:
       - name: Compiler les sources
         run: python -m compileall -q noethys
 
-      - name: Inventorier les API anciennes
+      - name: Inventorier les dépendances réellement utilisées
+        run: python scripts/audit_dependency_usage.py
+
+      - name: Inventorier les incompatibilités Python 3 historiques
+        run: python scripts/audit_python3_compat.py noethys
+
+      - name: Inventorier les API modernes à adapter
         run: python scripts/audit_modern_api_compat.py noethys
 
       - name: Construire le dossier portable
