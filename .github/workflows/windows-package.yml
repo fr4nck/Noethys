@@ -1,0 +1,52 @@
+name: Package Windows
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Construire Noethys portable
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-build.txt
+
+      - name: Installer les dépendances de fabrication
+        run: python -m pip install --upgrade pip wheel && python -m pip install -r requirements-build.txt
+
+      - name: Compiler les sources
+        run: python -m compileall -q noethys
+
+      - name: Construire le dossier portable
+        run: pyinstaller --noconfirm --clean packaging/noethys.spec
+
+      - name: Vérifier la présence de l'exécutable
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "dist/Noethys/Noethys.exe")) {
+            throw "Noethys.exe absent du résultat PyInstaller"
+          }
+          Get-ChildItem "dist/Noethys" -Recurse | Measure-Object | Format-List
+
+      - name: Créer l'archive portable
+        shell: pwsh
+        run: Compress-Archive -Path "dist/Noethys/*" -DestinationPath "Noethys-Windows11-portable.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Noethys-Windows11-portable
+          path: Noethys-Windows11-portable.zip
+          if-no-files-found: error
+          retention-days: 14
