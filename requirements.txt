@@ -20,3 +20,4 @@ opencv-python
 sqlalchemy
 pystrich
 mysqlclient
+mysql-connector-python
