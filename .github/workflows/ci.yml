@@ -19,6 +19,10 @@ on:
       - 'tests/**'
       - '.github/workflows/**'
 
+# Permissions minimales : lecture seule du contenu.
+permissions:
+  contents: read
+
 jobs:
   # ── 1. Vérification syntaxique rapide (Linux, sans dépendances lourdes) ──────
   compile:
