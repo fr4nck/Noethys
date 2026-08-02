@@ -1,6 +1,6 @@
 name: CI
 
-# Déclenché uniquement quand du code Python ou les workflows changent.
+# Déclenché uniquement quand du code Python, le packaging ou les workflows changent.
 # Les modifications portant exclusivement sur docs/ ou *.md ne déclenchent
 # aucun job Python ni Windows.
 on:
@@ -8,7 +8,9 @@ on:
     paths:
       - 'noethys/**'
       - 'requirements.txt'
+      - 'requirements-build.txt'
       - 'setup.py'
+      - 'packaging/**'
       - 'tests/**'
       - 'scripts/**'
       - '.github/workflows/**'
@@ -16,17 +18,17 @@ on:
     paths:
       - 'noethys/**'
       - 'requirements.txt'
+      - 'requirements-build.txt'
       - 'setup.py'
+      - 'packaging/**'
       - 'tests/**'
       - 'scripts/**'
       - '.github/workflows/**'
 
-# Permissions minimales : lecture seule du contenu.
 permissions:
   contents: read
 
 jobs:
-  # ── 1. Vérification syntaxique + audit runtime (Linux, sans dépendances lourdes) ──
   compile:
     name: Compilation + Audit runtime
     runs-on: ubuntu-latest
@@ -40,19 +42,15 @@ jobs:
           python-version: "3.10"
 
       - name: Compiler les sources (détection d'erreurs de syntaxe)
-        # C866CA3A*.py utilise l'encodage 'mbcs' (Windows uniquement) — exclu sur Linux.
         run: python -m compileall -q -x 'C866CA3A' noethys/
 
       - name: Audit des motifs runtime dangereux
-        # Fail si des appels Python 2 non gardés (unicode(), basestring()…) sont détectés.
-        # Les autres motifs (RESULT_UNGUARDED, DB_UNCLOSED, BARE_EXCEPT) sont informatifs.
         run: python scripts/audit_runtime_patterns.py --fail-on PY2_BUILTINS
 
       - name: Vérifier l'absence de migration implicite du schéma
         if: github.event_name == 'pull_request'
         run: python scripts/check_schema_compatibility.py "${{ github.event.pull_request.base.sha }}" HEAD
 
-  # ── 2. Validation Windows frugale ────────────────────────────────────────────────
   windows-smoke:
     name: Smoke test Windows
     runs-on: windows-latest
