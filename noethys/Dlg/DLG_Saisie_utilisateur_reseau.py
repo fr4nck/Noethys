@@ -259,7 +259,7 @@ class Dialog(wx.Dialog):
         
         # Si pas de mot de passe
         if mdp1 == "" :
-            txtMessage = unicode(_(u"Attention, vous n'avez saisi aucun mot de passe pour cet utilisateur.\nCela peut être risqué pour la sécurité des données.\n\nVoulez-vous quand même valider la création de cet utilisateur sans mot de passe ?\n\n(Cliquez sur Non ou sur Annuler pour saisir un mot de de passe)"))
+            txtMessage = _(u"Attention, vous n'avez saisi aucun mot de passe pour cet utilisateur.\nCela peut être risqué pour la sécurité des données.\n\nVoulez-vous quand même valider la création de cet utilisateur sans mot de passe ?\n\n(Cliquez sur Non ou sur Annuler pour saisir un mot de de passe)")
             dlgConfirm = wx.MessageDialog(self, txtMessage, _(u"Confirmation de suppression"), wx.YES_NO|wx.CANCEL|wx.NO_DEFAULT|wx.ICON_QUESTION)
             reponse = dlgConfirm.ShowModal()
             dlgConfirm.Destroy()

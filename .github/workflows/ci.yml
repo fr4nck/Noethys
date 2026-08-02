@@ -10,6 +10,7 @@ on:
       - 'requirements.txt'
       - 'setup.py'
       - 'tests/**'
+      - 'scripts/**'
       - '.github/workflows/**'
   pull_request:
     paths:
@@ -17,6 +18,7 @@ on:
       - 'requirements.txt'
       - 'setup.py'
       - 'tests/**'
+      - 'scripts/**'
       - '.github/workflows/**'
 
 # Permissions minimales : lecture seule du contenu.
@@ -24,9 +26,9 @@ permissions:
   contents: read
 
 jobs:
-  # ── 1. Vérification syntaxique rapide (Linux, sans dépendances lourdes) ──────
+  # ── 1. Vérification syntaxique + audit runtime (Linux, sans dépendances lourdes) ──
   compile:
-    name: Compilation Python
+    name: Compilation + Audit runtime
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +41,12 @@ jobs:
         # C866CA3A*.py utilise l'encodage 'mbcs' (Windows uniquement) — exclu sur Linux.
         run: python -m compileall -q -x 'C866CA3A' noethys/
 
-  # ── 2. Validation Windows frugale ────────────────────────────────────────────
+      - name: Audit des motifs runtime dangereux
+        # Fail si des appels Python 2 non gardés (unicode(), basestring()…) sont détectés.
+        # Les autres motifs (RESULT_UNGUARDED, DB_UNCLOSED, BARE_EXCEPT) sont informatifs.
+        run: python scripts/audit_runtime_patterns.py --fail-on PY2_BUILTINS
+
+  # ── 2. Validation Windows frugale ────────────────────────────────────────────────
   windows-smoke:
     name: Smoke test Windows
     runs-on: windows-latest

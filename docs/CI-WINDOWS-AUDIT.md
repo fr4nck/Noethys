@@ -5,13 +5,27 @@
 | Élément | Constat |
 |---|---|
 | Workflows GitHub Actions | **Aucun** — dossier `.github/` inexistant |
-| Version Python supportée | **Python 3** (installation Linux : `python3`). Le code utilise `six` pour la compat 2/3 historique, mais Python 2 n'est plus maintenu dans ce projet |
+| Version Python supportée | **Python 3** (installation Linux : `python3`). Utilise `six` pour la compat 2/3 historique |
 | wxPython | **wxPython 4.x** requis (Python 3 uniquement) |
 | Fichier de dépendances | `requirements.txt` (15 paquets, pas de version épinglée sauf `mysqlclient===`) |
 | Tests automatisés | **Aucun** — pas de répertoire `tests/`, pas de `test_*.py` |
 | Mode de lancement | `python3 noethys/Noethys.py` (application wxPython) |
 | Mode de packaging | `setup.py` + `py2exe` (Windows, Python 2 — non porté en Python 3) |
 | Fichier Windows-only | `noethys/Outils/C866CA3A*.py` : encodage `mbcs` (COM typelib SAPI, invalide hors Windows) |
+| Répertoires tiers | `ObjectListView/` (Philip Piper) ; `Outils/` (wxScheduler, ultimatelistctrl, COM typelibs) |
+
+---
+
+## Méthodologie d'audit
+
+Adaptée de **fr4nck/Teamworks-CCNS** (`scripts/audit_runtime_risks.py`) :
+- détection par expressions régulières sur les lignes ;
+- exclusion des répertoires tiers (`ObjectListView/`, `Outils/`) ;
+- heuristique de garde `six.PY2` / `six.PY3` pour éviter les faux positifs ;
+- seuils CI configurables par motif ;
+- export JSON pour traçabilité historique.
+
+Implémenté dans **`scripts/audit_runtime_patterns.py`**.
 
 ---
 
@@ -19,80 +33,85 @@
 
 ### Un seul workflow : `.github/workflows/ci.yml`
 
-Pas de duplication Linux/Windows, pas de matrice. Deux jobs distincts :
+Deux jobs, pas de matrice :
 
-1. **`compile`** (ubuntu-latest) — vérification syntaxique rapide, sans dépendances lourdes.
+1. **`compile`** (ubuntu-latest) — compilation syntaxique + audit runtime.
 2. **`windows-smoke`** (windows-latest) — validation Windows ciblée.
 
 ### Routage par chemins (`paths:`)
 
-Le workflow ne se déclenche que si l'un des fichiers suivants change :
-
-| Chemin | Raison |
-|---|---|
-| `noethys/**` | Code source de l'application |
-| `requirements.txt` | Dépendances |
-| `setup.py` | Configuration de packaging |
-| `tests/**` | Scripts de smoke test |
-| `.github/workflows/**` | Le workflow lui-même |
-
-**Effet** : un commit qui modifie uniquement `docs/` ou un `*.md` ne déclenche **aucun** job Python ni Windows.
+| Chemin modifié | `compile` | `windows-smoke` |
+|---|---|---|
+| `docs/` seul ou `*.md` seul | ✗ | ✗ |
+| `noethys/**` | ✓ | ✓ |
+| `requirements.txt` / `setup.py` | ✓ | ✓ |
+| `tests/**` | ✓ | ✓ |
+| `scripts/**` | ✓ | ✓ |
+| `.github/workflows/**` | ✓ | ✓ |
 
 ### Version Python : 3.10
 
-wxPython 4.2.x est installable via `pip install wxPython` sur Windows pour Python 3.8 à 3.12.
-Python 3.10 est choisi comme version stable, bien supportée par pip et wxPython.
+wxPython 4.2.x installable via `pip install wxPython` sur Windows pour Python 3.8–3.12.
+Python 3.10 est choisi comme version stable, bien supportée.
 
-### Dépendances minimales installées dans le job Windows
+### Dépendances minimales installées (job Windows uniquement)
 
-| Paquet | Rôle |
-|---|---|
-| `six` | Compat 2/3 (135 fichiers l'utilisent) |
-| `appdirs` | Chemins utilisateur (UTILS_Fichiers) |
-| `python-dateutil` | Calculs de dates |
-| `pytz` | Fuseaux horaires |
-| `wxPython` | Framework GUI (test wx.App) |
-
-Paquets **non installés** : numpy, reportlab, sqlalchemy, matplotlib, mysqlclient, etc. — non requis pour les smoke tests.
-
-### Exclusion `C866CA3A*.py` sur Linux
-
-Ce fichier (`noethys/Outils/C866CA3A-32F7-11D2-9602-00C04F8EE628x0x5x0.py`) est un COM typelib
-Python 2 généré par `makepy.py` avec l'encodage `mbcs` (Windows Multibyte Character Set).
-`mbcs` est une encoding valide sous Windows mais inexistante sur Linux/macOS.
-
-**Solution** : `python -m compileall -q -x 'C866CA3A' noethys/` sur Linux uniquement.
-Le job Windows compile sans exclusion.
+`six`, `appdirs`, `python-dateutil`, `pytz`, `wxPython` — suffisant pour les smoke tests.
 
 ---
 
-## Jobs déclenchés selon les chemins
+## Résultats de l'audit runtime (`scripts/audit_runtime_patterns.py`)
 
-| Type de modification | `compile` | `windows-smoke` |
+| Motif | Occurrences | Statut CI | Description |
+|---|---|---|---|
+| `RESULT_UNGUARDED` | 62 | ⚠️ informatif | `DB.ResultatReq()[N]` sans vérification de longueur préalable |
+| `RESULT_ASSIGN` | 59 | ⚠️ informatif | `liste = ResultatReq()` suivi de `liste[N]` sans garde `len/if` |
+| `DB_UNCLOSED` | 15 | ⚠️ informatif | `GestionDB.DB()` ouvert sans `DB.Close()` explicite |
+| `BARE_EXCEPT` | 601 | ⚠️ informatif | `except:` sans type d'exception |
+| `PY2_BUILTINS` | **0** | ✅ **PASS** | Appels `unicode()`, `basestring()`, `raw_input()` non gardés |
+| `UNSAFE_EXEC` | 58 | ⚠️ informatif | `eval()` ou `exec()` |
+| `INVALID_ESCAPE` | 10 | ⚠️ informatif | Séquences d'échappement invalides (`\c`, `\.`, `\i`, …) |
+| `ENCODING_MBCS` | 0 | ✅ **PASS** | Fichiers `mbcs` exclus (répertoire tiers `Outils/`) |
+
+**Seuil CI actif** : `PY2_BUILTINS > 0` → exit(1). Tous les autres motifs sont informatifs.
+
+---
+
+## Défauts confirmés et corrigés dans cette PR
+
+| Défaut | Fichier | Ligne | Correction |
+|---|---|---|---|
+| `unicode(valeur)` non gardé — crash Python 3 | `Ctrl/CTRL_Synthese_deductions.py` | 422 | `str(valeur)` |
+| `unicode(_(u"..."))` non gardé — crash Python 3 | `Dlg/DLG_Saisie_utilisateur_reseau.py` | 262 | suppression du wrap `unicode()` inutile |
+| `DB.Close()` manquant après commit | `Utils/UTILS_Procedures.py` | A8967() | ajout de `DB.Close()` en fin de fonction |
+| Encodage `mbcs` invalide sur Linux | `noethys/Outils/C866CA3A*.py` | — | exclusion via `-x 'C866CA3A'` dans le job Linux |
+| Permissions `GITHUB_TOKEN` non restreintes | `.github/workflows/ci.yml` | — | `permissions: contents: read` |
+
+---
+
+## Faux positifs identifiés et exclus
+
+| Pattern | Faux positif | Raison |
 |---|---|---|
-| Uniquement `docs/` ou `*.md` | ✗ non déclenché | ✗ non déclenché |
-| `noethys/**/*.py` (code) | ✓ | ✓ |
-| `requirements.txt` ou `setup.py` | ✓ | ✓ |
-| `tests/**` | ✓ | ✓ |
-| `.github/workflows/**` | ✓ | ✓ |
+| `\blong\b` → PY2_BUILTINS | Variable GPS `lat, long = ...` ; mot français "long" dans chaînes | Retiré du détecteur |
+| `\bunicode\b` en texte | `type_donnee = "unicode"`, docstrings, commentaires | Détecteur restreint aux appels `unicode(` |
+| `unicode(reponse)` L.1429 | Dans `else:` après `if six.PY3:` — Python 2 uniquement | Heuristique `_is_in_py2_only_block` corrigée |
+| `xrange(...)` dans `Outils/` | `from six.moves import range as xrange` — compat intentionnelle | Répertoire tiers exclu |
+| `self.ctrl.raw_input(...)` | Méthode de `py.shell.Shell`, pas le builtin Python 2 | Détecteur vérifie l'absence de `.` avant `raw_input` |
+| `ObjectListView/`, `Outils/` | Code tiers (Philip Piper, wxScheduler, COM typelibs) | Exclus via `THIRD_PARTY_DIRS` |
 
 ---
 
-## Validations obtenues par le workflow
+## Risques restants à confirmer (recette Windows manuelle ou PR dédiée)
 
-### Job `compile` (Linux)
-
-- ✅ Compilation de tous les fichiers `.py` sous `noethys/` (sauf le typelib Windows)
-- ✅ Détection des erreurs de syntaxe Python 3
-
-### Job `windows-smoke`
-
-- ✅ Compilation de **tous** les fichiers `.py` (y compris `C866CA3A*.py` qui requiert mbcs)
-- ✅ Import de `Chemins` (setup des chemins internes)
-- ✅ Import de `Utils.UTILS_Divers` et `Utils.UTILS_Decimal` (modules purs Python)
-- ✅ Vérification de `FloatToDecimal(3.14) == "3.14"` (calcul décimal de base)
-- ✅ Création et destruction d'un `wx.App(False)` sans affichage
-- ✅ Version wxPython affichée dans les logs CI
+| Risque | Motif | Occurrences | Priorité |
+|---|---|---|---|
+| `ResultatReq()[0]` sans garde `len()` | `RESULT_UNGUARDED` | 62 | Médium — crash si SELECT retourne 0 ligne |
+| `liste = ResultatReq()` puis `liste[0]` sans garde | `RESULT_ASSIGN` | 59 | Médium — même risque |
+| `DB.Close()` manquant dans 15 fonctions | `DB_UNCLOSED` | 15 | Faible — fuites de connexions SQLite (gérées par GC) |
+| Séquences `\c`, `\i`, `\.` dans chaînes regex | `INVALID_ESCAPE` | 10 | Faible — SyntaxWarning, non bloquant |
+| `eval()`/`exec()` | `UNSAFE_EXEC` | 58 | À auditer (console SQL, templates) |
+| `except:` sans type | `BARE_EXCEPT` | 601 | Masquage silencieux d'erreurs |
 
 ---
 
@@ -100,29 +119,21 @@ Le job Windows compile sans exclusion.
 
 | Limite | Raison |
 |---|---|
-| Modules wxPython non testés | Les dialogues, contrôles et formulaires nécessitent un affichage et un écran réel |
-| Base de données SQLite/MySQL | Non testée : requiert un fichier `.db` réel ou un serveur MySQL |
-| Packaging Windows (`py2exe`) | `setup.py` utilise la syntaxe Python 2 (`print "..."`) — non portable en Python 3 sans refonte |
-| Modules COM (pyttsx, SAPI) | Nécessitent l'enregistrement COM sur Windows : non testable en CI sandboxé |
-| Modules optionnels | `mysqlclient`, `opencv-python`, `pystrich`, etc. — installables mais non exercés |
-| Impression / PDF | `reportlab` et `matplotlib` requis pour les PDF — non installés dans ce lot |
-| Import complet de `Noethys.py` | Chaîne d'imports chargée, requiert tous les modules et wx initialisé |
+| Modules wxPython (dialogues, contrôles) | Nécessitent un affichage réel |
+| Base de données SQLite/MySQL | Requiert un fichier `.db` ou un serveur MySQL |
+| Packaging Windows (`py2exe`) | `setup.py` en syntaxe Python 2 — non porté en Python 3 |
+| Modules COM (pyttsx, SAPI) | Enregistrement COM requis — non testable en CI sandboxé |
+| Import complet de `Noethys.py` | Chaîne d'imports complète, requiert wx + tous modules |
+| Impression / PDF | `reportlab`, `matplotlib` non installés dans les smoke tests |
 
 ---
 
-## Corrections de défauts CI identifiés
+## Prochaines étapes suggérées
 
-| Défaut | Fichier | Correction appliquée |
-|---|---|---|
-| Encodage `mbcs` invalide sur Linux | `noethys/Outils/C866CA3A*.py` | Exclusion via `-x 'C866CA3A'` dans le job Linux uniquement |
-| Avertissements d'échappements invalides | Plusieurs fichiers (`\c`, `\i`, `\.`, etc.) | Non bloquants (SyntaxWarning, exit code 0) — non modifiés dans ce lot |
+1. **RESULT_UNGUARDED** : ajouter des gardes `if len(result) > 0:` au fil des PR métier.
+2. **DB_UNCLOSED** : ajouter `DB.Close()` dans les 15 fonctions identifiées (PR dédiée).
+3. **INVALID_ESCAPE** : convertir les chaînes concernées en raw strings `r"..."`.
+4. **Tests fonctionnels** : créer une suite pytest pour les modules purs Python.
+5. **Packaging Python 3** : migrer `setup.py` de `py2exe` vers PyInstaller.
 
----
-
-## Prochaines étapes possibles
-
-1. **Tests fonctionnels** : créer une suite pytest pour les modules purs Python (calculs, dates, décimaux).
-2. **Portage packaging** : migrer `setup.py` vers Python 3 (`print(...)`) ou vers PyInstaller.
-3. **Correction échappements** : remplacer les chaînes `"temp\calendrier.txt"` par des raw strings.
-4. **Import étendu** : une fois tous les modules disponibles, tester un import complet de l'arbre de modules avec `wx.App`.
 

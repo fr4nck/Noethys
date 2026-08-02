@@ -880,6 +880,7 @@ def A8967():
         DB.Executermany(_(u"UPDATE factures SET numerostr=? WHERE IDfacture=?"),
                         listeModifications, commit=False)
         DB.Commit()
+    DB.Close()
 
 
 def A8971():
