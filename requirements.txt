@@ -5,7 +5,7 @@ numpy
 Pillow
 pycryptodome
 XlsxWriter
-pyttsx
+pyttsx3
 pytz
 reportlab
 Twisted
