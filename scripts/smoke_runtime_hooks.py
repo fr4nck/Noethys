@@ -7,6 +7,7 @@ présentes dans l'environnement Windows de fabrication.
 """
 from __future__ import annotations
 
+import builtins
 import importlib.util
 import sqlite3
 import sys
@@ -18,7 +19,9 @@ if str(NOETHYS) not in sys.path:
     sys.path.insert(0, str(NOETHYS))
 
 HOOKS = (
+    ROOT / "packaging" / "runtime_python2_builtins_compat.py",
     ROOT / "packaging" / "runtime_wx_compat.py",
+    ROOT / "packaging" / "runtime_wx_list_width_compat.py",
     ROOT / "packaging" / "runtime_pillow_compat.py",
     ROOT / "packaging" / "runtime_sqlite_path_compat.py",
     ROOT / "packaging" / "runtime_mysql_interface_compat.py",
@@ -42,9 +45,15 @@ def verifier_garanties() -> None:
     import wx
     from PIL import Image
 
+    if builtins.long is not int or builtins.basestring is not str:
+        raise RuntimeError("Compatibilité builtins Python 2 incomplète")
+
     for nom in ("EmptyBitmap", "EmptyIcon", "EmptyImage", "BitmapFromImage", "NewId"):
         if not hasattr(wx, nom):
             raise RuntimeError("Alias wx manquant après hook : %s" % nom)
+
+    if wx.ListCtrl.SetColumnWidth.__name__ != "_set_column_width_compat":
+        raise RuntimeError("Normalisation des largeurs wx.ListCtrl inactive")
 
     for nom in ("ANTIALIAS", "NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"):
         if not hasattr(Image, nom):
@@ -53,15 +62,12 @@ def verifier_garanties() -> None:
     if not hasattr(Image.Image, "tostring") or not hasattr(Image, "fromstring"):
         raise RuntimeError("Compatibilité historique Pillow incomplète")
 
-    # Le hook SQLite doit accepter un chemin bytes sans ouvrir une base métier.
     connexion = sqlite3.connect(b":memory:")
     try:
         connexion.execute("SELECT 1")
     finally:
         connexion.close()
 
-    # Le hook MySQL doit réellement charger GestionDB et sélectionner le
-    # connecteur pur Python lorsque mysqlclient est absent.
     if (
         not GestionDB.IMPORT_MYSQLDB_OK
         and GestionDB.IMPORT_MYSQLCONNECTOR_OK
