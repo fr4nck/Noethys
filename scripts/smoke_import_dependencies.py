@@ -24,12 +24,14 @@ REQUIRED = (
     "Crypto",
     "pyttsx3",
     "mysql.connector",
+    "comtypes",
+    "xlsxwriter",
 )
 
 OPTIONAL = (
     "MySQLdb",
     "cv2",
-    "Twisted",
+    "twisted",
 )
 
 
