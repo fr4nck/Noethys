@@ -22,11 +22,14 @@ for package in (
 ):
     hiddenimports += collect_submodules(package)
 
+# Chemins.py recherche ces ressources à côté de Noethys.exe lorsque
+# l'application est figée. Elles doivent donc être placées à la racine
+# du dossier portable, et non dans un sous-répertoire noethys/.
 datas = [
-    (str(NOETHYS / "Static"), "noethys/Static"),
-    (str(NOETHYS / "Versions.txt"), "noethys"),
-    (str(NOETHYS / "Licence.txt"), "noethys"),
-    (str(NOETHYS / "Icone.ico"), "noethys"),
+    (str(NOETHYS / "Static"), "Static"),
+    (str(NOETHYS / "Versions.txt"), "."),
+    (str(NOETHYS / "Licence.txt"), "."),
+    (str(NOETHYS / "Icone.ico"), "."),
 ]
 datas += collect_data_files("matplotlib")
 datas += collect_data_files("pytz")
