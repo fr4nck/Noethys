@@ -7,6 +7,13 @@ on:
       - 'packaging/**'
       - 'requirements-build.txt'
       - '.github/workflows/windows-package.yml'
+  push:
+    branches:
+      - 'agent/windows11-pyinstaller'
+    paths:
+      - 'packaging/**'
+      - 'requirements-build.txt'
+      - '.github/workflows/windows-package.yml'
 
 permissions:
   contents: read
