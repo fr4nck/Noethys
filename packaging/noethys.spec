@@ -50,6 +50,7 @@ datas += collect_data_files("reportlab")
 
 runtime_hooks = [
     str(ROOT / "packaging" / "runtime_wx_compat.py"),
+    str(ROOT / "packaging" / "runtime_pillow_compat.py"),
     str(ROOT / "packaging" / "runtime_sqlite_path_compat.py"),
     str(ROOT / "packaging" / "runtime_mysql_interface_compat.py"),
 ]
