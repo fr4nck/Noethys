@@ -19,5 +19,5 @@ matplotlib
 opencv-python
 sqlalchemy
 pystrich
-mysqlclient
+mysqlclient; platform_system != "Windows"
 mysql-connector-python
