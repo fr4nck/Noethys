@@ -49,6 +49,7 @@ datas += collect_data_files("pytz")
 datas += collect_data_files("reportlab")
 
 runtime_hooks = [
+    str(ROOT / "packaging" / "runtime_python2_builtins_compat.py"),
     str(ROOT / "packaging" / "runtime_wx_compat.py"),
     str(ROOT / "packaging" / "runtime_pillow_compat.py"),
     str(ROOT / "packaging" / "runtime_sqlite_path_compat.py"),
