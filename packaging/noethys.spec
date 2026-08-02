@@ -42,6 +42,11 @@ datas += collect_data_files("matplotlib")
 datas += collect_data_files("pytz")
 datas += collect_data_files("reportlab")
 
+runtime_hooks = [
+    str(ROOT / "packaging" / "runtime_wx_compat.py"),
+    str(ROOT / "packaging" / "runtime_sqlite_path_compat.py"),
+]
+
 analysis = Analysis(
     [str(NOETHYS / "Noethys.py")],
     pathex=[str(ROOT), str(NOETHYS)],
@@ -50,7 +55,7 @@ analysis = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[str(ROOT / "packaging" / "runtime_sqlite_path_compat.py")],
+    runtime_hooks=runtime_hooks,
     excludes=["tkinter", "PyQt5", "PyQt6", "PySide2", "PySide6"],
     noarchive=False,
 )
