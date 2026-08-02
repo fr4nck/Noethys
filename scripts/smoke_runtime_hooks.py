@@ -13,6 +13,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+NOETHYS = ROOT / "noethys"
+if str(NOETHYS) not in sys.path:
+    sys.path.insert(0, str(NOETHYS))
+
 HOOKS = (
     ROOT / "packaging" / "runtime_wx_compat.py",
     ROOT / "packaging" / "runtime_pillow_compat.py",
@@ -34,6 +38,7 @@ def charger_hook(path: Path) -> None:
 
 
 def verifier_garanties() -> None:
+    import GestionDB
     import wx
     from PIL import Image
 
@@ -54,6 +59,15 @@ def verifier_garanties() -> None:
         connexion.execute("SELECT 1")
     finally:
         connexion.close()
+
+    # Le hook MySQL doit réellement charger GestionDB et sélectionner le
+    # connecteur pur Python lorsque mysqlclient est absent.
+    if (
+        not GestionDB.IMPORT_MYSQLDB_OK
+        and GestionDB.IMPORT_MYSQLCONNECTOR_OK
+        and GestionDB.INTERFACE_MYSQL != "mysql.connector"
+    ):
+        raise RuntimeError("Le repli automatique vers mysql.connector n'est pas actif")
 
 
 def main() -> int:
