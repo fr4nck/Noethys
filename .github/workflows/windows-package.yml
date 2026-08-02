@@ -26,17 +26,8 @@ jobs:
       - name: Installer les dépendances de fabrication
         run: python -m pip install --upgrade pip wheel && python -m pip install -r requirements-build.txt
 
-      - name: Compiler les sources
-        run: python -m compileall -q noethys
-
-      - name: Inventorier les dépendances réellement utilisées
-        run: python scripts/audit_dependency_usage.py
-
-      - name: Inventorier les incompatibilités Python 3 historiques
-        run: python scripts/audit_python3_compat.py noethys
-
-      - name: Inventorier les API modernes à adapter
-        run: python scripts/audit_modern_api_compat.py noethys
+      - name: Exécuter le préflight packaging
+        run: python scripts/package_preflight.py
 
       - name: Construire le dossier portable
         run: pyinstaller --noconfirm --clean packaging/noethys.spec
