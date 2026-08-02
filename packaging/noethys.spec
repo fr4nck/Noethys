@@ -19,14 +19,15 @@ for package in (
     "icalendar",
     "paramiko",
     "comtypes",
-    "pyttsx",
+    "pyttsx3",
     "Crypto",
     "Cryptodome",
 ):
     hiddenimports += collect_submodules(package)
 
-# Import explicite historique du moteur vocal Windows, chargé dynamiquement.
-hiddenimports += ["pyttsx.drivers", "pyttsx.drivers.sapi5"]
+# Le code historique importe pyttsx ; noethys/pyttsx.py redirige vers pyttsx3.
+# Le pilote SAPI5 reste chargé dynamiquement sous Windows.
+hiddenimports += ["pyttsx3.drivers", "pyttsx3.drivers.sapi5"]
 
 # Chemins.py recherche ces ressources à côté de Noethys.exe lorsque
 # l'application est figée. Elles doivent donc être placées à la racine
