@@ -24,6 +24,7 @@ HOOKS = (
     ROOT / "packaging" / "runtime_pillow_compat.py",
     ROOT / "packaging" / "runtime_sqlite_path_compat.py",
     ROOT / "packaging" / "runtime_mysql_interface_compat.py",
+    ROOT / "packaging" / "runtime_gestiondb_lifecycle_compat.py",
 )
 
 
@@ -84,6 +85,11 @@ def verifier_garanties() -> None:
             raise RuntimeError("Alias Pillow manquant après hook : %s" % nom)
     if not hasattr(Image.Image, "tostring") or not hasattr(Image, "fromstring"):
         raise RuntimeError("Compatibilité historique Pillow incomplète")
+
+    if GestionDB.DB.Close.__name__ != "_close_compat":
+        raise RuntimeError("Fermeture idempotente GestionDB inactive")
+    if GestionDB.DB.ReqInsert.__name__ != "_req_insert_compat":
+        raise RuntimeError("Retour sûr ReqInsert GestionDB inactif")
 
     connexion = sqlite3.connect(b":memory:")
     try:
