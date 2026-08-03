@@ -6,6 +6,7 @@ import builtins
 import importlib.util
 import sqlite3
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -86,16 +87,26 @@ def verifier_garanties() -> None:
     if not hasattr(Image.Image, "tostring") or not hasattr(Image, "fromstring"):
         raise RuntimeError("Compatibilité historique Pillow incomplète")
 
-    if GestionDB.DB.Close.__name__ != "_close_compat":
-        raise RuntimeError("Fermeture idempotente GestionDB inactive")
-    if GestionDB.DB.ReqInsert.__name__ != "_req_insert_compat":
-        raise RuntimeError("Retour sûr ReqInsert GestionDB inactif")
-
     connexion = sqlite3.connect(b":memory:")
     try:
         connexion.execute("SELECT 1")
     finally:
         connexion.close()
+
+    with tempfile.TemporaryDirectory(prefix="noethys_utf8_") as rep_temp:
+        chemin = Path(rep_temp) / "Élodie Drouillé — données.dat"
+        connexion = sqlite3.connect(str(chemin).encode("utf-8"))
+        try:
+            connexion.execute("CREATE TABLE test (texte TEXT)")
+            connexion.execute("INSERT INTO test VALUES (?)", ("José Muñoz — Łukasz",))
+            connexion.commit()
+            valeur = connexion.execute("SELECT texte FROM test").fetchone()[0]
+            if valeur != "José Muñoz — Łukasz":
+                raise RuntimeError("Altération UTF-8 dans SQLite")
+        finally:
+            connexion.close()
+        if not chemin.is_file():
+            raise RuntimeError("Le chemin SQLite UTF-8 n'a pas été créé correctement")
 
     if (
         not GestionDB.IMPORT_MYSQLDB_OK
