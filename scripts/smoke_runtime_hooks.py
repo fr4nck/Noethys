@@ -16,6 +16,7 @@ if str(NOETHYS) not in sys.path:
 HOOKS = (
     ROOT / "packaging" / "runtime_python2_builtins_compat.py",
     ROOT / "packaging" / "runtime_wx_compat.py",
+    ROOT / "packaging" / "runtime_wx_text_compat.py",
     ROOT / "packaging" / "runtime_wx_list_width_compat.py",
     ROOT / "packaging" / "runtime_objectlistview_value_compat.py",
     ROOT / "packaging" / "runtime_objectlistview_date_compat.py",
@@ -62,6 +63,10 @@ def verifier_garanties() -> None:
         if not hasattr(wx, nom):
             raise RuntimeError("Alias wx manquant après hook : %s" % nom)
 
+    if wx.TextCtrl.SetValue.__name__ != "_wx_text_compat":
+        raise RuntimeError("Normalisation bytes/texte wx.TextCtrl inactive")
+    if wx.StaticText.SetLabel.__name__ != "_wx_text_compat":
+        raise RuntimeError("Normalisation bytes/texte wx.StaticText inactive")
     if wx.ListCtrl.SetColumnWidth.__name__ != "_set_column_width_compat":
         raise RuntimeError("Normalisation des largeurs wx.ListCtrl inactive")
     if CellEditor.BaseCellTextEditor.SetValue.__name__ != "_set_value_compat":
