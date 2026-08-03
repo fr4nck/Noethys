@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
-"""Exécute les hooks runtime du package avant le lancement de PyInstaller.
-
-Ce contrôle ne démarre pas Noethys et n'ouvre aucune base. Il vérifie que les
-modules de compatibilité sont importables et que leurs garanties minimales sont
-présentes dans l'environnement Windows de fabrication.
-"""
+"""Exécute les hooks runtime du package avant le lancement de PyInstaller."""
 from __future__ import annotations
 
 import builtins
-import datetime
 import importlib.util
 import sqlite3
 import sys
@@ -23,6 +17,7 @@ HOOKS = (
     ROOT / "packaging" / "runtime_python2_builtins_compat.py",
     ROOT / "packaging" / "runtime_wx_compat.py",
     ROOT / "packaging" / "runtime_wx_list_width_compat.py",
+    ROOT / "packaging" / "runtime_objectlistview_value_compat.py",
     ROOT / "packaging" / "runtime_objectlistview_date_compat.py",
     ROOT / "packaging" / "runtime_aui_compat.py",
     ROOT / "packaging" / "runtime_pillow_compat.py",
@@ -69,7 +64,8 @@ def verifier_garanties() -> None:
 
     if wx.ListCtrl.SetColumnWidth.__name__ != "_set_column_width_compat":
         raise RuntimeError("Normalisation des largeurs wx.ListCtrl inactive")
-
+    if CellEditor.BaseCellTextEditor.SetValue.__name__ != "_set_value_compat":
+        raise RuntimeError("Normalisation des valeurs vides ObjectListView inactive")
     if CellEditor.DateEditor.SetValue.__name__ != "_set_value_compat":
         raise RuntimeError("Tolérance des dates ObjectListView inactive")
 
@@ -81,7 +77,6 @@ def verifier_garanties() -> None:
     for nom in ("ANTIALIAS", "NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"):
         if not hasattr(Image, nom):
             raise RuntimeError("Alias Pillow manquant après hook : %s" % nom)
-
     if not hasattr(Image.Image, "tostring") or not hasattr(Image, "fromstring"):
         raise RuntimeError("Compatibilité historique Pillow incomplète")
 
