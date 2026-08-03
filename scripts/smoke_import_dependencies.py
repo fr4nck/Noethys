@@ -27,6 +27,7 @@ REQUIRED = (
     "pytz",
     "icalendar",
     "paramiko",
+    "twisted",
     "Crypto",
     "pyttsx3",
     "mysql.connector",
@@ -39,7 +40,6 @@ REQUIRED = (
 OPTIONAL = (
     "MySQLdb",
     "cv2",
-    "twisted",
 )
 
 
