@@ -17,6 +17,7 @@ CHECKS = (
     ("Frontières bytes/texte", [sys.executable, "scripts/audit_bytes_text_boundaries.py", "noethys"], False),
     ("Imports dynamiques", [sys.executable, "scripts/audit_dynamic_imports.py", "noethys"], False),
     ("API modernes", [sys.executable, "scripts/audit_modern_api_compat.py", "noethys"], False),
+    ("Alignement packaging", [sys.executable, "scripts/smoke_packaging_alignment.py"], True),
     ("Imports critiques", [sys.executable, "scripts/smoke_import_dependencies.py"], True),
     ("Piles fonctionnelles", [sys.executable, "scripts/smoke_optional_feature_stacks.py"], True),
     ("Imports dynamiques littéraux", [sys.executable, "scripts/smoke_dynamic_imports.py"], True),
