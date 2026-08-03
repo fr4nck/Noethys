@@ -14,6 +14,7 @@ CHECKS = (
     ("Parsing de dates", [sys.executable, "scripts/audit_fragile_date_parsing.py", "noethys"], False),
     ("Layout wx/AUI", [sys.executable, "scripts/audit_wx_layout_compat.py", "noethys"], False),
     ("Arguments numériques wx", [sys.executable, "scripts/audit_wx_numeric_arguments.py", "noethys"], False),
+    ("Frontières bytes/texte", [sys.executable, "scripts/audit_bytes_text_boundaries.py", "noethys"], False),
     ("API modernes", [sys.executable, "scripts/audit_modern_api_compat.py", "noethys"], False),
     ("Imports critiques", [sys.executable, "scripts/smoke_import_dependencies.py"], True),
     ("Hooks runtime", [sys.executable, "scripts/smoke_runtime_hooks.py"], True),
