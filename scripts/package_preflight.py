@@ -23,6 +23,7 @@ CHECKS = (
     ("Imports dynamiques littéraux", [sys.executable, "scripts/smoke_dynamic_imports.py"], True),
     ("Graphe du démarrage", [sys.executable, "scripts/smoke_startup_module_graph.py"], True),
     ("Cycle GestionDB SQLite", [sys.executable, "scripts/smoke_gestiondb_lifecycle.py"], True),
+    ("Chemins Windows", [sys.executable, "scripts/smoke_windows_filesystem_paths.py"], True),
     ("Ressources du package", [sys.executable, "scripts/smoke_packaged_resources.py"], True),
     ("Hooks runtime", [sys.executable, "scripts/smoke_runtime_hooks.py"], True),
     ("Compilation", [sys.executable, "-m", "compileall", "-q", "noethys"], True),
