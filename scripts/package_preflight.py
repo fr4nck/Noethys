@@ -12,6 +12,7 @@ CHECKS = (
     ("Dépendances", [sys.executable, "scripts/audit_dependency_usage.py", "noethys", "requirements.txt"], False),
     ("Compatibilité Python 3", [sys.executable, "scripts/audit_python3_compat.py", "noethys"], False),
     ("Parsing de dates", [sys.executable, "scripts/audit_fragile_date_parsing.py", "noethys"], False),
+    ("Layout wx/AUI", [sys.executable, "scripts/audit_wx_layout_compat.py", "noethys"], False),
     ("API modernes", [sys.executable, "scripts/audit_modern_api_compat.py", "noethys"], False),
     ("Imports critiques", [sys.executable, "scripts/smoke_import_dependencies.py"], True),
     ("Hooks runtime", [sys.executable, "scripts/smoke_runtime_hooks.py"], True),
