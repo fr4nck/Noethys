@@ -52,6 +52,7 @@ runtime_hooks = [
     str(ROOT / "packaging" / "runtime_python2_builtins_compat.py"),
     str(ROOT / "packaging" / "runtime_wx_compat.py"),
     str(ROOT / "packaging" / "runtime_wx_list_width_compat.py"),
+    str(ROOT / "packaging" / "runtime_aui_compat.py"),
     str(ROOT / "packaging" / "runtime_objectlistview_date_compat.py"),
     str(ROOT / "packaging" / "runtime_pillow_compat.py"),
     str(ROOT / "packaging" / "runtime_sqlite_path_compat.py"),
