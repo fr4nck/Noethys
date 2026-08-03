@@ -15,6 +15,7 @@ CHECKS = (
     ("Layout wx/AUI", [sys.executable, "scripts/audit_wx_layout_compat.py", "noethys"], False),
     ("Arguments numériques wx", [sys.executable, "scripts/audit_wx_numeric_arguments.py", "noethys"], False),
     ("Frontières bytes/texte", [sys.executable, "scripts/audit_bytes_text_boundaries.py", "noethys"], False),
+    ("Frontières UTF-8", [sys.executable, "scripts/audit_utf8_boundaries.py", "noethys"], False),
     ("Imports dynamiques", [sys.executable, "scripts/audit_dynamic_imports.py", "noethys"], False),
     ("API modernes", [sys.executable, "scripts/audit_modern_api_compat.py", "noethys"], False),
     ("Alignement packaging", [sys.executable, "scripts/smoke_packaging_alignment.py"], True),
