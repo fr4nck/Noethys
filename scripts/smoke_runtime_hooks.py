@@ -8,6 +8,7 @@ présentes dans l'environnement Windows de fabrication.
 from __future__ import annotations
 
 import builtins
+import datetime
 import importlib.util
 import sqlite3
 import sys
@@ -22,6 +23,8 @@ HOOKS = (
     ROOT / "packaging" / "runtime_python2_builtins_compat.py",
     ROOT / "packaging" / "runtime_wx_compat.py",
     ROOT / "packaging" / "runtime_wx_list_width_compat.py",
+    ROOT / "packaging" / "runtime_objectlistview_date_compat.py",
+    ROOT / "packaging" / "runtime_aui_compat.py",
     ROOT / "packaging" / "runtime_pillow_compat.py",
     ROOT / "packaging" / "runtime_sqlite_path_compat.py",
     ROOT / "packaging" / "runtime_mysql_interface_compat.py",
@@ -43,7 +46,9 @@ def charger_hook(path: Path) -> None:
 def verifier_garanties() -> None:
     import GestionDB
     import wx
+    import wx.lib.agw.aui as aui
     from PIL import Image
+    from ObjectListView import CellEditor
 
     if builtins.long is not int or builtins.basestring is not str:
         raise RuntimeError("Compatibilité builtins Python 2 incomplète")
@@ -54,6 +59,14 @@ def verifier_garanties() -> None:
 
     if wx.ListCtrl.SetColumnWidth.__name__ != "_set_column_width_compat":
         raise RuntimeError("Normalisation des largeurs wx.ListCtrl inactive")
+
+    if CellEditor.DateEditor.SetValue.__name__ != "_set_value_compat":
+        raise RuntimeError("Tolérance des dates ObjectListView inactive")
+
+    if aui.AuiManager.LoadPerspective.__name__ != "_load_perspective_compat":
+        raise RuntimeError("Protection AUI LoadPerspective inactive")
+    if aui.AuiManager.UnInit.__name__ != "_uninit_compat":
+        raise RuntimeError("Protection AUI UnInit inactive")
 
     for nom in ("ANTIALIAS", "NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"):
         if not hasattr(Image, nom):
