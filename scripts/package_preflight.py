@@ -18,6 +18,7 @@ CHECKS = (
     ("Imports dynamiques", [sys.executable, "scripts/audit_dynamic_imports.py", "noethys"], False),
     ("API modernes", [sys.executable, "scripts/audit_modern_api_compat.py", "noethys"], False),
     ("Imports critiques", [sys.executable, "scripts/smoke_import_dependencies.py"], True),
+    ("Imports dynamiques littéraux", [sys.executable, "scripts/smoke_dynamic_imports.py"], True),
     ("Hooks runtime", [sys.executable, "scripts/smoke_runtime_hooks.py"], True),
     ("Compilation", [sys.executable, "-m", "compileall", "-q", "noethys"], True),
 )
