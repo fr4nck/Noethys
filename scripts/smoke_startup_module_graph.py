@@ -3,12 +3,15 @@
 
 Le test charge d'abord les hooks runtime, puis importe les modules principaux
 référencés en tête de Noethys.py. Il n'instancie pas MainFrame, ne démarre pas
-la boucle wx et n'ouvre aucune base de données.
+la boucle wx, n'ouvre aucune base et interdit explicitement les connexions
+réseau pendant les imports.
 """
 from __future__ import annotations
 
 import importlib
 import importlib.util
+import os
+import socket
 import sys
 from pathlib import Path
 
@@ -16,6 +19,9 @@ ROOT = Path(__file__).resolve().parents[1]
 NOETHYS = ROOT / "noethys"
 if str(NOETHYS) not in sys.path:
     sys.path.insert(0, str(NOETHYS))
+
+# Permet aux modules compatibles de reconnaître un environnement de contrôle.
+os.environ["NOETHYS_SMOKE_TEST"] = "1"
 
 HOOKS = (
     "runtime_python2_builtins_compat.py",
@@ -67,31 +73,49 @@ STARTUP_MODULES = (
 
 def load_hook(filename: str) -> None:
     path = ROOT / "packaging" / filename
-    spec = importlib.util.spec_from_file_location(f"startup_{path.stem}", path)
+    module_name = f"startup_{path.stem}"
+    spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is None or spec.loader is None:
         raise ImportError(f"Impossible de charger {path}")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
+
+
+def _network_forbidden(*args, **kwargs):
+    raise RuntimeError("Accès réseau interdit pendant le smoke-test de démarrage")
 
 
 def main() -> int:
     for filename in HOOKS:
         load_hook(filename)
 
+    original_connect = socket.socket.connect
+    original_connect_ex = socket.socket.connect_ex
+    original_create_connection = socket.create_connection
+    socket.socket.connect = _network_forbidden
+    socket.socket.connect_ex = _network_forbidden
+    socket.create_connection = _network_forbidden
+
     failures = 0
-    for module_name in STARTUP_MODULES:
-        try:
-            importlib.import_module(module_name)
-        except Exception as err:
-            failures += 1
-            print(f"- {module_name}: {type(err).__name__}: {err}")
-        else:
-            print(f"- {module_name}: ok")
+    try:
+        for module_name in STARTUP_MODULES:
+            try:
+                importlib.import_module(module_name)
+            except Exception as err:
+                failures += 1
+                print(f"- {module_name}: {type(err).__name__}: {err}")
+            else:
+                print(f"- {module_name}: ok")
+    finally:
+        socket.socket.connect = original_connect
+        socket.socket.connect_ex = original_connect_ex
+        socket.create_connection = original_create_connection
 
     if failures:
         print(f"\n{failures} module(s) du démarrage non importable(s).", file=sys.stderr)
         return 1
-    print("\nGraphe d'imports du démarrage valide.")
+    print("\nGraphe d'imports du démarrage valide, sans accès réseau.")
     return 0
 
 
