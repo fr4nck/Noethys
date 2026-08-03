@@ -50,6 +50,7 @@ runtime_hooks = [
     str(ROOT / "packaging" / "runtime_pillow_compat.py"),
     str(ROOT / "packaging" / "runtime_sqlite_path_compat.py"),
     str(ROOT / "packaging" / "runtime_mysql_interface_compat.py"),
+    str(ROOT / "packaging" / "runtime_gestiondb_lifecycle_compat.py"),
 ]
 
 analysis = Analysis(
