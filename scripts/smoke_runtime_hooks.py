@@ -50,8 +50,18 @@ def verifier_garanties() -> None:
     from PIL import Image
     from ObjectListView import CellEditor
 
-    if builtins.long is not int or builtins.basestring is not str:
-        raise RuntimeError("Compatibilité builtins Python 2 incomplète")
+    aliases_attendus = {
+        "long": int,
+        "basestring": str,
+        "unicode": str,
+        "unichr": chr,
+        "xrange": range,
+    }
+    for nom, cible in aliases_attendus.items():
+        if getattr(builtins, nom, None) is not cible:
+            raise RuntimeError("Compatibilité builtin Python 2 inactive : %s" % nom)
+    if builtins.cmp(1, 2) != -1 or builtins.cmp(2, 1) != 1 or builtins.cmp(1, 1) != 0:
+        raise RuntimeError("Compatibilité builtin Python 2 inactive : cmp")
 
     for nom in ("EmptyBitmap", "EmptyIcon", "EmptyImage", "BitmapFromImage", "NewId"):
         if not hasattr(wx, nom):
