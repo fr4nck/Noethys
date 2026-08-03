@@ -42,6 +42,7 @@ datas += collect_data_files("reportlab")
 runtime_hooks = [
     str(ROOT / "packaging" / "runtime_python2_builtins_compat.py"),
     str(ROOT / "packaging" / "runtime_wx_compat.py"),
+    str(ROOT / "packaging" / "runtime_wx_text_compat.py"),
     str(ROOT / "packaging" / "runtime_wx_list_width_compat.py"),
     str(ROOT / "packaging" / "runtime_objectlistview_value_compat.py"),
     str(ROOT / "packaging" / "runtime_objectlistview_date_compat.py"),
