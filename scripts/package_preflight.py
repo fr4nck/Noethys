@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Exécute les contrôles légers avant tout packaging Windows."""
+"""Exécute les contrôles avant tout packaging Windows."""
 from __future__ import annotations
 
+import argparse
 import subprocess
 import sys
 from pathlib import Path
@@ -50,9 +51,32 @@ CHECKS = (
 )
 
 
+def is_static_check(command: list[str]) -> bool:
+    """Retourne True pour les contrôles sans dépendance applicative lourde."""
+    if len(command) < 2:
+        return False
+    target = command[1]
+    if target == "scripts/smoke_preflight_manifest.py":
+        return True
+    return target.startswith("scripts/audit_") or target.startswith("scripts/modernize_")
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--static-only",
+        action="store_true",
+        help="exécute seulement les audits et codemods statiques sans dépendances lourdes",
+    )
+    args = parser.parse_args()
+
+    checks = CHECKS
+    if args.static_only:
+        checks = tuple(check for check in CHECKS if is_static_check(check[1]))
+        print(f"Préflight statique : {len(checks)} contrôle(s) sélectionné(s).")
+
     warnings = 0
-    for label, command, blocking in CHECKS:
+    for label, command, blocking in checks:
         level = "bloquant" if blocking else "informatif"
         print(f"\n== {label} ({level}) ==")
         result = subprocess.run(command, cwd=ROOT, check=False)
@@ -68,10 +92,11 @@ def main() -> int:
             file=sys.stderr,
         )
 
+    mode = "statique" if args.static_only else "complet"
     if warnings:
-        print(f"\nPréflight terminé avec {warnings} avertissement(s).")
+        print(f"\nPréflight {mode} terminé avec {warnings} avertissement(s).")
     else:
-        print("\nPréflight terminé sans erreur.")
+        print(f"\nPréflight {mode} terminé sans erreur.")
     return 0
 
 
