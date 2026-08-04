@@ -20,6 +20,7 @@ CHECKS = (
     ("Chemins SQLite Unicode", [sys.executable, "scripts/modernize_sqlite_unicode_paths.py"], False),
     ("Imports dynamiques", [sys.executable, "scripts/audit_dynamic_imports.py", "noethys"], False),
     ("API modernes", [sys.executable, "scripts/audit_modern_api_compat.py", "noethys"], False),
+    ("Codemod ouvertures UTF-8", [sys.executable, "scripts/smoke_text_encoding_codemod.py"], True),
     ("Alignement packaging", [sys.executable, "scripts/smoke_packaging_alignment.py"], True),
     ("Imports critiques", [sys.executable, "scripts/smoke_import_dependencies.py"], True),
     ("Piles fonctionnelles", [sys.executable, "scripts/smoke_optional_feature_stacks.py"], True),
