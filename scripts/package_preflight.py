@@ -30,6 +30,7 @@ CHECKS = (
     ("Chemins Windows", [sys.executable, "scripts/smoke_windows_filesystem_paths.py"], True),
     ("Fichiers du dépôt UTF-8", [sys.executable, "scripts/smoke_repository_utf8.py"], True),
     ("Allers-retours UTF-8", [sys.executable, "scripts/smoke_utf8_roundtrip.py"], True),
+    ("UTILS_Json UTF-8", [sys.executable, "scripts/smoke_utils_json_utf8.py"], True),
     ("Ressources du package", [sys.executable, "scripts/smoke_packaged_resources.py"], True),
     ("Hooks runtime", [sys.executable, "scripts/smoke_runtime_hooks.py"], True),
     ("Compilation", [sys.executable, "-m", "compileall", "-q", "noethys"], True),
