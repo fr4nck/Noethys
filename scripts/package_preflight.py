@@ -26,6 +26,7 @@ CHECKS = (
     ("Graphe du démarrage", [sys.executable, "scripts/smoke_startup_module_graph.py"], True),
     ("Cycle GestionDB SQLite", [sys.executable, "scripts/smoke_gestiondb_lifecycle.py"], True),
     ("Chemins Windows", [sys.executable, "scripts/smoke_windows_filesystem_paths.py"], True),
+    ("Fichiers du dépôt UTF-8", [sys.executable, "scripts/smoke_repository_utf8.py"], True),
     ("Allers-retours UTF-8", [sys.executable, "scripts/smoke_utf8_roundtrip.py"], True),
     ("Ressources du package", [sys.executable, "scripts/smoke_packaged_resources.py"], True),
     ("Hooks runtime", [sys.executable, "scripts/smoke_runtime_hooks.py"], True),
