@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 CHECKS = (
+    ("Manifest du préflight", [sys.executable, "scripts/smoke_preflight_manifest.py"], True),
     ("Dépendances", [sys.executable, "scripts/audit_dependency_usage.py", "noethys", "requirements.txt"], False),
     ("Compatibilité Python 3", [sys.executable, "scripts/audit_python3_compat.py", "noethys"], False),
     ("Parsing de dates", [sys.executable, "scripts/audit_fragile_date_parsing.py", "noethys"], False),
