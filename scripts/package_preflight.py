@@ -16,6 +16,7 @@ CHECKS = (
     ("Arguments numériques wx", [sys.executable, "scripts/audit_wx_numeric_arguments.py", "noethys"], False),
     ("Frontières bytes/texte", [sys.executable, "scripts/audit_bytes_text_boundaries.py", "noethys"], False),
     ("Frontières UTF-8", [sys.executable, "scripts/audit_utf8_boundaries.py", "noethys"], False),
+    ("Ouvertures texte UTF-8", [sys.executable, "scripts/modernize_text_file_encodings.py", "noethys"], False),
     ("Chemins SQLite Unicode", [sys.executable, "scripts/modernize_sqlite_unicode_paths.py"], False),
     ("Imports dynamiques", [sys.executable, "scripts/audit_dynamic_imports.py", "noethys"], False),
     ("API modernes", [sys.executable, "scripts/audit_modern_api_compat.py", "noethys"], False),
