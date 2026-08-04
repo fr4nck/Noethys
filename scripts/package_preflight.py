@@ -28,6 +28,7 @@ CHECKS = (
     ("Codemod ouvertures UTF-8", [sys.executable, "scripts/smoke_text_encoding_codemod.py"], True),
     ("Codemod Pillow", [sys.executable, "scripts/smoke_pillow_resampling_codemod.py"], True),
     ("Conventions CSV UTF-8", [sys.executable, "scripts/smoke_csv_utf8_tableur.py"], True),
+    ("PDF ReportLab Unicode", [sys.executable, "scripts/smoke_reportlab_unicode_pdf.py"], True),
     ("Alignement packaging", [sys.executable, "scripts/smoke_packaging_alignment.py"], True),
     ("Imports critiques", [sys.executable, "scripts/smoke_import_dependencies.py"], True),
     ("Piles fonctionnelles", [sys.executable, "scripts/smoke_optional_feature_stacks.py"], True),
