@@ -17,6 +17,7 @@ CHECKS = (
     ("Frontières bytes/texte", [sys.executable, "scripts/audit_bytes_text_boundaries.py", "noethys"], False),
     ("Frontières UTF-8", [sys.executable, "scripts/audit_utf8_boundaries.py", "noethys"], False),
     ("Frontières XML", [sys.executable, "scripts/audit_xml_encoding_boundaries.py", "noethys"], False),
+    ("Frontières CSV", [sys.executable, "scripts/audit_csv_boundaries.py", "noethys"], False),
     ("Ouvertures texte UTF-8", [sys.executable, "scripts/modernize_text_file_encodings.py", "noethys"], False),
     ("Chemins SQLite Unicode", [sys.executable, "scripts/modernize_sqlite_unicode_paths.py"], False),
     ("Imports dynamiques", [sys.executable, "scripts/audit_dynamic_imports.py", "noethys"], False),
