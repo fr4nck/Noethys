@@ -47,6 +47,9 @@ jobs:
       - name: Audit des motifs runtime dangereux
         run: python scripts/audit_runtime_patterns.py --fail-on PY2_BUILTINS
 
+      - name: Préflight packaging statique
+        run: python scripts/package_preflight.py --static-only
+
       - name: Vérifier l'absence de migration implicite du schéma
         if: github.event_name == 'pull_request'
         run: python scripts/check_schema_compatibility.py "${{ github.event.pull_request.base.sha }}" HEAD
