@@ -14,6 +14,7 @@ CHECKS = (
     ("Parsing de dates", [sys.executable, "scripts/audit_fragile_date_parsing.py", "noethys"], False),
     ("Layout wx/AUI", [sys.executable, "scripts/audit_wx_layout_compat.py", "noethys"], False),
     ("Arguments numériques wx", [sys.executable, "scripts/audit_wx_numeric_arguments.py", "noethys"], False),
+    ("Cycle de vie wx", [sys.executable, "scripts/audit_wx_lifecycle.py", "noethys"], False),
     ("Frontières bytes/texte", [sys.executable, "scripts/audit_bytes_text_boundaries.py", "noethys"], False),
     ("Frontières UTF-8", [sys.executable, "scripts/audit_utf8_boundaries.py", "noethys"], False),
     ("Frontières XML", [sys.executable, "scripts/audit_xml_encoding_boundaries.py", "noethys"], False),
