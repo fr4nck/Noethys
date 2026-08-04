@@ -2,8 +2,8 @@
 """Vérifie les ressources indispensables et leur destination PyInstaller.
 
 Ce contrôle ne construit pas l'exécutable. Il garantit que les fichiers attendus
-par Chemins.py existent dans les sources et que le spec les place à la racine du
-dossier portable, à côté de Noethys.exe.
+par Chemins.py existent dans les sources, que le spec résout correctement la
+racine du dépôt et qu'il place les ressources à côté de Noethys.exe.
 """
 from __future__ import annotations
 
@@ -29,8 +29,20 @@ EXPECTED_DESTINATIONS = {
 }
 
 
-def parse_data_destinations() -> dict[str, str]:
-    tree = ast.parse(SPEC.read_text(encoding="utf-8"), filename=str(SPEC))
+def parse_spec_tree() -> ast.Module:
+    return ast.parse(SPEC.read_text(encoding="utf-8"), filename=str(SPEC))
+
+
+def parse_root_expression(tree: ast.Module) -> str | None:
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if any(isinstance(target, ast.Name) and target.id == "ROOT" for target in node.targets):
+            return ast.unparse(node.value)
+    return None
+
+
+def parse_data_destinations(tree: ast.Module) -> dict[str, str]:
     destinations: dict[str, str] = {}
     for node in ast.walk(tree):
         if not isinstance(node, ast.Assign):
@@ -58,7 +70,15 @@ def main() -> int:
         if not path.exists():
             failures.append(f"ressource absente : {path.relative_to(ROOT)}")
 
-    destinations = parse_data_destinations()
+    tree = parse_spec_tree()
+    root_expression = parse_root_expression(tree)
+    expected_root = "Path(SPECPATH).resolve().parent.parent"
+    if root_expression != expected_root:
+        failures.append(
+            f"racine PyInstaller incorrecte : {root_expression!r}, attendu {expected_root!r}"
+        )
+
+    destinations = parse_data_destinations(tree)
     for name, expected in EXPECTED_DESTINATIONS.items():
         actual = destinations.get(name)
         if actual != expected:
@@ -71,7 +91,7 @@ def main() -> int:
             print(f"ERREUR: {failure}")
         return 1
 
-    print("Ressources principales présentes et correctement positionnées.")
+    print("Racine PyInstaller et ressources principales correctement positionnées.")
     return 0
 
 
