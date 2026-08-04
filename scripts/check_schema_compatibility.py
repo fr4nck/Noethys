@@ -4,6 +4,9 @@
 Le contrôle porte uniquement sur les lignes ajoutées entre deux révisions Git.
 Une évolution volontaire du schéma doit être isolée dans une PR dédiée et
 explicitement exclue de ce garde-fou après revue.
+
+Les fichiers de tests et les smoke tests sont ignorés : ils peuvent créer des
+bases SQLite temporaires autonomes sans modifier le schéma métier de Noethys.
 """
 
 from __future__ import annotations
@@ -24,6 +27,15 @@ SCHEMA_PATTERNS = (
 )
 
 TEXT_SUFFIXES = {".py", ".sql", ".txt", ".ini", ".cfg", ".json", ".yaml", ".yml"}
+TEST_DIRECTORIES = {"test", "tests"}
+
+
+def is_test_file(filename: str) -> bool:
+    """Retourne True pour les tests isolés qui ne modifient pas le schéma métier."""
+    path = Path(filename)
+    if any(part.lower() in TEST_DIRECTORIES for part in path.parts):
+        return True
+    return path.name.lower().startswith(("test_", "smoke_"))
 
 
 def added_lines(base: str, head: str) -> list[tuple[str, str]]:
@@ -38,7 +50,11 @@ def added_lines(base: str, head: str) -> list[tuple[str, str]]:
             continue
         if not line.startswith("+") or line.startswith("+++"):
             continue
-        if current_file and Path(current_file).suffix.lower() in TEXT_SUFFIXES:
+        if (
+            current_file
+            and not is_test_file(current_file)
+            and Path(current_file).suffix.lower() in TEXT_SUFFIXES
+        ):
             additions.append((current_file, line[1:]))
 
     return additions
