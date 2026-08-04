@@ -23,6 +23,7 @@ CHECKS = (
     ("Imports dynamiques", [sys.executable, "scripts/audit_dynamic_imports.py", "noethys"], False),
     ("API modernes", [sys.executable, "scripts/audit_modern_api_compat.py", "noethys"], False),
     ("Codemod ouvertures UTF-8", [sys.executable, "scripts/smoke_text_encoding_codemod.py"], True),
+    ("Conventions CSV UTF-8", [sys.executable, "scripts/smoke_csv_utf8_tableur.py"], True),
     ("Alignement packaging", [sys.executable, "scripts/smoke_packaging_alignment.py"], True),
     ("Imports critiques", [sys.executable, "scripts/smoke_import_dependencies.py"], True),
     ("Piles fonctionnelles", [sys.executable, "scripts/smoke_optional_feature_stacks.py"], True),
