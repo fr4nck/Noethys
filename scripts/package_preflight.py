@@ -23,6 +23,7 @@ CHECKS = (
     ("Constantes Pillow", [sys.executable, "scripts/modernize_pillow_resampling.py", "noethys"], False),
     ("Ouvertures texte UTF-8", [sys.executable, "scripts/modernize_text_file_encodings.py", "noethys"], False),
     ("Chemins SQLite Unicode", [sys.executable, "scripts/modernize_sqlite_unicode_paths.py"], False),
+    ("Minimalité packaging", [sys.executable, "scripts/audit_packaging_minimality.py"], False),
     ("Imports dynamiques", [sys.executable, "scripts/audit_dynamic_imports.py", "noethys"], False),
     ("API modernes", [sys.executable, "scripts/audit_modern_api_compat.py", "noethys"], False),
     ("Codemod ouvertures UTF-8", [sys.executable, "scripts/smoke_text_encoding_codemod.py"], True),
