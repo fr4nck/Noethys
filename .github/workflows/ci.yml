@@ -3,7 +3,9 @@ name: CI
 # Déclenché uniquement quand du code Python ou les workflows changent.
 # Les modifications portant exclusivement sur docs/ ou *.md ne déclenchent
 # aucun job Python, Windows ou macOS.
+# workflow_dispatch permet aussi une qualification ponctuelle sans modifier le code.
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'noethys/**'
