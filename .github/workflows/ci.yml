@@ -2,7 +2,7 @@ name: CI
 
 # Déclenché uniquement quand du code Python ou les workflows changent.
 # Les modifications portant exclusivement sur docs/ ou *.md ne déclenchent
-# aucun job Python ni Windows.
+# aucun job Python, Windows ou macOS.
 on:
   push:
     paths:
@@ -68,6 +68,33 @@ jobs:
 
       - name: Compiler les sources Windows
         run: python -m compileall -q noethys/
+
+      - name: Smoke test imports non-GUI
+        run: python tests/smoke_noethys.py
+
+      - name: Smoke test wx.App
+        run: python tests/smoke_wx.py
+
+  # ── 3. Qualification macOS légère ───────────────────────────────────────────────
+  # Non bloquante tant que la plateforme n'a pas été qualifiée une première fois.
+  # Une fois verte de façon reproductible, retirer continue-on-error.
+  macos-smoke:
+    name: Smoke test macOS
+    runs-on: macos-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Installer les dépendances minimales
+        run: python -m pip install --upgrade pip && python -m pip install six appdirs python-dateutil pytz wxPython
+
+      - name: Compiler les sources macOS
+        # Même exclusion que Linux pour le module utilisant l'encodage Windows 'mbcs'.
+        run: python -m compileall -q -x 'C866CA3A' noethys/
 
       - name: Smoke test imports non-GUI
         run: python tests/smoke_noethys.py
