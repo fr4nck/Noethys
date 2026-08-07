@@ -6,36 +6,53 @@ Le projet d'origine, sa documentation fonctionnelle et les informations destiné
 
 ## À propos de ce fork
 
-Ce dépôt `fr4nck/Noethys` travaille à la **remise à niveau technique de Noethys**, en conservant son fonctionnement métier et la compatibilité avec les données existantes autant que possible.
+Ce dépôt `fr4nck/Noethys` travaille à la **remise à niveau technique de Noethys** en conservant son fonctionnement métier et, autant que possible, sa compatibilité avec les données existantes et les plateformes historiquement visées.
+
+La modernisation concerne donc le **code source multi-plateforme** de Noethys : Windows, Linux et macOS. Windows 11 est actuellement la plateforme la plus avancée dans la qualification, car un packaging PyInstaller y est en cours de stabilisation et dispose déjà d'un premier build réussi.
 
 Le chantier porte principalement sur :
 
 - la compatibilité avec Python 3 et les API modernes ;
-- wxPython 4 et le comportement réel sous Windows 11 ;
+- wxPython 4 et les écarts de comportement entre plateformes ;
 - les encodages UTF-8 et les frontières texte/binaire ;
-- les chemins Windows et les données historiques ;
+- les chemins de fichiers et les données historiques ;
 - Pillow, ReportLab, SQLite et les dépendances utilisées par Noethys ;
 - les imports dynamiques et anciennes compatibilités runtime ;
 - une CI GitHub Actions ciblée et frugale ;
-- la production d'une version Windows portable avec PyInstaller.
+- la qualification progressive de Windows, Linux et macOS ;
+- la production d'artefacts adaptés à chaque plateforme lorsque leur chaîne de fabrication est suffisamment stabilisée.
 
-L'objectif n'est pas de réécrire Noethys ni d'ajouter des évolutions métier dans ce lot. Les corrections sont progressives et doivent préserver la possibilité de travailler avec les bases existantes.
+L'objectif n'est pas de réécrire Noethys ni d'ajouter des évolutions métier dans ce lot. Les corrections sont progressives et doivent rester portables sauf lorsqu'un comportement est intrinsèquement spécifique à un système d'exploitation.
 
-## État de la modernisation Windows 11
+## État de la modernisation
 
-La modernisation active est suivie dans la branche `agent/windows11-pyinstaller` et dans la PR #2. Tant que cette PR n'est pas qualifiée et fusionnée, `master` reste la référence stable de ce fork.
+Le code modernisé doit rester compatible avec les trois familles de plateformes supportées par Noethys :
 
-Un premier packaging Windows portable a déjà été construit avec succès : la chaîne Python 3.10 + wxPython 4 + PyInstaller produit un dossier `onedir`, un `Noethys.exe` et une archive GitHub Actions.
+- **Linux** : la CI actuelle compile et audite déjà le code sous Ubuntu ;
+- **Windows** : un smoke-test Windows est en place et un premier packaging portable Windows 11 a été construit avec succès ;
+- **macOS** : la compatibilité reste un objectif du projet, mais elle doit encore être qualifiée par une CI et une recette récentes avant d'être considérée comme garantie.
 
-Ce premier succès valide la chaîne de fabrication, mais **ne constitue pas encore une version stable destinée à remplacer l'installation historique**. Le HEAD courant de la branche de modernisation doit encore être packagé puis testé sur Windows 11 avec une copie de base réelle.
-
-La procédure, les contrôles et les critères de qualification sont documentés dans [`docs/PACKAGING-WINDOWS11.md`](docs/PACKAGING-WINDOWS11.md).
+La modernisation active est actuellement suivie dans la branche `agent/windows11-pyinstaller` et dans la PR #2. Son nom reflète le premier chantier de packaging, pas une limitation fonctionnelle du fork à Windows.
 
 ## Windows
 
-Pour la version stable historique de Noethys, utiliser les canaux de téléchargement du projet d'origine.
+Windows 11 est aujourd'hui la plateforme de packaging la plus avancée. La chaîne Python 3.10 + wxPython 4 + PyInstaller a déjà produit un dossier `onedir`, un `Noethys.exe` et une archive GitHub Actions.
 
-Les artefacts produits par ce fork pendant la modernisation sont des versions de développement. Ils doivent être testés avec une **copie** d'une base existante, jamais directement avec une base de production.
+Ce premier succès valide la chaîne de fabrication, mais **ne constitue pas encore une version stable destinée à remplacer l'installation historique**. La procédure, les contrôles et les critères de qualification sont documentés dans [`docs/PACKAGING-WINDOWS11.md`](docs/PACKAGING-WINDOWS11.md).
+
+Les artefacts produits pendant la modernisation doivent être testés avec une **copie** d'une base existante, jamais directement avec une base de production.
+
+## Linux
+
+Linux reste une cible du code source. La CI exécute déjà les contrôles de compilation et plusieurs audits sur `ubuntu-latest`.
+
+Les anciennes instructions d'installation Linux du projet amont restent utiles pour comprendre les dépendances historiques, mais elles devront être réactualisées lorsque la cible Linux moderne aura été qualifiée de bout en bout avec les versions de Python, wxPython et des dépendances retenues pour ce fork.
+
+## macOS
+
+macOS reste également une cible du projet. Aucun choix d'architecture ne doit rendre le code Windows-only sans nécessité explicite.
+
+En revanche, la compatibilité macOS n'est pas encore qualifiée au même niveau que Linux et Windows : une validation récente de compilation, d'imports principaux et de wxPython devra être ajoutée avant d'annoncer une compatibilité garantie.
 
 ## Développement depuis les sources
 
@@ -45,7 +62,7 @@ Le point d'entrée historique reste :
 noethys/Noethys.py
 ```
 
-Les instructions historiques du projet amont restent utiles pour comprendre l'environnement de Noethys. Les recettes anciennes figées sur une distribution Linux ou une génération précise de dépendances ne doivent toutefois pas être considérées comme la cible de la modernisation Windows 11.
+Les évolutions doivent privilégier les API Python et wxPython portables. Le code spécifique à Windows, Linux ou macOS doit rester isolé et explicitement conditionné lorsqu'il est réellement nécessaire.
 
 ## Compatibilité des bases
 
@@ -56,19 +73,21 @@ La conservation des données existantes est un invariant du chantier :
 - vérification des principaux modules métier ;
 - contrôle de la compatibilité avec la version historique lorsque cela fait partie du scénario de validation.
 
-Une CI verte ou un build PyInstaller réussi ne suffisent pas à déclarer une version compatible : la recette fonctionnelle Windows reste obligatoire.
+Une CI verte ou un build réussi sur une plateforme ne suffisent pas à déclarer toutes les plateformes qualifiées : chaque environnement doit disposer de ses propres contrôles adaptés.
 
 ## Documentation
 
-- [`docs/PACKAGING-WINDOWS11.md`](docs/PACKAGING-WINDOWS11.md) — état du chantier, packaging, CI, recette et critères de qualification Windows 11 ;
+- [`docs/PACKAGING-WINDOWS11.md`](docs/PACKAGING-WINDOWS11.md) — packaging, CI, recette et critères de qualification Windows 11 ;
 - `noethys/Doc/` — documentation historique embarquée dans Noethys.
+
+La documentation Linux et macOS sera complétée à mesure que leurs chaînes modernes de test et de distribution seront qualifiées.
 
 ## Principes de contribution
 
-Les changements doivent rester ciblés : pas de refactorisation cosmétique massive, pas de nouvelle fonctionnalité métier mêlée à la modernisation, pas de multiplication des workflows et pas de modification globale des données ou encodages sans preuve de compatibilité.
+Les changements doivent rester ciblés : pas de refactorisation cosmétique massive, pas de nouvelle fonctionnalité métier mêlée à la modernisation, pas de multiplication inutile des workflows et pas de modification globale des données ou encodages sans preuve de compatibilité.
 
-Lorsqu'un défaut apparaît, la priorité est de corriger sa cause racine et d'ajouter un garde-fou reproductible lorsqu'il apporte une réelle valeur.
+Lorsqu'un défaut apparaît, la priorité est de corriger sa cause racine et d'ajouter un garde-fou reproductible lorsqu'il apporte une réelle valeur. Une correction introduite pour une plateforme ne doit pas dégrader les autres sans justification documentée.
 
 ## Projet d'origine
 
-Noethys est un projet existant dont ce dépôt dérive. Cette modernisation vise à prolonger sa compatibilité technique, pas à effacer son origine ni à se substituer à sa documentation fonctionnelle historique.
+Noethys est un projet existant dont ce dépôt dérive. Cette modernisation vise à prolonger sa compatibilité technique sur les plateformes actuelles, pas à effacer son origine ni à se substituer à sa documentation fonctionnelle historique.
