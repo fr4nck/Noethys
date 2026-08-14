@@ -13,7 +13,7 @@ from __future__ import annotations
 import ast
 import re
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,6 +37,7 @@ DIST_TO_MODULE = {
     "pyserial": "serial",
     "pyscard": "smartcard",
     "mailjet-rest": "mailjet_rest",
+    "pywin32": "win32com",
 }
 
 
@@ -69,7 +70,7 @@ def requirement_modules(path: Path) -> dict[str, str]:
         line = raw.strip()
         if not line or line.startswith("#") or line.startswith("-"):
             continue
-        dist = re.split(r"[<>=!~\[]", line, maxsplit=1)[0].strip()
+        dist = re.split(r"[<>=!~\[;]", line, maxsplit=1)[0].strip()
         key = dist.lower().replace("_", "-")
         modules[dist] = DIST_TO_MODULE.get(key, dist.replace("-", "_"))
     return modules
@@ -87,8 +88,13 @@ def local_module_names() -> set[str]:
 
 def main() -> int:
     counts: Counter[str] = Counter()
+    locations: dict[str, set[str]] = defaultdict(set)
     for path in iter_python_files(SOURCE):
-        counts.update(imported_roots(path))
+        roots = imported_roots(path)
+        counts.update(roots)
+        relative = str(path.relative_to(ROOT))
+        for name in roots:
+            locations[name].add(relative)
 
     local_modules = local_module_names()
     stdlib = set(getattr(sys, "stdlib_module_names", ()))
@@ -115,7 +121,8 @@ def main() -> int:
     print("\nImports externes sans dépendance déclarée évidente")
     missing = sorted(external - declared_modules)
     for name in missing:
-        print(f"- {name}")
+        files = ", ".join(sorted(locations[name]))
+        print(f"- {name}: {files}")
 
     print(f"\nRésumé: {len(external)} module(s) externe(s), {len(missing)} sans déclaration évidente.")
     return 0
