@@ -957,7 +957,7 @@ def AfficheStatsProgramme():
     for rep, liste in listeFichiers.items() :
         for nomFichier in liste:
             if nomFichier.endswith(".py") :
-                fichier = open(rep + "/" + nomFichier, 'r')
+                fichier = open(rep + "/" + nomFichier, 'r', encoding="utf-8")
                 nbreLignes = 0
                 for line in fichier :
                     # Compte le nombre de lignes
@@ -1085,7 +1085,7 @@ def RemplacerContenuFichier():
     #listeFichiers = os.listdir("C:\Users\Ivan\Documents\GitHub\Noethys\source")
     for nomFichier in listeFichiers :
         if nomFichier.endswith(".py") :
-            fichier = open(nomFichier, 'r')
+            fichier = open(nomFichier, 'r', encoding="utf-8")
             
             # Recherche si fichier concerné ou non
             trouve = False
@@ -1099,8 +1099,8 @@ def RemplacerContenuFichier():
             
             # Effectue les remplacements
             if trouve == True :
-                nouveauFichier = open("New/%s" % nomFichier, 'w')
-                fichier = open(nomFichier, 'r')
+                nouveauFichier = open("New/%s" % nomFichier, 'w', encoding="utf-8")
+                fichier = open(nomFichier, 'r', encoding="utf-8")
                 for line in fichier :
                     for old, new in listeRemplacements :
                         if old in line :
@@ -1125,7 +1125,7 @@ def PreparationFichierDefaut(nomFichier=""):
         listeTablesObligatoires.append(table)
     
     # Ouverture du fichier de référence
-    connexion = sqlite3.connect(nomFichier.encode('utf-8'))
+    connexion = sqlite3.connect(nomFichier)
     cursor = connexion.cursor()
     
     # Recherche les tables de la base
@@ -1169,7 +1169,7 @@ def RechercheImports():
     listeExclusions = ("wx", "DLG", "OL", "CTRL", "UTILS", "DATA")
     for nomFichier in listeFichiers :
         if nomFichier.endswith(".py") :
-            fichier = open(nomFichier, 'r')
+            fichier = open(nomFichier, 'r', encoding="utf-8")
             for line in fichier :
                 if line.startswith("import") :
                     nomImport = line[7:-1]
@@ -1187,10 +1187,10 @@ def RechercheImports():
 def RechercherAideManquante():
     listeFichiers = os.listdir(os.getcwd())
     listeFichiersTrouves = []
-    fichierResultats = open(UTILS_Fichiers.GetRepTemp(fichier="resultats.txt"), 'w')
+    fichierResultats = open(UTILS_Fichiers.GetRepTemp(fichier="resultats.txt"), 'w', encoding="utf-8")
     for nomFichier in listeFichiers :
         if nomFichier.endswith(".py") :
-            fichier = open(nomFichier, 'r')
+            fichier = open(nomFichier, 'r', encoding="utf-8")
             boutonAidePresent = False
             fonctionAidePresente = False
             for line in fichier :
@@ -1213,8 +1213,8 @@ def RemplacerDeprecatedWxpython():
     for nomFichier in listeFichiers :
         if nomFichier.endswith(".py") and "FonctionsPerso.py" not in nomFichier :
             print("%s..." % nomFichier)
-            fichier = open(nomFichier, 'r')
-            nouveauFichier = open("New/%s" % nomFichier, 'w')
+            fichier = open(nomFichier, 'r', encoding="utf-8")
+            nouveauFichier = open("New/%s" % nomFichier, 'w', encoding="utf-8")
             numLigne = 1
             try :
                 for ligne in fichier :
@@ -1544,7 +1544,7 @@ def InsertCode():
                 #print "%d/%d :  %s..." % (indexFichier, len(listeFichiers), nomFichier)
 
                 # Ouverture des fichiers
-                fichier = open(os.path.join(repertoire, nomFichier), "r")
+                fichier = open(os.path.join(repertoire, nomFichier), "r", encoding="utf-8")
                 dirty = False
 
                 listeLignes = []
@@ -1597,7 +1597,7 @@ def InsertCode():
 
                 # Ecriture du nouveau fichier
                 if dirty == True :
-                    nouveauFichier = open(os.path.join(repertoire, "New", nomFichier), "w")
+                    nouveauFichier = open(os.path.join(repertoire, "New", nomFichier), "w", encoding="utf-8")
                     for ligne in listeLignes :
                         nouveauFichier.write(ligne)
                     nouveauFichier.close()
@@ -1626,7 +1626,7 @@ def InsertCodeToolTip():
                 print("%d/%d :  %s..." % (indexFichier, len(listeFichiers), nomFichier))
 
                 # Ouverture des fichiers
-                fichier = open(os.path.join(repertoire, nomFichier), "r")
+                fichier = open(os.path.join(repertoire, nomFichier), "r", encoding="utf-8")
                 dirty = False
 
                 listeLignes = []
@@ -1647,7 +1647,7 @@ def InsertCodeToolTip():
 
                 # Ecriture du nouveau fichier
                 if dirty == True :
-                    nouveauFichier = open(os.path.join(repertoire, "New", nomFichier), "w")
+                    nouveauFichier = open(os.path.join(repertoire, "New", nomFichier), "w", encoding="utf-8")
                     for ligne in listeLignes :
                         nouveauFichier.write(ligne)
                     nouveauFichier.close()
