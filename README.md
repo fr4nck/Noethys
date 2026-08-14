@@ -30,9 +30,11 @@ L'objectif n'est pas de réécrire Noethys ni d'ajouter des évolutions métier 
 
 Le code modernisé doit rester compatible avec les trois familles de plateformes supportées par Noethys :
 
-- **Linux** : la CI actuelle compile et audite déjà le code sous Ubuntu ;
-- **Windows** : un smoke-test Windows est en place et un premier packaging portable Windows 11 a été construit avec succès ;
-- **macOS** : la compatibilité reste un objectif du projet, mais elle doit encore être qualifiée par une CI et une recette récentes avant d'être considérée comme garantie.
+- **Linux** : la CI compile et audite le code sous Ubuntu ;
+- **Windows** : la CI valide la compilation, les imports non-GUI et l'initialisation de `wx.App`, et un premier packaging portable Windows 11 a été construit avec succès ;
+- **macOS** : la CI valide désormais la compilation, les imports non-GUI et l'initialisation de `wx.App` sur macOS.
+
+Ces validations automatisées confirment la compatibilité technique de base des trois plateformes, mais elles ne remplacent pas une recette fonctionnelle complète avec une base réelle, les principaux écrans, impressions, exports et périphériques.
 
 La modernisation active est actuellement suivie dans la branche `agent/windows11-pyinstaller` et dans la PR #2. Son nom reflète le premier chantier de packaging, pas une limitation fonctionnelle du fork à Windows.
 
@@ -40,7 +42,9 @@ La modernisation active est actuellement suivie dans la branche `agent/windows11
 
 Windows 11 est aujourd'hui la plateforme de packaging la plus avancée. La chaîne Python 3.10 + wxPython 4 + PyInstaller a déjà produit un dossier `onedir`, un `Noethys.exe` et une archive GitHub Actions.
 
-Ce premier succès valide la chaîne de fabrication, mais **ne constitue pas encore une version stable destinée à remplacer l'installation historique**. La procédure, les contrôles et les critères de qualification sont documentés dans [`docs/PACKAGING-WINDOWS11.md`](docs/PACKAGING-WINDOWS11.md).
+La CI Windows valide également la compilation des sources, plusieurs imports non-GUI et la création/destruction d'un `wx.App`. Ces contrôles constituent une qualification technique reproductible, mais **ne constituent pas encore une version stable destinée à remplacer l'installation historique**.
+
+La procédure, les contrôles et les critères de qualification sont documentés dans [`docs/PACKAGING-WINDOWS11.md`](docs/PACKAGING-WINDOWS11.md).
 
 Les artefacts produits pendant la modernisation doivent être testés avec une **copie** d'une base existante, jamais directement avec une base de production.
 
@@ -54,7 +58,9 @@ Les anciennes instructions d'installation Linux du projet amont restent utiles p
 
 macOS reste également une cible du projet. Aucun choix d'architecture ne doit rendre le code Windows-only sans nécessité explicite.
 
-En revanche, la compatibilité macOS n'est pas encore qualifiée au même niveau que Linux et Windows : une validation récente de compilation, d'imports principaux et de wxPython devra être ajoutée avant d'annoncer une compatibilité garantie.
+La CI macOS exécute désormais une validation récente de compilation, des imports non-GUI et un smoke-test `wx.App`. Cela confirme que le socle Python/wxPython démarre correctement dans l'environnement GitHub Actions macOS.
+
+Cette validation ne vaut toutefois pas encore qualification fonctionnelle complète : il reste à tester l'application avec une copie de base réelle, les principaux parcours GUI, impressions, exports et éventuelles intégrations spécifiques à macOS avant d'annoncer une compatibilité utilisateur totalement garantie.
 
 ## Développement depuis les sources
 
@@ -75,7 +81,7 @@ La conservation des données existantes est un invariant du chantier :
 - vérification des principaux modules métier ;
 - contrôle de la compatibilité avec la version historique lorsque cela fait partie du scénario de validation.
 
-Une CI verte ou un build réussi sur une plateforme ne suffisent pas à déclarer toutes les plateformes qualifiées : chaque environnement doit disposer de ses propres contrôles adaptés.
+Une CI verte ou un build réussi sur une plateforme ne suffisent pas à déclarer toutes les plateformes fonctionnellement qualifiées : chaque environnement doit disposer de ses propres contrôles adaptés et d'une recette réelle lorsque nécessaire.
 
 ## Documentation
 
