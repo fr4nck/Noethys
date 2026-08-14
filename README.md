@@ -8,6 +8,8 @@ Le projet d'origine, sa documentation fonctionnelle et les informations destiné
 
 Ce dépôt `fr4nck/Noethys` travaille à la **remise à niveau technique de Noethys** en conservant son fonctionnement métier et, autant que possible, sa compatibilité avec les données existantes et les plateformes historiquement visées.
 
+**Base fonctionnelle : Noethys 1.3.4.2 (1er février 2026), issue du `master` du dépôt amont `Noethys/Noethys`.** Cette base est plus récente que la version 1.3.3.9 encore distribuée sur le site officiel. Le fork conserve donc les évolutions fonctionnelles et correctifs intégrés en amont jusqu'à la 1.3.4.2, auxquels s'ajoute le chantier de modernisation technique décrit ci-dessous.
+
 La modernisation concerne donc le **code source multi-plateforme** de Noethys : Windows, Linux et macOS. Windows 11 est actuellement la plateforme la plus avancée dans la qualification, car un packaging PyInstaller y est en cours de stabilisation et dispose déjà d'un premier build réussi.
 
 Le chantier porte principalement sur :
