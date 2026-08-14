@@ -70,7 +70,7 @@ jobs:
           python-version: "3.10"
 
       - name: Installer les dépendances minimales
-        run: pip install six appdirs python-dateutil pytz wxPython
+        run: pip install six appdirs python-dateutil pytz wxPython pyttsx3
 
       - name: Compiler les sources Windows
         run: python -m compileall -q noethys/
@@ -80,6 +80,9 @@ jobs:
 
       - name: Smoke test configuration UTF-8 et récupération
         run: python scripts/smoke_config_utf8_recovery.py
+
+      - name: Smoke test compatibilité pyttsx3
+        run: python -c "import sys; sys.path.insert(0, 'noethys'); import pyttsx; assert callable(pyttsx.init)"
 
       - name: Smoke test wx.App
         run: python tests/smoke_wx.py
@@ -96,7 +99,7 @@ jobs:
           python-version: "3.10"
 
       - name: Installer les dépendances minimales
-        run: python -m pip install --upgrade pip && python -m pip install six appdirs python-dateutil pytz wxPython
+        run: python -m pip install --upgrade pip && python -m pip install six appdirs python-dateutil pytz wxPython pyttsx3
 
       - name: Compiler les sources macOS
         # Même exclusion que Linux pour le module utilisant l'encodage Windows 'mbcs'.
@@ -107,6 +110,9 @@ jobs:
 
       - name: Smoke test configuration UTF-8 et récupération
         run: python scripts/smoke_config_utf8_recovery.py
+
+      - name: Smoke test compatibilité pyttsx3
+        run: python -c "import sys; sys.path.insert(0, 'noethys'); import pyttsx; assert callable(pyttsx.init)"
 
       - name: Smoke test wx.App
         run: python tests/smoke_wx.py
