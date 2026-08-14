@@ -299,9 +299,8 @@ class MyFrame(wx.Frame):
 
 def ImportationComptes():
     # Recherche des données csv
-    fichier = open("Travaux/plan_comptable.csv", "r")
-    lignes = fichier.readlines()
-    fichier.close() 
+    with open("Travaux/plan_comptable.csv", "r", encoding="utf-8", newline="") as fichier:
+        lignes = fichier.readlines()
     listeComptes = []
     for ligne in lignes :
         if ";" in ligne :
