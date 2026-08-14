@@ -157,9 +157,8 @@ def UploadCalendrier():
         texteFichier += txtPeriode
         
     # Création du fichier texte
-    f = open("temp\calendrier.txt", "w")
-    f.write(texteFichier.encode("utf8"))
-    f.close()
+    with open("temp\calendrier.txt", "w", encoding="utf-8") as f:
+        f.write(texteFichier)
     
     # Mise en ligne du fichier texte
     ftp = ftplib.FTP("ICI_FTP", "ICI_LOGIN", "ICI_MOT_DE_PASSE")
@@ -341,9 +340,8 @@ def UploadFichierIdentites():
         texteFichier += txtIdentite
         
     # Création du fichier texte
-    f = open("temp\identites.txt", "w")
-    f.write(texteFichier.encode("utf8"))
-    f.close()
+    with open("temp\identites.txt", "w", encoding="utf-8") as f:
+        f.write(texteFichier)
     
     # Mise en ligne du fichier texte
     ftp = ftplib.FTP("ICI_FTP", "ICI_LOGIN", "ICI_MOT_DE_PASSE")
