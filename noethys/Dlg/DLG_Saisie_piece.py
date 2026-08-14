@@ -466,10 +466,7 @@ class Dialog(wx.Dialog):
             mois = int(validite[posM+1:posA-1])
             annees = int(validite[posA+1:])
         
-            dateJour = int(dateDebut[:2])
-            dateMois = int(dateDebut[3:5])
-            dateAnnee = int(dateDebut[6:10])
-            dateDebut = datetime.date(dateAnnee, dateMois, dateJour)
+            dateDebut = datetime.datetime.strptime(dateDebut, "%d/%m/%Y").date()
 
             # Calcul de la date de fin de validité
             dateFin = dateDebut

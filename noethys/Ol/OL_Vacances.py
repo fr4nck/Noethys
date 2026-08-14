@@ -92,11 +92,8 @@ class ListView(FastObjectListView):
             """ Transforme le format "aaaa-mm-jj" en "mercredi 12 septembre 2008" """
             listeMois = (_(u"janvier"), _(u"février"), _(u"mars"), _(u"avril"), _(u"mai"), _(u"juin"), _(u"juillet"), _(u"août"), _(u"septembre"), _(u"octobre"), _(u"novembre"), _(u"décembre"))
             listeJours = (_(u"Lundi"), _(u"Mardi"), _(u"Mercredi"), _(u"Jeudi"), _(u"Vendredi"), _(u"Samedi"), _(u"Dimanche"))
-            jour = int(texteDate[8:10])
-            mois = int(texteDate[5:7])
-            annee = int(texteDate[:4])
-            jourSemaine = int(datetime.date(annee, mois, jour).strftime("%w"))
-            texte = listeJours[jourSemaine-1] + " " + str(jour) + " " + listeMois[mois-1] + " " + str(annee)
+            dateDD = datetime.date.fromisoformat(texteDate[:10])
+            texte = listeJours[dateDD.weekday()] + " " + str(dateDD.day) + " " + listeMois[dateDD.month-1] + " " + str(dateDD.year)
             return texte   
             
         liste_Colonnes = [
@@ -294,11 +291,9 @@ class MyDatePickerCtrl(DatePickerCtrl):
         self.parent = parent
         
     def SetDate(self, dateTxt=None):
-        jour = int(dateTxt[8:10])
-        mois = int(dateTxt[5:7])-1
-        annee = int(dateTxt[:4])
+        dateDD = datetime.date.fromisoformat(dateTxt[:10])
         date = wx.DateTime()
-        date.Set(jour, mois, annee)
+        date.Set(dateDD.day, dateDD.month - 1, dateDD.year)
         self.SetValue(date)
     
     def GetDate(self):

@@ -297,11 +297,9 @@ class MyDatePickerCtrl(DatePickerCtrl):
         self.parent = parent
         
     def SetDate(self, dateTxt=None):
-        jour = int(dateTxt[8:10])
-        mois = int(dateTxt[5:7])-1
-        annee = int(dateTxt[:4])
+        dateDD = datetime.date.fromisoformat(dateTxt[:10])
         date = wx.DateTime()
-        date.Set(jour, mois, annee)
+        date.Set(dateDD.day, dateDD.month - 1, dateDD.year)
         self.SetValue(date)
     
     def SetDateDetail(self, jour, mois, annee):
