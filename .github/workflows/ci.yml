@@ -54,6 +54,12 @@ jobs:
         # Les autres motifs (RESULT_UNGUARDED, DB_UNCLOSED, BARE_EXCEPT) sont informatifs.
         run: python scripts/audit_runtime_patterns.py --fail-on PY2_BUILTINS
 
+      - name: Vérifier les chemins SQLite Unicode natifs
+        run: python scripts/modernize_sqlite_unicode_paths.py
+
+      - name: Vérifier ReqInsert et newID
+        run: python scripts/modernize_reqinsert_newid.py
+
       - name: Vérifier l'absence de migration implicite du schéma
         if: github.event_name == 'pull_request'
         run: python scripts/check_schema_compatibility.py "${{ github.event.pull_request.base.sha }}" HEAD
