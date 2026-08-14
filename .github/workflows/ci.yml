@@ -60,6 +60,9 @@ jobs:
       - name: Vérifier ReqInsert et newID
         run: python scripts/modernize_reqinsert_newid.py
 
+      - name: Vérifier les imports des modules métier critiques
+        run: python scripts/audit_critical_business_modules.py
+
       - name: Vérifier l'absence de migration implicite du schéma
         if: github.event_name == 'pull_request'
         run: python scripts/check_schema_compatibility.py "${{ github.event.pull_request.base.sha }}" HEAD
