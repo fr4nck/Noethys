@@ -92,7 +92,7 @@ def Lire(nom_fichier="", conversion_auto=False):
     # Essaye d'ouvrir un fichier Json
     if six.PY3:
         try:
-            with open(nom_fichier) as json_file:
+            with open(nom_fichier, encoding="utf-8") as json_file:
                 data = json.load(json_file, object_hook=MyDecoder)
         except json.decoder.JSONDecodeError:
             is_json = False
@@ -135,8 +135,8 @@ def Lire(nom_fichier="", conversion_auto=False):
     return data
 
 def Ecrire(nom_fichier="", data={}):
-    with open(nom_fichier, 'w') as outfile:
-        json.dump(data, outfile, indent=4, cls=MyEncoder)
+    with open(nom_fichier, 'w', encoding="utf-8") as outfile:
+        json.dump(data, outfile, indent=4, cls=MyEncoder, ensure_ascii=False)
 
 
 
@@ -156,6 +156,6 @@ if __name__ == u"__main__":
 
     # Test de lecture du Config.json
     chemin_fichier = UTILS_Fichiers.GetRepUtilisateur("Config.json")
-    with open(chemin_fichier) as json_file:
+    with open(chemin_fichier, encoding="utf-8") as json_file:
         data = json.load(json_file, object_hook=MyDecoder)
     print("data=", data)
