@@ -889,11 +889,7 @@ class Dialog(wx.Dialog):
                 dlg.Destroy()
 
         # Création du fichier texte
-        if six.PY2:
-            flag = "w"
-        else:
-            flag = "wb"
-        f = open(cheminFichier, flag)
+        f = open(cheminFichier, "wb")
         try:
             f.write(xml)
         finally:

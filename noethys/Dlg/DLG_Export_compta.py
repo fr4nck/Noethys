@@ -708,11 +708,7 @@ class CTRL_Parametres(CTRL_Propertygrid.CTRL):
                 dlg.Destroy()
 
         # Création du fichier texte
-        if six.PY2:
-            f = open(cheminFichier, "w")
-            texte = texte.encode("utf8")
-        else:
-            f = codecs.open(cheminFichier, encoding='utf-8', mode='w')
+        f = open(cheminFichier, "w", encoding="utf-8")
         f.write(texte)
         f.close()
 
