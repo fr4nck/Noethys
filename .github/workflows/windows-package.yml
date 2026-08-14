@@ -8,6 +8,7 @@ on:
       - 'requirements-build.txt'
       - 'requirements.txt'
       - 'scripts/smoke_reportlab_unicode_pdf.py'
+      - 'scripts/smoke_packaged_resources.py'
       - '.github/workflows/windows-package.yml'
 
 permissions:
@@ -38,6 +39,9 @@ jobs:
 
       - name: Valider la génération PDF Unicode
         run: python scripts/smoke_reportlab_unicode_pdf.py
+
+      - name: Valider les ressources PyInstaller essentielles
+        run: python scripts/smoke_packaged_resources.py
 
       - name: Construire le dossier portable
         run: pyinstaller --noconfirm --clean packaging/noethys.spec
