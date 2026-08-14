@@ -119,10 +119,10 @@ class Date(masked.TextCtrl):
             if type(date) == str or type(date) == six.text_type :
                 if date[2] == "/" :
                     # Si c'est une date française
-                    dateDD = datetime.date(year=int(date[6:10]), month=int(date[3:5]), day=int(date[:2]))
+                    dateDD = datetime.datetime.strptime(date[:10], '%d/%m/%Y').date()
                 else:
                     # Si c'est une date anglaise
-                    dateDD = datetime.date(year=int(date[:4]), month=int(date[5:7]), day=int(date[8:10]))
+                    dateDD = datetime.date.fromisoformat(date[:10])
             # Transformation en date française
             dateFR = self.DateEngFr(str(dateDD))
             self.SetValue(dateFR)
@@ -137,7 +137,7 @@ class Date(masked.TextCtrl):
         validation = ValideDate(dateFR, self.date_min, self.date_max, avecMessages=False, mask=self.mask_date)
         if validation == False : 
             return None
-        dateDD = datetime.date(year=int(dateFR[6:10]), month=int(dateFR[3:5]), day=int(dateFR[:2]))
+        dateDD = datetime.datetime.strptime(dateFR[:10], '%d/%m/%Y').date()
         dateFR = self.DateEngFr(str(dateDD))
         if FR == True :
             return dateFR

@@ -54,7 +54,7 @@ def FormateStr(valeur=u""):
 
 def FormateDate(dateStr):
     if dateStr == "" or dateStr == None : return ""
-    date = str(datetime.date(year=int(dateStr[:4]), month=int(dateStr[5:7]), day=int(dateStr[8:10])))
+    date = str(datetime.date.fromisoformat(dateStr[:10]))
     text = str(date[8:10]) + "/" + str(date[5:7]) + "/" + str(date[:4])
     return text
 
@@ -346,7 +346,7 @@ class ListView(FastObjectListView):
     def InitObjectListView(self):
         def FormateDate(dateStr):
             if dateStr == "" or dateStr == None : return ""
-            date = str(datetime.date(year=int(dateStr[:4]), month=int(dateStr[5:7]), day=int(dateStr[8:10])))
+            date = str(datetime.date.fromisoformat(dateStr[:10]))
             text = str(date[8:10]) + "/" + str(date[5:7]) + "/" + str(date[:4])
             return text
         

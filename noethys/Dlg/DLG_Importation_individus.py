@@ -239,7 +239,7 @@ class Importation_CSV() :
                     if len(valeur) == 10 :
                         if valeur[2] == "/" and valeur[5] == "/" :
                             try :
-                                valeur = datetime.date(int(valeur[6:10]), int(valeur[3:5]), int(valeur[:2]))
+                                valeur = datetime.datetime.strptime(valeur[:10], '%d/%m/%Y').date()
                             except :
                                 pass
                     

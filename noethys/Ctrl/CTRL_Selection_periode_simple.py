@@ -221,8 +221,8 @@ class Page_Vacances(wx.Panel):
         self.dictVacances = {}
         index = 0
         for nom, date_debut, date_fin in listeVacances :
-            date_debut = datetime.date(year=int(date_debut[:4]), month=int(date_debut[5:7]), day=int(date_debut[8:10]))
-            date_fin = datetime.date(year=int(date_fin[:4]), month=int(date_fin[5:7]), day=int(date_fin[8:10]))
+            date_debut = datetime.date.fromisoformat(date_debut[:10])
+            date_fin = datetime.date.fromisoformat(date_fin[:10])
             listeChoix.append(nom)
             self.dictVacances[index] = (date_debut, date_fin)
             index += 1

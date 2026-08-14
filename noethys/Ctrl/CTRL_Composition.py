@@ -360,7 +360,7 @@ class GetValeurs() :
         txtDatenaiss = _(u"Date de naissance inconnue")
         if datenaiss != None :
             try :
-                datenaissDD = datetime.date(year=int(datenaiss[:4]), month=int(datenaiss[5:7]), day=int(datenaiss[8:10]))
+                datenaissDD = datetime.date.fromisoformat(datenaiss[:10])
                 datenaissFR = str(datenaiss[8:10]) + "/" + str(datenaiss[5:7]) + "/" + str(datenaiss[:4])
                 datedujour = datetime.date.today()
                 age = (datedujour.year - datenaissDD.year) - int((datedujour.month, datedujour.day) < (datenaissDD.month, datenaissDD.day))

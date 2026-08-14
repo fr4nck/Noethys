@@ -127,7 +127,7 @@ COULEUR_FOND_CASE = (241, 241, 241)
 def DateFrEnDateDD(dateFr):
     if dateFr == None or dateFr == "" or dateFr == "  /  /    " : 
         return None
-    return datetime.date(int(dateFr[6:10]), int(dateFr[3:5]), int(dateFr[:2]))
+    return datetime.datetime.strptime(dateFr[:10], '%d/%m/%Y').date()
 
 def DateEngEnDateDD(dateEng):
     return datetime.date.fromisoformat(dateEng[:10])
