@@ -1204,7 +1204,7 @@ def ImporterFichierDonnees() :
     db.CreationTable("prenoms", DB_DATA2)
     db.Close()
     
-    txt = open("prenoms.txt", 'r').readlines()
+    txt = open("prenoms.txt", 'r', encoding="utf-8").readlines()
     db = DB(nomFichier=Chemins.GetStaticPath("DatabasesPrenoms.dat"), suffixe=None)
     index = 0
     for ligne in txt :

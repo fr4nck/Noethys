@@ -262,7 +262,7 @@ class Synchro():
         self.log.EcritLog(_(u"Téléchargement du fichier de config"))
         resultat = self.TelechargeFichier(ftp=ftp, nomFichier="config.py", repFichier="application/data")
         if resultat != False :
-            fichier_online = open(os.path.join(resultat[0], resultat[1]), "r")
+            fichier_online = open(os.path.join(resultat[0], resultat[1]), "r", encoding="utf-8")
             liste_lignes_online = fichier_online.readlines()
             fichier_online.close()
 
@@ -297,13 +297,13 @@ class Synchro():
         resultat = self.TelechargeFichier(ftp=ftp, nomFichier="connecthys.wsgi", repFichier=None)
         if resultat == False :
             return False
-        fichier_wsgi = open(os.path.join(resultat[0], resultat[1]), "r")
+        fichier_wsgi = open(os.path.join(resultat[0], resultat[1]), "r", encoding="utf-8")
         liste_lignes_wsgi = fichier_wsgi.readlines()
         fichier_wsgi.close()
 
         # Création du nouveau fichier wsgi
         nomFichierComplet = UTILS_Fichiers.GetRepTemp(fichier="connecthys.wsgi")
-        fichier_wsgi = codecs.open(nomFichierComplet, 'w')
+        fichier_wsgi = codecs.open(nomFichierComplet, 'w', encoding='utf-8')
         for ligne in liste_lignes_wsgi :
             if "lastupdate" in ligne :
                 ligne = "# lastupdate = %s" % datetime.datetime.now()

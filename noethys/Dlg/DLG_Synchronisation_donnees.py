@@ -218,7 +218,7 @@ class Dialog(wx.Dialog):
         dlg.Destroy()
         if nomFichier == None : 
             return
-        fichier = open(nomFichier, "w")
+        fichier = open(nomFichier, "w", encoding="utf-8")
         fichier.write(self.ctrl_journal.GetValue())
         fichier.close()
 
