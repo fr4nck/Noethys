@@ -66,6 +66,9 @@ jobs:
       - name: Bloquer les chargements dynamiques risqués
         run: python scripts/audit_dynamic_import_risks.py
 
+      - name: Inventorier l'usage réel des dépendances
+        run: python scripts/audit_dependency_usage.py
+
       - name: Vérifier l'absence de migration implicite du schéma
         if: github.event_name == 'pull_request'
         run: python scripts/check_schema_compatibility.py "${{ github.event.pull_request.base.sha }}" HEAD
