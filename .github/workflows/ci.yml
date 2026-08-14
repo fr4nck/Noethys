@@ -1,6 +1,6 @@
 name: CI
 
-# Déclenché uniquement quand du code Python ou les workflows changent.
+# Déclenché uniquement quand du code Python, le packaging ou les workflows changent.
 # Les modifications portant exclusivement sur docs/ ou *.md ne déclenchent
 # aucun job Python, Windows ou macOS.
 # workflow_dispatch permet aussi une qualification ponctuelle sans modifier le code.
@@ -10,7 +10,9 @@ on:
     paths:
       - 'noethys/**'
       - 'requirements.txt'
+      - 'requirements-build.txt'
       - 'setup.py'
+      - 'packaging/**'
       - 'tests/**'
       - 'scripts/**'
       - '.github/workflows/**'
@@ -18,7 +20,9 @@ on:
     paths:
       - 'noethys/**'
       - 'requirements.txt'
+      - 'requirements-build.txt'
       - 'setup.py'
+      - 'packaging/**'
       - 'tests/**'
       - 'scripts/**'
       - '.github/workflows/**'
@@ -78,12 +82,9 @@ jobs:
         run: python tests/smoke_wx.py
 
   # ── 3. Qualification macOS légère ───────────────────────────────────────────────
-  # Non bloquante tant que la plateforme n'a pas été qualifiée une première fois.
-  # Une fois verte de façon reproductible, retirer continue-on-error.
   macos-smoke:
     name: Smoke test macOS
     runs-on: macos-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
