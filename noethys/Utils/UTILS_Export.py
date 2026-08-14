@@ -154,7 +154,7 @@ def ExportTexte(listview=None, grid=None, titre=u"", listeColonnes=None, listeVa
     texte = texte[:-1]
 
     # Création du fichier texte
-    f = open(cheminFichier, "w")
+    f = open(cheminFichier, "w", encoding="utf-8")
     if six.PY2:
         texte = texte.encode("utf8")
     f.write(texte)

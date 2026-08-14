@@ -181,7 +181,7 @@ class Export:
     def Finaliser(self):
         # Création du fichier json
         nom_fichier_json = os.path.join(self.rep, "core.json")
-        with open(nom_fichier_json, 'w') as outfile:
+        with open(nom_fichier_json, 'w', encoding='utf-8') as outfile:
             json.dump(self.liste_objets, outfile, indent=4, cls=MyEncoder)
 
         # Création du ZIP
