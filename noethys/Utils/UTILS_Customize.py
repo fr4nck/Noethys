@@ -62,7 +62,7 @@ class Customize():
         """ Création d'un nouveau fichier ou vérification du fichier existant """
         # Lit le fichier s'il existe
         if os.path.isfile(self.nomFichier) :
-            self.cfg.read(self.nomFichier)
+            self.cfg.read(self.nomFichier, encoding="utf-8")
 
         dirty = False
 
@@ -111,9 +111,8 @@ class Customize():
 
     def Enregistrement(self):
         """ Enregistrement du fichier sur le disque dur """
-        fichier = open(self.nomFichier, "w")
-        self.cfg.write(fichier)
-        fichier.close()
+        with open(self.nomFichier, "w", encoding="utf-8") as fichier:
+            self.cfg.write(fichier)
 
 
 def GetCustomize():
