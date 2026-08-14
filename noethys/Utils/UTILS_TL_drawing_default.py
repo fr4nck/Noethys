@@ -624,9 +624,9 @@ class DefaultDrawingAlgorithm(DrawingAlgorithm):
             self.dc.SetClippingRect(big_rect)
         y = rect.Y + rect.Height/2 - SIZE/2
         x = rect.X - SIZE / 2
-        west_rect   = wx.Rect(x + 1             , y, SIZE, SIZE)
-        center_rect = wx.Rect(x + rect.Width / 2, y, SIZE, SIZE)
-        east_rect   = wx.Rect(x + rect.Width - 1, y, SIZE, SIZE)
+        west_rect   = wx.Rect(int(x + 1)             , int(y), SIZE, SIZE)
+        center_rect = wx.Rect(int(x + rect.Width / 2), int(y), SIZE, SIZE)
+        east_rect   = wx.Rect(int(x + rect.Width - 1), int(y), SIZE, SIZE)
         self.dc.SetBrush(wx.Brush("BLACK", wx.SOLID))
         self.dc.SetPen(wx.Pen("BLACK", 1, wx.SOLID))
         if 'phoenix' in wx.PlatformInfo:

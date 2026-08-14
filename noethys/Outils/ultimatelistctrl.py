@@ -5433,7 +5433,7 @@ class UltimateListHeaderWindow(wx.PyControl):
         
         w, h = self.GetClientSize()
         ix, iy = self._owner.GetCheckboxImageSize()
-        rect = wx.Rect(theX + HEADER_OFFSET_X, HEADER_OFFSET_Y + (h - 4 - iy)/2, ix, iy)
+        rect = wx.Rect(theX + HEADER_OFFSET_X, int(HEADER_OFFSET_Y + (h - 4 - iy)/2), ix, iy)
         
         if rect.Contains(pos):
             # User clicked on the checkbox
@@ -6520,7 +6520,7 @@ class UltimateListMainWindow(wx.PyScrolledWindow):
         ld = self.GetLine(line)
         LH = self.GetLineHeight(line)
         wcheck, hcheck = self.GetCheckboxImageSize()
-        rect = wx.Rect(HEADER_OFFSET_X, self.GetLineY(line) + LH/2 - hcheck/2, wcheck, hcheck)
+        rect = wx.Rect(HEADER_OFFSET_X, int(self.GetLineY(line) + LH/2 - hcheck/2), wcheck, hcheck)
         return rect
     
 
@@ -6587,7 +6587,7 @@ class UltimateListMainWindow(wx.PyScrolledWindow):
                     # We got a checkbox-type item
                     ix, iy = self.GetCheckboxImageSize()
                     LH = self.GetLineHeight(line)
-                    rect = wx.Rect(xOld, lineY + LH/2 - iy/2, ix, iy)
+                    rect = wx.Rect(xOld, int(lineY + LH/2 - iy/2), ix, iy)
                     if rect.Contains((x, y)):
                         newItem = self.GetParent().GetItem(line, col)
                         return newItem, ULC_HITTEST_ONITEMCHECK

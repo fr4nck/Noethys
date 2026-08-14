@@ -292,15 +292,15 @@ class wxSchedulerPaint( object ):
 
 				if self._style == wxSCHEDULER_VERTICAL:
 					self._datetimeCoords.append((utils.copyDateTime(theDay),
-								     wx.Point(x + 1.0 * width * dayN / daysCount,
-									      y + 1.0 * height * idx / nbHours),
-								     wx.Point(x + 1.0 * width * (dayN + 1) / daysCount,
-									      y + 1.0 * height * (idx + 1) / nbHours)))
+								     wx.Point(int(x + 1.0 * width * dayN / daysCount),
+									      int(y + 1.0 * height * idx / nbHours)),
+								     wx.Point(int(x + 1.0 * width * (dayN + 1) / daysCount),
+									      int(y + 1.0 * height * (idx + 1) / nbHours))))
 				else:
 					self._datetimeCoords.append((utils.copyDateTime(theDay),
-								     wx.Point(x + 1.0 * width * (nbHours * dayN + idx) / (nbHours * daysCount),
+								     wx.Point(int(x + 1.0 * width * (nbHours * dayN + idx) / (nbHours * daysCount)),
 									      y),
-								     wx.Point(x + 1.0 * width * (nbHours * dayN + idx + 1) / (nbHours * daysCount),
+								     wx.Point(int(x + 1.0 * width * (nbHours * dayN + idx + 1) / (nbHours * daysCount)),
 									      y + height)))
 
 		if self._style == wxSCHEDULER_VERTICAL:
