@@ -17,8 +17,8 @@ REPLACEMENTS = {
         ('f = open(cheminFichier, "w")\n        f.write(texte.encode("utf8"))\n        f.close()', 'with open(cheminFichier, "w", encoding="utf-8") as f:\n            f.write(texte)'),
     ],
     "noethys/Utils/UTILS_Internet.py": [
-        ('f = open("temp\\\\calendrier.txt", "w")\n    f.write(texteFichier.encode("utf8"))\n    f.close()', 'with open("temp\\\\calendrier.txt", "w", encoding="utf-8") as f:\n        f.write(texteFichier)'),
-        ('f = open("temp\\\\identites.txt", "w")\n    f.write(texteFichier.encode("utf8"))\n    f.close()', 'with open("temp\\\\identites.txt", "w", encoding="utf-8") as f:\n        f.write(texteFichier)'),
+        ('f = open("temp\\calendrier.txt", "w")\n    f.write(texteFichier.encode("utf8"))\n    f.close()', 'with open("temp\\calendrier.txt", "w", encoding="utf-8") as f:\n        f.write(texteFichier)'),
+        ('f = open("temp\\identites.txt", "w")\n    f.write(texteFichier.encode("utf8"))\n    f.close()', 'with open("temp\\identites.txt", "w", encoding="utf-8") as f:\n        f.write(texteFichier)'),
     ],
     "noethys/Ctrl/CTRL_Portail_serveur.py": [
         ('file_log = open(UTILS_Fichiers.GetRepUtilisateur(CUSTOMIZE.GetValeur("connecthys_log", "file_name", "connecthys_synchro.log")), "a")', 'file_log = open(UTILS_Fichiers.GetRepUtilisateur(CUSTOMIZE.GetValeur("connecthys_log", "file_name", "connecthys_synchro.log")), "a", encoding="utf-8")'),
