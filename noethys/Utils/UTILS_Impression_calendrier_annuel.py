@@ -360,8 +360,8 @@ class Impression():
         DB.Close()
         listeVacances2 = []
         for id, nom, annee, date_debut, date_fin in listeVacances1 :
-            datedebut = datetime.date(int(date_debut[:4]), int(date_debut[5:7]), int(date_debut[8:10]))
-            datefin = datetime.date(int(date_fin[:4]), int(date_fin[5:7]), int(date_fin[8:10]))
+            datedebut = datetime.date.fromisoformat(date_debut[:10])
+            datefin = datetime.date.fromisoformat(date_fin[:10])
             listeVacances2.append(datedebut)
             for x in range((datefin-datedebut).days) :
                 datedebut = datedebut + datetime.timedelta(days=1) 

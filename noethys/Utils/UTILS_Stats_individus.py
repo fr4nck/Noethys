@@ -176,7 +176,7 @@ def GetDictAges(DB, dictParametres, mode_tranches=False) :
         genre = str(dictCivilites[IDcivilite]["sexe"])
 
         if date_naiss != None and date_naiss != "" :
-            date_naiss = datetime.date(int(date_naiss[:4]), int(date_naiss[5:7]), int(date_naiss[8:10]))
+            date_naiss = datetime.date.fromisoformat(date_naiss[:10])
             if str(date_fin) == "2999-01-01" :
                 datedujour = MODELES.GetDateExtremeActivites(DB, listeActivites=dictParametres["listeActivites"], typeDate="date_milieu", mode="max")
             else :

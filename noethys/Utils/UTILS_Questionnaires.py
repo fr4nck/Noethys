@@ -23,7 +23,7 @@ def DateEngEnDateDD(date):
     if date in (None, "") : return None
     if type(date) == datetime.date :
         return UTILS_Dates.DateDDEnFr(date)
-    return datetime.date(int(date[:4]), int(date[5:7]), int(date[8:10]))
+    return datetime.date.fromisoformat(date[:10])
 
 def FormateStr(valeur=u""):
     try :
@@ -44,7 +44,7 @@ def FormateDate(date):
     if date in (None, "") : return ""
     if type(date) == datetime.date :
         return UTILS_Dates.DateDDEnFr(date)
-    return datetime.date(int(date[:4]), int(date[5:7]), int(date[8:10]))
+    return datetime.date.fromisoformat(date[:10])
 
 def GetColonnesForOL(liste_questions=[]):
     """ Ajout des questions des questionnaires aux colonnes d'un OL """

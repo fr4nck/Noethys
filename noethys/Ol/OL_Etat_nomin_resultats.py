@@ -34,7 +34,7 @@ def ArrondirHeureSup(heures, minutes, pas):
 
 def DateEngEnDateDD(dateEng):
     if dateEng == None or dateEng == "" : return None
-    return datetime.date(int(dateEng[:4]), int(dateEng[5:7]), int(dateEng[8:10]))
+    return datetime.date.fromisoformat(dateEng[:10])
 
 def DateEngFr(textDate):
     if textDate == None or textDate == "" : return ""

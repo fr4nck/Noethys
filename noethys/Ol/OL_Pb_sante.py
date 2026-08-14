@@ -53,7 +53,7 @@ class Track(object):
             self.texteComplet += u" : " + self.description
         
         if self.date_fin != None and self.date_fin != "2999-01-01" :
-            dateDD_fin = datetime.date(int(self.date_fin[:4]), int(self.date_fin[5:7]), int(self.date_fin[8:10]))
+            dateDD_fin = datetime.date.fromisoformat(self.date_fin[:10])
             date_jour = datetime.date.today()
             self.nbreJoursRestants = (dateDD_fin - date_jour).days
             if self.nbreJoursRestants > 0 :

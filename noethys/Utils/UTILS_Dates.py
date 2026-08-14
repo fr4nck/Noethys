@@ -46,7 +46,7 @@ def DateComplete(dateDD, abrege=False):
 def DateEngEnDateDD(dateEng):
     if dateEng in (None, "", "None") : return None
     if type(dateEng) == datetime.date : return dateEng
-    return datetime.date(int(dateEng[:4]), int(dateEng[5:7]), int(dateEng[8:10]))
+    return datetime.date.fromisoformat(dateEng[:10])
 
 def DateEngEnDateDDT(dateEng):
     if dateEng in (None, "", "None") : return None

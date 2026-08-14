@@ -173,7 +173,7 @@ DICT_CATEGORIES = {
 
 
 def DateEngEnDateDD(dateEng):
-    return datetime.date(int(dateEng[:4]), int(dateEng[5:7]), int(dateEng[8:10]))
+    return datetime.date.fromisoformat(dateEng[:10])
 
 
 class CTRL_Choix_arrets(wx.Choice):

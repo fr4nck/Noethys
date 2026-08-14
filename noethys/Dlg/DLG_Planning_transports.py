@@ -43,7 +43,7 @@ def ConvertDateWXenDT(datewx=None):
 def ConvertDateDTenWX(date=None, heure=None):
     """ Convertit une date datetime en WX.datetime """
     if type(date) == six.text_type :
-        date = datetime.date(int(date[:4]), int(date[5:7]), int(date[8:10]))
+        date = datetime.date.fromisoformat(date[:10])
     hr, mn = 0, 0
     if heure != None :
         hr, mn = heure.split(":")

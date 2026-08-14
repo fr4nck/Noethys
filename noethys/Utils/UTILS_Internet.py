@@ -25,7 +25,7 @@ from Utils import UTILS_Cryptage_fichier
 
 def DateEngEnDateDD(dateEng):
     """ Tranforme une date anglaise en datetime.date """
-    return datetime.date(int(dateEng[:4]), int(dateEng[5:7]), int(dateEng[8:10]))
+    return datetime.date.fromisoformat(dateEng[:10])
     
 def DateDDEnDateFR(dateDD):
     """ Transforme une datetime.date en date complète FR """

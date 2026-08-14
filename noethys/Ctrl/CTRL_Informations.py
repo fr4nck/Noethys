@@ -25,7 +25,7 @@ from Utils import UTILS_Interface
 
 
 def DateEngEnDateDD(dateEng):
-    return datetime.date(int(dateEng[:4]), int(dateEng[5:7]), int(dateEng[8:10]))
+    return datetime.date.fromisoformat(dateEng[:10])
 
 def FormatDuree(duree):
     posM = duree.find("m")
@@ -839,7 +839,7 @@ class CTRL(wx.TreeCtrl):
     
         dictMaladiesIndividus = {}
         for IDindividu, IDvaccin, IDtype_vaccin, date, IDtype_maladie, nomVaccin, duree_validite, nomMaladie in listeVaccins :
-            dateDD = datetime.date(int(date[:4]), int(date[5:7]), int(date[8:10]))
+            dateDD = datetime.date.fromisoformat(date[:10])
             dateFinValidite, nbreJoursRestants = self.CalcValiditeVaccin(dateDD, duree_validite)
             if (IDindividu in dictMaladiesIndividus) == False :
                 dictMaladiesIndividus[IDindividu] = {}

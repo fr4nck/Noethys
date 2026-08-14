@@ -47,7 +47,7 @@ class Track(object):
         self.IDindividu = donnees[1]
         self.IDtype_vaccin = donnees[2]
         self.date = donnees[3]
-        self.dateDD = datetime.date(int(self.date[:4]), int(self.date[5:7]), int(self.date[8:10]))
+        self.dateDD = datetime.date.fromisoformat(self.date[:10])
         self.nom = donnees[4]
         self.duree_validite = donnees[5]
         # validité

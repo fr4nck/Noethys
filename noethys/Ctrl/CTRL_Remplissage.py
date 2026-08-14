@@ -68,7 +68,7 @@ def DateComplete(dateDD):
     return dateComplete
 
 def DateEngEnDateDD(dateEng):
-    return datetime.date(int(dateEng[:4]), int(dateEng[5:7]), int(dateEng[8:10]))
+    return datetime.date.fromisoformat(dateEng[:10])
 
 def HeureStrEnTime(heureStr):
     if heureStr == None or heureStr == "" : return datetime.time(0, 0)

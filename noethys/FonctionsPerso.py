@@ -357,7 +357,7 @@ def Recherche_problemes_personnes(listeIDpersonnes = (), infosPersonne=[]):
                 date_debut = dictTmpPieces[IDtype_piece][0]
                 date_fin = dictTmpPieces[IDtype_piece][1]
                 # Recherche la validité
-                date_fin = datetime.date(int(date_fin[:4]), int(date_fin[5:7]), int(date_fin[8:10]))
+                date_fin = datetime.date.fromisoformat(date_fin[:10])
                 reste = str(date_fin - date_jour)
                 if reste != "0:00:00":
                     jours = int(reste[:reste.index("day")])

@@ -54,8 +54,8 @@ class JoursSpeciaux() :
         
         listeVacances = []
         for id, nom, annee, date_debut, date_fin in listeDonnees :
-            datedebut = datetime.date(int(date_debut[:4]), int(date_debut[5:7]), int(date_debut[8:10]))
-            datefin = datetime.date(int(date_fin[:4]), int(date_fin[5:7]), int(date_fin[8:10]))
+            datedebut = datetime.date.fromisoformat(date_debut[:10])
+            datefin = datetime.date.fromisoformat(date_fin[:10])
             listeVacances.append(ConvertDateDTenWX(datedebut))
             listeTemp = []
             for x in range((datefin-datedebut).days) :

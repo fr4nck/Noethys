@@ -88,7 +88,7 @@ def GetListeEtatsMaladies(IDindividu):
     
     dictMaladiesIndividus = {}
     for IDvaccin, IDtype_vaccin, date, IDtype_maladie, nomVaccin, duree_validite, nomMaladie, vaccin_obligatoire in listeVaccins :
-        dateDD = datetime.date(int(date[:4]), int(date[5:7]), int(date[8:10]))
+        dateDD = datetime.date.fromisoformat(date[:10])
         dateFinValidite, nbreJoursRestants = CalcValidite(dateDD, duree_validite)
         if IDtype_maladie in dictMaladiesIndividus :
             if dictMaladiesIndividus[IDtype_maladie] < nbreJoursRestants :
