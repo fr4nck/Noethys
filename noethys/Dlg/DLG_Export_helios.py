@@ -393,9 +393,8 @@ class Dialog(wx.Dialog):
                 dlg.Destroy()
 
         # Création du fichier texte
-        f = open(cheminFichier, "w")
-        f.write(texte.encode("utf8"))
-        f.close()
+        with open(cheminFichier, "w", encoding="utf-8") as f:
+            f.write(texte)
         
         # Confirmation de création du fichier et demande d'ouverture directe dans Excel
         txtMessage = _(u"Le fichier a été créé avec succès.\n\nSouhaitez-vous l'ouvrir dès maintenant ?")

@@ -451,9 +451,8 @@ class ListView(FastObjectListView):
             texte += track.adresse + separateur
         texte = texte[:-1]
         # Création du fichier texte
-        f = open(cheminFichier, "w")
-        f.write(texte.encode("utf8"))
-        f.close()
+        with open(cheminFichier, "w", encoding="utf-8") as f:
+            f.write(texte)
         # Confirmation de création du fichier et demande d'ouverture directe dans Excel
         txtMessage = _(u"Le fichier Texte a été créé avec succès. Souhaitez-vous l'ouvrir dès maintenant ?")
         dlgConfirm = wx.MessageDialog(None, txtMessage, _(u"Confirmation"), wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION)

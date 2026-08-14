@@ -990,9 +990,8 @@ class Dialog(wx.Dialog, Base):
             texte = "\n".join(liste_lignes)
 
             cheminFichier = UTILS_Fichiers.GetRepTemp(fichier="sms.txt")
-            fichier = open(cheminFichier, 'w')
-            fichier.write(texte.encode("utf8"))
-            fichier.close()
+            with open(cheminFichier, 'w', encoding='utf-8') as fichier:
+                fichier.write(texte)
 
             # Préparation du message
             message = UTILS_Envoi_email.Message(destinataires=[self.dictDonnees["orange_adresse_destination_email"],],
@@ -1022,9 +1021,8 @@ class Dialog(wx.Dialog, Base):
             texte = "\n".join(liste_lignes)
 
             cheminFichier = UTILS_Fichiers.GetRepTemp(fichier="sms.txt")
-            fichier = open(cheminFichier, 'w')
-            fichier.write(texte.encode("utf8"))
-            fichier.close()
+            with open(cheminFichier, 'w', encoding='utf-8') as fichier:
+                fichier.write(texte)
 
             # Préparation du message
             message = UTILS_Envoi_email.Message(destinataires=[self.dictDonnees["cleversms_adresse_destination_email"],],
@@ -1054,9 +1052,8 @@ class Dialog(wx.Dialog, Base):
             texte = "\n".join(liste_lignes)
 
             cheminFichier = UTILS_Fichiers.GetRepTemp(fichier="sms.txt")
-            fichier = open(cheminFichier, 'w')
-            fichier.write(texte.encode("utf8"))
-            fichier.close()
+            with open(cheminFichier, 'w', encoding='utf-8') as fichier:
+                fichier.write(texte)
 
             # Préparation du message
             message = UTILS_Envoi_email.Message(destinataires=[self.dictDonnees["clevermultimedias_adresse_destination_email"],],
