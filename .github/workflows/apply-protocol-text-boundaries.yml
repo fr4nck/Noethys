@@ -27,7 +27,7 @@ jobs:
       - name: Mesurer l'audit UTF-8
         run: python scripts/audit_utf8_boundaries.py
       - name: Mesurer l'audit bytes/str
-        run: python scripts/audit_text_boundaries.py
+        run: python scripts/audit_bytes_text_boundaries.py
       - name: Committer
         run: |
           if git diff --quiet; then
