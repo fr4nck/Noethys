@@ -106,7 +106,7 @@ def ConvertJsonEnTexte():
     listeTextes.sort()
     
     # Enregistrement du fichier texte
-    fichier = open(UTILS_Fichiers.GetRepTemp(fichier="Textes.txt"), "w")
+    fichier = open(UTILS_Fichiers.GetRepTemp(fichier="Textes.txt"), "w", encoding="utf-8")
     for texte in listeTextes :
         fichier.write(texte + "\n")
     fichier.close()

@@ -497,7 +497,7 @@ def CreationFichierLoginTemp(host="", user="", port="3306", password="", nomFich
     password = GestionDB.DecodeMdpReseau(password)
     if os.path.isfile(nomFichier) == True :
         os.remove(nomFichier)
-    fichier = open(nomFichier, "w")
+    fichier = open(nomFichier, "w", encoding="utf-8")
     fichier.write(u"[client]\nhost=%s\nuser=%s\nport=%s\npassword=%s" % (host, user, port, password))
     fichier.close()
 

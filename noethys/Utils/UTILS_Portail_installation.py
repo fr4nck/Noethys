@@ -380,7 +380,7 @@ class Installer():
             liste_exclusions = []
         else :
             # Importation de la liste des exclusions dans le répertoire source
-            fichier = open(os.path.join(source_repertoire, "versions.txt"), "r")
+            fichier = open(os.path.join(source_repertoire, "versions.txt"), "r", encoding="utf-8")
             lignes = fichier.readlines()
             fichier.close()
             liste_versions = LectureFichierVersion(lignes)

@@ -946,12 +946,12 @@ class Informations() :
     
     def EnregistreFichier(self, mode="famille", nomFichier=UTILS_Fichiers.GetRepTemp(fichier="infos_f.dat")):
         chaine = self.GetPickleChaine(mode=mode, cryptage=True)
-        fichier = open(nomFichier, "w")
+        fichier = open(nomFichier, "wb")
         fichier.write(chaine)
         fichier.close()
     
     def LectureFichier(self, nomFichier=UTILS_Fichiers.GetRepTemp(fichier="infos_f.dat")):
-        fichier = open(nomFichier, "r")
+        fichier = open(nomFichier, "rb")
         chaine = fichier.read()
         fichier.close()
         chaine = base64.b64decode(chaine)
