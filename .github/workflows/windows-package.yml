@@ -9,6 +9,7 @@ on:
       - 'requirements.txt'
       - 'scripts/smoke_reportlab_unicode_pdf.py'
       - 'scripts/smoke_packaged_resources.py'
+      - 'scripts/smoke_optional_feature_stacks.py'
       - '.github/workflows/windows-package.yml'
 
 permissions:
@@ -36,6 +37,9 @@ jobs:
 
       - name: Compiler les sources
         run: python -m compileall -q noethys
+
+      - name: Valider les piles fonctionnelles optionnelles
+        run: python scripts/smoke_optional_feature_stacks.py
 
       - name: Valider la génération PDF Unicode
         run: python scripts/smoke_reportlab_unicode_pdf.py
