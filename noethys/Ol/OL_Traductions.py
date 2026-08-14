@@ -268,8 +268,8 @@ class MyFrame(wx.Frame):
             print("%d/%d  : %s..." % (indexFichier, len(dictFichiers), nomFichier))
                 
             # Ouverture des fichiers
-            fichier = open(nomFichier, "r")
-            nouveauFichier = open("New/%s" % nomFichier, "w")
+            fichier = open(nomFichier, "r", encoding="utf-8")
+            nouveauFichier = open("New/%s" % nomFichier, "w", encoding="utf-8")
             
             for ligne in fichier :
                 # Remplacement des chaines
@@ -299,8 +299,8 @@ def AjoutImport():
             print("%d/%d :  %s..." % (indexFichier, len(listeFichiers), nomFichier))
             
             # Ouverture des fichiers
-            fichier = open("New/" + nomFichier, "r")
-            nouveauFichier = open("New/New/%s" % nomFichier, "w")
+            fichier = open("New/" + nomFichier, "r", encoding="utf-8")
+            nouveauFichier = open("New/New/%s" % nomFichier, "w", encoding="utf-8")
             
             idx = None
             indexLigne = 0

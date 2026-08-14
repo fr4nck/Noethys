@@ -4454,7 +4454,7 @@ class MyApp(wx.App):
 
 class Redirect(object):
     def __init__(self, nomJournal=""):
-        self.filename = open(nomJournal, "a")
+        self.filename = open(nomJournal, "a", encoding="utf-8")
 
     def write(self, text):
         if self.filename.closed:

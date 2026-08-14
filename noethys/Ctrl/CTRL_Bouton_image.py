@@ -180,7 +180,7 @@ def ModifieFichiers():
             print("%d/%d :  %s..." % (indexFichier, len(listeFichiers), nomFichier))
             
             # Ouverture des fichiers
-            fichier = open(nomFichier, "r")
+            fichier = open(nomFichier, "r", encoding="utf-8")
             dirty = False
             
             listeLignes = []
@@ -214,7 +214,7 @@ def ModifieFichiers():
             
             # Ecriture du nouveau fichier
             if dirty == True :
-                nouveauFichier = open("New/%s" % nomFichier, "w")
+                nouveauFichier = open("New/%s" % nomFichier, "w", encoding="utf-8")
                 for ligne in listeLignes :
                     nouveauFichier.write(ligne)
                 nouveauFichier.close()
