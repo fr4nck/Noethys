@@ -6,6 +6,8 @@ on:
     paths:
       - 'packaging/**'
       - 'requirements-build.txt'
+      - 'requirements.txt'
+      - 'scripts/smoke_reportlab_unicode_pdf.py'
       - '.github/workflows/windows-package.yml'
 
 permissions:
@@ -33,6 +35,9 @@ jobs:
 
       - name: Compiler les sources
         run: python -m compileall -q noethys
+
+      - name: Valider la génération PDF Unicode
+        run: python scripts/smoke_reportlab_unicode_pdf.py
 
       - name: Construire le dossier portable
         run: pyinstaller --noconfirm --clean packaging/noethys.spec
