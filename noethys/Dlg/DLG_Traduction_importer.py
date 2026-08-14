@@ -225,7 +225,7 @@ class Dialog(wx.Dialog):
         listeTextes.sort()
         
         # Enregistrement du fichier texte
-        fichier = open(cheminFichier, "w")
+        fichier = open(cheminFichier, "w", encoding="utf-8")
         nbreTextes = 0
         for texte in listeTextes :
             if self.check_nontraduits.GetValue() == False or (self.check_nontraduits.GetValue() == True and texte not in textesLangue) :
@@ -267,11 +267,11 @@ class Dialog(wx.Dialog):
             return
 
         # Lecture des textes
-        fichier = open(fichier_original, "r")
+        fichier = open(fichier_original, "r", encoding="utf-8")
         lignesOriginal = fichier.readlines()
         fichier.close() 
         
-        fichier = open(fichier_traduction, "r")
+        fichier = open(fichier_traduction, "r", encoding="utf-8")
         lignesTraduction = fichier.readlines()
         fichier.close() 
 

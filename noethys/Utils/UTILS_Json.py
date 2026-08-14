@@ -98,7 +98,7 @@ def Lire(nom_fichier="", conversion_auto=False):
             is_json = False
     else :
         try:
-            with open(nom_fichier) as json_file:
+            with open(nom_fichier, encoding="utf-8") as json_file:
                 data = json.load(json_file, object_hook=MyDecoder)
         except Exception as err:
             print("Impossible d'ouvrir le fichier Json")
