@@ -78,6 +78,9 @@ jobs:
       - name: Smoke test imports non-GUI
         run: python tests/smoke_noethys.py
 
+      - name: Smoke test configuration UTF-8 et récupération
+        run: python scripts/smoke_config_utf8_recovery.py
+
       - name: Smoke test wx.App
         run: python tests/smoke_wx.py
 
@@ -101,6 +104,9 @@ jobs:
 
       - name: Smoke test imports non-GUI
         run: python tests/smoke_noethys.py
+
+      - name: Smoke test configuration UTF-8 et récupération
+        run: python scripts/smoke_config_utf8_recovery.py
 
       - name: Smoke test wx.App
         run: python tests/smoke_wx.py
