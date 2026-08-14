@@ -3,7 +3,8 @@ from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
-ROOT = Path(SPECPATH).resolve().parent.parent
+# SPECPATH désigne le dossier contenant le fichier .spec.
+ROOT = Path(SPECPATH).resolve().parent
 NOETHYS = ROOT / "noethys"
 
 hiddenimports = []
