@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Inventorie les frontières d'encodage potentiellement fragiles sous Python 3."""
+"""Inventorie les frontières d'encodage réellement actionnables sous Python 3.
+
+L'audit se concentre sur les flux texte ouverts sans encodage explicite.
+Les encode()/decode() explicites, CSV/JSON et flux binaires ne sont pas des
+anomalies en soi et ne sont donc plus comptés comme défauts.
+"""
 from __future__ import annotations
 
 import ast
@@ -39,6 +44,15 @@ def keyword_value(node: ast.Call, name: str) -> ast.AST | None:
     return None
 
 
+def positional_or_keyword(node: ast.Call, position: int, keyword: str) -> ast.AST | None:
+    value = keyword_value(node, keyword)
+    if value is not None:
+        return value
+    if len(node.args) > position:
+        return node.args[position]
+    return None
+
+
 def scan(path: Path) -> list[tuple[int, str]]:
     try:
         source = path.read_text(encoding="utf-8", errors="replace")
@@ -51,34 +65,38 @@ def scan(path: Path) -> list[tuple[int, str]]:
         if not isinstance(node, ast.Call):
             continue
         name = call_name(node)
+
         if name in {"open", "io.open", "Path.open"}:
-            mode_node = keyword_value(node, "mode")
-            if mode_node is None and len(node.args) > 1:
-                mode_node = node.args[1]
+            mode_node = positional_or_keyword(node, 1, "mode")
             mode = constant_string(mode_node) or "r"
             if "b" not in mode and keyword_value(node, "encoding") is None:
                 findings.append((node.lineno, f"ouverture texte sans encoding explicite via {name}()"))
-        elif name == "codecs.open":
-            findings.append((node.lineno, "codecs.open() historique à vérifier"))
-        elif name.endswith(".encode") or name.endswith(".decode"):
-            codec = constant_string(node.args[0] if node.args else None)
-            findings.append((node.lineno, f"conversion {name.split('.')[-1]}() : {codec or 'codec implicite'}"))
-        elif name in {"csv.reader", "csv.writer", "csv.DictReader", "csv.DictWriter"}:
-            findings.append((node.lineno, f"usage CSV à vérifier via {name}()"))
-        elif name in {"json.load", "json.dump"}:
-            findings.append((node.lineno, f"flux JSON à vérifier via {name}()"))
+            continue
+
+        if name == "codecs.open":
+            mode_node = positional_or_keyword(node, 2, "mode")
+            mode = constant_string(mode_node) or "r"
+            encoding_node = positional_or_keyword(node, 1, "encoding")
+            encoding = constant_string(encoding_node)
+            if "b" not in mode and not encoding:
+                findings.append((node.lineno, "codecs.open() texte sans encoding explicite"))
+
     return sorted(set(findings))
 
 
 def main() -> int:
     total = 0
+    files = 0
     for path in sorted(ROOT.rglob("*.py")):
         if any(part in SKIP_DIRS for part in path.parts):
             continue
-        for lineno, message in scan(path):
+        findings = scan(path)
+        if findings:
+            files += 1
+        for lineno, message in findings:
             total += 1
             print(f"{path}:{lineno}: {message}")
-    print(f"\n{total} frontière(s) d'encodage à examiner.")
+    print(f"\n{total} frontière(s) texte/encodage actionnable(s) dans {files} fichier(s).")
     return 0
 
 
