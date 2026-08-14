@@ -2,8 +2,9 @@
 """Vérifie les piles fonctionnelles chargées tardivement par Noethys.
 
 Le test n'ouvre ni interface ni base. Il importe seulement les sous-modules
-utilisés pour les impressions, graphiques, chiffrement, échanges réseau et XML
-afin de bloquer avant PyInstaller si une pile critique est incomplète.
+utilisés pour les impressions, graphiques, chiffrement, échanges réseau, MySQL,
+périphériques et intégrations Windows afin de bloquer avant PyInstaller si une
+pile critique est incomplète.
 """
 from __future__ import annotations
 
@@ -11,6 +12,13 @@ import importlib
 import sys
 
 STACKS = {
+    "Compatibilité runtime": (
+        "six",
+        "requests",
+        "chardet",
+        "feedparser",
+        "unicodecsv",
+    ),
     "PDF / impression": (
         "reportlab.pdfgen.canvas",
         "reportlab.platypus",
@@ -26,6 +34,11 @@ STACKS = {
         "Crypto.Hash.SHA256",
         "Crypto.Cipher.AES",
         "Crypto.Random",
+        "cryptography",
+    ),
+    "MySQL": (
+        "MySQLdb",
+        "mysql.connector",
     ),
     "SSH / SFTP": (
         "paramiko",
@@ -39,6 +52,23 @@ STACKS = {
     "Réseau asynchrone": (
         "twisted.internet",
         "twisted.web.client",
+    ),
+    "Services externes": (
+        "mailjet_rest",
+    ),
+    "Périphériques": (
+        "serial",
+        "smartcard",
+    ),
+    "Intégration Windows": (
+        "pythoncom",
+        "pywintypes",
+        "win32clipboard",
+        "win32com.client",
+        "win32con",
+        "win32gui",
+        "win32print",
+        "win32ui",
     ),
 }
 
