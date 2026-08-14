@@ -3,7 +3,7 @@ from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
-ROOT = Path(SPECPATH).resolve().parent
+ROOT = Path(SPECPATH).resolve().parent.parent
 NOETHYS = ROOT / "noethys"
 
 hiddenimports = []
@@ -19,6 +19,7 @@ for package in (
     "icalendar",
     "paramiko",
     "comtypes",
+    "pyttsx3",
 ):
     hiddenimports += collect_submodules(package)
 
@@ -35,6 +36,15 @@ datas += collect_data_files("matplotlib")
 datas += collect_data_files("pytz")
 datas += collect_data_files("reportlab")
 
+runtime_hooks = [
+    str(ROOT / "packaging" / "runtime_wx_compat.py"),
+    str(ROOT / "packaging" / "runtime_wx_text_compat.py"),
+    str(ROOT / "packaging" / "runtime_wx_list_width_compat.py"),
+    str(ROOT / "packaging" / "runtime_objectlistview_value_compat.py"),
+    str(ROOT / "packaging" / "runtime_objectlistview_date_compat.py"),
+    str(ROOT / "packaging" / "runtime_pillow_compat.py"),
+]
+
 analysis = Analysis(
     [str(NOETHYS / "Noethys.py")],
     pathex=[str(ROOT), str(NOETHYS)],
@@ -43,7 +53,7 @@ analysis = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=runtime_hooks,
     excludes=["tkinter", "PyQt5", "PyQt6", "PySide2", "PySide6"],
     noarchive=False,
 )
