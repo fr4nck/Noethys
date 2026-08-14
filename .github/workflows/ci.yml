@@ -68,6 +68,12 @@ jobs:
         # Les exec/eval historiques restent inventoriés mais ne bloquent pas ce contrôle.
         run: python scripts/audit_dynamic_import_risks.py --max-import-risks 7
 
+      - name: Inventorier les parsings de date fragiles
+        run: python scripts/audit_fragile_date_parsing.py
+
+      - name: Inventorier les arguments wx numériques fragiles
+        run: python scripts/audit_wx_numeric_arguments.py
+
       - name: Inventorier l'usage réel des dépendances
         run: python scripts/audit_dependency_usage.py
 
