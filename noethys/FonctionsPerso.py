@@ -1323,7 +1323,7 @@ def InsertUnicodeLiterals():
             #print "%d/%d :  %s..." % (indexFichier, len(listeFichiers), nomFichier)
             
             # Ouverture des fichiers
-            fichier = open(nomFichier, "r")
+            fichier = open(nomFichier, "r", encoding="utf-8")
             dirty = False
             
             listeLignes = []
@@ -1340,7 +1340,7 @@ def InsertUnicodeLiterals():
             
             # Ecriture du nouveau fichier
             if dirty == True :
-                nouveauFichier = open("New/%s" % nomFichier, "w")
+                nouveauFichier = open("New/%s" % nomFichier, "w", encoding="utf-8")
                 for ligne in listeLignes :
                     nouveauFichier.write(ligne)
                 nouveauFichier.close()
@@ -1360,7 +1360,7 @@ def InsertThemeDansOL():
             #print "%d/%d :  %s..." % (indexFichier, len(listeFichiers), nomFichier)
 
             # Ouverture des fichiers
-            fichier = open(nomFichier, "r")
+            fichier = open(nomFichier, "r", encoding="utf-8")
             dirty = False
 
             listeLignes = []
@@ -1384,7 +1384,7 @@ def InsertThemeDansOL():
 
             # Ecriture du nouveau fichier
             if dirty == True :
-                nouveauFichier = open("New/%s" % nomFichier, "w")
+                nouveauFichier = open("New/%s" % nomFichier, "w", encoding="utf-8")
                 for ligne in listeLignes :
                     nouveauFichier.write(ligne)
                 nouveauFichier.close()
@@ -1401,7 +1401,7 @@ def RechercheWhere():
     for nomFichier in listeFichiers :
         if nomFichier.endswith("py") and nomFichier.startswith("DATA_") == False :
             # Ouverture du fichier
-            fichier = open(nomFichier, "r")
+            fichier = open(nomFichier, "r", encoding="utf-8")
             for ligne in fichier :
                 # Insertion de l'import
                 if "WHERE" in ligne :
