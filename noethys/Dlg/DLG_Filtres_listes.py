@@ -9,6 +9,7 @@
 #------------------------------------------------------------------------
 
 
+import ast
 import Chemins
 from Utils import UTILS_Adaptations
 from Utils.UTILS_Traduction import _
@@ -32,7 +33,7 @@ class CTRL_profil_perso(CTRL_Profil.CTRL):
         listeFiltres = []
         if dictParametres != None :
             for index, dictFiltreStr in dictParametres.items() :
-                dictFiltre = eval(dictFiltreStr)
+                dictFiltre = ast.literal_eval(dictFiltreStr)
                 listeFiltres.append(dictFiltre)
         self.dlg.SetDonnees(listeFiltres)
 
@@ -78,81 +79,56 @@ class Dialog(wx.Dialog):
         if self.ctrl_listview != None :
             nom_liste = self.ctrl_listview.GetNomModule()
         else :
-            nom_liste = None
-        self.staticbox_profil_staticbox = wx.StaticBox(self, -1, _(u"Profil de configuration"))
-        self.ctrl_profil = CTRL_profil_perso(self, categorie=nom_liste, dlg=self)
-        self.ctrl_profil.SetMinSize((100, -1))
-        if nom_liste == None :
-            self.staticbox_profil_staticbox.Show(False)
-            self.ctrl_profil.Show(False)
+            nom_liste = ""
+        self.ctrl_profil = CTRL_profil_perso(self, categorie="filtres_%s" % nom_liste, dlg=self)
 
         self.bouton_aide = CTRL_Bouton_image.CTRL(self, texte=_(u"Aide"), cheminImage="Images/32x32/Aide.png")
         self.bouton_ok = CTRL_Bouton_image.CTRL(self, texte=_(u"Ok"), cheminImage="Images/32x32/Valider.png")
-        self.bouton_fermer = CTRL_Bouton_image.CTRL(self, id=wx.ID_CANCEL, texte=_(u"Annuler"), cheminImage="Images/32x32/Annuler.png")
-
+        self.bouton_annuler = CTRL_Bouton_image.CTRL(self, id=wx.ID_CANCEL, texte=_(u"Annuler"), cheminImage="Images/32x32/Annuler.png")
         self.__set_properties()
         self.__do_layout()
-        
-        self.Bind(wx.EVT_BUTTON, self.ctrl_filtres.Ajouter, self.bouton_ajouter)
-        self.Bind(wx.EVT_BUTTON, self.ctrl_filtres.Modifier, self.bouton_modifier)
-        self.Bind(wx.EVT_BUTTON, self.ctrl_filtres.Supprimer, self.bouton_supprimer)
-        self.Bind(wx.EVT_BUTTON, self.ctrl_filtres.ToutSupprimer, self.bouton_tout_supprimer)
+
+        self.Bind(wx.EVT_BUTTON, self.OnBoutonAjouter, self.bouton_ajouter)
+        self.Bind(wx.EVT_BUTTON, self.OnBoutonModifier, self.bouton_modifier)
+        self.Bind(wx.EVT_BUTTON, self.OnBoutonSupprimer, self.bouton_supprimer)
+        self.Bind(wx.EVT_BUTTON, self.OnBoutonToutSupprimer, self.bouton_tout_supprimer)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonAide, self.bouton_aide)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonOk, self.bouton_ok)
 
     def __set_properties(self):
-        self.bouton_ajouter.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour ajouter un filtre")))
-        self.bouton_modifier.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour modifier le filtre sélectionné dans la liste")))
-        self.bouton_supprimer.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour supprimer le filtre sélectionné dans la liste")))
-        self.bouton_tout_supprimer.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour supprimer TOUS les filtres de cette liste")))
-        self.bouton_aide.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour obtenir de l'aide")))
-        self.bouton_ok.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour valider")))
-        self.bouton_fermer.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour fermer")))
-        self.SetMinSize((600, 430))
+        self.SetTitle(_(u"Filtrer"))
+        self.SetMinSize((600, 400))
 
     def __do_layout(self):
         grid_sizer_base = wx.FlexGridSizer(rows=4, cols=1, vgap=10, hgap=10)
         grid_sizer_base.Add(self.ctrl_bandeau, 0, wx.EXPAND, 0)
-
-        # Filtres
-        staticbox_filtres = wx.StaticBoxSizer(self.staticbox_filtres_staticbox, wx.VERTICAL)
+        grid_sizer_contenu = wx.FlexGridSizer(rows=1, cols=2, vgap=5, hgap=5)
+        grid_sizer_gauche = wx.FlexGridSizer(rows=2, cols=1, vgap=5, hgap=5)
         grid_sizer_filtres = wx.FlexGridSizer(rows=1, cols=2, vgap=5, hgap=5)
-        
-        grid_sizer_gauche = wx.FlexGridSizer(rows=3, cols=1, vgap=10, hgap=10)
-        grid_sizer_gauche.Add(self.ctrl_filtres, 0, wx.EXPAND, 0)
-
-        grid_sizer_gauche.AddGrowableRow(0)
-        grid_sizer_gauche.AddGrowableCol(0)
-        grid_sizer_filtres.Add(grid_sizer_gauche, 1, wx.EXPAND, 0)
-        
-        grid_sizer_droit = wx.FlexGridSizer(rows=5, cols=1, vgap=5, hgap=5)
-        grid_sizer_droit.Add(self.bouton_ajouter, 0, 0, 0)
-        grid_sizer_droit.Add(self.bouton_modifier, 0, 0, 0)
-        grid_sizer_droit.Add(self.bouton_supprimer, 0, 0, 0)
-        grid_sizer_droit.Add( (5, 5), 0, 0, 0)
-        grid_sizer_droit.Add(self.bouton_tout_supprimer, 0, 0, 0)
-
-        grid_sizer_filtres.Add(grid_sizer_droit, 1, wx.EXPAND, 0)
+        grid_sizer_filtres.Add(self.ctrl_filtres, 1, wx.EXPAND, 0)
+        grid_sizer_boutons = wx.FlexGridSizer(rows=5, cols=1, vgap=5, hgap=5)
+        grid_sizer_boutons.Add(self.bouton_ajouter, 0, 0, 0)
+        grid_sizer_boutons.Add(self.bouton_modifier, 0, 0, 0)
+        grid_sizer_boutons.Add(self.bouton_supprimer, 0, 0, 0)
+        grid_sizer_boutons.Add(self.bouton_tout_supprimer, 0, 0, 0)
+        grid_sizer_filtres.Add(grid_sizer_boutons, 0, 0, 0)
         grid_sizer_filtres.AddGrowableRow(0)
         grid_sizer_filtres.AddGrowableCol(0)
-
-        staticbox_filtres.Add(grid_sizer_filtres, 1, wx.ALL|wx.EXPAND, 5)
-        grid_sizer_base.Add(staticbox_filtres, 1, wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
-
-        # Profil
-        staticbox_profil = wx.StaticBoxSizer(self.staticbox_profil_staticbox, wx.VERTICAL)
-        staticbox_profil.Add(self.ctrl_profil, 1, wx.ALL|wx.EXPAND, 5)
-        grid_sizer_base.Add(staticbox_profil, 1, wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
-
-        # Boutons
-        grid_sizer_boutons = wx.FlexGridSizer(rows=1, cols=5, vgap=10, hgap=10)
+        grid_sizer_gauche.Add(grid_sizer_filtres, 1, wx.EXPAND, 0)
+        grid_sizer_gauche.AddGrowableRow(0)
+        grid_sizer_gauche.AddGrowableCol(0)
+        grid_sizer_contenu.Add(grid_sizer_gauche, 1, wx.EXPAND, 0)
+        grid_sizer_contenu.Add(self.ctrl_profil, 0, wx.EXPAND, 0)
+        grid_sizer_contenu.AddGrowableRow(0)
+        grid_sizer_contenu.AddGrowableCol(0)
+        grid_sizer_base.Add(grid_sizer_contenu, 1, wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
+        grid_sizer_boutons = wx.FlexGridSizer(rows=1, cols=4, vgap=10, hgap=10)
         grid_sizer_boutons.Add(self.bouton_aide, 0, 0, 0)
-        grid_sizer_boutons.Add((20, 20), 0, wx.EXPAND, 0)
+        grid_sizer_boutons.Add((20, 20), 1, wx.EXPAND, 0)
         grid_sizer_boutons.Add(self.bouton_ok, 0, 0, 0)
-        grid_sizer_boutons.Add(self.bouton_fermer, 0, 0, 0)
+        grid_sizer_boutons.Add(self.bouton_annuler, 0, 0, 0)
         grid_sizer_boutons.AddGrowableCol(1)
-        grid_sizer_base.Add(grid_sizer_boutons, 1, wx.LEFT|wx.RIGHT|wx.BOTTOM|wx.EXPAND, 10)
-        
+        grid_sizer_base.Add(grid_sizer_boutons, 0, wx.LEFT|wx.RIGHT|wx.BOTTOM|wx.EXPAND, 10)
         self.SetSizer(grid_sizer_base)
         grid_sizer_base.Fit(self)
         grid_sizer_base.AddGrowableRow(1)
@@ -160,27 +136,37 @@ class Dialog(wx.Dialog):
         self.Layout()
         self.CenterOnScreen()
 
+    def OnBoutonAjouter(self, event):
+        self.ctrl_filtres.Ajouter(None)
+
+    def OnBoutonModifier(self, event):
+        self.ctrl_filtres.Modifier(None)
+
+    def OnBoutonSupprimer(self, event):
+        self.ctrl_filtres.Supprimer(None)
+
+    def OnBoutonToutSupprimer(self, event):
+        self.ctrl_filtres.SupprimerTout()
+
     def OnBoutonAide(self, event):
         from Utils import UTILS_Aide
-        UTILS_Aide.Aide("")
+        UTILS_Aide.Aide("Filtrer")
 
     def OnBoutonOk(self, event):
-        # Fermeture de la fenêtre
         self.EndModal(wx.ID_OK)
+
+    def SetDonnees(self, listeFiltres=[]):
+        self.ctrl_filtres.SetDonnees(listeFiltres)
 
     def GetDonnees(self):
         return self.ctrl_filtres.GetDonnees()
 
-    def SetDonnees(self, listeFiltres=[]):
-        self.ctrl_filtres.SetDonnees(listeFiltres)
-    
 
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     app = wx.App(0)
     #wx.InitAllImageHandlers()
-    dialog_1 = Dialog(None)
-    app.SetTopWindow(dialog_1)
-    dialog_1.ShowModal()
+    dlg = Dialog(None)
+    app.SetTopWindow(dlg)
+    dlg.ShowModal()
+    dlg.Destroy()
     app.MainLoop()
