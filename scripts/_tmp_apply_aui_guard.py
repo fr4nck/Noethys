@@ -26,8 +26,8 @@ for index, line in enumerate(lines):
     lines[index] = line[:match.start()] + replacement + line[match.end():]
     changed += 1
 
-if changed != 6:
-    raise SystemExit(f"{changed} LoadPerspective actifs modifiés, 6 attendus")
+if changed != 8:
+    raise SystemExit(f"{changed} LoadPerspective actifs modifiés, 8 attendus")
 
 updated = "".join(lines)
 active_direct = [
@@ -39,4 +39,4 @@ if active_direct:
     raise SystemExit(f"LoadPerspective directs actifs restants: {active_direct}")
 
 path.write_text(updated, encoding="utf-8", newline="")
-print("Noethys.py raccordé au garde AUI : 6 appels actifs")
+print("Noethys.py raccordé au garde AUI : 8 appels actifs")
