@@ -12,7 +12,7 @@
 import Chemins
 from Utils import UTILS_Adaptations
 from Utils.UTILS_Traduction import _
-import wx, os, datetime, importlib
+import wx, os, datetime
 import GestionDB
 from Utils import UTILS_Export_tables
 
@@ -352,6 +352,7 @@ class ListView(FastObjectListView):
 
         # Propose assistants de génération d'activités
         from Dlg import DLG_Nouvelle_activite
+        from Ctrl import CTRL_Assistants_liste
         dlg = DLG_Nouvelle_activite.Dialog(self)
         if dlg.ShowModal() == wx.ID_OK:
             code = dlg.GetCode()
@@ -365,8 +366,21 @@ class ListView(FastObjectListView):
             from Dlg import DLG_Activite
             dlg = DLG_Activite.Assistant(self, IDactivite=None)
         else :
-            # Création avec assistant de l'activité
-            module = importlib.import_module("Ctrl.CTRL_Assistant_%s" % code)
+            # Création avec assistant de l'activité. Les modules sont déjà
+            # importés statiquement par CTRL_Assistants_liste pour le packaging.
+            assistants = {
+                "annuelle": CTRL_Assistants_liste.CTRL_Assistant_annuelle,
+                "sejour": CTRL_Assistants_liste.CTRL_Assistant_sejour,
+                "stage": CTRL_Assistants_liste.CTRL_Assistant_stage,
+                "cantine": CTRL_Assistants_liste.CTRL_Assistant_cantine,
+                "sorties": CTRL_Assistants_liste.CTRL_Assistant_sorties,
+            }
+            module = assistants.get(code)
+            if module is None:
+                dlg = wx.MessageDialog(self, _(u"Assistant d'activité inconnu : %s") % code, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
             dlg = module.Dialog(self)
 
         if dlg.ShowModal() == wx.ID_OK:
