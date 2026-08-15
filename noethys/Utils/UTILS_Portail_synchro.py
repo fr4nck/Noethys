@@ -20,6 +20,8 @@ import ftplib
 import zipfile
 import shutil
 import json
+import hashlib
+import base64
 import six
 from six.moves.urllib.request import Request, urlopen
 import sys
@@ -345,7 +347,33 @@ class Synchro():
 
             try :
                 ssh = paramiko.SSHClient()
-                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+                # TOFU (Trust On First Use) : mémorise l'empreinte de la première
+                # clé hôte rencontrée puis refuse toute modification ultérieure.
+                class NoethysTOFUPolicy(paramiko.MissingHostKeyPolicy):
+                    def missing_host_key(policy_self, client, hostname, key):
+                        port = int(self.dict_parametres["ssh_port"])
+                        identifiant = "%s:%d" % (hostname, port)
+                        empreinte = "SHA256:" + base64.b64encode(hashlib.sha256(key.asbytes()).digest()).decode("ascii").rstrip("=")
+
+                        brut = UTILS_Parametres.Parametres(mode="get", categorie="portail", nom="ssh_known_hosts", valeur="{}")
+                        try:
+                            connus = json.loads(brut) if brut else {}
+                        except Exception:
+                            connus = {}
+
+                        precedent = connus.get(identifiant)
+                        actuel = {"type": key.get_name(), "fingerprint": empreinte}
+                        if precedent is None:
+                            connus[identifiant] = actuel
+                            UTILS_Parametres.Parametres(mode="set", categorie="portail", nom="ssh_known_hosts", valeur=json.dumps(connus, sort_keys=True))
+                            self.log.EcritLog(_(u"Première clé SSH mémorisée pour %s (%s).") % (identifiant, empreinte))
+                        elif precedent != actuel:
+                            raise paramiko.SSHException("Clé SSH du serveur modifiée pour %s" % identifiant)
+
+                        client.get_host_keys().add(hostname, key.get_name(), key)
+
+                ssh.set_missing_host_key_policy(NoethysTOFUPolicy())
                 ssh.connect(self.dict_parametres["ssh_serveur"], port=int(self.dict_parametres["ssh_port"]), username=self.dict_parametres["ssh_utilisateur"], password=self.dict_parametres["ssh_mdp"])
                 ftp = ssh.open_sftp()
                 ftp.chdir("/" + self.dict_parametres["ssh_repertoire"])
