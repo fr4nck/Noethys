@@ -79,9 +79,20 @@ jobs:
       - name: Inventorier l'usage réel des dépendances
         run: python scripts/audit_dependency_usage.py
 
-      - name: Vérifier l'absence de migration implicite du schéma
+      - name: Vérifier l'absence de migration implicite du schéma (PR)
         if: github.event_name == 'pull_request'
         run: python scripts/check_schema_compatibility.py "${{ github.event.pull_request.base.sha }}" HEAD
+
+      - name: Vérifier l'absence de migration implicite du schéma (push)
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          BASE="${{ github.event.before }}"
+          ZERO="0000000000000000000000000000000000000000"
+          if [ -z "$BASE" ] || [ "$BASE" = "$ZERO" ]; then
+            BASE="HEAD^"
+          fi
+          python scripts/check_schema_compatibility.py "$BASE" HEAD
 
   windows-smoke:
     name: Smoke test Windows
