@@ -1,0 +1,71 @@
+name: Apply ObjectListView safe expression
+
+on:
+  push:
+    paths:
+      - 'noethys/Utils/UTILS_Expressions.py'
+      - 'scripts/migrate_objectlistview_safe_expression.py'
+      - '.github/workflows/apply-objectlistview-safe-expression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Appliquer la migration
+        run: python scripts/migrate_objectlistview_safe_expression.py
+      - name: Tester l'évaluateur booléen
+        run: |
+          PYTHONPATH=noethys python - <<'PY'
+          from Utils import UTILS_Expressions
+          class Track:
+              nom = "Alice"
+              montant = 12
+              actif = True
+          track = Track()
+          tests = [
+              "track.nom != None and track.nom.lower() == 'alice'.lower()",
+              "track.montant >= 10 and track.montant <= 20",
+              "track.actif in (True, 'True', 1, '1')",
+              "str(track.montant) == '12'",
+          ]
+          for expression in tests:
+              assert UTILS_Expressions.EvaluerExpression(expression, variables={"track": track}, fonctions={"str": str}, methodes={"lower"}) is True, expression
+          attaques = [
+              "__import__('os').system('id')",
+              "track.__class__",
+              "track.nom.upper()",
+              "open('/etc/passwd').read()",
+          ]
+          for expression in attaques:
+              try:
+                  UTILS_Expressions.EvaluerExpression(expression, variables={"track": track}, fonctions={"str": str}, methodes={"lower"})
+              except (ValueError, TypeError, SyntaxError, AttributeError):
+                  pass
+              else:
+                  raise AssertionError("Expression dangereuse acceptée: %s" % expression)
+          PY
+      - name: Vérifier la compilation
+        run: python -m compileall -q -x 'C866CA3A' noethys/
+      - name: Vérifier la baisse des eval
+        run: python scripts/audit_dynamic_import_risks.py --max-import-risks 0
+      - name: Committer
+        run: |
+          if git diff --quiet; then
+            echo "Aucun changement"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Ctrl/CTRL_ObjectListView.py
+          git commit -m "security: sécuriser les filtres ObjectListView"
+          git push origin master
