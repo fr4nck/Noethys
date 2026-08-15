@@ -10,7 +10,7 @@ Ce dépôt `fr4nck/Noethys` travaille à la **remise à niveau technique de Noet
 
 **Base fonctionnelle : Noethys 1.3.4.2 (1er février 2026), issue du `master` du dépôt amont `Noethys/Noethys`.** Cette base est plus récente que la version 1.3.3.9 encore distribuée sur le site officiel. Le fork conserve donc les évolutions fonctionnelles et correctifs intégrés en amont jusqu'à la 1.3.4.2, auxquels s'ajoute le chantier de modernisation technique décrit ci-dessous.
 
-La modernisation concerne donc le **code source multi-plateforme** de Noethys : Windows, Linux et macOS. Windows 11 est actuellement la plateforme la plus avancée dans la qualification, car un packaging PyInstaller y est en cours de stabilisation et dispose déjà d'un premier build réussi.
+La modernisation concerne donc le **code source multi-plateforme** de Noethys : Windows, Linux et macOS. Windows est actuellement la plateforme la plus avancée dans la qualification du packaging, tandis que la CI valide également le socle technique sous Linux et macOS.
 
 Le chantier porte principalement sur :
 
@@ -31,16 +31,18 @@ L'objectif n'est pas de réécrire Noethys ni d'ajouter des évolutions métier 
 Le code modernisé doit rester compatible avec les trois familles de plateformes supportées par Noethys :
 
 - **Linux** : la CI compile et audite le code sous Ubuntu ;
-- **Windows** : la CI valide la compilation, les imports non-GUI et l'initialisation de `wx.App`, et un premier packaging portable Windows 11 a été construit avec succès ;
-- **macOS** : la CI valide désormais la compilation, les imports non-GUI et l'initialisation de `wx.App` sur macOS.
+- **Windows** : la CI valide la compilation, les imports non-GUI et l'initialisation de `wx.App`, et le packaging PyInstaller produit un dossier portable ;
+- **macOS** : la CI valide la compilation, les imports non-GUI et l'initialisation de `wx.App` sur macOS.
 
 Ces validations automatisées confirment la compatibilité technique de base des trois plateformes, mais elles ne remplacent pas une recette fonctionnelle complète avec une base réelle, les principaux écrans, impressions, exports et périphériques.
 
-La modernisation active est actuellement suivie dans la branche `agent/windows11-pyinstaller` et dans la PR #2. Son nom reflète le premier chantier de packaging, pas une limitation fonctionnelle du fork à Windows.
+La modernisation active est désormais intégrée **par lots ciblés directement dans `master`**. La PR #2 reste ouverte uniquement comme réservoir historique de changements à examiner ; elle ne doit pas être fusionnée en bloc.
 
 ## Windows
 
-Windows 11 est aujourd'hui la plateforme de packaging la plus avancée. La chaîne Python 3.10 + wxPython 4 + PyInstaller a déjà produit un dossier `onedir`, un `Noethys.exe` et une archive GitHub Actions.
+Windows est aujourd'hui la plateforme de packaging la plus avancée. La chaîne Python 3.10 + wxPython 4 + PyInstaller produit un dossier `onedir`, un `Noethys.exe` et une archive GitHub Actions `Noethys-Windows-portable`.
+
+Chaque archive contient également un `BUILD-INFO.txt` indiquant le commit exact, la version Python, l'identifiant du workflow et la date du build afin de rendre les essais reproductibles.
 
 La CI Windows valide également la compilation des sources, plusieurs imports non-GUI et la création/destruction d'un `wx.App`. Ces contrôles constituent une qualification technique reproductible, mais **ne constituent pas encore une version stable destinée à remplacer l'installation historique**.
 
@@ -85,7 +87,7 @@ Une CI verte ou un build réussi sur une plateforme ne suffisent pas à déclare
 
 ## Documentation
 
-- [`docs/PACKAGING-WINDOWS11.md`](docs/PACKAGING-WINDOWS11.md) — packaging, CI, recette et critères de qualification Windows 11 ;
+- [`docs/PACKAGING-WINDOWS11.md`](docs/PACKAGING-WINDOWS11.md) — packaging, CI, recette et critères de qualification Windows ;
 - `noethys/Doc/` — documentation historique embarquée dans Noethys.
 
 La documentation Linux et macOS sera complétée à mesure que leurs chaînes modernes de test et de distribution seront qualifiées.
