@@ -33,7 +33,7 @@ class Dialog(wx.Dialog):
         self.SetTitle(titre)
         self.ctrl_bandeau = CTRL_Bandeau.Bandeau(self, titre=titre, texte=intro, hauteurHtml=30, nomImage="Images/32x32/Generation.png")
         
-        self.listePages = ("Page1", "Page2", "Page3")
+        self.listePages = (Page1, Page2, Page3)
         
         self.static_line = wx.StaticLine(self, -1)
         
@@ -60,7 +60,7 @@ class Dialog(wx.Dialog):
     def Creation_Pages(self):
         """ Creation des pages """
         for numPage in range(1, self.nbrePages+1) :
-            setattr(self, "page%d" % numPage, eval(self.listePages[numPage-1] + "(self)"))
+            setattr(self, "page%d" % numPage, self.listePages[numPage-1](self))
             self.sizer_pages.Add(getattr(self, "page%d" % numPage), 1, wx.EXPAND, 0)
             self.sizer_pages.Layout()
             getattr(self, "page%d" % numPage).Show(False)
@@ -110,11 +110,11 @@ class Dialog(wx.Dialog):
 
     def Onbouton_retour(self, event):
         # rend invisible la page affichée
-        pageCible = eval("self.page"+str(self.pageVisible))
+        pageCible = getattr(self, "page%s" % self.pageVisible)
         pageCible.Show(False)
         # Fait apparaître nouvelle page
         self.pageVisible -= 1
-        pageCible = eval("self.page"+str(self.pageVisible))
+        pageCible = getattr(self, "page%s" % self.pageVisible)
         pageCible.Show(True)
         self.sizer_pages.Layout()
         # Si on quitte l'avant-dernière page, on active le bouton Suivant
@@ -139,11 +139,11 @@ class Dialog(wx.Dialog):
             self.Terminer()
             return
         # Rend invisible la page affichée
-        pageCible = eval("self.page"+str(self.pageVisible))
+        pageCible = getattr(self, "page%s" % self.pageVisible)
         pageCible.Show(False)
         # Fait apparaître nouvelle page
         self.pageVisible += 1
-        pageCible = eval("self.page"+str(self.pageVisible))
+        pageCible = getattr(self, "page%s" % self.pageVisible)
         pageCible.MAJ() 
         pageCible.Show(True)
         self.sizer_pages.Layout()
