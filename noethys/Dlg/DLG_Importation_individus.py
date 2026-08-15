@@ -941,10 +941,10 @@ class Dialog(wx.Dialog):
         self.ctrl_bandeau = CTRL_Bandeau.Bandeau(self, titre=titre, texte=intro, hauteurHtml=30, nomImage="Images/32x32/Document_import.png")
         
         self.listePages = (
-            "Page_intro", 
-            "Page_fichier",
-            "Page_colonnes",
-            "Page_analyse",
+            Page_intro,
+            Page_fichier,
+            Page_colonnes,
+            Page_analyse,
             )
         
         self.static_line = wx.StaticLine(self, -1)
@@ -974,7 +974,7 @@ class Dialog(wx.Dialog):
     def Creation_Pages(self):
         """ Creation des pages """
         for numPage in range(1, self.nbrePages+1) :
-            setattr(self, "page%s" % numPage, eval(self.listePages[numPage-1] + "(self)"))
+            setattr(self, "page%s" % numPage, self.listePages[numPage-1](self))
             self.sizer_pages.Add(getattr(self, "page%s" % numPage), 1, wx.EXPAND, 0)
             self.sizer_pages.Layout()
             getattr(self, "page%s" % numPage).Show(False)
@@ -1024,11 +1024,11 @@ class Dialog(wx.Dialog):
 
     def Onbouton_retour(self, event):
         # rend invisible la page affichée
-        pageCible = eval("self.page"+str(self.pageVisible))
+        pageCible = getattr(self, "page%s" % self.pageVisible)
         pageCible.Show(False)
         # Fait apparaître nouvelle page
         self.pageVisible -= 1
-        pageCible = eval("self.page"+str(self.pageVisible))
+        pageCible = getattr(self, "page%s" % self.pageVisible)
         pageCible.Show(True)
         self.sizer_pages.Layout()
         # Si on quitte l'avant-dernière page, on active le bouton Suivant
@@ -1055,11 +1055,11 @@ class Dialog(wx.Dialog):
             self.Terminer()
             return
         # Rend invisible la page affichée
-        pageCible = eval("self.page"+str(self.pageVisible))
+        pageCible = getattr(self, "page%s" % self.pageVisible)
         pageCible.Show(False)
         # Fait apparaître nouvelle page
         self.pageVisible += 1
-        pageCible = eval("self.page"+str(self.pageVisible))
+        pageCible = getattr(self, "page%s" % self.pageVisible)
         pageCible.Show(True)
         pageCible.MAJ()
         self.sizer_pages.Layout()
