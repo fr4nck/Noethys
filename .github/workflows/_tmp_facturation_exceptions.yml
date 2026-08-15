@@ -1,0 +1,52 @@
+name: Tighten facturation exceptions
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_facturation_exceptions.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Remplacer uniquement les quatre bare-except de facturation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Utils/UTILS_Facturation.py')
+          s=p.read_text(encoding='utf-8')
+          old='        except:\n            pass'
+          count=s.count(old)
+          print('motifs:', count)
+          if count != 4:
+              raise SystemExit(f'Attendu 4 motifs, trouvé {count}')
+          s=s.replace(old, '        except Exception:\n            pass')
+          p.write_text(s, encoding='utf-8')
+          PY
+          python -m py_compile noethys/Utils/UTILS_Facturation.py
+          python scripts/audit_runtime_patterns.py --json runtime.json
+          python - <<'PY'
+          import json
+          d=json.load(open('runtime.json',encoding='utf-8'))
+          x=[i for i in d['BARE_EXCEPT'] if i['file']=='Utils/UTILS_Facturation.py']
+          print('BARE_EXCEPT facturation:',len(x),x)
+          if x:
+              raise SystemExit(1)
+          PY
+          git diff --check
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Utils/UTILS_Facturation.py
+          git commit -m 'fix: resserrer les exceptions de facturation'
+          git push origin HEAD:master
