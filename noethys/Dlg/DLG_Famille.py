@@ -787,32 +787,44 @@ class Dialog(wx.Dialog):
         listeDonnees = DB.ResultatReq()
         try :
             IDcompte_payeur = listeDonnees[0][0]
-        except :
+        except (IndexError, TypeError):
             IDcompte_payeur = None
-        # Suppression des tables rattachées
-        if IDcompte_payeur != None :
-            DB.ReqDEL("payeurs", "IDcompte_payeur", IDcompte_payeur)
-            DB.ReqDEL("deductions", "IDcompte_payeur", IDcompte_payeur)
-            DB.ReqDEL("rappels", "IDcompte_payeur", IDcompte_payeur)
-            DB.ReqDEL("factures", "IDcompte_payeur", IDcompte_payeur)
-            DB.ReqDEL("prestations", "IDcompte_payeur", IDcompte_payeur)
-
-        DB.ReqDEL("quotients", "IDfamille", self.IDfamille)
-        DB.ReqDEL("attestations", "IDfamille", self.IDfamille)
-        DB.ReqDEL("messages", "IDfamille", self.IDfamille)
-        DB.ReqDEL("pieces", "IDfamille", self.IDfamille)
-        DB.ReqDEL("locations", "IDfamille", self.IDfamille)
-        DB.ReqDEL("locations_demandes", "IDfamille", self.IDfamille)
-        DB.ReqDEL("historique", "IDfamille", self.IDfamille)
-        DB.ReqDEL("comptes_payeurs", "IDfamille", self.IDfamille)
-        DB.ReqDEL("familles", "IDfamille", self.IDfamille)
-        DB.ReqDEL("mandats", "IDfamille", self.IDfamille)
-        DB.Commit() 
+        # Suppression atomique de toutes les données rattachées
+        suppressions = []
+        if IDcompte_payeur is not None:
+            suppressions.extend([
+                ("payeurs", "IDcompte_payeur", IDcompte_payeur),
+                ("deductions", "IDcompte_payeur", IDcompte_payeur),
+                ("rappels", "IDcompte_payeur", IDcompte_payeur),
+                ("factures", "IDcompte_payeur", IDcompte_payeur),
+                ("prestations", "IDcompte_payeur", IDcompte_payeur),
+            ])
+        suppressions.extend([
+            ("quotients", "IDfamille", self.IDfamille),
+            ("attestations", "IDfamille", self.IDfamille),
+            ("messages", "IDfamille", self.IDfamille),
+            ("pieces", "IDfamille", self.IDfamille),
+            ("locations", "IDfamille", self.IDfamille),
+            ("locations_demandes", "IDfamille", self.IDfamille),
+            ("historique", "IDfamille", self.IDfamille),
+            ("comptes_payeurs", "IDfamille", self.IDfamille),
+            ("familles", "IDfamille", self.IDfamille),
+            ("mandats", "IDfamille", self.IDfamille),
+        ])
+        for table, champ, valeur in suppressions:
+            if not DB.ReqDEL(table, champ, valeur, commit=False):
+                DB.Close()
+                dlg = wx.MessageDialog(self, _(u"La suppression de la famille a échoué. Aucune donnée n'a été supprimée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return False
+        DB.Commit()
         DB.Close()
+        return True
     
     def SupprimerFicheFamille(self):
-        self.SupprimerFamille()
-        self.Destroy()
+        if self.SupprimerFamille():
+            self.Destroy()
         
         dlg = wx.MessageDialog(self, _(u"La fiche famille a été supprimée."), _(u"Suppression"), wx.OK | wx.ICON_INFORMATION)
         dlg.ShowModal()

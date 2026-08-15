@@ -96,37 +96,58 @@ def Supprimer_activite(IDactivite=None, nouvelleActivite=False):
         listeID.append(IDtarif)
     conditionTarifs = FormateCondition(listeID)
 
-    # Suppression de l'activité
-    DB.ReqDEL("activites", "IDactivite", IDactivite)
-    DB.ReqDEL("groupes_activites", "IDactivite", IDactivite)
-    DB.ReqDEL("responsables_activite", "IDactivite", IDactivite)
-    DB.ReqDEL("agrements", "IDactivite", IDactivite)
-    DB.ReqDEL("groupes", "IDactivite", IDactivite)
-    DB.ReqDEL("pieces_activites", "IDactivite", IDactivite)
-    DB.ReqDEL("cotisations_activites", "IDactivite", IDactivite)
-    DB.ReqDEL("renseignements_activites", "IDactivite", IDactivite)
-    DB.ReqDEL("unites", "IDactivite", IDactivite)
-    DB.ReqDEL("unites_remplissage", "IDactivite", IDactivite)
-    DB.ReqDEL("remplissage", "IDactivite", IDactivite)
-    DB.ReqDEL("ouvertures", "IDactivite", IDactivite)
-    DB.ReqDEL("categories_tarifs", "IDactivite", IDactivite)
-    DB.ReqDEL("noms_tarifs", "IDactivite", IDactivite)
-    DB.ReqDEL("tarifs", "IDactivite", IDactivite)
-    DB.ReqDEL("tarifs_lignes", "IDactivite", IDactivite)
-    DB.ReqDEL("etiquettes", "IDactivite", IDactivite)
-    DB.ReqDEL("portail_periodes", "IDactivite", IDactivite)
-    DB.ReqDEL("portail_unites", "IDactivite", IDactivite)
-    
-    # Suppressions spéciales
-    DB.ExecuterReq("DELETE FROM combi_tarifs WHERE IDtarif IN %s" % conditionTarifs)
-    DB.ExecuterReq("DELETE FROM combi_tarifs_unites WHERE IDtarif IN %s" % conditionTarifs)
-    DB.ExecuterReq("DELETE FROM unites_groupes WHERE IDunite IN %s" % conditionUnites)
-    DB.ExecuterReq("DELETE FROM unites_incompat WHERE IDunite IN %s" % conditionUnites)
-    DB.ExecuterReq("DELETE FROM unites_remplissage_unites WHERE IDunite_remplissage IN %s" % conditionUnitesRemplissage)
-    DB.Commit()
-    
-    DB.Close() 
+    # Suppression atomique de l'activité et de toutes ses données rattachées
+    suppressions = [
+        ("activites", "IDactivite", IDactivite),
+        ("groupes_activites", "IDactivite", IDactivite),
+        ("responsables_activite", "IDactivite", IDactivite),
+        ("agrements", "IDactivite", IDactivite),
+        ("groupes", "IDactivite", IDactivite),
+        ("pieces_activites", "IDactivite", IDactivite),
+        ("cotisations_activites", "IDactivite", IDactivite),
+        ("renseignements_activites", "IDactivite", IDactivite),
+        ("unites", "IDactivite", IDactivite),
+        ("unites_remplissage", "IDactivite", IDactivite),
+        ("remplissage", "IDactivite", IDactivite),
+        ("ouvertures", "IDactivite", IDactivite),
+        ("categories_tarifs", "IDactivite", IDactivite),
+        ("noms_tarifs", "IDactivite", IDactivite),
+        ("tarifs", "IDactivite", IDactivite),
+        ("tarifs_lignes", "IDactivite", IDactivite),
+        ("etiquettes", "IDactivite", IDactivite),
+        ("portail_periodes", "IDactivite", IDactivite),
+        ("portail_unites", "IDactivite", IDactivite),
+    ]
+    for table, champ, valeur in suppressions:
+        if not DB.ReqDEL(table, champ, valeur, commit=False):
+            DB.Close()
+            dlg = wx.MessageDialog(None, _(u"La suppression de l'activité a échoué. Aucune donnée n'a été supprimée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
 
+    # Suppressions spéciales incluses dans la même transaction
+    requetes = [
+        "DELETE FROM combi_tarifs WHERE IDtarif IN %s" % conditionTarifs,
+        "DELETE FROM combi_tarifs_unites WHERE IDtarif IN %s" % conditionTarifs,
+        "DELETE FROM unites_groupes WHERE IDunite IN %s" % conditionUnites,
+        "DELETE FROM unites_incompat WHERE IDunite IN %s" % conditionUnites,
+        "DELETE FROM unites_remplissage_unites WHERE IDunite_remplissage IN %s" % conditionUnitesRemplissage,
+    ]
+    for req in requetes:
+        if not DB.ExecuterReq(req):
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            dlg = wx.MessageDialog(None, _(u"La suppression de l'activité a échoué. Aucune donnée n'a été supprimée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
+    DB.Commit()
+    DB.Close()
     return True
     
 
