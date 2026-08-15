@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import re
 from pathlib import Path
 
 path = Path("noethys/Noethys.py")
@@ -11,29 +12,31 @@ if import_line not in source:
         raise SystemExit("ancre import UTILS_Json inattendue")
     source = source.replace(import_anchor, import_anchor + import_line, 1)
 
-old = "self._mgr.LoadPerspective("
-expected = 4
-count = source.count(old)
-if count != expected:
-    raise SystemExit(f"{count} LoadPerspective directs détectés, {expected} attendus")
-source = source.replace(old, "UTILS_Aui.ChargerPerspective(self._mgr, ")
+pattern = re.compile(r"self\._mgr\.LoadPerspective\((.+)\)")
+lines = source.splitlines(keepends=True)
+changed = 0
+for index, line in enumerate(lines):
+    if line.lstrip().startswith("#") or "self._mgr.LoadPerspective(" not in line:
+        continue
+    match = pattern.search(line)
+    if match is None:
+        raise SystemExit(f"LoadPerspective actif non reconnu ligne {index + 1}")
+    expression = match.group(1)
+    replacement = f"UTILS_Aui.ChargerPerspective(self._mgr, {expression}, self.perspective_defaut)"
+    lines[index] = line[:match.start()] + replacement + line[match.end():]
+    changed += 1
 
-# Chaque appel doit désormais recevoir la perspective par défaut comme fallback.
-replacements = {
-    'UTILS_Aui.ChargerPerspective(self._mgr, self.perspective_defaut)':
-        'UTILS_Aui.ChargerPerspective(self._mgr, self.perspective_defaut, self.perspective_defaut)',
-    'UTILS_Aui.ChargerPerspective(self._mgr, self.perspectives[self.perspective_active]["perspective"])':
-        'UTILS_Aui.ChargerPerspective(self._mgr, self.perspectives[self.perspective_active]["perspective"], self.perspective_defaut)',
-    'UTILS_Aui.ChargerPerspective(self._mgr, self.perspectives[index]["perspective"])':
-        'UTILS_Aui.ChargerPerspective(self._mgr, self.perspectives[index]["perspective"], self.perspective_defaut)',
-}
-for before, after in replacements.items():
-    if before not in source:
-        raise SystemExit(f"motif absent: {before}")
-    source = source.replace(before, after)
+if changed != 6:
+    raise SystemExit(f"{changed} LoadPerspective actifs modifiés, 6 attendus")
 
-if "self._mgr.LoadPerspective(" in source:
-    raise SystemExit("un LoadPerspective direct subsiste")
+updated = "".join(lines)
+active_direct = [
+    (i, line.strip())
+    for i, line in enumerate(updated.splitlines(), 1)
+    if not line.lstrip().startswith("#") and "self._mgr.LoadPerspective(" in line
+]
+if active_direct:
+    raise SystemExit(f"LoadPerspective directs actifs restants: {active_direct}")
 
-path.write_text(source, encoding="utf-8", newline="")
-print("Noethys.py raccordé au garde AUI")
+path.write_text(updated, encoding="utf-8", newline="")
+print("Noethys.py raccordé au garde AUI : 6 appels actifs")
