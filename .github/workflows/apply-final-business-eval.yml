@@ -37,7 +37,7 @@ jobs:
           assert UTILS_Expressions.EvaluerExpression('self.a + self.b * 2', variables={'self': obj}) == 13
           assert UTILS_Expressions.EvaluerExpression('SI(self.a < self.b, self.b - self.a, 0)', variables={'self': obj}, fonctions={'SI': SI}) == 2
           duree = datetime.timedelta(hours=2)
-          assert UTILS_Expressions.EvaluerExpression('SI(duree > 0, duree * 2, duree)', variables={'duree': duree}, fonctions={'SI': SI}) == datetime.timedelta(hours=4)
+          assert UTILS_Expressions.EvaluerExpression('SI(True, duree * 2, duree)', variables={'duree': duree, 'True': True}, fonctions={'SI': SI}) == datetime.timedelta(hours=4)
           for expression in ["self.__class__", "__import__('os')", "open('/etc/passwd')", "self.a.__class__"]:
               try:
                   UTILS_Expressions.EvaluerExpression(expression, variables={'self': obj}, fonctions={'SI': SI})
