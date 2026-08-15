@@ -5,7 +5,7 @@ path = Path("noethys/Dlg/DLG_Saisie_modele_commandes.py")
 text = path.read_text(encoding="utf-8")
 
 if "import ast\n" not in text:
-    marker = "import copy\n"
+    marker = "import six\n"
     if marker not in text:
         raise SystemExit("point d'insertion ast absent")
     text = text.replace(marker, marker + "import ast\n", 1)
