@@ -9,7 +9,6 @@
 #------------------------------------------------------------------------
 
 import wx
-import sys
 from importlib import import_module
 
 
@@ -28,29 +27,27 @@ def _module_absent(exc, nom_module):
 
 
 def Import(nom_module=""):
-    # Essaye d'importer le nom qualifié demandé.
-    try:
-        return import_module(nom_module)
-    except ImportError as exc:
-        if not _module_absent(exc, nom_module):
-            raise
+    """Importe un module en conservant le fallback historique par nom court.
 
-    # Recherche si le module est déjà chargé.
-    if nom_module in sys.modules:
-        return sys.modules[nom_module]
-
-    # Fallback historique : essaye le nom court uniquement lorsque le module
-    # qualifié lui-même est absent. Une erreur interne au module court remonte.
-    try:
-        module_path, class_name = nom_module.rsplit('.', 1)
-    except ValueError:
+    Le nom qualifié est toujours essayé en premier. Le nom court n'est tenté
+    que si le module qualifié lui-même est absent ; les ImportError provenant
+    d'une dépendance interne continuent à remonter immédiatement.
+    """
+    if not nom_module:
         return None
 
-    try:
-        return import_module(class_name)
-    except ImportError as exc:
-        if not _module_absent(exc, class_name):
-            raise
+    candidats = [nom_module]
+    if "." in nom_module:
+        nom_court = nom_module.rsplit(".", 1)[1]
+        if nom_court != nom_module:
+            candidats.append(nom_court)
+
+    for candidat in candidats:
+        try:
+            return import_module(candidat)
+        except ImportError as exc:
+            if not _module_absent(exc, candidat):
+                raise
 
     return None
 
