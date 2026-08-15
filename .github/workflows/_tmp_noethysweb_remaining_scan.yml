@@ -1,0 +1,42 @@
+name: Scan remaining NoethysWeb risks
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_noethysweb_remaining_scan.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Relever les alertes NoethysWeb restantes
+        run: |
+          python scripts/audit_runtime_patterns.py --json runtime.json
+          python - <<'PY'
+          import json
+          d=json.load(open('runtime.json',encoding='utf-8'))
+          target='Utils/UTILS_Export_noethysweb.py'
+          for key in ('RESULT_UNGUARDED','RESULT_ASSIGN','BARE_EXCEPT'):
+              print('\n###',key)
+              for x in d[key]:
+                  if x['file']==target:
+                      print(x)
+          PY
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Utils/UTILS_Export_noethysweb.py')
+          lines=p.read_text(encoding='utf-8').splitlines()
+          needles=('ResultatReq()[0]', 'except Exception:', 'shutil.copyfile(', 'shutil.make_archive(', 'os.remove(', 'shutil.rmtree(')
+          for i,l in enumerate(lines,1):
+              if any(n in l for n in needles):
+                  a=max(1,i-2); b=min(len(lines),i+3)
+                  print(f'\n--- {a}-{b} ---')
+                  for j in range(a,b+1): print(f'{j:5}: {lines[j-1]}')
+          PY
