@@ -1,0 +1,27 @@
+name: Locate invalid escapes
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_locate_invalid_escape.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  locate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Lister les échappements invalides
+        run: |
+          python scripts/audit_runtime_patterns.py --json invalid.json
+          python - <<'PY'
+          import json
+          data=json.load(open('invalid.json',encoding='utf-8'))
+          for item in data.get('INVALID_ESCAPE',[]):
+              print(f"{item['file']}:{item['line']}: {item['snippet']}")
+          PY
