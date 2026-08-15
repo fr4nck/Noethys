@@ -43,7 +43,7 @@ class DataType(object):
                 try:
                     data = int(data)
                 except ValueError as e:
-                    print("/!\ Erreur de format, impossible de convertir en int /!\\")
+                    print(r"/!\ Erreur de format, impossible de convertir en int /!\\")
                     print(e)
                     data = 0
                 ret_val = u"{0: {align}0{length}d}".format(data,align=self.align,length=self.length)
@@ -62,7 +62,7 @@ class DataType(object):
                 try:
                     data=float(data)
                 except ValueError as e:
-                    print("/!\ Erreur de format, impossible de convertir en float /!\\")
+                    print(r"/!\ Erreur de format, impossible de convertir en float /!\\")
                     print(e)
                     data = 0
                 ret_val = u"{0: {align}0{length}.{precision}f}".format(data,align=self.align,length=self.length,precision=self.precision)

@@ -239,7 +239,7 @@ class Dialog(wx.Dialog):
         # Vérification des caractères spéciaux du nom
         erreur = False
         for caract in textNom :
-            if caract in u"ïîôûëê~&é(-è_çà)=~#{[|`\^@]}" :
+            if caract in u"ïîôûëê~&é(-è_çà)=~#{[|`\\^@]}" :
                 erreur = True
         if erreur == True :
             dlg = wx.MessageDialog(self, _(u"Le nom d'utilisateur ne devrait pas inclure de caractères spéciaux (accents, symboles...)"), "Information", wx.OK | wx.ICON_ERROR)

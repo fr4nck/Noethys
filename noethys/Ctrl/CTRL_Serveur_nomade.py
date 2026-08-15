@@ -105,7 +105,7 @@ class Echo(Protocol):
     def IsIPinListe(self, listeStr="", ip=""):
         liste_ip = listeStr.split(";")
         for ipTemp in liste_ip :
-            ipTemp = ipTemp.replace(".", "\.")
+            ipTemp = ipTemp.replace(".", r"\.")
             ipTemp = ipTemp.replace("*", ".*")
             if re.match(ipTemp, ip) != None :
                 return True

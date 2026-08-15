@@ -157,13 +157,13 @@ def UploadCalendrier():
         texteFichier += txtPeriode
         
     # Création du fichier texte
-    with open("temp\calendrier.txt", "w", encoding="utf-8") as f:
+    with open(r"temp\calendrier.txt", "w", encoding="utf-8") as f:
         f.write(texteFichier)
     
     # Mise en ligne du fichier texte
     ftp = ftplib.FTP("ICI_FTP", "ICI_LOGIN", "ICI_MOT_DE_PASSE")
     ftp.cwd("www/ICI_REPERTOIRE_WEB")
-    fichier = open("temp\calendrier.txt", "rb")
+    fichier = open(r"temp\calendrier.txt", "rb")
     ftp.storbinary("STOR calendrier.txt", fichier)
     fichier.close()
     ftp.quit()
@@ -340,13 +340,13 @@ def UploadFichierIdentites():
         texteFichier += txtIdentite
         
     # Création du fichier texte
-    with open("temp\identites.txt", "w", encoding="utf-8") as f:
+    with open(r"temp\identites.txt", "w", encoding="utf-8") as f:
         f.write(texteFichier)
     
     # Mise en ligne du fichier texte
     ftp = ftplib.FTP("ICI_FTP", "ICI_LOGIN", "ICI_MOT_DE_PASSE")
     ftp.cwd("www/ICI_REPERTOIRE_WEB")
-    fichier = open("temp\identites.txt", "rb")
+    fichier = open(r"temp\identites.txt", "rb")
     ftp.storbinary("STOR identites.txt", fichier)
     fichier.close()
     ftp.quit()

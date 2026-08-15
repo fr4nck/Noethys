@@ -54,7 +54,7 @@ def GenerationFichierTextes() :
     chemin_noethys = Chemins.GetMainPath()
     dictTextes = {}
     # Recherche des textes
-    exp = re.compile(r"_\(u\".*?\"\)")
+    exp = re.compile(r'_\(u".*?"\)')
 
     listeFichiers = {}
     for rep in ("Dlg", "Ctrl", "Ol", "Utils"):
