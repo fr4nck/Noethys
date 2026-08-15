@@ -193,8 +193,13 @@ def Sauvegarde(listeFichiersLocaux=[], listeFichiersReseau=[], nom="", repertoir
         dlgprogress.Update(numEtape, _(u"Création du fichier dans le répertoire cible..."));numEtape += 1
         try :
             shutil.copy2(UTILS_Fichiers.GetRepTemp(fichier=nomFichierTemp), fichierDest)
-        except :
-            print("Le repertoire de destination de sauvegarde n'existe pas.")
+        except Exception as err:
+            dlgprogress.Destroy()
+            print(("Echec copie sauvegarde vers %s :" % fichierDest, err))
+            dlgErreur = wx.MessageDialog(None, _(u"La sauvegarde a bien été créée temporairement mais n'a pas pu être copiée vers le répertoire de destination.\n\nDestination : %s\n\nErreur : %s") % (fichierDest, err), _(u"Erreur de sauvegarde"), wx.OK | wx.ICON_ERROR)
+            dlgErreur.ShowModal()
+            dlgErreur.Destroy()
+            return False
 
     # Préparation du message
     message = UTILS_Envoi_email.Message(destinataires=listeEmails, sujet=_(u"Sauvegarde Noethys : %s") % nom,
