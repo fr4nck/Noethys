@@ -595,10 +595,13 @@ class Dialog(wx.Dialog):
         couleur = self.ctrl_couleur.GetID()
         dictParametres = self.ctrl_parametres.GetParametres()
 
-        # Sauvegarde
+        # Sauvegarde atomique du bloc et de ses éléments.
         DB = GestionDB.DB()
+        IDbloc_initial = self.IDbloc
+        IDbloc_sauvegarde = self.IDbloc
+        nouveaux_elements = []
+        succes = True
 
-        # Sauvegarde du modèle
         listeDonnees = [
             ("IDpage", IDpage),
             ("titre", titre),
@@ -609,26 +612,32 @@ class Dialog(wx.Dialog):
         # Recherche l'ordre du bloc
         if self.IDpage_initial == None or self.IDpage_initial != IDpage :
             req = """SELECT MAX(ordre) FROM portail_blocs WHERE IDpage=%d;""" % IDpage
-            DB.ExecuterReq(req)
-            listeTemp = DB.ResultatReq()
-            if len(listeTemp) == 0 or listeTemp[0][0] == None :
-                ordre = 1
-            else :
-                ordre = listeTemp[0][0] + 1
-            listeDonnees.append(("ordre", ordre))
+            if not DB.ExecuterReq(req):
+                succes = False
+            else:
+                listeTemp = DB.ResultatReq()
+                if len(listeTemp) == 0 or listeTemp[0][0] == None :
+                    ordre = 1
+                else :
+                    ordre = listeTemp[0][0] + 1
+                listeDonnees.append(("ordre", ordre))
 
-        if self.IDbloc == None :
-            self.IDbloc = DB.ReqInsert("portail_blocs", listeDonnees)
-        else:
-            DB.ReqMAJ("portail_blocs", listeDonnees, "IDbloc", self.IDbloc)
+        if succes:
+            if self.IDbloc == None :
+                IDbloc_sauvegarde = DB.ReqInsert("portail_blocs", listeDonnees, commit=False)
+                succes = IDbloc_sauvegarde is not None
+            else:
+                succes = DB.ReqMAJ("portail_blocs", listeDonnees, "IDbloc", self.IDbloc, commit=False)
 
         # Sauvegarde des éléments
         index = 1
         listeIDelement = []
         for dictElement in dictParametres["elements"] :
+            if not succes:
+                break
             IDelement = dictElement["IDelement"]
             listeDonnees = [
-                ("IDbloc", self.IDbloc),
+                ("IDbloc", IDbloc_sauvegarde),
                 ("ordre", index),
                 ("titre", self.GetParametre(dictElement, "titre")),
                 ("categorie", dictParametres["categorie"]),
@@ -639,22 +648,46 @@ class Dialog(wx.Dialog):
                 ("texte_html", self.GetParametre(dictElement, "texte_html")),
                 ]
             if IDelement == None or IDelement < 0 :
-                newIDelement = DB.ReqInsert("portail_elements", listeDonnees)
-                dictElement["IDelement"] = newIDelement
+                newIDelement = DB.ReqInsert("portail_elements", listeDonnees, commit=False)
+                if newIDelement is None:
+                    succes = False
+                else:
+                    nouveaux_elements.append((dictElement, newIDelement))
+                    listeIDelement.append(newIDelement)
             else:
-                DB.ReqMAJ("portail_elements", listeDonnees, "IDelement", IDelement)
-                listeIDelement.append(IDelement)
+                succes = DB.ReqMAJ("portail_elements", listeDonnees, "IDelement", IDelement, commit=False)
+                if succes:
+                    listeIDelement.append(IDelement)
             index += 1
 
-        # Suppression des colonnes obsolètes
-        for IDelement in self.listeIDelementsImportes :
-            if IDelement not in listeIDelement :
-                DB.ReqDEL("portail_elements", "IDelement", IDelement)
+        # Suppression des éléments obsolètes
+        if succes:
+            for IDelement in self.listeIDelementsImportes :
+                if IDelement not in listeIDelement :
+                    if not DB.ReqDEL("portail_elements", "IDelement", IDelement, commit=False):
+                        succes = False
+                        break
 
-        # Clôture de la base
+        if succes:
+            DB.Commit()
+            self.IDbloc = IDbloc_sauvegarde
+            for dictElement, newIDelement in nouveaux_elements:
+                dictElement["IDelement"] = newIDelement
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            self.IDbloc = IDbloc_initial
         DB.Close()
 
-        # Fermeture de la fenêtre
+        if not succes:
+            dlg = wx.MessageDialog(self, _(u"La sauvegarde du bloc a échoué. Aucune modification n'a été conservée."), _(u"Erreur de sauvegarde"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
+        # Fermeture de la fenêtre uniquement après validation complète.
         self.EndModal(wx.ID_OK)
 
     def GetID(self):
