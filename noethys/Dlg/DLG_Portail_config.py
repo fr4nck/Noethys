@@ -204,39 +204,39 @@ class CTRL_Parametres(CTRL_Propertygrid.CTRL) :
 
     def Switch(self):
         liste_conditions = [
-            ("hebergement_local_repertoire", "p('hebergement_type') == 0"),
-            ("ftp_serveur", "p('hebergement_type') == 1"),
-            ("ftp_utilisateur", "p('hebergement_type') == 1"),
-            ("ftp_mdp", "p('hebergement_type') == 1"),
-            ("ftp_repertoire", "p('hebergement_type') == 1"),
-            ("ssh_serveur", "p('hebergement_type') == 2"),
-            ("ssh_port", "p('hebergement_type') == 2"),
-            ("ssh_utilisateur", "p('hebergement_type') == 2"),
-            ("ssh_mdp", "p('hebergement_type') == 2"),
-            ("ssh_key_file", "p('hebergement_type') == 2"),
-            ("ssh_repertoire", "p('hebergement_type') == 2"),
+            ("hebergement_local_repertoire", lambda: p('hebergement_type') == 0),
+            ("ftp_serveur", lambda: p('hebergement_type') == 1),
+            ("ftp_utilisateur", lambda: p('hebergement_type') == 1),
+            ("ftp_mdp", lambda: p('hebergement_type') == 1),
+            ("ftp_repertoire", lambda: p('hebergement_type') == 1),
+            ("ssh_serveur", lambda: p('hebergement_type') == 2),
+            ("ssh_port", lambda: p('hebergement_type') == 2),
+            ("ssh_utilisateur", lambda: p('hebergement_type') == 2),
+            ("ssh_mdp", lambda: p('hebergement_type') == 2),
+            ("ssh_key_file", lambda: p('hebergement_type') == 2),
+            ("ssh_repertoire", lambda: p('hebergement_type') == 2),
 
-            ("db_serveur", "p('db_type') == 1"),
-            ("db_utilisateur", "p('db_type') == 1"),
-            ("db_mdp", "p('db_type') == 1"),
-            ("db_nom", "p('db_type') == 1"),
+            ("db_serveur", lambda: p('db_type') == 1),
+            ("db_utilisateur", lambda: p('db_type') == 1),
+            ("db_mdp", lambda: p('db_type') == 1),
+            ("db_nom", lambda: p('db_type') == 1),
 
-            ("serveur_options", "p('serveur_type') == 0"),
-            ("serveur_cgi_file", "p('serveur_type') == 1"),
+            ("serveur_options", lambda: p('serveur_type') == 0),
+            ("serveur_cgi_file", lambda: p('serveur_type') == 1),
 
-            ("paiement_ligne_systeme", "p('paiement_ligne_actif') == True"),
-            ("paiement_ligne_mode_reglement", "p('paiement_ligne_actif') == True"),
-            ("paiement_ligne_multi_factures", "p('paiement_ligne_actif') == True"),
-            ("paiement_ligne_montant_minimal", "p('paiement_ligne_actif') == True"),
-            ("paiement_off_si_prelevement", "p('paiement_ligne_actif') == True"),
+            ("paiement_ligne_systeme", lambda: p('paiement_ligne_actif') is True),
+            ("paiement_ligne_mode_reglement", lambda: p('paiement_ligne_actif') is True),
+            ("paiement_ligne_multi_factures", lambda: p('paiement_ligne_actif') is True),
+            ("paiement_ligne_montant_minimal", lambda: p('paiement_ligne_actif') is True),
+            ("paiement_off_si_prelevement", lambda: p('paiement_ligne_actif') is True),
 
-            ("payzen_site_id", "p('paiement_ligne_systeme') == 3"),
-            ("payzen_mode", "p('paiement_ligne_systeme') == 3"),
-            ("payzen_certificat_test", "p('paiement_ligne_systeme') == 3"),
-            ("payzen_certificat_production", "p('paiement_ligne_systeme') == 3"),
-            ("payzen_echelonnement", "p('paiement_ligne_systeme') == 3"),
+            ("payzen_site_id", lambda: p('paiement_ligne_systeme') == 3),
+            ("payzen_mode", lambda: p('paiement_ligne_systeme') == 3),
+            ("payzen_certificat_test", lambda: p('paiement_ligne_systeme') == 3),
+            ("payzen_certificat_production", lambda: p('paiement_ligne_systeme') == 3),
+            ("payzen_echelonnement", lambda: p('paiement_ligne_systeme') == 3),
 
-            ("paiement_ligne_tipi_saisie", "p('paiement_ligne_systeme') == 1"),
+            ("paiement_ligne_tipi_saisie", lambda: p('paiement_ligne_systeme') == 1),
         ]
 
         # Vérifie les conditions d'affichage des propriétés d'affichage
@@ -247,7 +247,7 @@ class CTRL_Parametres(CTRL_Propertygrid.CTRL) :
 
         for nom, condition in liste_conditions:
             propriete = self.GetProperty(nom)
-            if eval(condition) == True :
+            if condition():
                 propriete.Hide(False)
                 propriete.SetAttribute("obligatoire", self.GetPropertyAttribute(propriete, "obligatoire"))
             else:
