@@ -532,7 +532,9 @@ class ListView(GroupListView):
             
             valide = True
 
-            if self.gestion.Verification("prestations", track.date) == False: return False
+            if self.gestion.Verification("prestations", track.date) == False:
+                DB.Close()
+                return False
             
             # Vérifie si ce n'est pas un forfait non supprimable
             if track.forfait == 2 :
@@ -635,7 +637,9 @@ class ListView(GroupListView):
                     else :
                         # Suppression des consommations associées
                         for IDconso in listeIDconso :
-                            DB.ReqDEL("consommations", "IDconso", IDconso)
+                            if not DB.ReqDEL("consommations", "IDconso", IDconso, commit=False):
+                                valide = False
+                                break
                             
                     if reponse == 1 :
                         nePlusDemanderConfirmation = True
@@ -644,9 +648,16 @@ class ListView(GroupListView):
                     # Supprime la référence à la prestation des consommations
                     for IDconso in listeIDconso :
                         listeDonnees = [("IDprestation", None),]
-                        DB.ReqMAJ("consommations", listeDonnees, "IDconso", IDconso)
+                        if not DB.ReqMAJ("consommations", listeDonnees, "IDconso", IDconso, commit=False):
+                            valide = False
+                            break
 
                 if reponse == 3 :
+                    try:
+                        DB.connexion.rollback()
+                    except Exception:
+                        pass
+                    DB.Close()
                     return
 
             
@@ -660,10 +671,28 @@ class ListView(GroupListView):
             
             # Suppression de la prestation
             if valide == True :
-                DB.ReqDEL("prestations", "IDprestation", track.IDprestation)
-                DB.ReqDEL("ventilation", "IDprestation", track.IDprestation)
-                DB.ReqDEL("deductions", "IDprestation", track.IDprestation)
-                listeSuppressions.append(track)
+                operations = (
+                    DB.ReqDEL("prestations", "IDprestation", track.IDprestation, commit=False),
+                    DB.ReqDEL("ventilation", "IDprestation", track.IDprestation, commit=False),
+                    DB.ReqDEL("deductions", "IDprestation", track.IDprestation, commit=False),
+                )
+                if all(operations):
+                    DB.Commit()
+                    listeSuppressions.append(track)
+                else:
+                    try:
+                        DB.connexion.rollback()
+                    except Exception:
+                        pass
+                    dlg = wx.MessageDialog(self, _(u"La suppression de la prestation n°%d a échoué. Aucune modification n'a été conservée pour cette prestation.") % track.IDprestation, _(u"Erreur de suppression"), wx.OK | wx.ICON_ERROR)
+                    dlg.ShowModal()
+                    dlg.Destroy()
+            else:
+                # Annule les éventuelles modifications préparées sur les consommations.
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
             
             # MAJ du listeView
             self.MAJ() 
