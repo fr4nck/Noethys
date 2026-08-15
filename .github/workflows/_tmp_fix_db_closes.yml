@@ -1,0 +1,67 @@
+name: Fix remaining DB closes
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_fix_db_closes.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Ajouter les cinq fermetures DB manquantes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+            'noethys/Ctrl/CTRL_Synthese_deductions.py': [
+              ('        self.listeVacances = DB.ResultatReq()\n', '        self.listeVacances = DB.ResultatReq()\n        DB.Close()\n'),
+            ],
+            'noethys/Dlg/DLG_Export_compta.py': [
+              ('        listeDonnees = DB.ResultatReq()\n        dictDepots = {}\n', '        listeDonnees = DB.ResultatReq()\n        DB.Close()\n        dictDepots = {}\n'),
+            ],
+            'noethys/Dlg/DLG_Impression_inscription.py': [
+              ('        listeDonnees = DB.ResultatReq()  \n        if len(listeDonnees) == 0 : return None\n', '        listeDonnees = DB.ResultatReq()  \n        DB.Close()\n        if len(listeDonnees) == 0 : return None\n'),
+            ],
+            'noethys/Dlg/DLG_Saisie_modele_planning.py': [
+              ('            listeDonnees = DB.ResultatReq()\n            if len(listeDonnees) > 0 :\n', '            listeDonnees = DB.ResultatReq()\n            DB.Close()\n            if len(listeDonnees) > 0 :\n'),
+              ('        listeDonnees = DB.ResultatReq()\n        if len(listeDonnees) == 0 : return\n', '        listeDonnees = DB.ResultatReq()\n        DB.Close()\n        if len(listeDonnees) == 0 : return\n'),
+            ],
+          }
+
+          for filename, changes in replacements.items():
+              path = Path(filename)
+              source = path.read_text(encoding='utf-8')
+              for before, after in changes:
+                  if source.count(before) != 1:
+                      raise SystemExit(f'{filename}: motif inattendu pour {before!r}')
+                  source = source.replace(before, after, 1)
+              path.write_text(source, encoding='utf-8', newline='')
+          PY
+          python -m compileall -q noethys/Ctrl/CTRL_Synthese_deductions.py noethys/Dlg/DLG_Export_compta.py noethys/Dlg/DLG_Impression_inscription.py noethys/Dlg/DLG_Saisie_modele_planning.py
+          python scripts/audit_runtime_patterns.py --json db.json
+          python - <<'PY'
+          import json
+          data=json.load(open('db.json',encoding='utf-8'))
+          assert len(data.get('DB_UNCLOSED',[])) == 0, data.get('DB_UNCLOSED')
+          print('DB_UNCLOSED: 0')
+          PY
+          git diff --check
+          git diff --stat
+      - name: Committer
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Ctrl/CTRL_Synthese_deductions.py noethys/Dlg/DLG_Export_compta.py noethys/Dlg/DLG_Impression_inscription.py noethys/Dlg/DLG_Saisie_modele_planning.py
+          git commit -m "fix: fermer les dernières connexions DB temporaires"
+          git push
