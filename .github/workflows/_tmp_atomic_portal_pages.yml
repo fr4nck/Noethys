@@ -43,8 +43,13 @@ jobs:
           PY
           python -m py_compile noethys/Ctrl/CTRL_Portail_pages.py
           git diff --check
-          grep -q 'Aucune modification n'"'"'a été conservée' noethys/Ctrl/CTRL_Portail_pages.py
-          grep -q 'L'ordre précédent a été conservé' noethys/Ctrl/CTRL_Portail_pages.py
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('noethys/Ctrl/CTRL_Portail_pages.py').read_text(encoding='utf-8')
+          assert "Aucune modification n'a été conservée" in s
+          assert "L'ordre précédent a été conservé" in s
+          assert s.count('commit=False') >= 7
+          PY
       - name: Committer
         run: |
           git config user.name 'github-actions[bot]'
