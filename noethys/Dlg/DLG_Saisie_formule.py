@@ -12,6 +12,7 @@
 import Chemins
 from Utils import UTILS_Adaptations
 from Utils.UTILS_Traduction import _
+from Utils import UTILS_Expressions
 import wx
 from Ctrl import CTRL_Bouton_image
 import re
@@ -219,7 +220,7 @@ def ResolveurCalcul(texte=u"", dictValeurs={}):
             
     # Réalisation du calcul
     try :
-        resultat = eval(texte)
+        resultat = UTILS_Expressions.EvaluerArithmetique(texte)
         if resultatEuros == True :
             resultat = u"%.02f %s" % (resultat, SYMBOLE)
         else :

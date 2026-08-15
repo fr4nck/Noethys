@@ -19,6 +19,7 @@ from Dlg import DLG_Saisie_categorie_budget
 import datetime
 
 from Utils import UTILS_Config
+from Utils import UTILS_Expressions
 SYMBOLE = UTILS_Config.GetParametre("monnaie_symbole", u"€")
 
 
@@ -195,7 +196,7 @@ class Analyse():
             valeur = valeur.replace(nomChamp, str(valChamp))
         # Calcul et formatage de la valeur
         try :
-            resultat = float(eval(valeur))
+            resultat = float(UTILS_Expressions.EvaluerArithmetique(valeur))
         except Exception as err :
             resultat = 0.0
             print("Erreur dans categorie budgetaire : ", err)
