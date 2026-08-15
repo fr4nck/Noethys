@@ -23,7 +23,7 @@ def Rgb2hex(texte=""):
     try:
         r, g, b = [int(x) for x in texte[1:-1].split(",")]
         return "#{:02x}{:02x}{:02x}".format(r, g, b)
-    except:
+    except Exception:
         return None
 
 
@@ -1247,7 +1247,7 @@ class Table_documents_modeles(Table):
                             "strokeDashArray": self.ConvertTrait(dict_objet["styleTrait"]),
                             "src": "data:image/png;base64,%s" % image64
                         })
-                    except:
+                    except Exception:
                         pass
 
                 # Photo individuelle
@@ -1325,7 +1325,7 @@ class Table_documents_modeles(Table):
             else:
                 alpha = 1
             return 'rgba(%d,%d,%d,%d)' % (int(couleur[0]), int(couleur[1]), int(couleur[2]), alpha)
-        except:
+        except Exception:
             return couleur
 
     def ConvertTrait(self, style="Solid"):
@@ -1418,7 +1418,7 @@ class Table_reponses(Table):
             for IDchoix in valeur.split(";"):
                 try:
                     IDchoix = int(IDchoix)
-                except:
+                except Exception:
                     pass
                 if IDchoix in self.dict_choix:
                     liste_reponse.append(self.dict_choix[IDchoix])
@@ -1633,7 +1633,7 @@ class Table_modeles_emails(Table):
             try:
                 ctrl_editeur.SetXML(texte_xml)
                 html = ctrl_editeur.GetHTML()[0]
-            except:
+            except Exception:
                 html = ""
             for balise in ("<html>", "</html>", "<head>", "</head>", "<body>", "</body>", "\r\n", "</font>"):
                 html = html.replace(balise, "")
