@@ -1,0 +1,53 @@
+name: Atomic portal block save
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_portal_block_save.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Atomiser la sauvegarde d'un bloc
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Dlg/DLG_Saisie_portail_bloc.py')
+          s=p.read_text(encoding='utf-8')
+          debut='        # Sauvegarde\n        DB = GestionDB.DB()\n'
+          fin='        # Fermeture de la fenêtre\n        self.EndModal(wx.ID_OK)\n'
+          if s.count(debut)!=1 or s.count(fin)!=1:
+              raise SystemExit('bornes sauvegarde bloc inattendues')
+          i=s.index(debut)
+          j=s.index(fin,i)+len(fin)
+          nouveau='''        # Sauvegarde atomique du bloc et de ses éléments.\n        DB = GestionDB.DB()\n        IDbloc_initial = self.IDbloc\n        IDbloc_sauvegarde = self.IDbloc\n        nouveaux_elements = []\n        succes = True\n\n        listeDonnees = [\n            ("IDpage", IDpage),\n            ("titre", titre),\n            ("couleur", couleur),\n            ("categorie", dictParametres["categorie"]),\n            ]\n\n        # Recherche l'ordre du bloc\n        if self.IDpage_initial == None or self.IDpage_initial != IDpage :\n            req = """SELECT MAX(ordre) FROM portail_blocs WHERE IDpage=%d;""" % IDpage\n            if not DB.ExecuterReq(req):\n                succes = False\n            else:\n                listeTemp = DB.ResultatReq()\n                if len(listeTemp) == 0 or listeTemp[0][0] == None :\n                    ordre = 1\n                else :\n                    ordre = listeTemp[0][0] + 1\n                listeDonnees.append(("ordre", ordre))\n\n        if succes:\n            if self.IDbloc == None :\n                IDbloc_sauvegarde = DB.ReqInsert("portail_blocs", listeDonnees, commit=False)\n                succes = IDbloc_sauvegarde is not None\n            else:\n                succes = DB.ReqMAJ("portail_blocs", listeDonnees, "IDbloc", self.IDbloc, commit=False)\n\n        # Sauvegarde des éléments\n        index = 1\n        listeIDelement = []\n        for dictElement in dictParametres["elements"] :\n            if not succes:\n                break\n            IDelement = dictElement["IDelement"]\n            listeDonnees = [\n                ("IDbloc", IDbloc_sauvegarde),\n                ("ordre", index),\n                ("titre", self.GetParametre(dictElement, "titre")),\n                ("categorie", dictParametres["categorie"]),\n                ("date_debut", self.GetParametre(dictElement, "date_debut")),\n                ("date_fin", self.GetParametre(dictElement, "date_fin")),\n                ("parametres", self.GetParametre(dictElement, "parametres")),\n                ("texte_xml", self.GetParametre(dictElement, "texte_xml")),\n                ("texte_html", self.GetParametre(dictElement, "texte_html")),\n                ]\n            if IDelement == None or IDelement < 0 :\n                newIDelement = DB.ReqInsert("portail_elements", listeDonnees, commit=False)\n                if newIDelement is None:\n                    succes = False\n                else:\n                    nouveaux_elements.append((dictElement, newIDelement))\n                    listeIDelement.append(newIDelement)\n            else:\n                succes = DB.ReqMAJ("portail_elements", listeDonnees, "IDelement", IDelement, commit=False)\n                if succes:\n                    listeIDelement.append(IDelement)\n            index += 1\n\n        # Suppression des éléments obsolètes\n        if succes:\n            for IDelement in self.listeIDelementsImportes :\n                if IDelement not in listeIDelement :\n                    if not DB.ReqDEL("portail_elements", "IDelement", IDelement, commit=False):\n                        succes = False\n                        break\n\n        if succes:\n            DB.Commit()\n            self.IDbloc = IDbloc_sauvegarde\n            for dictElement, newIDelement in nouveaux_elements:\n                dictElement["IDelement"] = newIDelement\n        else:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n            self.IDbloc = IDbloc_initial\n        DB.Close()\n\n        if not succes:\n            dlg = wx.MessageDialog(self, _(u"La sauvegarde du bloc a échoué. Aucune modification n'a été conservée."), _(u"Erreur de sauvegarde"), wx.OK | wx.ICON_ERROR)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return False\n\n        # Fermeture de la fenêtre uniquement après validation complète.\n        self.EndModal(wx.ID_OK)\n'''
+          s=s[:i]+nouveau+s[j:]
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Dlg/DLG_Saisie_portail_bloc.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('noethys/Dlg/DLG_Saisie_portail_bloc.py').read_text(encoding='utf-8')
+          assert 'IDbloc_initial = self.IDbloc' in s
+          assert 'nouveaux_elements.append' in s
+          assert "Aucune modification n'a été conservée" in s
+          assert s.count('commit=False') >= 4
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Dlg/DLG_Saisie_portail_bloc.py
+          git commit -m 'fix: atomiser la sauvegarde des blocs portail'
+          git push origin HEAD:master
