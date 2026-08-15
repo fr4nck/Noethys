@@ -33,10 +33,10 @@ class Notebook(wx.Notebook):
         self.dictPages = {}
         
         self.listePages = [
-            ("generalites", _(u"Généralités"), "CTRL_Tarification_generalites.Panel(self, IDactivite=IDactivite, IDtarif=IDtarif, cacher_dates=cacher_dates)", "Information.png"),
-            ("conditions", _(u"Conditions d'application"), "CTRL_Tarification_conditions.Panel(self, IDactivite=IDactivite, IDtarif=IDtarif)", "Filtre.png"),
-            ("type", _(u"Type de tarif"), "CTRL_Tarification_type.Panel(self, IDactivite=IDactivite, IDtarif=IDtarif, nouveauTarif=nouveauTarif)", "Outils.png"),
-            ("calcul", _(u"Calcul du tarif"), "CTRL_Tarification_calcul.Panel(self, IDactivite=IDactivite, IDtarif=IDtarif, track_tarif=track_tarif)", "Calculatrice.png"),
+            ("generalites", _(u"Généralités"), lambda: CTRL_Tarification_generalites.Panel(self, IDactivite=IDactivite, IDtarif=IDtarif, cacher_dates=cacher_dates), "Information.png"),
+            ("conditions", _(u"Conditions d'application"), lambda: CTRL_Tarification_conditions.Panel(self, IDactivite=IDactivite, IDtarif=IDtarif), "Filtre.png"),
+            ("type", _(u"Type de tarif"), lambda: CTRL_Tarification_type.Panel(self, IDactivite=IDactivite, IDtarif=IDtarif, nouveauTarif=nouveauTarif), "Outils.png"),
+            ("calcul", _(u"Calcul du tarif"), lambda: CTRL_Tarification_calcul.Panel(self, IDactivite=IDactivite, IDtarif=IDtarif, track_tarif=track_tarif), "Calculatrice.png"),
             ]
             
         # ImageList pour le NoteBook
@@ -52,7 +52,7 @@ class Notebook(wx.Notebook):
         index = 0
         for code, label, ctrl, img in self.listePages :
             if choix_pages == None or code in choix_pages :
-                ctrl = eval(ctrl)
+                ctrl = ctrl()
                 self.AddPage(ctrl, label)
                 self.SetPageImage(index, dictImages[code])
                 self.dictPages[code] = {'ctrl' : ctrl, 'index' : index}
