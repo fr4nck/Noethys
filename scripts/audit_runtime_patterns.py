@@ -197,7 +197,8 @@ def check_text_patterns(path: Path, root: Path) -> dict:
                     )
 
         # 6. UNSAFE_EXEC
-        if re.search(r"\beval\s*\(|\bexec\s*\(", raw):
+        code_only = raw.split("#", 1)[0]
+        if re.search(r"\beval\s*\(|\bexec\s*\(", code_only):
             results["UNSAFE_EXEC"].append(
                 {"file": rel, "line": i + 1, "snippet": stripped[:120]}
             )
