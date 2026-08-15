@@ -1,0 +1,75 @@
+name: Atomic portal locations
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_portal_locations.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Atomiser les actions de locations portail
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Dlg/DLG_Portail_locations.py')
+          s=p.read_text(encoding='utf-8')
+
+          marker='''        DB = GestionDB.DB()\n        for track in self.ctrl_locations.GetObjects():\n'''
+          insert='''        DB = GestionDB.DB()\n\n        def rollback_transaction():\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n\n        for track in self.ctrl_locations.GetObjects():\n'''
+          if s.count(marker)!=1: raise SystemExit('marker DB inattendu')
+          s=s.replace(marker, insert, 1)
+
+          old='''                if self.ctrl_locations.IsChecked(track):\n                    if track.etat == "ajouter":\n'''
+          new='''                if self.ctrl_locations.IsChecked(track):\n                    succes_action = False\n                    if track.etat == "ajouter":\n'''
+          if s.count(old)!=1: raise SystemExit('marker checked inattendu')
+          s=s.replace(old,new,1)
+
+          old='''                            IDlocation = DB.ReqInsert("locations", listeDonnees)\n                            resultat = _(u"Ajout de la location %s du %s") % (track.nom_produit, track.date_debut_txt)\n                            DB.ReqMAJ("portail_reservations_locations", [("resultat", "ok")], "IDreservation", track.IDreservation)\n                            UTILS_Historique.InsertActions([{"IDfamille": self.track.IDfamille, "IDcategorie": 37, "action": resultat, }], DB=DB)\n'''
+          new='''                            IDlocation = DB.ReqInsert("locations", listeDonnees, commit=False)\n                            resultat = _(u"Ajout de la location %s du %s") % (track.nom_produit, track.date_debut_txt)\n                            if IDlocation is not None and DB.ReqMAJ("portail_reservations_locations", [("resultat", "ok")], "IDreservation", track.IDreservation, commit=False):\n                                try:\n                                    UTILS_Historique.InsertActions([{"IDfamille": self.track.IDfamille, "IDcategorie": 37, "action": resultat, }], DB=DB, commit=False)\n                                    DB.Commit()\n                                    succes_action = True\n                                except Exception:\n                                    rollback_transaction()\n                            else:\n                                rollback_transaction()\n'''
+          if s.count(old)!=1: raise SystemExit('ajout motif inattendu')
+          s=s.replace(old,new,1)
+
+          old='''                            if "-" in track.IDlocation:\n                                DB.ReqMAJ("locations", listeDonnees, "IDlocation_portail", track.IDlocation, IDestChaine=True)\n                            else:\n                                DB.ReqMAJ("locations", listeDonnees, "IDlocation", int(track.IDlocation))\n                            resultat = _(u"Modification de la location %s du %s") % (track.nom_produit, track.date_debut_txt)\n                            DB.ReqMAJ("portail_reservations_locations", [("resultat", "ok")], "IDreservation", track.IDreservation)\n                            UTILS_Historique.InsertActions([{"IDfamille": self.track.IDfamille, "IDcategorie": 38, "action": resultat, }], DB=DB)\n'''
+          new='''                            if "-" in track.IDlocation:\n                                succes_ecriture = DB.ReqMAJ("locations", listeDonnees, "IDlocation_portail", track.IDlocation, IDestChaine=True, commit=False)\n                            else:\n                                succes_ecriture = DB.ReqMAJ("locations", listeDonnees, "IDlocation", int(track.IDlocation), commit=False)\n                            resultat = _(u"Modification de la location %s du %s") % (track.nom_produit, track.date_debut_txt)\n                            if succes_ecriture and DB.ReqMAJ("portail_reservations_locations", [("resultat", "ok")], "IDreservation", track.IDreservation, commit=False):\n                                try:\n                                    UTILS_Historique.InsertActions([{"IDfamille": self.track.IDfamille, "IDcategorie": 38, "action": resultat, }], DB=DB, commit=False)\n                                    DB.Commit()\n                                    succes_action = True\n                                except Exception:\n                                    rollback_transaction()\n                            else:\n                                rollback_transaction()\n'''
+          if s.count(old)!=1: raise SystemExit('modification motif inattendu')
+          s=s.replace(old,new,1)
+
+          old='''                            if "-" in track.IDlocation:\n                                DB.ReqDEL("locations", "IDlocation_portail", track.IDlocation, IDestChaine=True)\n                            else:\n                                DB.ReqDEL("locations", "IDlocation", int(track.IDlocation))\n                            resultat = _(u"Suppression de la location %s du %s") % (track.nom_produit, track.date_debut_txt)\n                            DB.ReqMAJ("portail_reservations_locations", [("resultat", "ok")], "IDreservation", track.IDreservation)\n                            UTILS_Historique.InsertActions([{"IDfamille": self.track.IDfamille, "IDcategorie": 39, "action": resultat, }], DB=DB)\n'''
+          new='''                            if "-" in track.IDlocation:\n                                succes_ecriture = DB.ReqDEL("locations", "IDlocation_portail", track.IDlocation, IDestChaine=True, commit=False)\n                            else:\n                                succes_ecriture = DB.ReqDEL("locations", "IDlocation", int(track.IDlocation), commit=False)\n                            resultat = _(u"Suppression de la location %s du %s") % (track.nom_produit, track.date_debut_txt)\n                            if succes_ecriture and DB.ReqMAJ("portail_reservations_locations", [("resultat", "ok")], "IDreservation", track.IDreservation, commit=False):\n                                try:\n                                    UTILS_Historique.InsertActions([{"IDfamille": self.track.IDfamille, "IDcategorie": 39, "action": resultat, }], DB=DB, commit=False)\n                                    DB.Commit()\n                                    succes_action = True\n                                except Exception:\n                                    rollback_transaction()\n                            else:\n                                rollback_transaction()\n'''
+          if s.count(old)!=1: raise SystemExit('suppression motif inattendu')
+          s=s.replace(old,new,1)
+
+          old='''                    # Mémorisation pour réponse\n                    resultats[track.etat][track.action_possible] += 1\n'''
+          new='''                    # Mémorisation pour réponse : distingue désormais la possibilité théorique du succès réel.\n                    if track.action_possible and not succes_action:\n                        self.parent.EcritLog(_(u"Échec de l'action : %s. Aucune modification n'a été conservée." % track.action), self.ctrl_log)\n                    resultats[track.etat][succes_action] += 1\n'''
+          if s.count(old)!=1: raise SystemExit('resultats motif inattendu')
+          s=s.replace(old,new,1)
+
+          old='''                if not self.ctrl_locations.IsChecked(track):\n                    DB.ReqMAJ("portail_reservations_locations", [("resultat", "refus")], "IDreservation", track.IDreservation)\n                    self.parent.EcritLog(_(u"Refus de l'action : %s." % track.action), self.ctrl_log)\n                    refus.append(track)\n'''
+          new='''                if not self.ctrl_locations.IsChecked(track):\n                    if DB.ReqMAJ("portail_reservations_locations", [("resultat", "refus")], "IDreservation", track.IDreservation):\n                        self.parent.EcritLog(_(u"Refus de l'action : %s." % track.action), self.ctrl_log)\n                        refus.append(track)\n                    else:\n                        self.parent.EcritLog(_(u"Échec lors de l'enregistrement du refus : %s." % track.action), self.ctrl_log)\n'''
+          if s.count(old)!=1: raise SystemExit('refus motif inattendu')
+          s=s.replace(old,new,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Dlg/DLG_Portail_locations.py noethys/Utils/UTILS_Historique.py
+          git diff --check
+          grep -q 'commit=False' noethys/Dlg/DLG_Portail_locations.py
+          grep -q 'succes_action' noethys/Dlg/DLG_Portail_locations.py
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Dlg/DLG_Portail_locations.py
+          git commit -m 'fix: atomiser les traitements de locations portail'
+          git push origin HEAD:master
