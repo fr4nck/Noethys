@@ -1,0 +1,85 @@
+name: Fix invalid escapes
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_fix_invalid_escapes.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Corriger les dix échappements invalides sans changer leur valeur
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          changes = {
+            'noethys/Ctrl/CTRL_Serveur_nomade.py': [
+              ('ipTemp = ipTemp.replace(".", "\\.")', 'ipTemp = ipTemp.replace(".", r"\\.")'),
+            ],
+            'noethys/Dlg/DLG_Saisie_utilisateur_reseau.py': [
+              ('u"ïîôûëê~&é(-è_çà)=~#{[|`\\^@]}"', 'u"ïîôûëê~&é(-è_çà)=~#{[|`\\\\^@]}"'),
+            ],
+            'noethys/Utils/UTILS_Html2text.py': [
+              ("re.sub('\\\\s+', ' ', data)", "re.sub(r'\\\\s+', ' ', data)"),
+            ],
+            'noethys/Utils/UTILS_Internet.py': [
+              ('open("temp\\calendrier.txt", "w", encoding="utf-8")', 'open(r"temp\\calendrier.txt", "w", encoding="utf-8")'),
+              ('open("temp\\calendrier.txt", "rb")', 'open(r"temp\\calendrier.txt", "rb")'),
+              ('open("temp\\identites.txt", "w", encoding="utf-8")', 'open(r"temp\\identites.txt", "w", encoding="utf-8")'),
+              ('open("temp\\identites.txt", "rb")', 'open(r"temp\\identites.txt", "rb")'),
+            ],
+            'noethys/Utils/UTILS_Traduction.py': [
+              ('re.compile(r"_\\\\(u\\\\\".*?\\\\\"\\\\)")', 're.compile(r"_\\\\(u\\\\\".*?\\\\\"\\\\)")'),
+            ],
+            'noethys/Utils/UTILS_XImport.py': [
+              ('print("/!\\ Erreur de format, impossible de convertir en int /!\\\\\\\\")', 'print(r"/!\\ Erreur de format, impossible de convertir en int /!\\\\")'),
+              ('print("/!\\ Erreur de format, impossible de convertir en float /!\\\\\\\\")', 'print(r"/!\\ Erreur de format, impossible de convertir en float /!\\\\")'),
+            ],
+          }
+          # Traduction est déjà une raw string dans certains états du dépôt : ne compter que les changements effectifs.
+          total = 0
+          for filename, replacements in changes.items():
+              path = Path(filename)
+              source = path.read_text(encoding='utf-8')
+              for before, after in replacements:
+                  if before == after:
+                      continue
+                  count = source.count(before)
+                  if count != 1:
+                      raise SystemExit(f'{filename}: motif attendu {before!r} trouvé {count} fois')
+                  source = source.replace(before, after, 1)
+                  total += 1
+              path.write_text(source, encoding='utf-8', newline='')
+          print('remplacements:', total)
+          PY
+          python -m compileall -q noethys/Ctrl/CTRL_Serveur_nomade.py noethys/Dlg/DLG_Saisie_utilisateur_reseau.py noethys/Utils/UTILS_Html2text.py noethys/Utils/UTILS_Internet.py noethys/Utils/UTILS_Traduction.py noethys/Utils/UTILS_XImport.py
+          python scripts/audit_runtime_patterns.py --json invalid.json
+          python - <<'PY'
+          import json
+          data=json.load(open('invalid.json',encoding='utf-8'))
+          remaining=data.get('INVALID_ESCAPE',[])
+          print('INVALID_ESCAPE:',len(remaining))
+          for item in remaining:
+              print(item)
+          if remaining:
+              raise SystemExit(1)
+          PY
+          git diff --check
+          git diff --stat
+      - name: Committer
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Ctrl/CTRL_Serveur_nomade.py noethys/Dlg/DLG_Saisie_utilisateur_reseau.py noethys/Utils/UTILS_Html2text.py noethys/Utils/UTILS_Internet.py noethys/Utils/UTILS_Traduction.py noethys/Utils/UTILS_XImport.py
+          git commit -m "fix: expliciter les derniers échappements Python"
+          git push
