@@ -19,6 +19,7 @@ import wx.grid as gridlib
 import wx.lib.mixins.gridlabelrenderer as glr
 import GestionDB
 import six
+import ast
 from Ctrl import CTRL_Bouton_image
 from Utils import UTILS_Dates
 from Utils import UTILS_Divers
@@ -427,7 +428,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         if len(listeDonnees) > 0:
             nom_modele, IDrestaurateur, parametres, restaurateur_nom, restaurateur_tel, restaurateur_mail = listeDonnees[0]
             if type(parametres) in (str, six.text_type):
-                parametres = eval(parametres)
+                parametres = ast.literal_eval(parametres)
 
             dictDonnees["modele_nom"] = nom_modele
             dictDonnees["modele_parametres"] = parametres
@@ -449,7 +450,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
             index = 0
             for IDcolonne, ordre, nom_colonne, largeur, categorie, parametres in listeDonnees:
                 if type(parametres) in (str, six.text_type):
-                    parametres = eval(parametres)
+                    parametres = ast.literal_eval(parametres)
                 dictColonne = {"IDcolonne": IDcolonne, "ordre": ordre, "nom_colonne": nom_colonne, "largeur": largeur, "categorie": categorie, "parametres": parametres}
                 dictDonnees["liste_colonnes"].append(dictColonne)
 

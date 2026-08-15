@@ -19,6 +19,7 @@ import datetime
 import FonctionsPerso
 import sys
 import six
+import ast
 import GestionDB
 from Utils import UTILS_Organisateur
 from Utils import UTILS_Divers
@@ -396,7 +397,7 @@ class Dialog(wx.Dialog):
         if len(listeDonnees) > 0:
             nom_modele, IDrestaurateur, parametres, restaurateur_nom, restaurateur_tel, restaurateur_mail = listeDonnees[0]
             if type(parametres) in (str, six.text_type) :
-                parametres = eval(parametres)
+                parametres = ast.literal_eval(parametres)
 
             self.dictDonnees["modele_nom"] = nom_modele
             self.dictDonnees["modele_parametres"] = parametres
@@ -416,7 +417,7 @@ class Dialog(wx.Dialog):
         if len(listeDonnees) > 0:
             for IDcolonne, ordre, nom, largeur, categorie, parametres in listeDonnees :
                 if type(parametres) in (str, six.text_type):
-                    parametres = eval(parametres)
+                    parametres = ast.literal_eval(parametres)
                 listeColonnes.append({"IDcolonne" : IDcolonne, "ordre" : ordre, "nom" : nom, "largeur" : largeur, "categorie" : categorie, "parametres" : parametres})
         self.dictDonnees["colonnes"] = listeColonnes
 
