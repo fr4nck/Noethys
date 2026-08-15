@@ -8,6 +8,7 @@
 # Licence:         Licence GNU GPL
 #------------------------------------------------------------------------
 
+import ast
 import Chemins
 import wx
 import six
@@ -70,11 +71,11 @@ def ParametresCategorie(mode="get", categorie="", dictParametres={}, nomFichier=
                     if type_parametre == float : valeur = float(valeur)
                     if type_parametre == str : valeur = valeur
                     if type_parametre == six.text_type : valeur = valeur
-                    if type_parametre == tuple : valeur = eval(valeur)
-                    if type_parametre == list : valeur = eval(valeur)
-                    if type_parametre == dict : valeur = eval(valeur)
-                    if type_parametre == bool : valeur = eval(valeur)
-                    if type_parametre == TYPE_COULEUR and valeur != "" : valeur = eval(valeur)
+                    if type_parametre == tuple : valeur = ast.literal_eval(valeur)
+                    if type_parametre == list : valeur = ast.literal_eval(valeur)
+                    if type_parametre == dict : valeur = ast.literal_eval(valeur)
+                    if type_parametre == bool : valeur = ast.literal_eval(valeur)
+                    if type_parametre == TYPE_COULEUR and valeur != "" : valeur = ast.literal_eval(valeur)
                 except :
                     valeur = None
                 dictFinal[nom] = valeur
@@ -147,10 +148,10 @@ def Parametres(mode="get", categorie="", nom="", valeur=None, nomFichier=""):
             if type_parametre == float : valeurTmp = float(valeurTmp)
             if type_parametre == str : valeurTmp = valeurTmp
             if type_parametre == six.text_type : valeurTmp = valeurTmp
-            if type_parametre == tuple : valeurTmp = eval(valeurTmp)
-            if type_parametre == list : valeurTmp = eval(valeurTmp)
-            if type_parametre == dict : valeurTmp = eval(valeurTmp)
-            if type_parametre == bool : valeurTmp = eval(valeurTmp)
+            if type_parametre == tuple : valeurTmp = ast.literal_eval(valeurTmp)
+            if type_parametre == list : valeurTmp = ast.literal_eval(valeurTmp)
+            if type_parametre == dict : valeurTmp = ast.literal_eval(valeurTmp)
+            if type_parametre == bool : valeurTmp = ast.literal_eval(valeurTmp)
         else:
             # On modifie la valeur du paramètre
             IDparametre = listeDonnees[0][0]
