@@ -475,6 +475,7 @@ class Donnees():
         ORDER BY depots.date;""" % condition
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
+        DB.Close()
         dictDepots = {}
         montantTotal = FloatToDecimal(0.0)
         for IDdepot, date, nomDepot, code_compta, IDmode, nomMode, type_comptable, montant, nbreReglements, numeroCompte, nomCompte in listeDonnees :

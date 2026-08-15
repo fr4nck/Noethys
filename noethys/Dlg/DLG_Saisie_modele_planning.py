@@ -34,6 +34,7 @@ class Dialog(wx.Dialog):
             WHERE IDmodele=%d;""" % self.IDmodele
             DB.ExecuterReq(req)
             listeDonnees = DB.ResultatReq()
+            DB.Close()
             if len(listeDonnees) > 0 :
                 IDactivite = listeDonnees[0][1]
 
@@ -192,6 +193,7 @@ class Dialog(wx.Dialog):
         WHERE IDmodele=%d;""" % self.IDmodele
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
+        DB.Close()
         if len(listeDonnees) == 0 : return
         nom, donnees = listeDonnees[0]
         self.ctrl_nom.SetValue(nom)

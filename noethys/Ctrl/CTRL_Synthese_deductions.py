@@ -127,6 +127,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         req = """SELECT date_debut, date_fin, nom, annee FROM vacances ORDER BY date_debut;"""
         DB.ExecuterReq(req)
         self.listeVacances = DB.ResultatReq()
+        DB.Close()
 
     def MAJ(self, date_debut=None, date_fin=None, listeActivites=[], affichage_regroupement="jour", affichage_caisse=None, affichage_periode="toutes", labelParametres=u""):
 

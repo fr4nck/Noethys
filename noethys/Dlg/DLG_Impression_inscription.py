@@ -369,6 +369,7 @@ class Dialog(wx.Dialog):
         """ % (", ".join(listeChamps), self.IDinscription)
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()  
+        DB.Close()
         if len(listeDonnees) == 0 : return None
         
         dictInscription = {}
