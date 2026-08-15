@@ -37,6 +37,7 @@ from email.header import Header
 from email.utils import formatdate, formataddr
 from email import encoders
 import mimetypes
+import chardet
 
 from Outils import mail
 
@@ -420,10 +421,12 @@ class Message():
                 ctype = 'application/octet-stream'
             maintype, subtype = ctype.split('/', 1)
             if maintype == 'text':
-                fp = open(fichier)
-                # Note : we should handle calculating the charset
-                part = MIMEText(fp.read(), _subtype=subtype)
-                fp.close()
+                with open(fichier, 'rb') as fp:
+                    contenu = fp.read()
+                detection = chardet.detect(contenu)
+                charset = detection.get('encoding') or 'utf-8'
+                texte = contenu.decode(charset, errors='replace')
+                part = MIMEText(texte, _subtype=subtype, _charset=charset)
             elif maintype == 'image':
                 fp = open(fichier, 'rb')
                 part = MIMEImage(fp.read(), _subtype=subtype)

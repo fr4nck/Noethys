@@ -1262,14 +1262,19 @@ def ReplacementChaine(chaine="", avant="", apres="", remplacement=""):
     return re.sub(r'%s.*?%s' % (avant, apres), '%s%s%s' % (avant, remplacement, apres), chaine)
 
 def PrepareFichierBIC():
-    fichier = open("liste_bic_france.txt", 'r')
-    nouveauFichier = open(UTILS_Fichiers.GetRepTemp(fichier="liste_bic_france_new.txt"), 'w')
-    for ligne in fichier :
-        ID, nom, ville, divers, bic = ligne.split("\t")
-        nouvelleLigne = """("%s", "%s", "%s")\n""" % (nom, ville, bic[:-1])
-        nouveauFichier.write(nouvelleLigne)
-    nouveauFichier.close()
-    fichier.close()
+    import chardet
+
+    with open("liste_bic_france.txt", "rb") as fichier:
+        contenu = fichier.read()
+    detection = chardet.detect(contenu)
+    encoding = detection.get("encoding") or "utf-8"
+    texte = contenu.decode(encoding, errors="replace")
+
+    with open(UTILS_Fichiers.GetRepTemp(fichier="liste_bic_france_new.txt"), "w", encoding="utf-8", newline="") as nouveauFichier:
+        for ligne in texte.splitlines():
+            ID, nom, ville, divers, bic = ligne.split("\t")
+            nouvelleLigne = """("%s", "%s", "%s")\n""" % (nom, ville, bic)
+            nouveauFichier.write(nouvelleLigne)
 
 def RechercheModules(nomFichier="Noethys.py") :
     """ Recherche les modules dépendants d'un script """
