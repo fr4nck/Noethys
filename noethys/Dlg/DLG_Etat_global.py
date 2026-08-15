@@ -11,6 +11,7 @@
 import Chemins
 from Utils import UTILS_Adaptations
 from Utils.UTILS_Traduction import _
+from Utils import UTILS_Expressions
 import wx
 from Ctrl import CTRL_Bouton_image
 import datetime
@@ -370,7 +371,7 @@ class Dialog(wx.Dialog):
 
         # Calcul de la formule
         resultat = datetime.timedelta(minutes=0)
-        resultat = eval(formule)
+        resultat = UTILS_Expressions.EvaluerExpression(formule, variables={"self": self, "duree": duree}, fonctions={"SI": SI})
         if resultat == None :
             resultat = datetime.timedelta(minutes=0)
         if type(resultat) == int :

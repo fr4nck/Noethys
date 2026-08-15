@@ -12,6 +12,7 @@
 import Chemins
 from Utils import UTILS_Adaptations
 from Utils.UTILS_Traduction import _
+from Utils import UTILS_Expressions
 import wx
 import datetime
 import time
@@ -389,7 +390,7 @@ class Track(object):
             formule = formule.replace(expression, remplacement)
 
         try :
-            setattr(self, champ.code, eval(formule))
+            setattr(self, champ.code, UTILS_Expressions.EvaluerExpression(formule, variables={"self": self}, fonctions={"SI": SI}))
         except Exception as err :
             if champ.code != "" :
                 setattr(self, champ.code, None)
