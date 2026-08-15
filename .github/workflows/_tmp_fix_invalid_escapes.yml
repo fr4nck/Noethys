@@ -18,48 +18,50 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      - name: Corriger les dix échappements invalides sans changer leur valeur
+      - name: Corriger les échappements invalides sans changer leur valeur
         run: |
           python - <<'PY'
           from pathlib import Path
+
           changes = {
-            'noethys/Ctrl/CTRL_Serveur_nomade.py': [
-              ('ipTemp = ipTemp.replace(".", "\\.")', 'ipTemp = ipTemp.replace(".", r"\\.")'),
-            ],
-            'noethys/Dlg/DLG_Saisie_utilisateur_reseau.py': [
-              ('u"ïîôûëê~&é(-è_çà)=~#{[|`\\^@]}"', 'u"ïîôûëê~&é(-è_çà)=~#{[|`\\\\^@]}"'),
-            ],
-            'noethys/Utils/UTILS_Html2text.py': [
-              ("re.sub('\\\\s+', ' ', data)", "re.sub(r'\\\\s+', ' ', data)"),
-            ],
-            'noethys/Utils/UTILS_Internet.py': [
-              ('open("temp\\calendrier.txt", "w", encoding="utf-8")', 'open(r"temp\\calendrier.txt", "w", encoding="utf-8")'),
-              ('open("temp\\calendrier.txt", "rb")', 'open(r"temp\\calendrier.txt", "rb")'),
-              ('open("temp\\identites.txt", "w", encoding="utf-8")', 'open(r"temp\\identites.txt", "w", encoding="utf-8")'),
-              ('open("temp\\identites.txt", "rb")', 'open(r"temp\\identites.txt", "rb")'),
-            ],
-            'noethys/Utils/UTILS_Traduction.py': [
-              ('re.compile(r"_\\\\(u\\\\\".*?\\\\\"\\\\)")', 're.compile(r"_\\\\(u\\\\\".*?\\\\\"\\\\)")'),
-            ],
-            'noethys/Utils/UTILS_XImport.py': [
-              ('print("/!\\ Erreur de format, impossible de convertir en int /!\\\\\\\\")', 'print(r"/!\\ Erreur de format, impossible de convertir en int /!\\\\")'),
-              ('print("/!\\ Erreur de format, impossible de convertir en float /!\\\\\\\\")', 'print(r"/!\\ Erreur de format, impossible de convertir en float /!\\\\")'),
-            ],
+              'noethys/Ctrl/CTRL_Serveur_nomade.py': {
+                  r'ipTemp = ipTemp.replace(".", "\.")': 'ipTemp = ipTemp.replace(".", r"\\.")',
+              },
+              'noethys/Dlg/DLG_Saisie_utilisateur_reseau.py': {
+                  r'if caract in u"ïîôûëê~&é(-è_çà)=~#{[|`\^@]}" :': 'if caract in u"ïîôûëê~&é(-è_çà)=~#{[|`\\\\^@]}" :',
+              },
+              'noethys/Utils/UTILS_Html2text.py': {
+                  r"data = re.sub('\s+', ' ', data)": r"data = re.sub(r'\s+', ' ', data)",
+              },
+              'noethys/Utils/UTILS_Internet.py': {
+                  r'with open("temp\calendrier.txt", "w", encoding="utf-8") as f:': r'with open(r"temp\calendrier.txt", "w", encoding="utf-8") as f:',
+                  r'fichier = open("temp\calendrier.txt", "rb")': r'fichier = open(r"temp\calendrier.txt", "rb")',
+                  r'with open("temp\identites.txt", "w", encoding="utf-8") as f:': r'with open(r"temp\identites.txt", "w", encoding="utf-8") as f:',
+                  r'fichier = open("temp\identites.txt", "rb")': r'fichier = open(r"temp\identites.txt", "rb")',
+              },
+              'noethys/Utils/UTILS_Traduction.py': {
+                  r'exp = re.compile(r"_\(u\".*?\"\)")': r'''exp = re.compile(r'_\(u".*?"\)')''',
+              },
+              'noethys/Utils/UTILS_XImport.py': {
+                  r'print("/!\ Erreur de format, impossible de convertir en int /!\\")': 'print(r"/!\\ Erreur de format, impossible de convertir en int /!\\\\")',
+                  r'print("/!\ Erreur de format, impossible de convertir en float /!\\")': 'print(r"/!\\ Erreur de format, impossible de convertir en float /!\\\\")',
+              },
           }
-          # Traduction est déjà une raw string dans certains états du dépôt : ne compter que les changements effectifs.
+
           total = 0
-          for filename, replacements in changes.items():
+          for filename, mapping in changes.items():
               path = Path(filename)
-              source = path.read_text(encoding='utf-8')
-              for before, after in replacements:
-                  if before == after:
-                      continue
-                  count = source.count(before)
-                  if count != 1:
-                      raise SystemExit(f'{filename}: motif attendu {before!r} trouvé {count} fois')
-                  source = source.replace(before, after, 1)
+              lines = path.read_text(encoding='utf-8').splitlines(keepends=True)
+              for before, after in mapping.items():
+                  matches = [i for i, line in enumerate(lines) if line.strip() == before]
+                  if len(matches) != 1:
+                      raise SystemExit(f'{filename}: {before!r} trouvé {len(matches)} fois')
+                  i = matches[0]
+                  indent = lines[i][:len(lines[i]) - len(lines[i].lstrip())]
+                  newline = '\n' if lines[i].endswith('\n') else ''
+                  lines[i] = indent + after + newline
                   total += 1
-              path.write_text(source, encoding='utf-8', newline='')
+              path.write_text(''.join(lines), encoding='utf-8', newline='')
           print('remplacements:', total)
           PY
           python -m compileall -q noethys/Ctrl/CTRL_Serveur_nomade.py noethys/Dlg/DLG_Saisie_utilisateur_reseau.py noethys/Utils/UTILS_Html2text.py noethys/Utils/UTILS_Internet.py noethys/Utils/UTILS_Traduction.py noethys/Utils/UTILS_XImport.py
