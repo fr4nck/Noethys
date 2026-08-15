@@ -298,7 +298,7 @@ def check_db_unclosed(path: Path, root: Path) -> list:
         body = "\n".join(body_lines)
 
         opens = bool(re.search(r"\bDB[T]?\s*=\s*GestionDB\.DB\s*\(", body))
-        closes = bool(re.search(r"\bDB[T]?\.Close\s*\(\)", body))
+        closes = bool(re.search(r"\bDB[T]?\.(?:Close|close)\s*\(\)", body))
 
         if opens and not closes:
             issues.append({
