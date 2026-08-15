@@ -70,17 +70,17 @@ class Notebook(wx.Notebook):
         self.dictPages = {}
         
         self.listePages = [
-            ("informations", _(u"Informations"), u"DLG_Famille_informations.Panel(self, IDfamille=IDfamille)", "Information.png"),
-            ("questionnaire", _(u"Questionnaire"), u"DLG_Famille_questionnaire.Panel(self, IDfamille=IDfamille)", "Questionnaire.png"),
-            ("pieces", _(u"Pièces"), u"DLG_Famille_pieces.Panel(self, IDfamille=IDfamille)", "Dupliquer.png"),
-            ("locations", _(u"Locations"), u"DLG_Famille_locations.Panel(self, IDfamille=IDfamille)", "Location.png"),
-            ("cotisations", _(u"Cotisations"), u"DLG_Famille_cotisations.Panel(self, IDfamille=IDfamille)", "Cotisation.png"),
-            ("caisse", _(u"Caisse"), u"DLG_Famille_caisse.Panel(self, IDfamille=IDfamille)", "Mecanisme.png"),
-            ("quotients", _(u"QF/Revenus"), u"DLG_Famille_quotients.Panel(self, IDfamille=IDfamille)", "Calculatrice.png"),
-            ("prestations", _(u"Prestations"), u"DLG_Famille_prestations.Panel(self, IDfamille=IDfamille)", "Etiquette.png"),
-            ("factures", _(u"Factures"), u"DLG_Famille_factures.Panel(self, IDfamille=IDfamille)", "Facture.png"),
-            ("reglements", _(u"Règlements"), u"DLG_Famille_reglements.Panel(self, IDfamille=IDfamille)", "Reglement.png"),
-            ("divers", _(u"Divers"), u"DLG_Famille_divers.Panel(self, IDfamille=IDfamille)", "Planete.png"),
+            ("informations", _(u"Informations"), lambda: DLG_Famille_informations.Panel(self, IDfamille=IDfamille), "Information.png"),
+            ("questionnaire", _(u"Questionnaire"), lambda: DLG_Famille_questionnaire.Panel(self, IDfamille=IDfamille), "Questionnaire.png"),
+            ("pieces", _(u"Pièces"), lambda: DLG_Famille_pieces.Panel(self, IDfamille=IDfamille), "Dupliquer.png"),
+            ("locations", _(u"Locations"), lambda: DLG_Famille_locations.Panel(self, IDfamille=IDfamille), "Location.png"),
+            ("cotisations", _(u"Cotisations"), lambda: DLG_Famille_cotisations.Panel(self, IDfamille=IDfamille), "Cotisation.png"),
+            ("caisse", _(u"Caisse"), lambda: DLG_Famille_caisse.Panel(self, IDfamille=IDfamille), "Mecanisme.png"),
+            ("quotients", _(u"QF/Revenus"), lambda: DLG_Famille_quotients.Panel(self, IDfamille=IDfamille), "Calculatrice.png"),
+            ("prestations", _(u"Prestations"), lambda: DLG_Famille_prestations.Panel(self, IDfamille=IDfamille), "Etiquette.png"),
+            ("factures", _(u"Factures"), lambda: DLG_Famille_factures.Panel(self, IDfamille=IDfamille), "Facture.png"),
+            ("reglements", _(u"Règlements"), lambda: DLG_Famille_reglements.Panel(self, IDfamille=IDfamille), "Reglement.png"),
+            ("divers", _(u"Divers"), lambda: DLG_Famille_divers.Panel(self, IDfamille=IDfamille), "Planete.png"),
             ]
 
         # Pages à afficher obligatoirement
@@ -100,7 +100,7 @@ class Notebook(wx.Notebook):
         index = 0
         for codePage, labelPage, ctrlPage, imgPage in self.listePages :
             if self.dictParametres[codePage] == True :
-                setattr(self, "page%s" % index, eval(ctrlPage))
+                setattr(self, "page%s" % index, ctrlPage())
                 self.AddPage(getattr(self, "page%s" % index), labelPage)
                 self.SetPageImage(index, getattr(self, "img%d" % index))
                 self.dictPages[codePage] = {'ctrl': getattr(self, "page%d" % index), 'index': index}

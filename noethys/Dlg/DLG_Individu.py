@@ -65,16 +65,16 @@ class Notebook(wx.Notebook):
         self.dictPages = {}
         
         self.listePages = [
-            ("informations", _(u"Informations"), u"DLG_Individu_informations.Panel(self, IDindividu=IDindividu, dictFamillesRattachees=dictFamillesRattachees)", "Information.png"),
-            ("identite", _(u"Identité"), u"DLG_Individu_identite.Panel_identite(self, IDindividu=IDindividu)", "Identite.png"),
-            ("liens", _(u"Liens"), u"DLG_Individu_liens.Panel_liens(self, IDindividu=IDindividu)", "Famille.png"),
-            ("questionnaire", _(u"Questionnaire"), u"DLG_Individu_questionnaire.Panel(self, IDindividu=IDindividu)", "Questionnaire.png"),
-            ("coords", _(u"Coordonnées"), u"DLG_Individu_coords.Panel_coords(self, IDindividu=IDindividu)", "Maison.png"),
-            ("activites", _(u"Activités"), u"DLG_Individu_inscriptions.Panel(self, IDindividu=IDindividu, dictFamillesRattachees=dictFamillesRattachees)", "Activite.png"),
-            ("scolarite", _(u"Scolarité"), u"DLG_Individu_scolarite.Panel(self, IDindividu=IDindividu, dictFamillesRattachees=dictFamillesRattachees)", "Classe.png"),
-            ("pieces", _(u"Pièces"), u"DLG_Individu_pieces.Panel(self, IDindividu=IDindividu, dictFamillesRattachees=dictFamillesRattachees)", "Dupliquer.png"),
-            ("transports", _(u"Transports"), u"DLG_Individu_transports.Panel(self, IDindividu=IDindividu, dictFamillesRattachees=dictFamillesRattachees)", "Transport.png"),
-            ("medical", _(u"Médical"), u"DLG_Individu_medical.Panel(self, IDindividu=IDindividu)", "Medical.png"),
+            ("informations", _(u"Informations"), lambda: DLG_Individu_informations.Panel(self, IDindividu=IDindividu, dictFamillesRattachees=dictFamillesRattachees), "Information.png"),
+            ("identite", _(u"Identité"), lambda: DLG_Individu_identite.Panel_identite(self, IDindividu=IDindividu), "Identite.png"),
+            ("liens", _(u"Liens"), lambda: DLG_Individu_liens.Panel_liens(self, IDindividu=IDindividu), "Famille.png"),
+            ("questionnaire", _(u"Questionnaire"), lambda: DLG_Individu_questionnaire.Panel(self, IDindividu=IDindividu), "Questionnaire.png"),
+            ("coords", _(u"Coordonnées"), lambda: DLG_Individu_coords.Panel_coords(self, IDindividu=IDindividu), "Maison.png"),
+            ("activites", _(u"Activités"), lambda: DLG_Individu_inscriptions.Panel(self, IDindividu=IDindividu, dictFamillesRattachees=dictFamillesRattachees), "Activite.png"),
+            ("scolarite", _(u"Scolarité"), lambda: DLG_Individu_scolarite.Panel(self, IDindividu=IDindividu, dictFamillesRattachees=dictFamillesRattachees), "Classe.png"),
+            ("pieces", _(u"Pièces"), lambda: DLG_Individu_pieces.Panel(self, IDindividu=IDindividu, dictFamillesRattachees=dictFamillesRattachees), "Dupliquer.png"),
+            ("transports", _(u"Transports"), lambda: DLG_Individu_transports.Panel(self, IDindividu=IDindividu, dictFamillesRattachees=dictFamillesRattachees), "Transport.png"),
+            ("medical", _(u"Médical"), lambda: DLG_Individu_medical.Panel(self, IDindividu=IDindividu), "Medical.png"),
             ]
 
         # Pages à afficher obligatoirement
@@ -94,7 +94,7 @@ class Notebook(wx.Notebook):
         index = 0
         for codePage, labelPage, ctrlPage, imgPage in self.listePages :
             if dictParametres[codePage] == True:
-                setattr(self, "page%s" % index, eval(ctrlPage))
+                setattr(self, "page%s" % index, ctrlPage())
                 self.AddPage(getattr(self, "page%s" % index), labelPage)
                 self.SetPageImage(index, getattr(self, "img%d" % index))
                 self.dictPages[codePage] = {'ctrl': getattr(self, "page%d" % index), 'index': index}
