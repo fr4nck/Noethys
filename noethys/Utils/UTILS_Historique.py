@@ -71,7 +71,7 @@ DICT_COULEURS = {
     }
 
 
-def InsertActions(listeActions=[], DB=None):
+def InsertActions(listeActions=[], DB=None, commit=True):
     """ dictAction = { IDutilisateur : None, IDfamille : None, IDindividu : None, IDcategorie : None, action : u"", IDdonnee: None } """
     date = str(datetime.date.today())
     heure = "%02d:%02d:%02d" % (datetime.datetime.now().hour, datetime.datetime.now().minute, datetime.datetime.now().second)
@@ -92,15 +92,17 @@ def InsertActions(listeActions=[], DB=None):
     # Enregistrement dans la base
     if len(listeAjouts) > 0 :
         req = u"INSERT INTO historique (date, heure, IDutilisateur, IDfamille, IDindividu, IDcategorie, action, IDdonnee) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-        if DB == None :
+        DBexterne = DB is not None
+        if not DBexterne:
             DB = GestionDB.DB()
-            try:
-                DB.Executermany(req, listeAjouts, commit=False)
-            except:
-                req = u"INSERT INTO historique (date, heure, IDutilisateur, IDfamille, IDindividu, IDcategorie, action) VALUES (?, ?, ?, ?, ?, ?, ?)"
-                DB.Executermany(req, listeAjouts[:-1], commit=False)
-            DB.Commit()
-            DB.Close()
-        else :
+        try:
             DB.Executermany(req, listeAjouts, commit=False)
+        except Exception:
+            # Compatibilité avec les anciennes bases sans colonne IDdonnee.
+            req = u"INSERT INTO historique (date, heure, IDutilisateur, IDfamille, IDindividu, IDcategorie, action) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            listeAjoutsCompat = [ligne[:-1] for ligne in listeAjouts]
+            DB.Executermany(req, listeAjoutsCompat, commit=False)
+        if commit:
             DB.Commit()
+        if not DBexterne:
+            DB.Close()
