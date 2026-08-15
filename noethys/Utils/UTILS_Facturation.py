@@ -141,7 +141,7 @@ class Facturation():
         try:
             topWindow = wx.GetApp().GetTopWindow()
             topWindow.SetStatusText(texte)
-        except:
+        except Exception:
             pass
 
     def RemplaceMotsCles(self, texte="", dictValeurs={}):
@@ -797,7 +797,7 @@ class Facturation():
         try:
             if 'phoenix' not in wx.PlatformInfo:
                 wx.Yield()
-        except:
+        except Exception:
             pass
 
         # Récupère les données de la facture
@@ -1148,7 +1148,7 @@ class Facturation():
             try:
                 if 'phoenix' not in wx.PlatformInfo:
                     wx.Yield()
-            except:
+            except Exception:
                 pass
             try:
                 index = 0
@@ -1211,7 +1211,7 @@ class Facturation():
             try:
                 if 'phoenix' not in wx.PlatformInfo:
                     wx.Yield()
-            except:
+            except Exception:
                 pass
             self.EcritStatusbar(
                 _(u"Création du PDF des factures en cours... veuillez patienter..."))
