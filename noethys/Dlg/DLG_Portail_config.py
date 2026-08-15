@@ -70,6 +70,7 @@ VALEURS_DEFAUT = {
     "ftp_utilisateur" : "",
     "ftp_mdp" : "",
     "ftp_repertoire" : "/www/connecthys",
+    "ftp_tls" : False,
     "url_connecthys" : "http://127.0.0.1:5000",
     "accept_all_cert" : False,
     "hebergement_local_repertoire" : "",
@@ -209,6 +210,7 @@ class CTRL_Parametres(CTRL_Propertygrid.CTRL) :
             ("ftp_utilisateur", lambda: p('hebergement_type') == 1),
             ("ftp_mdp", lambda: p('hebergement_type') == 1),
             ("ftp_repertoire", lambda: p('hebergement_type') == 1),
+            ("ftp_tls", lambda: p('hebergement_type') == 1),
             ("ssh_serveur", lambda: p('hebergement_type') == 2),
             ("ssh_port", lambda: p('hebergement_type') == 2),
             ("ssh_utilisateur", lambda: p('hebergement_type') == 2),
@@ -366,6 +368,14 @@ class CTRL_Parametres(CTRL_Propertygrid.CTRL) :
         nom = "ftp_repertoire"
         propriete = wxpg.StringProperty(label=_(u"Répertoire"), name=nom, value=VALEURS_DEFAUT[nom])
         propriete.SetHelpString(_(u"Saisissez le répertoire FTP (ex : www/connecthys)"))
+        self.Append(propriete)
+
+        # Chiffrement FTP explicite (FTPS). Désactivé par défaut afin de conserver
+        # strictement le comportement des configurations historiques.
+        nom = "ftp_tls"
+        propriete = wxpg.BoolProperty(label=_(u"Sécuriser la connexion FTP avec TLS (FTPS)"), name=nom, value=VALEURS_DEFAUT[nom])
+        propriete.SetHelpString(_(u"Active FTPS explicite. Laissez décoché pour conserver une ancienne configuration FTP inchangée."))
+        propriete.SetAttribute("UseCheckbox", True)
         self.Append(propriete)
 
         # Serveur SSH

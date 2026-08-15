@@ -328,16 +328,26 @@ class Synchro():
             self.Pulse_gauge()
             ftp = None
 
-        # Connexion FTP
+        # Connexion FTP / FTPS explicite. Le paramètre ftp_tls vaut False par
+        # défaut afin de préserver intégralement les anciennes configurations.
         if self.dict_parametres["hebergement_type"] == 1 :
-            self.log.EcritLog(_(u"Connexion FTP..."))
+            utiliser_tls = bool(self.dict_parametres.get("ftp_tls", False))
+            self.log.EcritLog(_(u"Connexion FTPS...") if utiliser_tls else _(u"Connexion FTP non chiffrée..."))
             self.Pulse_gauge()
 
             try :
-                ftp = ftplib.FTP(self.dict_parametres["ftp_serveur"], self.dict_parametres["ftp_utilisateur"], self.dict_parametres["ftp_mdp"])
+                if utiliser_tls:
+                    ftp = ftplib.FTP_TLS()
+                    ftp.connect(self.dict_parametres["ftp_serveur"])
+                    ftp.login(self.dict_parametres["ftp_utilisateur"], self.dict_parametres["ftp_mdp"])
+                    # Chiffre aussi le canal de données, pas uniquement les commandes.
+                    ftp.prot_p()
+                else:
+                    ftp = ftplib.FTP(self.dict_parametres["ftp_serveur"], self.dict_parametres["ftp_utilisateur"], self.dict_parametres["ftp_mdp"])
+                    self.log.EcritLog(_(u"[AVERTISSEMENT] FTP transmet les identifiants et les données sans chiffrement. Préférez FTPS ou SSH/SFTP lorsque le serveur le permet."))
             except Exception as err :
-                print("Connexion FTP du serveur", str(err))
-                self.log.EcritLog(_(u"[ERREUR] Connexion FTP impossible."))
+                print("Connexion FTP/FTPS du serveur", str(err))
+                self.log.EcritLog(_(u"[ERREUR] Connexion FTP/FTPS impossible."))
                 return False
 
         # Connexion SSH/SFTP
