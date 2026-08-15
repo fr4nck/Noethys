@@ -568,32 +568,50 @@ class ListView(FastObjectListView):
         dlg = wx.MessageDialog(self, _(u"Confirmez-vous la suppression de ce règlement ?"), _(
             u"Suppression"), wx.YES_NO | wx.NO_DEFAULT | wx.CANCEL | wx.ICON_INFORMATION)
         if dlg.ShowModal() == wx.ID_YES:
+            selection = self.Selection()[0]
             DB = GestionDB.DB()
-            DB.ReqDEL("reglements", "IDreglement", IDreglement)
-            DB.ReqDEL("ventilation", "IDreglement", IDreglement)
-            # Mémorise l'action dans l'historique
+
+            # Récupère les informations d'historique avant suppression.
             req = """SELECT IDfamille
             FROM comptes_payeurs
             WHERE IDcompte_payeur=%d
-            """ % self.Selection()[0].compte_payeur
-            DB.ExecuterReq(req)
-            IDfamille = DB.ResultatReq()[0][0]
+            """ % selection.compte_payeur
+            if not DB.ExecuterReq(req):
+                DB.Close()
+                return
+            listeFamilles = DB.ResultatReq()
+            IDfamille = listeFamilles[0][0] if listeFamilles else None
 
-            montant = u"%.2f €" % self.Selection()[0].montant
-            texteMode = self.Selection()[0].nom_mode
-            textePayeur = self.Selection()[0].nom_payeur
-            UTILS_Historique.InsertActions([{
-                "IDfamille": IDfamille,
-                "IDcategorie": 8,
-                "action": _(u"Suppression du règlement ID%d : %s en %s payé par %s") % (IDreglement, montant, texteMode, textePayeur),
-            },])
+            suppressions = [
+                ("reglements", "IDreglement", IDreglement),
+                ("ventilation", "IDreglement", IDreglement),
+            ]
+            if IDprestationFrais is not None:
+                suppressions.extend([
+                    ("prestations", "IDprestation", IDprestationFrais),
+                    ("ventilation", "IDprestation", IDprestationFrais),
+                ])
 
-            # Suppression des frais de gestion
-            if IDprestationFrais != None:
-                DB.ReqDEL("prestations", "IDprestation", IDprestationFrais)
-                DB.ReqDEL("ventilation", "IDprestation", IDprestationFrais)
-
+            for table, champ, valeur in suppressions:
+                if not DB.ReqDEL(table, champ, valeur, commit=False):
+                    DB.Close()
+                    erreur = wx.MessageDialog(self, _(u"La suppression du règlement a échoué. Aucune donnée n'a été supprimée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                    erreur.ShowModal()
+                    erreur.Destroy()
+                    return
+            DB.Commit()
             DB.Close()
+
+            # N'écrit l'historique qu'après validation effective de la transaction.
+            if IDfamille is not None:
+                montant = u"%.2f €" % selection.montant
+                texteMode = selection.nom_mode
+                textePayeur = selection.nom_payeur
+                UTILS_Historique.InsertActions([{
+                    "IDfamille": IDfamille,
+                    "IDcategorie": 8,
+                    "action": _(u"Suppression du règlement ID%d : %s en %s payé par %s") % (IDreglement, montant, texteMode, textePayeur),
+                },])
 
             # MAJ de l'affichage
             self.MAJ()
