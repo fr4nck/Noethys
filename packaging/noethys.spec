@@ -7,9 +7,30 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 ROOT = Path(SPECPATH).resolve().parent
 NOETHYS = ROOT / "noethys"
 
-hiddenimports = []
+
+def collect_runtime_submodules(package):
+    """Collecte les sous-modules runtime en excluant les suites de tests.
+
+    Certains paquets (Twisted, SQLAlchemy, icalendar, comtypes…) embarquent de
+    très nombreuses suites de tests. Les inclure dans l'application portable
+    augmente fortement la taille du build et peut provoquer des avertissements
+    sur des dépendances de développement absentes (pytest, hypothesis, etc.).
+    """
+    excluded_parts = {"test", "tests", "testing"}
+    return [
+        name
+        for name in collect_submodules(package)
+        if not excluded_parts.intersection(name.split("."))
+    ]
+
+
+hiddenimports = [
+    # Les backends réellement utilisés par Noethys. Le hook Matplotlib les
+    # détecte également via les appels matplotlib.use('Agg'/'wxagg').
+    "matplotlib.backends.backend_agg",
+    "matplotlib.backends.backend_wxagg",
+]
 for package in (
-    "matplotlib.backends",
     "reportlab",
     "sqlalchemy",
     "twisted",
@@ -22,7 +43,7 @@ for package in (
     "comtypes",
     "pyttsx3",
 ):
-    hiddenimports += collect_submodules(package)
+    hiddenimports += collect_runtime_submodules(package)
 
 # Chemins.py recherche ces ressources à côté de Noethys.exe lorsque
 # l'application est figée. Elles doivent donc être placées à la racine
