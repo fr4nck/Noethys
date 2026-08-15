@@ -17,7 +17,7 @@ WX_TEXT_METHODS = {
 }
 PATH_METHODS = {
     "open", "exists", "isfile", "isdir", "join", "basename", "dirname",
-    "abspath", "normpath", "remove", "unlink", "rename", "replace",
+    "abspath", "normpath", "remove", "unlink", "rename",
 }
 
 
@@ -42,6 +42,43 @@ def contains_bytes_literal(node: ast.AST) -> bool:
     return any(isinstance(child, ast.Constant) and isinstance(child.value, bytes) for child in ast.walk(node))
 
 
+def is_bytesio_call(node: ast.AST) -> bool:
+    if not isinstance(node, ast.Call):
+        return False
+    func = node.func
+    if isinstance(func, ast.Name):
+        return func.id == "BytesIO"
+    if isinstance(func, ast.Attribute):
+        return func.attr == "BytesIO"
+    return False
+
+
+def bytesio_names(tree: ast.AST) -> set[str]:
+    """Noms locaux initialisés avec BytesIO()/six.BytesIO()/io.BytesIO()."""
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+            continue
+        value = node.value
+        if value is None or not is_bytesio_call(value):
+            continue
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+        for target in targets:
+            if isinstance(target, ast.Name):
+                names.add(target.id)
+    return names
+
+
+def is_write_to_known_bytesio(node: ast.Call, known: set[str]) -> bool:
+    func = node.func
+    return (
+        isinstance(func, ast.Attribute)
+        and func.attr == "write"
+        and isinstance(func.value, ast.Name)
+        and func.value.id in known
+    )
+
+
 def scan(path: Path) -> list[tuple[int, str]]:
     try:
         source = path.read_text(encoding="utf-8", errors="replace")
@@ -49,6 +86,7 @@ def scan(path: Path) -> list[tuple[int, str]]:
     except SyntaxError:
         return []
 
+    known_bytesio = bytesio_names(tree)
     findings: set[tuple[int, str]] = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -64,7 +102,7 @@ def scan(path: Path) -> list[tuple[int, str]]:
                     findings.add((node.lineno, f"chemin potentiellement encodé via {name}()"))
         if name == "write" and node.args:
             arg = node.args[0]
-            if is_encode_call(arg):
+            if is_encode_call(arg) and not is_write_to_known_bytesio(node, known_bytesio):
                 findings.add((node.lineno, "écriture de bytes à vérifier selon le mode du fichier"))
 
     return sorted(findings)
