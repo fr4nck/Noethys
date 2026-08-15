@@ -75,7 +75,7 @@ def _EvaluerNoeudArithmetique(noeud):
 
 
 def EvaluerExpression(expression, variables=None, fonctions=None, methodes=None):
-    """Évalue une expression booléenne/simple avec environnement explicite.
+    """Évalue une expression simple avec environnement explicite.
 
     ``variables`` contient les seuls noms accessibles. ``fonctions`` contient
     les seuls appels de fonctions autorisés et ``methodes`` les seuls noms de
@@ -110,14 +110,26 @@ def _EvaluerNoeudExpression(noeud, variables, fonctions, methodes):
         objet = _EvaluerNoeudExpression(noeud.value, variables, fonctions, methodes)
         return getattr(objet, noeud.attr)
 
+    if isinstance(noeud, ast.BinOp) and type(noeud.op) in _OPERATEURS_BINAIRES:
+        gauche = _EvaluerNoeudExpression(noeud.left, variables, fonctions, methodes)
+        droite = _EvaluerNoeudExpression(noeud.right, variables, fonctions, methodes)
+        return _OPERATEURS_BINAIRES[type(noeud.op)](gauche, droite)
+
+    if isinstance(noeud, ast.UnaryOp) and type(noeud.op) in _OPERATEURS_UNAIRES:
+        return _OPERATEURS_UNAIRES[type(noeud.op)](
+            _EvaluerNoeudExpression(noeud.operand, variables, fonctions, methodes)
+        )
+
     if isinstance(noeud, ast.BoolOp):
         if isinstance(noeud.op, ast.And):
+            resultat = True
             for valeur in noeud.values:
                 resultat = _EvaluerNoeudExpression(valeur, variables, fonctions, methodes)
                 if not resultat:
                     return resultat
             return resultat
         if isinstance(noeud.op, ast.Or):
+            resultat = False
             for valeur in noeud.values:
                 resultat = _EvaluerNoeudExpression(valeur, variables, fonctions, methodes)
                 if resultat:
