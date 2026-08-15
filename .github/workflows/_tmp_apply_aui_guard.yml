@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - '.github/workflows/_tmp_apply_aui_guard.yml'
+      - 'scripts/_tmp_apply_aui_guard.py'
 
 permissions:
   contents: write
