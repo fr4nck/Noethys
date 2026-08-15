@@ -33,62 +33,62 @@ from Data.DATA_Tables import DB_DATA as DICT_TABLES
 DICT_CONTROLES = {
 
     "generalites" : [
-        {"code" : "compagnie_bus", "label" : _(u"Compagnie"), "ctrl" : "CTRL_Compagnies(self, categorie='bus')" },
-        {"code" : "compagnie_car", "label" : _(u"Compagnie"), "ctrl" : "CTRL_Compagnies(self, categorie='car')" },
-        {"code" : "compagnie_navette", "label" : _(u"Compagnie"), "ctrl" : "CTRL_Compagnies(self, categorie='navette')" },
-        {"code" : "compagnie_taxi", "label" : _(u"Compagnie"), "ctrl" : "CTRL_Compagnies(self, categorie='taxi')" },
-        {"code" : "compagnie_train", "label" : _(u"Compagnie"), "ctrl" : "CTRL_Compagnies(self, categorie='train')" },
-        {"code" : "compagnie_avion", "label" : _(u"Compagnie"), "ctrl" : "CTRL_Compagnies(self, categorie='avion')" },
-        {"code" : "compagnie_bateau", "label" : _(u"Compagnie"), "ctrl" : "CTRL_Compagnies(self, categorie='bateau')" },
-        {"code" : "compagnie_metro", "label" : _(u"Compagnie"), "ctrl" : "CTRL_Compagnies(self, categorie='metro')" },
+        {"code" : "compagnie_bus", "label" : _(u"Compagnie"), "ctrl" : lambda parent=self: CTRL_Compagnies(parent, categorie='bus') },
+        {"code" : "compagnie_car", "label" : _(u"Compagnie"), "ctrl" : lambda parent=self: CTRL_Compagnies(parent, categorie='car') },
+        {"code" : "compagnie_navette", "label" : _(u"Compagnie"), "ctrl" : lambda parent=self: CTRL_Compagnies(parent, categorie='navette') },
+        {"code" : "compagnie_taxi", "label" : _(u"Compagnie"), "ctrl" : lambda parent=self: CTRL_Compagnies(parent, categorie='taxi') },
+        {"code" : "compagnie_train", "label" : _(u"Compagnie"), "ctrl" : lambda parent=self: CTRL_Compagnies(parent, categorie='train') },
+        {"code" : "compagnie_avion", "label" : _(u"Compagnie"), "ctrl" : lambda parent=self: CTRL_Compagnies(parent, categorie='avion') },
+        {"code" : "compagnie_bateau", "label" : _(u"Compagnie"), "ctrl" : lambda parent=self: CTRL_Compagnies(parent, categorie='bateau') },
+        {"code" : "compagnie_metro", "label" : _(u"Compagnie"), "ctrl" : lambda parent=self: CTRL_Compagnies(parent, categorie='metro') },
         
-        {"code" : "ligne_bus", "label" : _(u"Ligne"), "ctrl" : "CTRL_Lignes(self, categorie='bus')" },
-        {"code" : "ligne_car", "label" : _(u"Ligne"), "ctrl" : "CTRL_Lignes(self, categorie='car')" },
-        {"code" : "ligne_navette", "label" : _(u"Ligne"), "ctrl" : "CTRL_Lignes(self, categorie='navette')" },
-        {"code" : "ligne_bateau", "label" : _(u"Ligne"), "ctrl" : "CTRL_Lignes(self, categorie='bateau')" },
-        {"code" : "ligne_metro", "label" : _(u"Ligne"), "ctrl" : "CTRL_Lignes(self, categorie='metro')" },
-        {"code" : "ligne_pedibus", "label" : _(u"Ligne"), "ctrl" : "CTRL_Lignes(self, categorie='pedibus')" },
+        {"code" : "ligne_bus", "label" : _(u"Ligne"), "ctrl" : lambda parent=self: CTRL_Lignes(parent, categorie='bus') },
+        {"code" : "ligne_car", "label" : _(u"Ligne"), "ctrl" : lambda parent=self: CTRL_Lignes(parent, categorie='car') },
+        {"code" : "ligne_navette", "label" : _(u"Ligne"), "ctrl" : lambda parent=self: CTRL_Lignes(parent, categorie='navette') },
+        {"code" : "ligne_bateau", "label" : _(u"Ligne"), "ctrl" : lambda parent=self: CTRL_Lignes(parent, categorie='bateau') },
+        {"code" : "ligne_metro", "label" : _(u"Ligne"), "ctrl" : lambda parent=self: CTRL_Lignes(parent, categorie='metro') },
+        {"code" : "ligne_pedibus", "label" : _(u"Ligne"), "ctrl" : lambda parent=self: CTRL_Lignes(parent, categorie='pedibus') },
         
-        {"code" : "numero_avion", "label" : _(u"N° de vol"), "ctrl" : "CTRL_Numero(self, categorie='avion')" },
-        {"code" : "numero_train", "label" : _(u"N° de train"), "ctrl" : "CTRL_Numero(self, categorie='train')" },
-        {"code" : "details", "label" : _(u"Détails"), "ctrl" : "CTRL_Details(self)" },
-        {"code" : "observations", "label" : _(u"Observ."), "ctrl" : "CTRL_Observations(self)" },
+        {"code" : "numero_avion", "label" : _(u"N° de vol"), "ctrl" : lambda parent=self: CTRL_Numero(parent, categorie='avion') },
+        {"code" : "numero_train", "label" : _(u"N° de train"), "ctrl" : lambda parent=self: CTRL_Numero(parent, categorie='train') },
+        {"code" : "details", "label" : _(u"Détails"), "ctrl" : lambda parent=self: CTRL_Details(parent) },
+        {"code" : "observations", "label" : _(u"Observ."), "ctrl" : lambda parent=self: CTRL_Observations(parent) },
         ],
         
     "depart" : [
-        {"code" : "date_heure", "label" : _(u"Heure"), "ctrl" : "CTRL_DateHeure(self)" },
+        {"code" : "date_heure", "label" : _(u"Heure"), "ctrl" : lambda parent=self: CTRL_DateHeure(parent) },
         
-        {"code" : "arret_bus", "label" : _(u"Arrêt"), "ctrl" : "CTRL_Arrets(self, categorie='bus')" },
-        {"code" : "arret_car", "label" : _(u"Arrêt"), "ctrl" : "CTRL_Arrets(self, categorie='car')" },
-        {"code" : "arret_navette", "label" : _(u"Arrêt"), "ctrl" : "CTRL_Arrets(self, categorie='navette')" },
-        {"code" : "arret_bateau", "label" : _(u"Arrêt"), "ctrl" : "CTRL_Arrets(self, categorie='bateau')" },
-        {"code" : "arret_metro", "label" : _(u"Arrêt"), "ctrl" : "CTRL_Arrets(self, categorie='metro')" },
-        {"code" : "arret_pedibus", "label" : _(u"Arrêt"), "ctrl" : "CTRL_Arrets(self, categorie='pedibus')" },
+        {"code" : "arret_bus", "label" : _(u"Arrêt"), "ctrl" : lambda parent=self: CTRL_Arrets(parent, categorie='bus') },
+        {"code" : "arret_car", "label" : _(u"Arrêt"), "ctrl" : lambda parent=self: CTRL_Arrets(parent, categorie='car') },
+        {"code" : "arret_navette", "label" : _(u"Arrêt"), "ctrl" : lambda parent=self: CTRL_Arrets(parent, categorie='navette') },
+        {"code" : "arret_bateau", "label" : _(u"Arrêt"), "ctrl" : lambda parent=self: CTRL_Arrets(parent, categorie='bateau') },
+        {"code" : "arret_metro", "label" : _(u"Arrêt"), "ctrl" : lambda parent=self: CTRL_Arrets(parent, categorie='metro') },
+        {"code" : "arret_pedibus", "label" : _(u"Arrêt"), "ctrl" : lambda parent=self: CTRL_Arrets(parent, categorie='pedibus') },
         
-        {"code" : "gare", "label" : _(u"Gare"), "ctrl" : "CTRL_Lieux(self, categorie='gare')" },
-        {"code" : "aeroport", "label" : _(u"Aéroport"), "ctrl" : "CTRL_Lieux(self, categorie='aeroport')" },
-        {"code" : "port", "label" : _(u"Port"), "ctrl" : "CTRL_Lieux(self, categorie='port')" },
+        {"code" : "gare", "label" : _(u"Gare"), "ctrl" : lambda parent=self: CTRL_Lieux(parent, categorie='gare') },
+        {"code" : "aeroport", "label" : _(u"Aéroport"), "ctrl" : lambda parent=self: CTRL_Lieux(parent, categorie='aeroport') },
+        {"code" : "port", "label" : _(u"Port"), "ctrl" : lambda parent=self: CTRL_Lieux(parent, categorie='port') },
         #{"code" : "station", "label" : _(u"Station"), "ctrl" : "CTRL_Lieux(self, categorie='station')" },
         
-        {"code" : "localisation", "label" : _(u"Localisation"), "ctrl" : "CTRL_Localisation(self)" },
+        {"code" : "localisation", "label" : _(u"Localisation"), "ctrl" : lambda parent=self: CTRL_Localisation(parent) },
         ],
 
     "arrivee" : [
-        {"code" : "date_heure", "label" : _(u"Heure"), "ctrl" : "CTRL_DateHeure(self)" },
+        {"code" : "date_heure", "label" : _(u"Heure"), "ctrl" : lambda parent=self: CTRL_DateHeure(parent) },
         
-        {"code" : "arret_bus", "label" : _(u"Arrêt"), "ctrl" : "CTRL_Arrets(self, categorie='bus')" },
-        {"code" : "arret_car", "label" : _(u"Arrêt"), "ctrl" : "CTRL_Arrets(self, categorie='car')" },
-        {"code" : "arret_navette", "label" : _(u"Arrêt"), "ctrl" : "CTRL_Arrets(self, categorie='navette')" },
-        {"code" : "arret_bateau", "label" : _(u"Arrêt"), "ctrl" : "CTRL_Arrets(self, categorie='bateau')" },
-        {"code" : "arret_metro", "label" : _(u"Arrêt"), "ctrl" : "CTRL_Arrets(self, categorie='metro')" },
-        {"code" : "arret_pedibus", "label" : _(u"Arrêt"), "ctrl" : "CTRL_Arrets(self, categorie='pedibus')" },
+        {"code" : "arret_bus", "label" : _(u"Arrêt"), "ctrl" : lambda parent=self: CTRL_Arrets(parent, categorie='bus') },
+        {"code" : "arret_car", "label" : _(u"Arrêt"), "ctrl" : lambda parent=self: CTRL_Arrets(parent, categorie='car') },
+        {"code" : "arret_navette", "label" : _(u"Arrêt"), "ctrl" : lambda parent=self: CTRL_Arrets(parent, categorie='navette') },
+        {"code" : "arret_bateau", "label" : _(u"Arrêt"), "ctrl" : lambda parent=self: CTRL_Arrets(parent, categorie='bateau') },
+        {"code" : "arret_metro", "label" : _(u"Arrêt"), "ctrl" : lambda parent=self: CTRL_Arrets(parent, categorie='metro') },
+        {"code" : "arret_pedibus", "label" : _(u"Arrêt"), "ctrl" : lambda parent=self: CTRL_Arrets(parent, categorie='pedibus') },
         
-        {"code" : "gare", "label" : _(u"Gare"), "ctrl" : "CTRL_Lieux(self, categorie='gare')" },
-        {"code" : "aeroport", "label" : _(u"Aéroport"), "ctrl" : "CTRL_Lieux(self, categorie='aeroport')" },
-        {"code" : "port", "label" : _(u"Port"), "ctrl" : "CTRL_Lieux(self, categorie='port')" },
+        {"code" : "gare", "label" : _(u"Gare"), "ctrl" : lambda parent=self: CTRL_Lieux(parent, categorie='gare') },
+        {"code" : "aeroport", "label" : _(u"Aéroport"), "ctrl" : lambda parent=self: CTRL_Lieux(parent, categorie='aeroport') },
+        {"code" : "port", "label" : _(u"Port"), "ctrl" : lambda parent=self: CTRL_Lieux(parent, categorie='port') },
         #{"code" : "station", "label" : _(u"Station"), "ctrl" : "CTRL_Lieux(self, categorie='station')" },
         
-        {"code" : "localisation", "label" : _(u"Localisation"), "ctrl" : "CTRL_Localisation(self)" },
+        {"code" : "localisation", "label" : _(u"Localisation"), "ctrl" : lambda parent=self: CTRL_Localisation(parent) },
         ],
         
     }
@@ -1236,8 +1236,8 @@ class CTRL(wx.Panel):
             grid_sizer.Add(ctrl_label, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 0)
             
             # contrôle
-            nomControle = dictControle["ctrl"]
-            ctrl = eval(nomControle)
+            constructeur = dictControle["ctrl"]
+            ctrl = constructeur()
             ctrl.SetName(code)
             ctrl.rubrique = rubrique
             grid_sizer.Add(ctrl, 0, wx.EXPAND, 0)
