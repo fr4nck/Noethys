@@ -139,7 +139,7 @@ def Sauvegarde(listeFichiersLocaux=[], listeFichiersReseau=[], nom="", repertoir
             proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
             out, temp = proc.communicate()
 
-            if out not in ("", b""):
+            if proc.returncode != 0:
                 print((out,))
                 try :
                     if six.PY2:
@@ -247,11 +247,8 @@ def VerificationZip(fichier=""):
     
 def GetListeFichiersZIP(fichier):
     """ Récupère la liste des fichiers du ZIP """
-    listeFichiers = []
-    fichierZip = zipfile.ZipFile(fichier, "r")
-    for fichier in fichierZip.namelist() :
-        listeFichiers.append(fichier)
-    return listeFichiers
+    with zipfile.ZipFile(fichier, "r") as fichierZip:
+        return list(fichierZip.namelist())
     
 def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersReseau=[], dictConnexion=None):
     """ Restauration à partir des listes de fichiers locaux et réseau """
@@ -279,7 +276,9 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
             reponse = dlg.ShowModal()
             dlg.Destroy()
             if reponse != wx.ID_YES :
-                return False
+                fichierZip.close()
+                fichierZip.close()
+            return False
         
         # Restauration
         nbreEtapes = len(listeFichiersLocaux)
@@ -300,7 +299,9 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
                 dlg = wx.MessageDialog(None, _(u"La restauration du fichier '%s' a rencontré l'erreur suivante : \n%s") % (fichier, err), "Erreur", wx.OK| wx.ICON_ERROR)  
                 dlg.ShowModal()
                 dlg.Destroy()
-                return False
+                fichierZip.close()
+                fichierZip.close()
+            return False
             
             listeFichiersRestaures.append(fichier[:-4])
 
@@ -316,6 +317,7 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
             dlgErreur = wx.MessageDialog(None, _(u"Noethys n'a pas réussi à localiser MySQL sur votre ordinateur.\nNotez bien que MySQL doit être installé obligatoirement pour créer une restauration réseau."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
             dlgErreur.ShowModal() 
             dlgErreur.Destroy()
+            fichierZip.close()
             return False
 
         # Vérifie qu'on les remplace bien
@@ -334,7 +336,9 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
             reponse = dlg.ShowModal()
             dlg.Destroy()
             if reponse != wx.ID_YES :
-                return False
+                fichierZip.close()
+                fichierZip.close()
+            return False
 
         # Création du répertoire temporaire
         repTemp = UTILS_Fichiers.GetRepTemp(fichier="restoretemp")
@@ -378,7 +382,7 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
             proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
             out, temp = proc.communicate()
 
-            if out not in ("", b"") :
+            if proc.returncode != 0:
                 print(("subprocess de restauration mysql :", out))
                 if six.PY2:
                     out = str(out).decode("utf8")
@@ -386,7 +390,9 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
                 dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de restauration !\n\nErreur : %s") % out, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
                 dlgErreur.ShowModal() 
                 dlgErreur.Destroy()
-                return False
+                fichierZip.close()
+                fichierZip.close()
+            return False
             
             listeFichiersRestaures.append(fichier)
             
