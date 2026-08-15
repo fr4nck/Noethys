@@ -93,7 +93,7 @@ jobs:
         run: python scripts/audit_critical_business_modules.py
 
       - name: Surveiller les imports dynamiques PyInstaller
-        run: python scripts/audit_dynamic_import_risks.py --max-import-risks 7
+        run: python scripts/audit_dynamic_import_risks.py --max-import-risks 0
 
       - name: Inventorier les parsings de date fragiles
         run: python scripts/audit_fragile_date_parsing.py
