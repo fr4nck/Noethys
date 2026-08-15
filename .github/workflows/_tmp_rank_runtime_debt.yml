@@ -1,0 +1,45 @@
+name: Rank runtime debt
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_rank_runtime_debt.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  rank:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Classer les alertes runtime par fichiers et zones sensibles
+        run: |
+          python scripts/audit_runtime_patterns.py --json runtime.json
+          python - <<'PY'
+          import json
+          from collections import Counter
+          data=json.load(open('runtime.json', encoding='utf-8'))
+          for key in ('BARE_EXCEPT','RESULT_UNGUARDED','RESULT_ASSIGN'):
+              items=data.get(key,[])
+              counts=Counter(i['file'] for i in items)
+              print('\n###',key,len(items))
+              for path,count in counts.most_common(40):
+                  print(f'{count:3} {path}')
+          print('\n### PRIORITE BARE_EXCEPT')
+          needles=('GestionDB','Facturation','Reglement','Prestation','Sauvegarde','Backup','Portail','Internet','Synchro','Export','Import','MySQL','Utilisateur','Config')
+          for item in data.get('BARE_EXCEPT',[]):
+              if any(n.lower() in item['file'].lower() for n in needles):
+                  print(f"{item['file']}:{item['line']}: {item['snippet']}")
+          print('\n### PRIORITE RESULTATREQ')
+          for key in ('RESULT_UNGUARDED','RESULT_ASSIGN'):
+              for item in data.get(key,[]):
+                  path=item['file']
+                  if any(n.lower() in path.lower() for n in needles):
+                      line=item.get('line') or item.get('line_access')
+                      snip=item.get('snippet') or item.get('snippet_access')
+                      print(f'{key} {path}:{line}: {snip}')
+          PY
