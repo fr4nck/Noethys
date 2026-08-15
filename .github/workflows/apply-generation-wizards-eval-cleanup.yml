@@ -1,0 +1,39 @@
+name: Apply generation wizards eval cleanup
+
+on:
+  push:
+    paths:
+      - 'scripts/remove_generation_wizards_eval.py'
+      - '.github/workflows/apply-generation-wizards-eval-cleanup.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Appliquer les corrections
+        run: python scripts/remove_generation_wizards_eval.py
+      - name: Vérifier la compilation
+        run: python -m compileall -q -x 'C866CA3A' noethys/
+      - name: Vérifier la baisse des eval
+        run: python scripts/audit_dynamic_import_risks.py --max-import-risks 0
+      - name: Committer
+        run: |
+          if git diff --quiet; then
+            echo "Aucun changement"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Dlg/DLG_Factures_generation.py noethys/Dlg/DLG_Rappels_generation.py noethys/Dlg/DLG_Attestations_fiscales_generation.py
+          git commit -m "security: supprimer eval des assistants de génération"
+          git push origin master
