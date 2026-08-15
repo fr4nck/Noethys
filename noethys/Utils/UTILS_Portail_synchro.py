@@ -23,7 +23,7 @@ import json
 import six
 from six.moves.urllib.request import Request, urlopen
 import sys
-import importlib
+import importlib.util
 import platform
 import time
 from dateutil import relativedelta
@@ -401,12 +401,30 @@ class Synchro():
             return False
 
         chemin, nomFichier = resultat
-        if "models" in sys.modules:
-            del sys.modules["models"]
 
-        # Import du fichier models.py
-        sys.path.append(chemin)
-        models = importlib.import_module(nomFichier.replace(".py", ""))
+        # Import du fichier models.py téléchargé depuis le portail, sans modifier
+        # sys.path et en vérifiant explicitement le fichier et l'API attendue.
+        chemin_models = os.path.realpath(os.path.join(chemin, nomFichier))
+        chemin_attendu = os.path.realpath(os.path.join(chemin, "models.py"))
+        if chemin_models != chemin_attendu or not os.path.isfile(chemin_models):
+            self.log.EcritLog(_(u"[ERREUR] Fichier models.py invalide ou introuvable."))
+            self.Deconnexion(ftp)
+            return False
+
+        spec = importlib.util.spec_from_file_location("noethys_connecthys_models", chemin_models)
+        if spec is None or spec.loader is None:
+            self.log.EcritLog(_(u"[ERREUR] Impossible de charger models.py."))
+            self.Deconnexion(ftp)
+            return False
+
+        models = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(models)
+
+        attributs_requis = ("create_engine", "Base", "sessionmaker")
+        if not all(hasattr(models, attribut) for attribut in attributs_requis):
+            self.log.EcritLog(_(u"[ERREUR] Le fichier models.py ne fournit pas l'API attendue."))
+            self.Deconnexion(ftp)
+            return False
 
         # Génération d'un nombre secret pour le nom de fichier des données
         secret = ""
