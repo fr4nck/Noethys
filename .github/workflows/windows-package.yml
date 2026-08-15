@@ -69,13 +69,25 @@ jobs:
           }
           Get-ChildItem "dist/Noethys" -Recurse | Measure-Object | Format-List
 
+      - name: Écrire les informations de build
+        shell: pwsh
+        run: |
+          $pythonVersion = (python --version 2>&1)
+          @(
+            "Noethys portable Windows"
+            "Commit: $env:GITHUB_SHA"
+            "Python: $pythonVersion"
+            "Workflow run: $env:GITHUB_RUN_ID"
+            "Build UTC: $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
+          ) | Set-Content -Path "dist/Noethys/BUILD-INFO.txt" -Encoding UTF8
+
       - name: Créer l'archive portable
         shell: pwsh
-        run: Compress-Archive -Path "dist/Noethys/*" -DestinationPath "Noethys-Windows11-portable.zip"
+        run: Compress-Archive -Path "dist/Noethys/*" -DestinationPath "Noethys-Windows-portable.zip"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Noethys-Windows11-portable
-          path: Noethys-Windows11-portable.zip
+          name: Noethys-Windows-portable
+          path: Noethys-Windows-portable.zip
           if-no-files-found: error
           retention-days: 14
