@@ -2006,8 +2006,8 @@ class Notebook(wx.Notebook):
         self.dictPages = {}
         
         self.listePages = [
-            (_(u"graphique"), _(u"  Graphique  "), u"CTRL_Graphique(self, IDfamille=IDfamille)", None),
-            (_(u"liste"), _(u"  Liste  "), u"CTRL_Liste(self, IDfamille=IDfamille)", None),
+            (_(u"graphique"), _(u"  Graphique  "), lambda: CTRL_Graphique(self, IDfamille=IDfamille), None),
+            (_(u"liste"), _(u"  Liste  "), lambda: CTRL_Liste(self, IDfamille=IDfamille), None),
 ##            (_(u"liens"), _(u"  Liens  "), u"DLG_Individu_liens.Notebook(self, IDfamille=IDfamille)", None),
             ]
             
@@ -2023,7 +2023,7 @@ class Notebook(wx.Notebook):
         # Création des pages
         index = 0
         for codePage, labelPage, ctrlPage, imgPage in self.listePages :
-            setattr(self, "page%s" % index, eval(ctrlPage))
+            setattr(self, "page%s" % index, ctrlPage())
             self.AddPage(getattr(self, "page%s" % index), labelPage)
             if imgPage != None:
                 self.SetPageImage(index, getattr(self, "img%d" % index))

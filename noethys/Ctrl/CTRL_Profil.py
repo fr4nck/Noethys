@@ -12,6 +12,7 @@
 import Chemins
 from Utils import UTILS_Adaptations
 import six
+import ast
 import wx
 import GestionDB
 import datetime
@@ -274,7 +275,7 @@ def GetParametres(IDprofil=None):
         if type_donnee == "texte":
             parametre = parametre
         else :
-            parametre = eval(six.text_type(parametre))
+            parametre = ast.literal_eval(six.text_type(parametre))
         dictResultats[nom] = parametre
 
     return dictResultats
