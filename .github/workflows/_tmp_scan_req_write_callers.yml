@@ -1,0 +1,34 @@
+name: Scan DB write callers
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_scan_req_write_callers.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lister les appelants sensibles
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          needles=('ReqMAJ(', 'ReqDEL(', 'ReqInsert(')
+          priorities=('Factur','Reglement','Prestation','Sauvegarde','Portail','Synchro','Import','Export','Utilisateur','Activite','Famille')
+          rows=[]
+          for p in Path('noethys').rglob('*.py'):
+              try:
+                  lines=p.read_text(encoding='utf-8').splitlines()
+              except UnicodeDecodeError:
+                  continue
+              for i,l in enumerate(lines,1):
+                  if any(n in l for n in needles) and 'def Req' not in l:
+                      score=sum(x.lower() in str(p).lower() for x in priorities)
+                      rows.append((score,str(p),i,l.strip()))
+          for score,p,i,l in sorted(rows,key=lambda x:(-x[0],x[1],x[2]))[:220]:
+              print(f'{score} {p}:{i}: {l}')
+          PY
