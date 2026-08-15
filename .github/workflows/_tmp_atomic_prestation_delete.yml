@@ -1,0 +1,58 @@
+name: Atomic prestation delete
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_prestation_delete.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Atomiser les suppressions de prestations
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Ol/OL_Prestations.py')
+          s=p.read_text(encoding='utf-8')
+
+          s=s.replace('''                        for IDconso in listeIDconso :\n                            DB.ReqDEL("consommations", "IDconso", IDconso)\n''','''                        for IDconso in listeIDconso :\n                            if not DB.ReqDEL("consommations", "IDconso", IDconso, commit=False):\n                                valide = False\n                                break\n''',1)
+
+          s=s.replace('''                    for IDconso in listeIDconso :\n                        listeDonnees = [("IDprestation", None),]\n                        DB.ReqMAJ("consommations", listeDonnees, "IDconso", IDconso)\n''','''                    for IDconso in listeIDconso :\n                        listeDonnees = [("IDprestation", None),]\n                        if not DB.ReqMAJ("consommations", listeDonnees, "IDconso", IDconso, commit=False):\n                            valide = False\n                            break\n''',1)
+
+          old='''                if reponse == 3 :\n                    return\n'''
+          new='''                if reponse == 3 :\n                    try:\n                        DB.connexion.rollback()\n                    except Exception:\n                        pass\n                    DB.Close()\n                    return\n'''
+          if s.count(old)!=1: raise SystemExit('annulation motif inattendu')
+          s=s.replace(old,new,1)
+
+          old='''            # Suppression de la prestation\n            if valide == True :\n                DB.ReqDEL("prestations", "IDprestation", track.IDprestation)\n                DB.ReqDEL("ventilation", "IDprestation", track.IDprestation)\n                DB.ReqDEL("deductions", "IDprestation", track.IDprestation)\n                listeSuppressions.append(track)\n            \n            # MAJ du listeView\n            self.MAJ() \n'''
+          new='''            # Suppression de la prestation\n            if valide == True :\n                operations = (\n                    DB.ReqDEL("prestations", "IDprestation", track.IDprestation, commit=False),\n                    DB.ReqDEL("ventilation", "IDprestation", track.IDprestation, commit=False),\n                    DB.ReqDEL("deductions", "IDprestation", track.IDprestation, commit=False),\n                )\n                if all(operations):\n                    DB.Commit()\n                    listeSuppressions.append(track)\n                else:\n                    try:\n                        DB.connexion.rollback()\n                    except Exception:\n                        pass\n                    dlg = wx.MessageDialog(self, _(u"La suppression de la prestation n°%d a échoué. Aucune modification n'a été conservée pour cette prestation.") % track.IDprestation, _(u"Erreur de suppression"), wx.OK | wx.ICON_ERROR)\n                    dlg.ShowModal()\n                    dlg.Destroy()\n            else:\n                # Annule les éventuelles modifications préparées sur les consommations.\n                try:\n                    DB.connexion.rollback()\n                except Exception:\n                    pass\n            \n            # MAJ du listeView\n            self.MAJ() \n'''
+          if s.count(old)!=1: raise SystemExit('suppression prestation motif inattendu')
+          s=s.replace(old,new,1)
+
+          old='''            if self.gestion.Verification("prestations", track.date) == False: return False\n'''
+          new='''            if self.gestion.Verification("prestations", track.date) == False:\n                DB.Close()\n                return False\n'''
+          if s.count(old)!=1: raise SystemExit('verification motif inattendu')
+          s=s.replace(old,new,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Ol/OL_Prestations.py
+          git diff --check
+          grep -q 'commit=False' noethys/Ol/OL_Prestations.py
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Ol/OL_Prestations.py
+          git commit -m 'fix: atomiser la suppression des prestations'
+          git push origin HEAD:master
