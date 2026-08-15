@@ -380,13 +380,15 @@ class CTRL(wx.TreeCtrl):
             if dlg.ShowModal() == wx.ID_YES :
                 DB = GestionDB.DB()
 
-                # Suppression de la page
-                DB.ReqDEL("portail_pages", "IDpage", dictData["ID"])
+                # Suppression de la page et de tout son contenu dans une seule transaction.
+                succes = DB.ReqDEL("portail_pages", "IDpage", dictData["ID"], commit=False)
 
                 # Suppression des blocs également
                 for dictTemp in listeTousEnfants :
-                    DB.ReqDEL("portail_blocs", "IDbloc", dictTemp["ID"])
-                    DB.ReqDEL("portail_elements", "IDbloc", dictTemp["ID"])
+                    if succes:
+                        succes = DB.ReqDEL("portail_blocs", "IDbloc", dictTemp["ID"], commit=False)
+                    if succes:
+                        succes = DB.ReqDEL("portail_elements", "IDbloc", dictTemp["ID"], commit=False)
 
                 # Modification de l'ordre des pages
                 itemParent = self.GetItemParent(item)
@@ -395,11 +397,22 @@ class CTRL(wx.TreeCtrl):
                 ordre = 1
                 for dictDataTemp in listeItemsSoeurs :
                     if dictDataTemp["ID"] != dictData["ID"] :
-                        DB.ReqMAJ("portail_pages", [("ordre", ordre),], "IDpage", dictDataTemp["ID"])
+                        if succes:
+                            succes = DB.ReqMAJ("portail_pages", [("ordre", ordre),], "IDpage", dictDataTemp["ID"], commit=False)
                         ordre += 1
 
+                if succes:
+                    DB.Commit()
+                    self.MAJ()
+                else:
+                    try:
+                        DB.connexion.rollback()
+                    except Exception:
+                        pass
+                    dlgErreur = wx.MessageDialog(self, _(u"La suppression de la page a échoué. Aucune modification n'a été conservée."), _(u"Erreur de suppression"), wx.OK | wx.ICON_ERROR)
+                    dlgErreur.ShowModal()
+                    dlgErreur.Destroy()
                 DB.Close()
-                self.MAJ()
 
             dlg.Destroy()
         
@@ -412,9 +425,10 @@ class CTRL(wx.TreeCtrl):
             if dlg.ShowModal() == wx.ID_YES :
                 DB = GestionDB.DB()
 
-                # Suppression du bloc
-                DB.ReqDEL("portail_blocs", "IDbloc", dictData["ID"])
-                DB.ReqDEL("portail_elements", "IDbloc", dictData["ID"])
+                # Suppression du bloc et de ses éléments dans une seule transaction.
+                succes = DB.ReqDEL("portail_blocs", "IDbloc", dictData["ID"], commit=False)
+                if succes:
+                    succes = DB.ReqDEL("portail_elements", "IDbloc", dictData["ID"], commit=False)
 
                 # Modification de l'ordre des blocs
                 itemParent = self.GetItemParent(item)
@@ -423,11 +437,22 @@ class CTRL(wx.TreeCtrl):
                 ordre = 1
                 for dictDataTemp in listeItemsSoeurs :
                     if dictDataTemp["ID"] != dictData["ID"] :
-                        DB.ReqMAJ("portail_blocs", [("ordre", ordre),], "IDbloc", dictDataTemp["ID"])
+                        if succes:
+                            succes = DB.ReqMAJ("portail_blocs", [("ordre", ordre),], "IDbloc", dictDataTemp["ID"], commit=False)
                         ordre += 1
 
+                if succes:
+                    DB.Commit()
+                    self.MAJ()
+                else:
+                    try:
+                        DB.connexion.rollback()
+                    except Exception:
+                        pass
+                    dlgErreur = wx.MessageDialog(self, _(u"La suppression du bloc a échoué. Aucune modification n'a été conservée."), _(u"Erreur de suppression"), wx.OK | wx.ICON_ERROR)
+                    dlgErreur.ShowModal()
+                    dlgErreur.Destroy()
                 DB.Close()
-                self.MAJ()
 
             dlg.Destroy()
 
@@ -458,14 +483,29 @@ class CTRL(wx.TreeCtrl):
         dictDataRemplace = self.GetPyData(itemRemplace)
         
         DB = GestionDB.DB()
+        succes = False
         if dictData["type"] == "page" :
-            DB.ReqMAJ("portail_pages", [("ordre", dictData["ordre"] + sens),], "IDpage", dictData["ID"])
-            DB.ReqMAJ("portail_pages", [("ordre", dictData["ordre"]),], "IDpage", dictDataRemplace["ID"])
+            succes = DB.ReqMAJ("portail_pages", [("ordre", dictData["ordre"] + sens),], "IDpage", dictData["ID"], commit=False)
+            if succes:
+                succes = DB.ReqMAJ("portail_pages", [("ordre", dictData["ordre"]),], "IDpage", dictDataRemplace["ID"], commit=False)
         if dictData["type"] == "bloc" :
-            DB.ReqMAJ("portail_blocs", [("ordre", dictData["ordre"] + sens),], "IDbloc", dictData["ID"])
-            DB.ReqMAJ("portail_blocs", [("ordre", dictData["ordre"]),], "IDbloc", dictDataRemplace["ID"])
-        DB.Commit()
+            succes = DB.ReqMAJ("portail_blocs", [("ordre", dictData["ordre"] + sens),], "IDbloc", dictData["ID"], commit=False)
+            if succes:
+                succes = DB.ReqMAJ("portail_blocs", [("ordre", dictData["ordre"]),], "IDbloc", dictDataRemplace["ID"], commit=False)
+        if succes:
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
         DB.Close()
+
+        if not succes:
+            dlg = wx.MessageDialog(self, _(u"Le déplacement a échoué. L'ordre précédent a été conservé."), _(u"Erreur de déplacement"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
         
         # MAJ du contrôle
         if dictData["type"] == "page":
