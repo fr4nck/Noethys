@@ -276,6 +276,8 @@ class Dialog(wx.Dialog):
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
         DB.Close()
+        if not listeDonnees:
+            raise ValueError("Compte payeur introuvable pour la famille %s" % self.IDfamille)
         self.IDcompte_payeur = listeDonnees[0][0]
         
         if self.IDprestation == None :
@@ -839,6 +841,8 @@ class Dialog(wx.Dialog):
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()     
         DB.Close() 
+        if not listeDonnees:
+            return False
         IDcompte_payeur = listeDonnees[0][0]
         
         DB = GestionDB.DB()

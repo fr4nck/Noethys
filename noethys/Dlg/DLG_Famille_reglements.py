@@ -80,7 +80,7 @@ class CTRL_Prelevement(wx.Panel):
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
         DB.Close()
-        temp, activation = listeDonnees[0]
+        activation = listeDonnees[0][1] if listeDonnees else None
         if activation == 1 :
             self.ctrl_image.SetBitmap(self.image_valide)
         else :
@@ -122,7 +122,7 @@ class CTRL_Recu(wx.Panel):
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
         DB.Close()
-        if listeDonnees[0][1] != None :
+        if listeDonnees and listeDonnees[0][1] != None :
             self.ctrl_image.SetBitmap(self.image_valide)
         else :
             self.ctrl_image.SetBitmap(self.image_nonvalide)
@@ -163,7 +163,7 @@ class CTRL_Depot(wx.Panel):
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
         DB.Close()
-        if listeDonnees[0][1] != None :
+        if listeDonnees and listeDonnees[0][1] != None :
             self.ctrl_image.SetBitmap(self.image_valide)
         else :
             self.ctrl_image.SetBitmap(self.image_nonvalide)
@@ -361,6 +361,8 @@ class Panel(wx.Panel):
             DB.ExecuterReq(req)
             listeDonnees = DB.ResultatReq()
             DB.Close()
+            if not listeDonnees:
+                return
             self.IDcompte_payeur = listeDonnees[0][0]
             self.ctrl_reglements.SetIDcompte_payeur(self.IDcompte_payeur)
         # MAJ des contrôles
