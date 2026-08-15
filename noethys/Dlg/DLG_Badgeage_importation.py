@@ -817,10 +817,10 @@ class Notebook(wx.Notebook):
         self.dictPages = {}
 
         self.listePages = [
-            (_(u"scanner"), _(u"Scanner à mémoire"), _(u"Page_scanner(self)"), "Scanner_memoire.png"),
-            (_(u"excel"), _(u"Fichier Excel"), _(u"Page_excel(self)"), "Excel.png"),
-            (_(u"csv"), _(u"Fichier CSV"), _(u"Page_csv(self)"), "Facture.png"),
-            (_(u"archives"), _(u"Archives"), _(u"Page_archives(self)"), "Database.png"),
+            (_(u"scanner"), _(u"Scanner à mémoire"), lambda: Page_scanner(self), "Scanner_memoire.png"),
+            (_(u"excel"), _(u"Fichier Excel"), lambda: Page_excel(self), "Excel.png"),
+            (_(u"csv"), _(u"Fichier CSV"), lambda: Page_csv(self), "Facture.png"),
+            (_(u"archives"), _(u"Archives"), lambda: Page_archives(self), "Database.png"),
             ]
             
         # ImageList pour le NoteBook
@@ -834,7 +834,7 @@ class Notebook(wx.Notebook):
         # Création des pages
         index = 0
         for codePage, labelPage, ctrlPage, imgPage in self.listePages :
-            setattr(self, "page%s" % index, eval(ctrlPage))
+            setattr(self, "page%s" % index, ctrlPage())
             self.AddPage(getattr(self, "page%s" % index), labelPage)
             self.SetPageImage(index, getattr(self, "img%d" % index))
             self.dictPages[codePage] = {'ctrl': getattr(self, "page%d" % index), 'index': index}
