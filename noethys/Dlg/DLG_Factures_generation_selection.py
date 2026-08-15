@@ -284,13 +284,17 @@ class Panel(wx.Panel):
                     ("mention2", self.parent.dictParametres["mention2"]),
                     ("mention3", self.parent.dictParametres["mention3"]),
                     ]
-                IDfacture = DB.ReqInsert("factures", listeDonnees)
+                IDfacture = DB.ReqInsert("factures", listeDonnees, commit=False)
+                if IDfacture is None:
+                    raise RuntimeError(_(u"La création de la facture a échoué."))
                                     
                 # Attribution des IDfacture à chaque prestation
                 for IDindividu, IDprestation in listePrestations :
                     if dictCompte["individus"][IDindividu]["select"] == True :
                         listeDonnees = [ ("IDfacture", IDfacture ), ]
-                        DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation)
+                        if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):
+                            raise RuntimeError(_(u"Le rattachement d'une prestation à la facture a échoué."))
+                DB.Commit()
                 
                 listeFacturesGenerees.append(IDfacture) 
                 numero += 1

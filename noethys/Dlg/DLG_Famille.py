@@ -44,9 +44,13 @@ def CreateIDfamille(DB):
     """ Crée la fiche famille dans la base de données afin d'obtenir un IDfamille et un IDcompte_payeur """
     from Utils import UTILS_Internet
     date_creation = str(datetime.date.today())
-    IDfamille = DB.ReqInsert("familles", [("date_creation", date_creation),])
+    IDfamille = DB.ReqInsert("familles", [("date_creation", date_creation),], commit=False)
+    if IDfamille is None:
+        return None
     # Création du compte payeur
-    IDcompte_payeur = DB.ReqInsert("comptes_payeurs", [("IDfamille", IDfamille),])
+    IDcompte_payeur = DB.ReqInsert("comptes_payeurs", [("IDfamille", IDfamille),], commit=False)
+    if IDcompte_payeur is None:
+        return None
     # Création des codes internet
     internet_identifiant= UTILS_Internet.CreationIdentifiant(IDfamille=IDfamille)
     taille = UTILS_Parametres.Parametres(mode="get", categorie="comptes_internet", nom="taille_passwords", valeur=8)
@@ -58,7 +62,9 @@ def CreateIDfamille(DB):
         ("internet_identifiant", internet_identifiant),
         ("internet_mdp", internet_mdp),
         ]
-    DB.ReqMAJ("familles", listeDonnees, "IDfamille", IDfamille)
+    if not DB.ReqMAJ("familles", listeDonnees, "IDfamille", IDfamille, commit=False):
+        return None
+    DB.Commit()
     return IDfamille
 
 
