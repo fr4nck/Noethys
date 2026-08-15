@@ -1,0 +1,49 @@
+name: Guard import edge cases
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_import_guards.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Corriger les cas de fichiers et données absents
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p=Path('noethys/Dlg/DLG_Importation_individus.py')
+          s=p.read_text(encoding='utf-8')
+          old='''        self.fichierValide = True\n        try :\n            self.classeur = xlrd.open_workbook(nomFichier)\n        except :\n            self.fichierValide = False\n        self.feuille = self.SelectionFeuille()'''
+          new='''        self.fichierValide = True\n        self.classeur = None\n        self.feuille = None\n        try :\n            self.classeur = xlrd.open_workbook(nomFichier)\n        except Exception:\n            self.fichierValide = False\n            return\n        self.feuille = self.SelectionFeuille()'''
+          if s.count(old)!=1: raise SystemExit('motif Excel inattendu')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+
+          p=Path('noethys/Dlg/DLG_Importation_vacances.py')
+          s=p.read_text(encoding='utf-8')
+          old='''        DB.ExecuterReq(req)\n        cp, ville = DB.ResultatReq()[0]\n        DB.Close()\n        \n        # Recherche sur internet'''
+          new='''        DB.ExecuterReq(req)\n        liste_organisateur = DB.ResultatReq()\n        DB.Close()\n        if not liste_organisateur:\n            dlg = wx.MessageDialog(self, _(u"Impossible de rechercher la zone scolaire : les coordonnées de l'organisateur sont absentes."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return\n        cp, ville = liste_organisateur[0]\n        \n        # Recherche sur internet'''
+          if s.count(old)!=1: raise SystemExit('motif vacances inattendu')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
+          python -m py_compile noethys/Dlg/DLG_Importation_individus.py noethys/Dlg/DLG_Importation_vacances.py
+          python scripts/audit_runtime_patterns.py --json runtime.json
+          git diff --check
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Dlg/DLG_Importation_individus.py noethys/Dlg/DLG_Importation_vacances.py
+          git commit -m 'fix: gérer les imports invalides sans crash'
+          git push origin HEAD:master
