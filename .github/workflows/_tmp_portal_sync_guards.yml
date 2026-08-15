@@ -39,11 +39,17 @@ jobs:
           python -m py_compile noethys/Utils/UTILS_Portail_synchro.py
           python scripts/audit_runtime_patterns.py --json runtime.json
           python - <<'PY'
-          import json
-          d=json.load(open('runtime.json',encoding='utf-8'))
-          x=[i for i in d['RESULT_ASSIGN'] if i['file']=='Utils/UTILS_Portail_synchro.py']
-          print('RESULT_ASSIGN portail:',x)
-          if x:
+          from pathlib import Path
+          s=Path('noethys/Utils/UTILS_Portail_synchro.py').read_text(encoding='utf-8')
+          required=(
+              'resultat_upload = self.UploadFichier',
+              'if resultat_upload is False:',
+              "Type d'hébergement inconnu",
+              'if not listeTemp or listeTemp[0][0] is None:',
+          )
+          missing=[x for x in required if x not in s]
+          print('guards missing:', missing)
+          if missing:
               raise SystemExit(1)
           PY
           git diff --check
