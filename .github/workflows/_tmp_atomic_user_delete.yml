@@ -1,0 +1,46 @@
+name: Atomic user delete
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_user_delete.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Sécuriser la suppression utilisateur
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Ol/OL_Utilisateurs.py')
+          s=p.read_text(encoding='utf-8')
+          old='''        DB.ExecuterReq(req)\n        nbreReglements = int(DB.ResultatReq()[0][0])\n        DB.Close()\n'''
+          new='''        resultatReq = DB.ExecuterReq(req)\n        listeReglements = DB.ResultatReq() if resultatReq else []\n        DB.Close()\n        if not listeReglements:\n            dlg = wx.MessageDialog(self, _(u"Impossible de vérifier les règlements associés à cet utilisateur. La suppression est annulée par sécurité."), _(u"Suppression impossible"), wx.OK | wx.ICON_ERROR)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return\n        nbreReglements = int(listeReglements[0][0])\n'''
+          if s.count(old)!=1: raise SystemExit('COUNT utilisateur motif inattendu')
+          s=s.replace(old,new,1)
+          old='''            DB = GestionDB.DB()\n            DB.ReqDEL("utilisateurs", "IDutilisateur", IDutilisateur)\n            DB.ReqDEL("droits", "IDutilisateur", IDutilisateur)\n            DB.Close() \n            self.MAJ()\n'''
+          new='''            DB = GestionDB.DB()\n            ok_utilisateur = DB.ReqDEL("utilisateurs", "IDutilisateur", IDutilisateur, commit=False)\n            ok_droits = DB.ReqDEL("droits", "IDutilisateur", IDutilisateur, commit=False) if ok_utilisateur else False\n            if ok_utilisateur and ok_droits:\n                DB.Commit()\n                DB.Close()\n                self.MAJ()\n            else:\n                try:\n                    DB.connexion.rollback()\n                except Exception:\n                    pass\n                DB.Close()\n                dlgErreur = wx.MessageDialog(self, _(u"La suppression de l'utilisateur a échoué. Aucune modification n'a été conservée."), _(u"Erreur de suppression"), wx.OK | wx.ICON_ERROR)\n                dlgErreur.ShowModal()\n                dlgErreur.Destroy()\n'''
+          if s.count(old)!=1: raise SystemExit('suppression utilisateur motif inattendu')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Ol/OL_Utilisateurs.py
+          git diff --check
+          grep -q 'commit=False' noethys/Ol/OL_Utilisateurs.py
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Ol/OL_Utilisateurs.py
+          git commit -m 'fix: atomiser la suppression des utilisateurs'
+          git push origin HEAD:master
