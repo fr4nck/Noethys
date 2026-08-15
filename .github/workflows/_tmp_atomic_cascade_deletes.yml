@@ -1,0 +1,52 @@
+name: Atomic cascade deletes
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_cascade_deletes.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Atomiser les suppressions en cascade
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p=Path('noethys/Dlg/DLG_Activite.py')
+          s=p.read_text(encoding='utf-8')
+          old='''    # Suppression de l'activité\n    DB.ReqDEL("activites", "IDactivite", IDactivite)\n    DB.ReqDEL("groupes_activites", "IDactivite", IDactivite)\n    DB.ReqDEL("responsables_activite", "IDactivite", IDactivite)\n    DB.ReqDEL("agrements", "IDactivite", IDactivite)\n    DB.ReqDEL("groupes", "IDactivite", IDactivite)\n    DB.ReqDEL("pieces_activites", "IDactivite", IDactivite)\n    DB.ReqDEL("cotisations_activites", "IDactivite", IDactivite)\n    DB.ReqDEL("renseignements_activites", "IDactivite", IDactivite)\n    DB.ReqDEL("unites", "IDactivite", IDactivite)\n    DB.ReqDEL("unites_remplissage", "IDactivite", IDactivite)\n    DB.ReqDEL("remplissage", "IDactivite", IDactivite)\n    DB.ReqDEL("ouvertures", "IDactivite", IDactivite)\n    DB.ReqDEL("categories_tarifs", "IDactivite", IDactivite)\n    DB.ReqDEL("noms_tarifs", "IDactivite", IDactivite)\n    DB.ReqDEL("tarifs", "IDactivite", IDactivite)\n    DB.ReqDEL("tarifs_lignes", "IDactivite", IDactivite)\n    DB.ReqDEL("etiquettes", "IDactivite", IDactivite)\n    DB.ReqDEL("portail_periodes", "IDactivite", IDactivite)\n    DB.ReqDEL("portail_unites", "IDactivite", IDactivite)\n    \n    # Suppressions spéciales\n    DB.ExecuterReq("DELETE FROM combi_tarifs WHERE IDtarif IN %s" % conditionTarifs)\n    DB.ExecuterReq("DELETE FROM combi_tarifs_unites WHERE IDtarif IN %s" % conditionTarifs)\n    DB.ExecuterReq("DELETE FROM unites_groupes WHERE IDunite IN %s" % conditionUnites)\n    DB.ExecuterReq("DELETE FROM unites_incompat WHERE IDunite IN %s" % conditionUnites)\n    DB.ExecuterReq("DELETE FROM unites_remplissage_unites WHERE IDunite_remplissage IN %s" % conditionUnitesRemplissage)\n    DB.Commit()\n    \n    DB.Close() \n\n    return True\n'''
+          new='''    # Suppression atomique de l'activité et de toutes ses données rattachées\n    suppressions = [\n        ("activites", "IDactivite", IDactivite),\n        ("groupes_activites", "IDactivite", IDactivite),\n        ("responsables_activite", "IDactivite", IDactivite),\n        ("agrements", "IDactivite", IDactivite),\n        ("groupes", "IDactivite", IDactivite),\n        ("pieces_activites", "IDactivite", IDactivite),\n        ("cotisations_activites", "IDactivite", IDactivite),\n        ("renseignements_activites", "IDactivite", IDactivite),\n        ("unites", "IDactivite", IDactivite),\n        ("unites_remplissage", "IDactivite", IDactivite),\n        ("remplissage", "IDactivite", IDactivite),\n        ("ouvertures", "IDactivite", IDactivite),\n        ("categories_tarifs", "IDactivite", IDactivite),\n        ("noms_tarifs", "IDactivite", IDactivite),\n        ("tarifs", "IDactivite", IDactivite),\n        ("tarifs_lignes", "IDactivite", IDactivite),\n        ("etiquettes", "IDactivite", IDactivite),\n        ("portail_periodes", "IDactivite", IDactivite),\n        ("portail_unites", "IDactivite", IDactivite),\n    ]\n    for table, champ, valeur in suppressions:\n        if not DB.ReqDEL(table, champ, valeur, commit=False):\n            DB.Close()\n            dlg = wx.MessageDialog(None, _(u"La suppression de l'activité a échoué. Aucune donnée n'a été supprimée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return False\n\n    # Suppressions spéciales incluses dans la même transaction\n    requetes = [\n        "DELETE FROM combi_tarifs WHERE IDtarif IN %s" % conditionTarifs,\n        "DELETE FROM combi_tarifs_unites WHERE IDtarif IN %s" % conditionTarifs,\n        "DELETE FROM unites_groupes WHERE IDunite IN %s" % conditionUnites,\n        "DELETE FROM unites_incompat WHERE IDunite IN %s" % conditionUnites,\n        "DELETE FROM unites_remplissage_unites WHERE IDunite_remplissage IN %s" % conditionUnitesRemplissage,\n    ]\n    for req in requetes:\n        if not DB.ExecuterReq(req):\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n            DB.Close()\n            dlg = wx.MessageDialog(None, _(u"La suppression de l'activité a échoué. Aucune donnée n'a été supprimée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return False\n\n    DB.Commit()\n    DB.Close()\n    return True\n'''
+          if s.count(old)!=1: raise SystemExit('bloc suppression activité inattendu')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('noethys/Dlg/DLG_Famille.py')
+          s=p.read_text(encoding='utf-8')
+          old='''        # Suppression des tables rattachées\n        if IDcompte_payeur != None :\n            DB.ReqDEL("payeurs", "IDcompte_payeur", IDcompte_payeur)\n            DB.ReqDEL("deductions", "IDcompte_payeur", IDcompte_payeur)\n            DB.ReqDEL("rappels", "IDcompte_payeur", IDcompte_payeur)\n            DB.ReqDEL("factures", "IDcompte_payeur", IDcompte_payeur)\n            DB.ReqDEL("prestations", "IDcompte_payeur", IDcompte_payeur)\n\n        DB.ReqDEL("quotients", "IDfamille", self.IDfamille)\n        DB.ReqDEL("attestations", "IDfamille", self.IDfamille)\n        DB.ReqDEL("messages", "IDfamille", self.IDfamille)\n        DB.ReqDEL("pieces", "IDfamille", self.IDfamille)\n        DB.ReqDEL("locations", "IDfamille", self.IDfamille)\n        DB.ReqDEL("locations_demandes", "IDfamille", self.IDfamille)\n        DB.ReqDEL("historique", "IDfamille", self.IDfamille)\n        DB.ReqDEL("comptes_payeurs", "IDfamille", self.IDfamille)\n        DB.ReqDEL("familles", "IDfamille", self.IDfamille)\n        DB.ReqDEL("mandats", "IDfamille", self.IDfamille)\n        DB.Commit() \n        DB.Close()\n    \n    def SupprimerFicheFamille(self):\n        self.SupprimerFamille()\n        self.Destroy()\n'''
+          new='''        # Suppression atomique de toutes les données rattachées\n        suppressions = []\n        if IDcompte_payeur is not None:\n            suppressions.extend([\n                ("payeurs", "IDcompte_payeur", IDcompte_payeur),\n                ("deductions", "IDcompte_payeur", IDcompte_payeur),\n                ("rappels", "IDcompte_payeur", IDcompte_payeur),\n                ("factures", "IDcompte_payeur", IDcompte_payeur),\n                ("prestations", "IDcompte_payeur", IDcompte_payeur),\n            ])\n        suppressions.extend([\n            ("quotients", "IDfamille", self.IDfamille),\n            ("attestations", "IDfamille", self.IDfamille),\n            ("messages", "IDfamille", self.IDfamille),\n            ("pieces", "IDfamille", self.IDfamille),\n            ("locations", "IDfamille", self.IDfamille),\n            ("locations_demandes", "IDfamille", self.IDfamille),\n            ("historique", "IDfamille", self.IDfamille),\n            ("comptes_payeurs", "IDfamille", self.IDfamille),\n            ("familles", "IDfamille", self.IDfamille),\n            ("mandats", "IDfamille", self.IDfamille),\n        ])\n        for table, champ, valeur in suppressions:\n            if not DB.ReqDEL(table, champ, valeur, commit=False):\n                DB.Close()\n                dlg = wx.MessageDialog(self, _(u"La suppression de la famille a échoué. Aucune donnée n'a été supprimée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n                dlg.ShowModal()\n                dlg.Destroy()\n                return False\n        DB.Commit()\n        DB.Close()\n        return True\n    \n    def SupprimerFicheFamille(self):\n        if self.SupprimerFamille():\n            self.Destroy()\n'''
+          if s.count(old)!=1: raise SystemExit('bloc suppression famille inattendu')
+          s=s.replace(old,new,1)
+          # Resserre le fallback IDcompte payeur sans avaler BaseException.
+          s=s.replace('''        try :\n            IDcompte_payeur = listeDonnees[0][0]\n        except :\n            IDcompte_payeur = None\n''','''        try :\n            IDcompte_payeur = listeDonnees[0][0]\n        except (IndexError, TypeError):\n            IDcompte_payeur = None\n''',1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Dlg/DLG_Activite.py noethys/Dlg/DLG_Famille.py
+          git diff --check
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Dlg/DLG_Activite.py noethys/Dlg/DLG_Famille.py
+          git commit -m 'fix: atomiser les suppressions famille et activité'
+          git push origin HEAD:master
