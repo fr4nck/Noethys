@@ -172,6 +172,13 @@ class Dialog(wx.Dialog):
         refus = []
 
         DB = GestionDB.DB()
+
+        def rollback_transaction():
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+
         for track in self.ctrl_locations.GetObjects():
             listeDonnees = [
                 ("IDfamille", self.track.IDfamille),
@@ -186,14 +193,22 @@ class Dialog(wx.Dialog):
             if track.resultat != "ok":
 
                 if self.ctrl_locations.IsChecked(track):
+                    succes_action = False
                     if track.etat == "ajouter":
                         if track.action_possible == True:
                             listeDonnees.append(("date_saisie", datetime.date.today()))
                             listeDonnees.append(("IDlocation_portail", track.IDlocation))
-                            IDlocation = DB.ReqInsert("locations", listeDonnees)
+                            IDlocation = DB.ReqInsert("locations", listeDonnees, commit=False)
                             resultat = _(u"Ajout de la location %s du %s") % (track.nom_produit, track.date_debut_txt)
-                            DB.ReqMAJ("portail_reservations_locations", [("resultat", "ok")], "IDreservation", track.IDreservation)
-                            UTILS_Historique.InsertActions([{"IDfamille": self.track.IDfamille, "IDcategorie": 37, "action": resultat, }], DB=DB)
+                            if IDlocation is not None and DB.ReqMAJ("portail_reservations_locations", [("resultat", "ok")], "IDreservation", track.IDreservation, commit=False):
+                                try:
+                                    UTILS_Historique.InsertActions([{"IDfamille": self.track.IDfamille, "IDcategorie": 37, "action": resultat, }], DB=DB, commit=False)
+                                    DB.Commit()
+                                    succes_action = True
+                                except Exception:
+                                    rollback_transaction()
+                            else:
+                                rollback_transaction()
                         else:
                             resultat = _(u"%s du %s : %s") % (track.nom_produit, track.date_debut_txt, track.statut)
                         self.parent.EcritLog(resultat, self.ctrl_log)
@@ -201,12 +216,19 @@ class Dialog(wx.Dialog):
                     if track.etat == "modifier":
                         if track.action_possible == True:
                             if "-" in track.IDlocation:
-                                DB.ReqMAJ("locations", listeDonnees, "IDlocation_portail", track.IDlocation, IDestChaine=True)
+                                succes_ecriture = DB.ReqMAJ("locations", listeDonnees, "IDlocation_portail", track.IDlocation, IDestChaine=True, commit=False)
                             else:
-                                DB.ReqMAJ("locations", listeDonnees, "IDlocation", int(track.IDlocation))
+                                succes_ecriture = DB.ReqMAJ("locations", listeDonnees, "IDlocation", int(track.IDlocation), commit=False)
                             resultat = _(u"Modification de la location %s du %s") % (track.nom_produit, track.date_debut_txt)
-                            DB.ReqMAJ("portail_reservations_locations", [("resultat", "ok")], "IDreservation", track.IDreservation)
-                            UTILS_Historique.InsertActions([{"IDfamille": self.track.IDfamille, "IDcategorie": 38, "action": resultat, }], DB=DB)
+                            if succes_ecriture and DB.ReqMAJ("portail_reservations_locations", [("resultat", "ok")], "IDreservation", track.IDreservation, commit=False):
+                                try:
+                                    UTILS_Historique.InsertActions([{"IDfamille": self.track.IDfamille, "IDcategorie": 38, "action": resultat, }], DB=DB, commit=False)
+                                    DB.Commit()
+                                    succes_action = True
+                                except Exception:
+                                    rollback_transaction()
+                            else:
+                                rollback_transaction()
                         else:
                             resultat = _(u"%s du %s : %s") % (track.nom_produit, track.date_debut_txt, track.statut)
                         self.parent.EcritLog(resultat, self.ctrl_log)
@@ -214,24 +236,35 @@ class Dialog(wx.Dialog):
                     if track.etat == "supprimer":
                         if track.action_possible == True:
                             if "-" in track.IDlocation:
-                                DB.ReqDEL("locations", "IDlocation_portail", track.IDlocation, IDestChaine=True)
+                                succes_ecriture = DB.ReqDEL("locations", "IDlocation_portail", track.IDlocation, IDestChaine=True, commit=False)
                             else:
-                                DB.ReqDEL("locations", "IDlocation", int(track.IDlocation))
+                                succes_ecriture = DB.ReqDEL("locations", "IDlocation", int(track.IDlocation), commit=False)
                             resultat = _(u"Suppression de la location %s du %s") % (track.nom_produit, track.date_debut_txt)
-                            DB.ReqMAJ("portail_reservations_locations", [("resultat", "ok")], "IDreservation", track.IDreservation)
-                            UTILS_Historique.InsertActions([{"IDfamille": self.track.IDfamille, "IDcategorie": 39, "action": resultat, }], DB=DB)
+                            if succes_ecriture and DB.ReqMAJ("portail_reservations_locations", [("resultat", "ok")], "IDreservation", track.IDreservation, commit=False):
+                                try:
+                                    UTILS_Historique.InsertActions([{"IDfamille": self.track.IDfamille, "IDcategorie": 39, "action": resultat, }], DB=DB, commit=False)
+                                    DB.Commit()
+                                    succes_action = True
+                                except Exception:
+                                    rollback_transaction()
+                            else:
+                                rollback_transaction()
                         else:
                             resultat = _(u"%s du %s : %s") % (track.nom_produit, track.date_debut_txt, track.statut)
                         self.parent.EcritLog(resultat, self.ctrl_log)
 
-                    # Mémorisation pour réponse
-                    resultats[track.etat][track.action_possible] += 1
+                    # Mémorisation pour réponse : distingue désormais la possibilité théorique du succès réel.
+                    if track.action_possible and not succes_action:
+                        self.parent.EcritLog(_(u"Échec de l'action : %s. Aucune modification n'a été conservée." % track.action), self.ctrl_log)
+                    resultats[track.etat][succes_action] += 1
 
                 # Action refusée
                 if not self.ctrl_locations.IsChecked(track):
-                    DB.ReqMAJ("portail_reservations_locations", [("resultat", "refus")], "IDreservation", track.IDreservation)
-                    self.parent.EcritLog(_(u"Refus de l'action : %s." % track.action), self.ctrl_log)
-                    refus.append(track)
+                    if DB.ReqMAJ("portail_reservations_locations", [("resultat", "refus")], "IDreservation", track.IDreservation):
+                        self.parent.EcritLog(_(u"Refus de l'action : %s." % track.action), self.ctrl_log)
+                        refus.append(track)
+                    else:
+                        self.parent.EcritLog(_(u"Échec lors de l'enregistrement du refus : %s." % track.action), self.ctrl_log)
 
         DB.Close()
 
