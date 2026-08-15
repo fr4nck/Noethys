@@ -13,29 +13,46 @@ import sys
 from importlib import import_module
 
 
+def _module_absent(exc, nom_module):
+    """Indique si l'ImportError correspond bien au module demandé.
+
+    Un ImportError levé par une dépendance *interne* au module doit remonter :
+    le masquer puis essayer un autre module rend les diagnostics trompeurs et
+    peut charger un module homonyme inattendu.
+    """
+    nom_absent = getattr(exc, "name", None)
+    if nom_absent is None:
+        # Compatibilité avec d'anciens ImportError qui n'exposent pas .name.
+        return True
+    return nom_absent == nom_module or nom_module.startswith(nom_absent + ".")
+
+
 def Import(nom_module=""):
-    # Essaye d'importer
-    try :
-        module = import_module(nom_module)
-        return module
-    except ImportError:
-        pass
+    # Essaye d'importer le nom qualifié demandé.
+    try:
+        return import_module(nom_module)
+    except ImportError as exc:
+        if not _module_absent(exc, nom_module):
+            raise
 
-    # Recherche si le module est déjà chargé
+    # Recherche si le module est déjà chargé.
     if nom_module in sys.modules:
-        module = sys.modules[nom_module]
-        return module
+        return sys.modules[nom_module]
 
-    # Essaye d'importer sans le module_path
-    module_path, class_name = nom_module.rsplit('.', 1)
-    try :
-        module = import_module(class_name)
-        return module
-    except ImportError:
-        pass
+    # Fallback historique : essaye le nom court uniquement lorsque le module
+    # qualifié lui-même est absent. Une erreur interne au module court remonte.
+    try:
+        module_path, class_name = nom_module.rsplit('.', 1)
+    except ValueError:
+        return None
+
+    try:
+        return import_module(class_name)
+    except ImportError as exc:
+        if not _module_absent(exc, class_name):
+            raise
 
     return None
-
 
 
 class Menu(wx.Menu):
