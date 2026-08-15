@@ -113,6 +113,9 @@ jobs:
       - name: Inventorier l'usage réel des dépendances
         run: python scripts/audit_dependency_usage.py
 
+      - name: Vérifier le repli des perspectives AUI
+        run: python scripts/smoke_aui_perspective_guard.py
+
       - name: Vérifier l'absence de migration implicite du schéma (PR)
         if: github.event_name == 'pull_request'
         run: python scripts/check_schema_compatibility.py "${{ github.event.pull_request.base.sha }}" HEAD
