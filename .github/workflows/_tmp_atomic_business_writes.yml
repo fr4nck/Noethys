@@ -1,0 +1,54 @@
+name: Atomic business writes
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_business_writes.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Rendre les écritures métier atomiques
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p=Path('noethys/Dlg/DLG_Famille.py')
+          s=p.read_text(encoding='utf-8')
+          old='''    IDfamille = DB.ReqInsert("familles", [("date_creation", date_creation),])\n    # Création du compte payeur\n    IDcompte_payeur = DB.ReqInsert("comptes_payeurs", [("IDfamille", IDfamille),])\n'''
+          new='''    IDfamille = DB.ReqInsert("familles", [("date_creation", date_creation),], commit=False)\n    if IDfamille is None:\n        return None\n    # Création du compte payeur\n    IDcompte_payeur = DB.ReqInsert("comptes_payeurs", [("IDfamille", IDfamille),], commit=False)\n    if IDcompte_payeur is None:\n        return None\n'''
+          if s.count(old)!=1: raise SystemExit('CreateIDfamille insert motif inattendu')
+          s=s.replace(old,new,1)
+          old='''    DB.ReqMAJ("familles", listeDonnees, "IDfamille", IDfamille)\n    return IDfamille\n'''
+          new='''    if not DB.ReqMAJ("familles", listeDonnees, "IDfamille", IDfamille, commit=False):\n        return None\n    DB.Commit()\n    return IDfamille\n'''
+          if s.count(old)!=1: raise SystemExit('CreateIDfamille update motif inattendu')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('noethys/Dlg/DLG_Factures_generation_selection.py')
+          s=p.read_text(encoding='utf-8')
+          old='''                IDfacture = DB.ReqInsert("factures", listeDonnees)\n                                    \n                # Attribution des IDfacture à chaque prestation\n                for IDindividu, IDprestation in listePrestations :\n                    if dictCompte["individus"][IDindividu]["select"] == True :\n                        listeDonnees = [ ("IDfacture", IDfacture ), ]\n                        DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation)\n                \n                listeFacturesGenerees.append(IDfacture) \n'''
+          new='''                IDfacture = DB.ReqInsert("factures", listeDonnees, commit=False)\n                if IDfacture is None:\n                    raise RuntimeError(_(u"La création de la facture a échoué."))\n                                    \n                # Attribution des IDfacture à chaque prestation\n                for IDindividu, IDprestation in listePrestations :\n                    if dictCompte["individus"][IDindividu]["select"] == True :\n                        listeDonnees = [ ("IDfacture", IDfacture ), ]\n                        if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):\n                            raise RuntimeError(_(u"Le rattachement d'une prestation à la facture a échoué."))\n                DB.Commit()\n                \n                listeFacturesGenerees.append(IDfacture) \n'''
+          if s.count(old)!=1: raise SystemExit('Facture motif inattendu')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Dlg/DLG_Famille.py noethys/Dlg/DLG_Factures_generation_selection.py
+          git diff --check
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Dlg/DLG_Famille.py noethys/Dlg/DLG_Factures_generation_selection.py
+          git commit -m 'fix: atomiser la création des familles et factures'
+          git push origin HEAD:master
