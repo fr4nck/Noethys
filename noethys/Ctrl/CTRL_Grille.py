@@ -59,6 +59,7 @@ from Utils import UTILS_Dates
 from Ctrl import CTRL_Grille_cases
 from Ctrl import CTRL_Grille_renderers
 from Utils import UTILS_Texte
+from Utils import UTILS_Expressions
 
 
 # Paramètres personnalisables
@@ -5086,18 +5087,31 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         return journal
 
     def ResolveFormule(self, formule="", dictVariables={}):
-        # Remplacement de variables prédéfinies
-        #print formule
-        for variable, valeur in dictVariables.items() :
-            formule = formule.replace(variable, valeur.__repr__())
-        # Replacement des variables utilisateurs
-        formule = re.sub(r'\"([0-9][0-9]):([0-9][0-9])\"', sub, formule)
-        # Résolution de la formule
-        try :
-            resultat = eval(formule)
-        except Exception as err :
+        variables_sures = {}
+
+        # Remplacement des variables par des noms temporaires explicitement
+        # fournis à l'évaluateur AST, sans reconstruire de code Python.
+        for index, (variable, valeur) in enumerate(dictVariables.items()):
+            nom_variable = "noethys_var_%d" % index
+            variables_sures[nom_variable] = valeur
+            formule = formule.replace(variable, nom_variable)
+
+        # Même principe pour les horaires littéraux "HH:MM".
+        compteur_horaires = [0]
+        def remplace_horaire(match):
+            heures = int(match.group(1))
+            minutes = int(match.group(2))
+            nom_variable = "noethys_heure_%d" % compteur_horaires[0]
+            compteur_horaires[0] += 1
+            variables_sures[nom_variable] = datetime.timedelta(minutes=heures * 60 + minutes)
+            return nom_variable
+
+        formule = re.sub(r'\"([0-9][0-9]):([0-9][0-9])\"', remplace_horaire, formule)
+
+        try:
+            resultat = UTILS_Expressions.EvaluerExpression(formule, variables=variables_sures)
+        except Exception:
             resultat = None
-        #print "Formule : ", formule, " -> resultat =", resultat
         return resultat
 
     def Autogeneration(self, ligne=None, IDactivite=None, IDunite=None):
