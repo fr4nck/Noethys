@@ -306,9 +306,15 @@ class ListView(FastObjectListView):
         FROM reglements 
         WHERE IDutilisateur=%d
         ;""" % IDutilisateur
-        DB.ExecuterReq(req)
-        nbreReglements = int(DB.ResultatReq()[0][0])
+        resultatReq = DB.ExecuterReq(req)
+        listeReglements = DB.ResultatReq() if resultatReq else []
         DB.Close()
+        if not listeReglements:
+            dlg = wx.MessageDialog(self, _(u"Impossible de vérifier les règlements associés à cet utilisateur. La suppression est annulée par sécurité."), _(u"Suppression impossible"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
+        nbreReglements = int(listeReglements[0][0])
         if nbreReglements > 0 :
             dlg = wx.MessageDialog(self, _(u"Cet utilisateur a déjà été attribué à %d règlement(s).\n\nVous ne pouvez donc pas le supprimer !") % nbreReglements, _(u"Suppression impossible"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
@@ -331,10 +337,21 @@ class ListView(FastObjectListView):
         dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment supprimer cet utilisateur ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
         if dlg.ShowModal() == wx.ID_YES :
             DB = GestionDB.DB()
-            DB.ReqDEL("utilisateurs", "IDutilisateur", IDutilisateur)
-            DB.ReqDEL("droits", "IDutilisateur", IDutilisateur)
-            DB.Close() 
-            self.MAJ()
+            ok_utilisateur = DB.ReqDEL("utilisateurs", "IDutilisateur", IDutilisateur, commit=False)
+            ok_droits = DB.ReqDEL("droits", "IDutilisateur", IDutilisateur, commit=False) if ok_utilisateur else False
+            if ok_utilisateur and ok_droits:
+                DB.Commit()
+                DB.Close()
+                self.MAJ()
+            else:
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+                DB.Close()
+                dlgErreur = wx.MessageDialog(self, _(u"La suppression de l'utilisateur a échoué. Aucune modification n'a été conservée."), _(u"Erreur de suppression"), wx.OK | wx.ICON_ERROR)
+                dlgErreur.ShowModal()
+                dlgErreur.Destroy()
         dlg.Destroy()
 
     def Historique(self, event):
