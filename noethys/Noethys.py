@@ -48,6 +48,7 @@ from Utils import UTILS_Utilisateurs
 from Utils import UTILS_Interface
 from Utils import UTILS_Fichiers
 from Utils import UTILS_Json
+from Utils import UTILS_Aui
 
 import GestionDB
 
@@ -1347,7 +1348,7 @@ class MainFrame(wx.Frame):
         dlg.ShowModal()
         dlg.Destroy()
         # Suppression
-        self._mgr.LoadPerspective(self.perspective_defaut)
+        UTILS_Aui.ChargerPerspective(self._mgr, self.perspective_defaut, self.perspective_defaut)
         self.perspective_active = None
         self.perspectives = []
         self.MAJmenuPerspectives() 
@@ -1589,10 +1590,10 @@ class MainFrame(wx.Frame):
         
         # Récupération de la perspective chargée
         if self.perspective_active != None :
-            self._mgr.LoadPerspective(self.perspectives[self.perspective_active]["perspective"])
+            UTILS_Aui.ChargerPerspective(self._mgr, self.perspectives[self.perspective_active]["perspective"], self.perspective_defaut)
             self.ForcerAffichagePanneau("ephemeride")
         else:
-            self._mgr.LoadPerspective(self.perspective_defaut)
+            UTILS_Aui.ChargerPerspective(self._mgr, self.perspective_defaut, self.perspective_defaut)
 
         # Active les items de la barre de menus
         self.ActiveBarreMenus(True) 
@@ -2418,7 +2419,7 @@ class MainFrame(wx.Frame):
     
     def On_affichage_perspective_defaut(self, event):
         self.MAJ()
-        self._mgr.LoadPerspective(self.perspective_defaut)
+        UTILS_Aui.ChargerPerspective(self._mgr, self.perspective_defaut, self.perspective_defaut)
         self.perspective_active = None
         self.MAJmenuPerspectives() 
         self._mgr.Update()
@@ -2426,7 +2427,7 @@ class MainFrame(wx.Frame):
 
     def On_affichage_perspective_perso(self, event):
         index = event.GetId() - ID_PREMIERE_PERSPECTIVE
-        self._mgr.LoadPerspective(self.perspectives[index]["perspective"])
+        UTILS_Aui.ChargerPerspective(self._mgr, self.perspectives[index]["perspective"], self.perspective_defaut)
         self.perspective_active = index
         self.ForcerAffichagePanneau("ephemeride")
         self.MAJmenuPerspectives() 
@@ -2471,7 +2472,7 @@ class MainFrame(wx.Frame):
             for index in selections :
                 self.perspectives.pop(index)
             if self.perspective_active in selections :
-                self._mgr.LoadPerspective(self.perspective_defaut)
+                UTILS_Aui.ChargerPerspective(self._mgr, self.perspective_defaut, self.perspective_defaut)
             self.perspective_active = None
             self.MAJmenuPerspectives() 
         dlg.Destroy()
@@ -3797,10 +3798,10 @@ class MainFrame(wx.Frame):
         
         # Récupération de la perspective chargée
         if self.perspective_active != None :
-            self._mgr.LoadPerspective(self.perspectives[self.perspective_active]["perspective"])
+            UTILS_Aui.ChargerPerspective(self._mgr, self.perspectives[self.perspective_active]["perspective"], self.perspective_defaut)
             self.ForcerAffichagePanneau("ephemeride")
         else:
-            self._mgr.LoadPerspective(self.perspective_defaut)
+            UTILS_Aui.ChargerPerspective(self._mgr, self.perspective_defaut, self.perspective_defaut)
 
         # Met à jour la liste des derniers fichiers ouverts dans le CONFIG de la page
         self.MAJlisteDerniersFichiers(nomFichier) 
