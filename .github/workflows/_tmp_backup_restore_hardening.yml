@@ -1,0 +1,73 @@
+name: Harden backup restore
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_backup_restore_hardening.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Fiabiliser les archives et codes retour MySQL
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Utils/UTILS_Sauvegarde.py')
+          s=p.read_text(encoding='utf-8')
+
+          # Ferme proprement l'archive de simple inspection.
+          old='''def GetListeFichiersZIP(fichier):\n    """ Récupère la liste des fichiers du ZIP """\n    listeFichiers = []\n    fichierZip = zipfile.ZipFile(fichier, "r")\n    for fichier in fichierZip.namelist() :\n        listeFichiers.append(fichier)\n    return listeFichiers'''
+          new='''def GetListeFichiersZIP(fichier):\n    """ Récupère la liste des fichiers du ZIP """\n    with zipfile.ZipFile(fichier, "r") as fichierZip:\n        return list(fichierZip.namelist())'''
+          if s.count(old)!=1:
+              raise SystemExit('GetListeFichiersZIP inattendu')
+          s=s.replace(old,new,1)
+
+          # mysqldump : seul le code retour indique l'échec. Une sortie texte peut être un avertissement.
+          old='''            out, temp = proc.communicate()\n\n            if out not in ("", b""):\n                print((out,))'''
+          new='''            out, temp = proc.communicate()\n\n            if proc.returncode != 0:\n                print((out,))'''
+          if s.count(old)!=1:
+              raise SystemExit('bloc mysqldump inattendu')
+          s=s.replace(old,new,1)
+
+          # mysql restore : idem.
+          old='''            out, temp = proc.communicate()\n\n            if out not in ("", b"") :\n                print(("subprocess de restauration mysql :", out))'''
+          new='''            out, temp = proc.communicate()\n\n            if proc.returncode != 0:\n                print(("subprocess de restauration mysql :", out))'''
+          if s.count(old)!=1:
+              raise SystemExit('bloc mysql restore inattendu')
+          s=s.replace(old,new,1)
+
+          # Dans Restauration uniquement, fermer le ZIP avant tous les retours anticipés.
+          debut=s.index('def Restauration(')
+          fin=s.index('\ndef GetListeFichiersReseau', debut)
+          bloc=s[debut:fin]
+          bloc=bloc.replace('                return False', '                fichierZip.close()\n                return False')
+          bloc=bloc.replace('            return False', '            fichierZip.close()\n            return False')
+          # Eviter doubles fermetures si un remplacement s'est recroisé.
+          bloc=bloc.replace('fichierZip.close()\n                fichierZip.close()\n                return False', 'fichierZip.close()\n                return False')
+          bloc=bloc.replace('fichierZip.close()\n            fichierZip.close()\n            return False', 'fichierZip.close()\n            return False')
+          s=s[:debut]+bloc+s[fin:]
+
+          # Python 3 : les vieux blocs PY2 autour des erreurs ne doivent plus masquer quoi que ce soit.
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Utils/UTILS_Sauvegarde.py
+          python scripts/audit_runtime_patterns.py --json runtime.json
+          git diff --check
+          git diff -- noethys/Utils/UTILS_Sauvegarde.py
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Utils/UTILS_Sauvegarde.py
+          git commit -m 'fix: fiabiliser sauvegardes et restaurations MySQL'
+          git push origin HEAD:master
