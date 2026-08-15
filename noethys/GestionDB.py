@@ -368,6 +368,11 @@ class DB:
             
         except Exception as err:
             print("Requete sql d'INSERT incorrecte :\n%s\nErreur detectee:\n%s" % (req, err))
+            try:
+                self.connexion.rollback()
+            except Exception:
+                pass
+            return None
         # Retourne l'ID de l'enregistrement créé
         return newID
     
@@ -467,6 +472,12 @@ class DB:
                 self.Commit()
         except Exception as err:
             print(_(u"Requete sql de mise a jour incorrecte :\n%s\nErreur detectee:\n%s") % (req, err))
+            try:
+                self.connexion.rollback()
+            except Exception:
+                pass
+            return False
+        return True
         
     def ReqDEL(self, nomTable="", nomChampID="", ID="", commit=True, IDestChaine=False):
         """ Suppression d'un enregistrement """
@@ -480,6 +491,12 @@ class DB:
                 self.Commit()
         except Exception as err:
             print(_(u"Requete sql de suppression incorrecte :\n%s\nErreur detectee:\n%s") % (req, err))
+            try:
+                self.connexion.rollback()
+            except Exception:
+                pass
+            return False
+        return True
         
     def Modifier(self, table, ID, champs, valeurs, dicoDB, commit=True):
         # champs et valeurs sont des tuples
