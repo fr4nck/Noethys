@@ -23,6 +23,7 @@ import six
 
 from Utils import UTILS_Adaptations
 from Utils.UTILS_Traduction import _
+from Utils import UTILS_Expressions
 from Data import DATA_Civilites as Civilites
 DICT_CIVILITES = Civilites.GetDictCivilites()
 
@@ -410,7 +411,7 @@ class ObjectListView(OLV.ObjectListView):
         filtres_colonnes = self.formatageFiltres(self.listeFiltresColonnes)
         if len(filtres_colonnes) > 0:
             texteFiltre = u" and ".join(filtres_colonnes)
-            filtre = Filter.Predicate(lambda track: eval(texteFiltre))
+            filtre = Filter.Predicate(lambda track: UTILS_Expressions.EvaluerExpression(texteFiltre, variables={"track": track}, fonctions={"str": str}, methodes={"lower"}))
             listeFiltres.append(filtre)
 
         self.SetFilter(Filter.Chain(*listeFiltres))
