@@ -270,7 +270,6 @@ class ListView(FastObjectListView):
         label = self.Selection()[0].label
         montant = self.Selection()[0].montant
         IDprestation = self.Selection()[0].IDprestation
-        
         from Dlg import DLG_Saisie_deduction
         dlg = DLG_Saisie_deduction.Dialog(self, IDdeduction=IDdeduction)
         dlg.SetLabel(label)
@@ -278,53 +277,71 @@ class ListView(FastObjectListView):
         if dlg.ShowModal() == wx.ID_OK:
             newLabel = dlg.GetLabel()
             newMontant = dlg.GetMontant()
-            if self.modificationsVirtuelles == False :
-                # Modification directes dans la base de données
+            if self.modificationsVirtuelles == False:
                 DB = GestionDB.DB()
-                listeDonnees = [    
-                    ("label", newLabel),
-                    ("montant", newMontant),
-                    ]
-                DB.ReqMAJ("deductions", listeDonnees, "IDdeduction", IDdeduction)
+                ok = DB.ReqMAJ("deductions", [("label", newLabel), ("montant", newMontant)], "IDdeduction", IDdeduction, commit=False)
+                if ok and IDprestation != None:
+                    req = "SELECT montant FROM prestations WHERE IDprestation=%d" % IDprestation
+                    if DB.ExecuterReq(req) != 1:
+                        ok = False
+                    else:
+                        donnees = DB.ResultatReq()
+                        ok = len(donnees) > 0
+                        if ok:
+                            ok = DB.ReqMAJ("prestations", [("montant", donnees[0][0] + (montant-newMontant))], "IDprestation", IDprestation, commit=False)
+                if ok:
+                    DB.Commit()
+                else:
+                    try: DB.connexion.rollback()
+                    except Exception: pass
                 DB.Close()
+                if not ok:
+                    erreur = wx.MessageDialog(self, _(u"La déduction n'a pas pu être modifiée complètement. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                    erreur.ShowModal(); erreur.Destroy(); dlg.Destroy(); return
             else:
-                # Modifications virtuelles
                 self.dictDeductions[IDdeduction]["label"] = newLabel
                 self.dictDeductions[IDdeduction]["montant"] = newMontant
                 self.dictDeductions[IDdeduction]["etat"] = "MODIF"
-            
-            # MAJ du montant de la prestation
-            self.MAJ_montant_prestation(montant-newMontant, IDprestation)
-            
-        dlg.Destroy() 
-        
-        # MAJ du contrôle
+                self.MAJ_montant_prestation(montant-newMontant, IDprestation)
+        dlg.Destroy()
         self.MAJ(IDdeduction)
 
     def Supprimer(self, event):
         if len(self.Selection()) == 0 :
             dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucune déduction à supprimer dans la liste"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
-            dlg.ShowModal()
-            dlg.Destroy()
-            return
+            dlg.ShowModal(); dlg.Destroy(); return
         IDdeduction = self.Selection()[0].IDdeduction
         montant = self.Selection()[0].montant
         IDprestation = self.Selection()[0].IDprestation
         dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment supprimer cette déduction ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
         if dlg.ShowModal() == wx.ID_YES :
-            if self.modificationsVirtuelles == False :
-                # Suppression dans la base de données
+            if self.modificationsVirtuelles == False:
                 DB = GestionDB.DB()
-                DB.ReqDEL("deductions", "IDdeduction", IDdeduction)
-                DB.Close() 
+                ok = DB.ReqDEL("deductions", "IDdeduction", IDdeduction, commit=False)
+                if ok and IDprestation != None:
+                    req = "SELECT montant FROM prestations WHERE IDprestation=%d" % IDprestation
+                    if DB.ExecuterReq(req) != 1:
+                        ok = False
+                    else:
+                        donnees = DB.ResultatReq()
+                        ok = len(donnees) > 0
+                        if ok:
+                            ok = DB.ReqMAJ("prestations", [("montant", donnees[0][0] + montant)], "IDprestation", IDprestation, commit=False)
+                if ok:
+                    DB.Commit()
+                else:
+                    try: DB.connexion.rollback()
+                    except Exception: pass
+                DB.Close()
+                if not ok:
+                    erreur = wx.MessageDialog(self, _(u"La déduction n'a pas pu être supprimée complètement. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                    erreur.ShowModal(); erreur.Destroy(); dlg.Destroy(); return
             else:
-                # Suppression virtuelle
                 self.dictDeductions[IDdeduction]["etat"] = "SUPPR"
+                self.MAJ_montant_prestation(montant, IDprestation)
             self.MAJ()
-            # MAJ du montant de la prestation
-            self.MAJ_montant_prestation(montant, IDprestation)
         dlg.Destroy()
-    
+
     def MAJ_montant_prestation(self, montantDiff, IDprestation=None):
         """ Modification du montant dans la DLG_Saisie_prestation """
         if self.GetParent().GetName() == "DLG_Saisie_prestation" :
@@ -356,38 +373,36 @@ class ListView(FastObjectListView):
         
     
     def Sauvegarde(self, IDprestation=None):
-        """ Effectue une sauvegarde des données SI on est en mode MODIFICATIONS VIRTUELLES """
+        """Sauvegarde atomique des déductions virtuelles."""
         DB = GestionDB.DB()
-        
-        for IDdeduction, dictDeduction in self.dictDeductions.items() :
-            IDcompte_payeur = dictDeduction["IDcompte_payeur"]
-            date = dictDeduction["date"]
-            label = dictDeduction["label"]
-            montant = dictDeduction["montant"]
-            IDaide = dictDeduction["IDaide"]
-            
-            listeDonnees = [    
-                    ("IDprestation", IDprestation),
-                    ("IDcompte_payeur", IDcompte_payeur),
-                    ("date", date ),
-                    ("label", label),
-                    ("montant", montant),
-                    ("IDaide", IDaide),
-                    ]
-                    
-            # Ajout
-            if dictDeduction["etat"] == "AJOUT" :
-                IDdeduction = DB.ReqInsert("deductions", listeDonnees)
-            
-            # Modification
-            if dictDeduction["etat"] == "MODIF" :
-                DB.ReqMAJ("deductions", listeDonnees, "IDdeduction", IDdeduction)
-            
-            # Suppression
-            if dictDeduction["etat"] == "SUPPR" :
-                DB.ReqDEL("deductions", "IDdeduction", IDdeduction)
-        
+        for IDdeduction, dictDeduction in self.dictDeductions.items():
+            listeDonnees = [
+                ("IDprestation", IDprestation),
+                ("IDcompte_payeur", dictDeduction["IDcompte_payeur"]),
+                ("date", dictDeduction["date"]),
+                ("label", dictDeduction["label"]),
+                ("montant", dictDeduction["montant"]),
+                ("IDaide", dictDeduction["IDaide"]),
+            ]
+            etat = dictDeduction["etat"]
+            if etat == "AJOUT":
+                if DB.ReqInsert("deductions", listeDonnees, commit=False) is None:
+                    try: DB.connexion.rollback()
+                    except Exception: pass
+                    DB.Close(); return False
+            elif etat == "MODIF":
+                if not DB.ReqMAJ("deductions", listeDonnees, "IDdeduction", IDdeduction, commit=False):
+                    try: DB.connexion.rollback()
+                    except Exception: pass
+                    DB.Close(); return False
+            elif etat == "SUPPR":
+                if not DB.ReqDEL("deductions", "IDdeduction", IDdeduction, commit=False):
+                    try: DB.connexion.rollback()
+                    except Exception: pass
+                    DB.Close(); return False
+        DB.Commit()
         DB.Close()
+        return True
 
 
 # -------------------------------------------------------------------------------------------------------------------------------------------
