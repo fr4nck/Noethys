@@ -318,12 +318,25 @@ class ListView(FastObjectListView):
             newLabel = dlg.GetLabel()
             newMontant = dlg.GetMontant()
             DB = GestionDB.DB()
-            listeDonnees = [    
+            listeDonnees = [
                 ("label", newLabel),
                 ("montant", newMontant),
                 ]
-            DB.ReqMAJ("deductions", listeDonnees, "IDdeduction", IDdeduction)
+            ok = DB.ReqMAJ("deductions", listeDonnees, "IDdeduction", IDdeduction, commit=False)
+            if ok:
+                DB.Commit()
+            else:
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
             DB.Close()
+            if not ok:
+                erreur = wx.MessageDialog(self, _(u"La déduction n'a pas pu être modifiée. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                erreur.ShowModal()
+                erreur.Destroy()
+                dlg.Destroy()
+                return
             self.MAJ(date_debut=self.date_debut, date_fin=self.date_fin, listeActivites=self.listeActivites, filtres=self.filtres, ID=IDdeduction)
         dlg.Destroy() 
 
@@ -381,21 +394,38 @@ class ListView(FastObjectListView):
             dictMontantsPrestations[track.IDprestation] = newMontantPrestation
             
         DB = GestionDB.DB()
+        ok = True
         if len(listeSupprDeductions) > 0 :
             if len(listeSupprDeductions) == 1 : conditionSuppressions = "(%d)" % listeSupprDeductions[0]
             else : conditionSuppressions = str(tuple(listeSupprDeductions))
-            DB.ExecuterReq("DELETE FROM deductions WHERE IDdeduction IN %s" % conditionSuppressions)
-        if len(listeSupprVentilations) > 0 :
+            if DB.ExecuterReq("DELETE FROM deductions WHERE IDdeduction IN %s" % conditionSuppressions) != 1:
+                ok = False
+        if ok and len(listeSupprVentilations) > 0 :
             if len(listeSupprVentilations) == 1 : conditionSuppressions = "(%d)" % listeSupprVentilations[0]
             else : conditionSuppressions = str(tuple(listeSupprVentilations))
-            DB.ExecuterReq("DELETE FROM ventilation WHERE IDprestation IN %s" % conditionSuppressions)
-        if len(listeModifications) > 0 :
-            DB.Executermany(_(u"UPDATE prestations SET montant=? WHERE IDprestation=?"), listeModifications, commit=False)
-        DB.Commit()
-        DB.Close() 
+            if DB.ExecuterReq("DELETE FROM ventilation WHERE IDprestation IN %s" % conditionSuppressions) != 1:
+                ok = False
+        if ok and len(listeModifications) > 0 :
+            if not DB.Executermany(_(u"UPDATE prestations SET montant=? WHERE IDprestation=?"), listeModifications, commit=False):
+                ok = False
+        if ok:
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+        DB.Close()
+
+        if not ok:
+            erreur = wx.MessageDialog(self, _(u"La suppression des déductions a échoué. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            erreur.ShowModal()
+            erreur.Destroy()
+            return False
 
         # MAJ affichage
         self.MAJ(date_debut=self.date_debut, date_fin=self.date_fin, listeActivites=self.listeActivites, filtres=self.filtres)
+        return True
 
     def GetTracksCoches(self):
         return self.GetCheckedObjects()
