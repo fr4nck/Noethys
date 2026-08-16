@@ -1,0 +1,90 @@
+name: Atomic reglements prelevements
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_reglements_prelevements.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch reglements prelevements
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def patch(path, holder_expr, with_history=False):
+              p=Path(path)
+              s=p.read_text(encoding='utf-8')
+              a=s.index('    def SauvegardeReglements(self, date=None, IDcompte=None, IDmode=None):')
+              # next class/method separator after function
+              b=s.index('\n\n\n\n# -------------------------------------------------------------------------------------------------------------------------------------------', a)
+              block=s[a:b]
+              if 'listeMAJTracks = []' in block:
+                  raise SystemExit(f'déjà patché: {path}')
+              block=block.replace('        DB = GestionDB.DB()\n', '        DB = GestionDB.DB()\n        ok = True\n        listeMAJTracks = []\n', 1)
+              block=block.replace('IDpayeur = DB.ReqInsert("payeurs", [("IDcompte_payeur", track.IDcompte_payeur), ("nom", '+holder_expr+')])', 'IDpayeur = DB.ReqInsert("payeurs", [("IDcompte_payeur", track.IDcompte_payeur), ("nom", '+holder_expr+')], commit=False)\n                    if IDpayeur is None:\n                        ok = False\n                        break')
+              block=block.replace('track.IDreglement = DB.ReqInsert("reglements", listeDonnees)', 'IDreglement = DB.ReqInsert("reglements", listeDonnees, commit=False)\n                    if IDreglement is None:\n                        ok = False\n                        break')
+              # history append references track.IDreglement in SEPA: use local id
+              block=block.replace('IDreglement=track.IDreglement, montant=track.montant', 'IDreglement=IDreglement, montant=track.montant')
+              block=block.replace('DB.ReqMAJ("reglements", listeDonnees, "IDreglement", track.IDreglement)', 'IDreglement = track.IDreglement\n                    if not DB.ReqMAJ("reglements", listeDonnees, "IDreglement", IDreglement, commit=False):\n                        ok = False\n                        break')
+              block=block.replace('track.dateReglement = date', 'listeMAJTracks.append((track, IDreglement, date))')
+              block=block.replace('(\"IDreglement\", track.IDreglement)', '(\"IDreglement\", IDreglement)')
+              block=block.replace('IDventilation = DB.ReqInsert("ventilation", listeDonnees)', 'IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)\n                        if IDventilation is None:\n                            ok = False\n                            break')
+              # deletion order and checks
+              old='''                    DB.ReqDEL("reglements", "IDreglement", track.IDreglement)\n                    DB.ReqDEL("ventilation", "IDreglement", track.IDreglement)'''
+              new='''                    if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):\n                        ok = False\n                        break\n                    if not DB.ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False):\n                        ok = False\n                        break'''
+              block=block.replace(old,new)
+              # do not refresh before commit
+              block=block.replace('            self.RefreshObject(track)\n', '')
+              # replace close / history tail
+              if with_history:
+                  oldtail='''        DB.Close() \n\n        # Sauvegarde dans historique\n        UTILS_Historique.InsertActions(listeHistoriqueAjouts)'''
+                  newtail='''        if ok and listeHistoriqueAjouts:\n            ok = UTILS_Historique.InsertActions(listeHistoriqueAjouts, DB=DB, commit=False)\n        if ok:\n            DB.Commit()\n        else:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n        DB.Close()\n        if not ok:\n            return False\n        for track, IDreglement, dateReglement in listeMAJTracks:\n            track.IDreglement = IDreglement\n            track.dateReglement = dateReglement\n            self.RefreshObject(track)\n        return True'''
+              else:
+                  oldtail='''        DB.Close() '''
+                  newtail='''        if ok:\n            DB.Commit()\n        else:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n        DB.Close()\n        if not ok:\n            return False\n        for track, IDreglement, dateReglement in listeMAJTracks:\n            track.IDreglement = IDreglement\n            track.dateReglement = dateReglement\n            self.RefreshObject(track)\n        return True'''
+              if oldtail not in block:
+                  raise SystemExit(f'tail inattendu: {path}')
+              block=block.replace(oldtail,newtail,1)
+              s=s[:a]+block+s[b:]
+              p.write_text(s,encoding='utf-8')
+
+          patch('noethys/Ol/OL_Prelevements_sepa.py', 'track.titulaire', True)
+          patch('noethys/Ol/OL_Prelevements_national.py', 'track.titulaire', False)
+          patch('noethys/Ol/OL_PES_pieces.py', 'track.prelevement_titulaire', False)
+          PY
+          python -m py_compile noethys/Ol/OL_Prelevements_sepa.py noethys/Ol/OL_Prelevements_national.py noethys/Ol/OL_PES_pieces.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          for path in ('noethys/Ol/OL_Prelevements_sepa.py','noethys/Ol/OL_Prelevements_national.py','noethys/Ol/OL_PES_pieces.py'):
+              s=Path(path).read_text(encoding='utf-8')
+              a=s.index('    def SauvegardeReglements(self, date=None, IDcompte=None, IDmode=None):')
+              b=s.index('# -------------------------------------------------------------------------------------------------------------------------------------------', a)
+              x=s[a:b]
+              assert 'listeMAJTracks = []' in x
+              assert 'ReqInsert("reglements", listeDonnees, commit=False)' in x
+              assert 'ReqInsert("ventilation", listeDonnees, commit=False)' in x
+              assert 'ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False)' in x
+              assert 'ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False)' in x
+              assert 'DB.Commit()' in x and 'rollback()' in x and 'return True' in x
+              assert x.index('ReqDEL("ventilation"') < x.index('ReqDEL("reglements"')
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Ol/OL_Prelevements_sepa.py noethys/Ol/OL_Prelevements_national.py noethys/Ol/OL_PES_pieces.py
+          git commit -m "fix: atomiser règlements SEPA national et PES"
+          git push origin HEAD:master
