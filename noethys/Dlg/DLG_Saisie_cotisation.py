@@ -934,12 +934,19 @@ class CTRL_Parametres(wx.Panel):
             ("observations", observations),
             ("activites", activites),
         ]
-        if self.IDcotisation == None:
+        ancien_IDcotisation = self.IDcotisation
+        if ancien_IDcotisation == None:
             nouvelleCotisation = True
-            self.IDcotisation = DB.ReqInsert("cotisations", listeDonnees)
+            IDcotisation = DB.ReqInsert("cotisations", listeDonnees, commit=False)
+            if IDcotisation is None:
+                DB.Close()
+                return False
         else:
             nouvelleCotisation = False
-            DB.ReqMAJ("cotisations", listeDonnees, "IDcotisation", self.IDcotisation)
+            IDcotisation = ancien_IDcotisation
+            if not DB.ReqMAJ("cotisations", listeDonnees, "IDcotisation", IDcotisation, commit=False):
+                DB.Close()
+                return False
 
         # Sauvegarde de la prestation
         facturer = self.ctrl_facturer.GetValue()
@@ -965,9 +972,16 @@ class CTRL_Parametres(wx.Panel):
             ]
             if IDprestation == None:
                 listeDonnees.append(("date_valeur", str(datetime.date.today())))
-                IDprestation = DB.ReqInsert("prestations", listeDonnees)
+                IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)
+                if IDprestation is None:
+                    DB.connexion.rollback()
+                    DB.Close()
+                    return False
             else:
-                DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation)
+                if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):
+                    DB.connexion.rollback()
+                    DB.Close()
+                    return False
 
                 # Recherche si cette prestation a déjà été ventilée sur un règlement
                 req = """SELECT IDventilation, ventilation.montant
@@ -975,7 +989,10 @@ class CTRL_Parametres(wx.Panel):
                 LEFT JOIN reglements ON reglements.IDreglement = ventilation.IDreglement
                 WHERE IDprestation=%d
                 ORDER BY reglements.date;""" % IDprestation
-                DB.ExecuterReq(req)
+                if DB.ExecuterReq(req) != 1:
+                    DB.connexion.rollback()
+                    DB.Close()
+                    return False
                 listeVentilations = DB.ResultatReq()
                 montantVentilation = 0.0
                 for IDventilation, montantTmp in listeVentilations:
@@ -988,24 +1005,37 @@ class CTRL_Parametres(wx.Panel):
                         if montantVentilationTmp > montant:
                             nouveauMontant = montantTmp - (montantVentilationTmp - montant)
                             if nouveauMontant > 0.0:
-                                DB.ReqMAJ("ventilation", [("montant", nouveauMontant), ], "IDventilation", IDventilation)
+                                if not DB.ReqMAJ("ventilation", [("montant", nouveauMontant), ], "IDventilation", IDventilation, commit=False):
+                                    DB.connexion.rollback()
+                                    DB.Close()
+                                    return False
                                 montantVentilationTmp = (montantVentilationTmp - montantTmp) + nouveauMontant
                             else:
-                                DB.ReqDEL("ventilation", "IDventilation", IDventilation)
+                                if not DB.ReqDEL("ventilation", "IDventilation", IDventilation, commit=False):
+                                    DB.connexion.rollback()
+                                    DB.Close()
+                                    return False
 
 
         else:
 
             # Suppression d'une prestation précédemment créée
             if IDprestation != None:
-                DB.ReqDEL("prestations", "IDprestation", IDprestation)
-                DB.ReqDEL("ventilation", "IDprestation", IDprestation)
+                if not DB.ReqDEL("prestations", "IDprestation", IDprestation, commit=False):
+                    DB.connexion.rollback()
+                    DB.Close()
+                    return False
+                if not DB.ReqDEL("ventilation", "IDprestation", IDprestation, commit=False):
+                    DB.connexion.rollback()
+                    DB.Close()
+                    return False
                 IDprestation = None
 
         # Insertion du IDprestation dans la cotisation
-        DB.ReqMAJ("cotisations", [("IDprestation", IDprestation), ], "IDcotisation", self.IDcotisation)
-
-        DB.Close()
+        if not DB.ReqMAJ("cotisations", [("IDprestation", IDprestation), ], "IDcotisation", IDcotisation, commit=False):
+            DB.connexion.rollback()
+            DB.Close()
+            return False
 
         # Mémorise l'action dans l'historique
         date_debut_periode = DateEngFr(str(date_debut))
@@ -1016,12 +1046,21 @@ class CTRL_Parametres(wx.Panel):
         else:
             type = "Modification"
             IDcategorie = 22
-        UTILS_Historique.InsertActions([{
+        if not UTILS_Historique.InsertActions([{
             "IDindividu": IDindividu,
             "IDfamille": IDfamille,
             "IDcategorie": IDcategorie,
-            "action": _(u"%s de la cotisation ID%d '%s' pour la période du %s au %s") % (type, self.IDcotisation, label_prestation, date_debut_periode, date_fin_periode),
-        }, ])
+            "action": _(u"%s de la cotisation ID%d '%s' pour la période du %s au %s") % (type, IDcotisation, label_prestation, date_debut_periode, date_fin_periode),
+        }, ], DB=DB, commit=False):
+            DB.connexion.rollback()
+            DB.Close()
+            return False
+
+        DB.Commit()
+        DB.Close()
+        self.IDcotisation = IDcotisation
+        self.IDprestation = IDprestation
+        return True
 
     def Importation(self):
         """ Importation des donnees de la base """
@@ -1185,7 +1224,11 @@ class Dialog(wx.Dialog):
             return False
 
         # Sauvegarde
-        self.ctrl_parametres.Sauvegarde()
+        if self.ctrl_parametres.Sauvegarde() == False:
+            dlg = wx.MessageDialog(self, _(u"La cotisation n'a pas pu être enregistrée complètement. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
 
         # Fermeture de la fenêtre
         self.EndModal(wx.ID_OK)
