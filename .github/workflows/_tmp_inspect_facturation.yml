@@ -1,0 +1,54 @@
+name: Inspect facturation writes
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_inspect_facturation.yml'
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Inspect
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          roots=[Path('noethys/Dlg'),Path('noethys/Ol'),Path('noethys/Ctrl'),Path('noethys/Utils')]
+          keys=('factures','prestations','ventilation')
+          out=[]
+          for root in roots:
+              if not root.exists(): continue
+              for p in root.rglob('*.py'):
+                  try: s=p.read_text(encoding='utf-8')
+                  except Exception: continue
+                  low=s.lower()
+                  hits=[k for k in keys if k in low]
+                  writes=sum(low.count('reqinsert(')+low.count('reqmaj(')+low.count('reqdel(')+low.count('executermany(') for _ in [0])
+                  if len(hits)>=2 and writes>=2:
+                      out.append((len(hits),writes,str(p),hits))
+          out.sort(reverse=True)
+          lines=['=== fichiers multi-tables facturation/prestations/ventilation ===']
+          for n,w,p,h in out[:120]: lines.append(f'{n}\t{w}\t{p}\t{",".join(h)}')
+          lines.append('\n=== ecritures ciblees ===')
+          import re
+          pat=re.compile(r'Req(?:Insert|MAJ|DEL)\([^\n]*(?:factures|prestations|ventilation)|Executermany\([^\n]*(?:factures|prestations|ventilation)',re.I)
+          for root in roots:
+              if not root.exists(): continue
+              for p in root.rglob('*.py'):
+                  try: rows=p.read_text(encoding='utf-8').splitlines()
+                  except Exception: continue
+                  for i,line in enumerate(rows,1):
+                      if pat.search(line): lines.append(f'{p}:{i}:{line.strip()}')
+          Path('.github/_tmp_inspect_facturation.txt').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/_tmp_inspect_facturation.txt
+          git commit -m "ci: publier inspection facturation"
+          git pull --rebase origin master
+          git push origin HEAD:master
