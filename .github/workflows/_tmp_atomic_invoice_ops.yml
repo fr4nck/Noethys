@@ -1,0 +1,48 @@
+name: Atomic invoice operations
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_invoice_ops.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch facturation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Utils/UTILS_Facturation.py')
+          s=p.read_text(encoding='utf-8')
+          start=s.index('def SuppressionFacture(')
+          end=s.index('\ndef Calculer_datamatrix', start)
+          new='''def SuppressionFacture(listeFactures=[], mode="suppression"):\n    """ Suppression ou annulation atomique, facture par facture. """\n    dlgAttente = wx.BusyInfo(_(u"%s des factures en cours...") % mode.capitalize(), None)\n    if 'phoenix' not in wx.PlatformInfo:\n        wx.Yield()\n    DB = GestionDB.DB()\n\n    for IDfacture in listeFactures:\n        ok = DB.ReqMAJ("prestations", [("IDfacture", None),], "IDfacture", IDfacture, commit=False)\n        if ok:\n            if mode == "suppression":\n                ok = DB.ReqDEL("factures", "IDfacture", IDfacture, commit=False)\n            elif mode == "annulation":\n                ok = DB.ReqMAJ("factures", [("etat", "annulation"),], "IDfacture", IDfacture, commit=False)\n            else:\n                ok = False\n        if not ok:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n            DB.Close()\n            del dlgAttente\n            return False\n        DB.Commit()\n\n    DB.Close()\n    del dlgAttente\n    return True\n\n\ndef ModificationFacture(listeFactures=[], dict_valeurs={}):\n    """ Modification atomique des caractéristiques, facture par facture. """\n    dlgAttente = wx.BusyInfo(_(u"Modification des factures en cours..."), None)\n    if 'phoenix' not in wx.PlatformInfo:\n        wx.Yield()\n    DB = GestionDB.DB()\n\n    mapping = (\n        ("IDlot", "IDlot"),\n        ("date_emission", "date_edition"),\n        ("date_echeance", "date_echeance"),\n        ("mention1", "mention1"),\n        ("mention2", "mention2"),\n        ("mention3", "mention3"),\n    )\n\n    for IDfacture in listeFactures:\n        for cle, champ in mapping:\n            if cle in dict_valeurs:\n                if not DB.ReqMAJ("factures", [(champ, dict_valeurs[cle]),], "IDfacture", IDfacture, commit=False):\n                    try:\n                        DB.connexion.rollback()\n                    except Exception:\n                        pass\n                    DB.Close()\n                    del dlgAttente\n                    return False\n        DB.Commit()\n\n    DB.Close()\n    del dlgAttente\n    return True\n\n'''
+          s=s[:start]+new+s[end:]
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Utils/UTILS_Facturation.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('noethys/Utils/UTILS_Facturation.py').read_text(encoding='utf-8')
+          assert 'commit=False' in s[s.index('def SuppressionFacture'):s.index('def Calculer_datamatrix')]
+          assert 'DB.connexion.rollback()' in s[s.index('def SuppressionFacture'):s.index('def Calculer_datamatrix')]
+          assert 'mapping = (' in s
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Utils/UTILS_Facturation.py
+          git commit -m "fix: atomiser suppression et modification des factures"
+          git push origin HEAD:master
