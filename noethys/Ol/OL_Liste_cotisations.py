@@ -957,25 +957,48 @@ class ListView(FastObjectListView):
                 dlg.Destroy()
                 return
 
-        # Suppression
+        # Suppression atomique
         DB = GestionDB.DB()
+        ok = True
         for track in listeSelections:
-            DB.ReqDEL("cotisations", "IDcotisation", track.IDcotisation)
             if track.IDprestation != None:
-                DB.ReqDEL("prestations", "IDprestation", track.IDprestation)
+                for table in ("ventilation", "deductions", "prestations"):
+                    if not DB.ReqDEL(table, "IDprestation", track.IDprestation, commit=False):
+                        ok = False
+                        break
+                if not ok:
+                    break
+            if not DB.ReqDEL("cotisations", "IDcotisation", track.IDcotisation, commit=False):
+                ok = False
+                break
 
-            # Mémorise l'action dans l'historique
-            UTILS_Historique.InsertActions([{
+            # Mémorise l'action dans l'historique dans la même transaction
+            if not UTILS_Historique.InsertActions([{
                 "IDindividu": track.IDindividu,
                 "IDfamille": track.IDfamille,
                 "IDcategorie": 23,
                 "action": _(u"Suppression de la cotisation ID%d '%s' pour la période du %s au %s") % (track.IDcotisation, track.nomCotisation, UTILS_Dates.DateEngFr(str(track.date_debut)), UTILS_Dates.DateEngFr(str(track.date_fin))),
-            },])
+            },], DB=DB, commit=False):
+                ok = False
+                break
 
-            # Actualisation de l'affichage
-            self.MAJ()
-
+        if ok:
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
         DB.Close()
+
+        if not ok:
+            dlg = wx.MessageDialog(self, _(u"La suppression des cotisations a échoué. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
+        # Actualisation de l'affichage après succès global
+        self.MAJ()
         dlg.Destroy()
 
     def OuvrirFicheFamille(self, event):
