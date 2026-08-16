@@ -500,16 +500,24 @@ class Dialog(wx.Dialog):
             ("montant", totalVentilation),
             ("observations", observations),
             ]
-        if self.IDoperation == None :
-            self.IDoperation = DB.ReqInsert("compta_operations", listeDonnees)
+        ancien_IDoperation = self.IDoperation
+        if ancien_IDoperation == None :
+            IDoperation = DB.ReqInsert("compta_operations", listeDonnees, commit=False)
+            if IDoperation is None:
+                DB.Close()
+                return False
         else :
-            DB.ReqMAJ("compta_operations", listeDonnees, "IDoperation", self.IDoperation)
+            IDoperation = ancien_IDoperation
+            if not DB.ReqMAJ("compta_operations", listeDonnees, "IDoperation", IDoperation, commit=False):
+                DB.Close()
+                return False
             
-        # Sauvegarde des ventilations
+        # Sauvegarde des ventilations dans la même transaction.
         listeIDventilation = []
+        nouvellesVentilations = []
         for track in tracksVentilation :
-            listeDonnees = [ 
-                ("IDoperation", self.IDoperation),
+            listeDonnees = [
+                ("IDoperation", IDoperation),
                 ("date_budget", track.date_budget),
                 ("IDcategorie", track.IDcategorie),
                 ("IDanalytique", track.IDanalytique),
@@ -517,17 +525,33 @@ class Dialog(wx.Dialog):
                 ("montant", track.montant),
                 ]
             if track.IDventilation == None :
-                IDventilation = DB.ReqInsert("compta_ventilation", listeDonnees)
+                IDventilation = DB.ReqInsert("compta_ventilation", listeDonnees, commit=False)
+                if IDventilation is None:
+                    DB.connexion.rollback()
+                    DB.Close()
+                    return False
+                nouvellesVentilations.append((track, IDventilation))
+                listeIDventilation.append(IDventilation)
             else :
-                DB.ReqMAJ("compta_ventilation", listeDonnees, "IDventilation", track.IDventilation)
-            listeIDventilation.append(track.IDventilation) 
-            
-        # Supprime les ventilations supprimées
+                if not DB.ReqMAJ("compta_ventilation", listeDonnees, "IDventilation", track.IDventilation, commit=False):
+                    DB.connexion.rollback()
+                    DB.Close()
+                    return False
+                listeIDventilation.append(track.IDventilation)
+
+        # Supprime les ventilations supprimées.
         for track in self.tracksInitial :
             if track.IDventilation not in listeIDventilation :
-                DB.ReqDEL("compta_ventilation", "IDventilation", track.IDventilation)
-        
+                if not DB.ReqDEL("compta_ventilation", "IDventilation", track.IDventilation, commit=False):
+                    DB.connexion.rollback()
+                    DB.Close()
+                    return False
+
+        DB.Commit()
         DB.Close()
+        self.IDoperation = IDoperation
+        for track, IDventilation in nouvellesVentilations:
+            track.IDventilation = IDventilation
 
         return True
     
