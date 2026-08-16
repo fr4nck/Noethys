@@ -1,0 +1,73 @@
+name: Atomic transport save
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_transport_save.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Sécuriser la sauvegarde des transports
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p=Path('noethys/Ctrl/CTRL_Grille.py')
+          s=p.read_text(encoding='utf-8')
+          start=s.index('    def SauvegardeTransports(self):')
+          end=s.index('    def MemoriseParametres(self):', start)
+          block=s[start:end]
+
+          block=block.replace('                    newID = DB.ReqInsert("transports", listeDonnees)\n                    listeNewID[IDtransport] = newID',
+                              '                    newID = DB.ReqInsert("transports", listeDonnees, commit=False)\n                    if newID is None:\n                        try:\n                            DB.connexion.rollback()\n                        except Exception:\n                            pass\n                        DB.Close()\n                        return False\n                    listeNewID[IDtransport] = newID')
+          block=block.replace('                        DB.ReqMAJ("transports", listeDonnees, "IDtransport", IDtransport)',
+                              '                        if not DB.ReqMAJ("transports", listeDonnees, "IDtransport", IDtransport, commit=False):\n                            try:\n                                DB.connexion.rollback()\n                            except Exception:\n                                pass\n                            DB.Close()\n                            return False')
+          block=block.replace('                DB.ReqDEL("transports", "IDtransport", IDtransport)',
+                              '                if not DB.ReqDEL("transports", "IDtransport", IDtransport, commit=False):\n                    try:\n                        DB.connexion.rollback()\n                    except Exception:\n                        pass\n                    DB.Close()\n                    return False')
+          old='''        # Cloture de la DB\n        DB.Close()\n'''
+          new='''        # Validation atomique des ajouts, modifications et suppressions.\n        DB.Commit()\n        DB.Close()\n        return True\n'''
+          if block.count(old)!=1:
+              raise SystemExit('fin SauvegardeTransports inattendue')
+          block=block.replace(old,new,1)
+          s=s[:start]+block+s[end:]
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('noethys/Dlg/DLG_Badgeage_grille.py')
+          s=p.read_text(encoding='utf-8')
+          old='''            if self.grille.Sauvegarde() == False:\n                return False\n            self.grille.SauvegardeTransports()\n            return True\n'''
+          new='''            if self.grille.Sauvegarde() == False:\n                return False\n            if self.grille.SauvegardeTransports() == False:\n                return False\n            return True\n'''
+          if s.count(old)!=1:
+              raise SystemExit('wrapper transports motif inattendu')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Ctrl/CTRL_Grille.py noethys/Dlg/DLG_Badgeage_grille.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          c=Path('noethys/Ctrl/CTRL_Grille.py').read_text(encoding='utf-8')
+          b=Path('noethys/Dlg/DLG_Badgeage_grille.py').read_text(encoding='utf-8')
+          assert 'DB.ReqInsert("transports", listeDonnees, commit=False)' in c
+          assert 'DB.ReqMAJ("transports", listeDonnees, "IDtransport", IDtransport, commit=False)' in c
+          assert 'DB.ReqDEL("transports", "IDtransport", IDtransport, commit=False)' in c
+          assert 'Validation atomique des ajouts, modifications et suppressions.' in c
+          assert 'if self.grille.SauvegardeTransports() == False:' in b
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Ctrl/CTRL_Grille.py noethys/Dlg/DLG_Badgeage_grille.py
+          git commit -m "fix: atomiser la sauvegarde des transports"
+          git push origin HEAD:master
