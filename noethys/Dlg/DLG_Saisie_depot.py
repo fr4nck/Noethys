@@ -48,20 +48,20 @@ def DateEngEnDateDD(dateEng):
 
 class Choix_compte(wx.Choice):
     def __init__(self, parent):
-        wx.Choice.__init__(self, parent, -1) 
+        wx.Choice.__init__(self, parent, -1)
         self.parent = parent
         self.listeNoms = []
         self.listeID = []
         self.dictNumeros = {}
-        self.SetListeDonnees() 
+        self.SetListeDonnees()
         self.SetID(0)
-    
+
     def SetListeDonnees(self):
         self.listeNoms = [_(u"----------------------- Aucun compte bancaire -----------------------")]
         self.listeID = [0,]
         DB = GestionDB.DB()
         req = """SELECT IDcompte, nom, numero
-        FROM comptes_bancaires 
+        FROM comptes_bancaires
         ORDER BY nom;"""
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
@@ -72,7 +72,7 @@ class Choix_compte(wx.Choice):
             self.listeID.append(IDcompte)
             self.dictNumeros[IDcompte] = numero
         self.SetItems(self.listeNoms)
-    
+
     def SetID(self, ID=None):
         index = 0
         for IDcompte in self.listeID :
@@ -85,9 +85,9 @@ class Choix_compte(wx.Choice):
         if index == -1 : return None
         if index == 0 : return 0
         return self.listeID[index]
-    
+
     def GetNumero(self):
-        IDcompte = self.GetID() 
+        IDcompte = self.GetID()
         if IDcompte != 0 and IDcompte != None :
             return self.dictNumeros[IDcompte]
         else:
@@ -108,11 +108,11 @@ class CTRL_Infos(html.HtmlWindow):
         font = self.parent.GetFont()
         self.SetFont(font)
         self.SetLabel(texte)
-    
+
     def SetLabel(self, texte=""):
         self.SetPage(u"""<BODY><FONT SIZE=2 COLOR='#000000'>%s</FONT></BODY>""" % texte)
         self.SetBackgroundColour(self.couleurFond)
-    
+
 
 # ---------------------------------------------------------------------------------------------------------------------------------------
 
@@ -159,7 +159,7 @@ class Track(object):
             self.inclus = False
         else:
             self.inclus = True
-        
+
         # Récupération du nom des titulaires
         self.nomTitulaires = _(" ")
         try :
@@ -174,7 +174,7 @@ class Dialog(wx.Dialog):
         wx.Dialog.__init__(self, parent, -1, name="DLG_Saisie_depot", style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER|wx.MAXIMIZE_BOX|wx.MINIMIZE_BOX)
         self.parent = parent
         self.IDdepot = IDdepot
-        
+
         # Reglements
         self.staticbox_parametres_staticbox = wx.StaticBox(self, -1, _(u"Paramètres"))
         self.label_nom = wx.StaticText(self, -1, _(u"Nom du dépôt :"))
@@ -189,15 +189,15 @@ class Dialog(wx.Dialog):
         self.ctrl_compte = Choix_compte(self)
         self.label_observations = wx.StaticText(self, -1, _(u"Observations :"))
         self.ctrl_observations = wx.TextCtrl(self, -1, u"", style=wx.TE_MULTILINE)
-        
+
         # Reglements
         self.staticbox_reglements_staticbox = wx.StaticBox(self, -1, _(u"Règlements"))
-        self.listviewAvecFooter = OL_Reglements_depots.ListviewAvecFooter(self, kwargs={"inclus" : True, "selectionPossible" : False}) 
+        self.listviewAvecFooter = OL_Reglements_depots.ListviewAvecFooter(self, kwargs={"inclus" : True, "selectionPossible" : False})
         self.ctrl_reglements = self.listviewAvecFooter.GetListview()
-        
+
         self.ctrl_infos = CTRL_Infos(self, hauteur=32, couleurFond="#F0FBED" , style=wx.html.HW_NO_SELECTION | wx.html.HW_SCROLLBAR_NEVER | wx.SUNKEN_BORDER)
         self.bouton_ajouter = CTRL_Bouton_image.CTRL(self, texte=_(u"Ajouter ou retirer des règlements"), cheminImage="Images/32x32/Reglement_ajouter.png")
-        
+
         # Boutons
         self.bouton_aide = CTRL_Bouton_image.CTRL(self, texte=_(u"Aide"), cheminImage="Images/32x32/Aide.png")
         self.bouton_imprimer = CTRL_Bouton_image.CTRL(self, texte=_(u"Outils"), cheminImage="Images/32x32/Configuration.png")
@@ -222,16 +222,16 @@ class Dialog(wx.Dialog):
         # Importation lors d'une modification
         if self.IDdepot != None :
             self.SetTitle(_(u"Modification d'un dépôt"))
-            self.Importation() 
+            self.Importation()
             self.OnCheckVerrouillage(None)
         else:
             self.SetTitle(_(u"Saisie d'un dépôt"))
             self.ctrl_date.SetDate(datetime.date.today())
-        
+
         # Importation des règlements
         self.tracks = self.GetTracks()
-        self.ctrl_reglements.MAJ(tracks=self.tracks) 
-        self.MAJinfos() 
+        self.ctrl_reglements.MAJ(tracks=self.tracks)
+        self.MAJinfos()
 
 
     def __set_properties(self):
@@ -273,7 +273,7 @@ class Dialog(wx.Dialog):
 
         grid_sizer_haut_gauche.Add(self.label_code_compta, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 0)
         grid_sizer_haut_gauche.Add(self.ctrl_code_compta, 0, wx.EXPAND, 0)
-        
+
         grid_sizer_haut_gauche.AddGrowableCol(1)
         grid_sizer_parametres.Add(grid_sizer_haut_gauche, 1, wx.EXPAND, 0)
         grid_sizer_haut_droit.Add(self.label_compte, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 0)
@@ -296,7 +296,7 @@ class Dialog(wx.Dialog):
         grid_sizer_reglements.AddGrowableCol(0)
         staticbox_reglements.Add(grid_sizer_reglements, 1, wx.ALL|wx.EXPAND, 10)
         grid_sizer_base.Add(staticbox_reglements, 1, wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
-        
+
         grid_sizer_boutons = wx.FlexGridSizer(rows=1, cols=6, vgap=10, hgap=10)
         grid_sizer_boutons.Add(self.bouton_aide, 0, 0, 0)
         grid_sizer_boutons.Add(self.bouton_imprimer, 0, 0, 0)
@@ -306,32 +306,32 @@ class Dialog(wx.Dialog):
         grid_sizer_boutons.Add(self.bouton_annuler, 0, 0, 0)
         grid_sizer_boutons.AddGrowableCol(2)
         grid_sizer_base.Add(grid_sizer_boutons, 1, wx.LEFT|wx.RIGHT|wx.BOTTOM|wx.EXPAND, 10)
-        
+
         self.SetSizer(grid_sizer_base)
         grid_sizer_base.Fit(self)
         grid_sizer_base.AddGrowableRow(1)
         grid_sizer_base.AddGrowableCol(0)
         self.Layout()
-        self.CenterOnScreen() 
+        self.CenterOnScreen()
 
     def GetTracks(self):
         """ Récupération des données """
-        if self.IDdepot == None : 
+        if self.IDdepot == None :
             IDdepot = 0
         else:
             IDdepot = self.IDdepot
-            
+
         db = GestionDB.DB()
-        req = """SELECT 
-        reglements.IDreglement, reglements.IDcompte_payeur, reglements.date, 
-        reglements.IDmode, modes_reglements.label, 
-        reglements.IDemetteur, emetteurs.nom, 
-        reglements.numero_piece, reglements.montant, 
-        payeurs.IDpayeur, payeurs.nom, 
-        reglements.observations, numero_quittancier, IDprestation_frais, reglements.IDcompte, date_differe, 
-        encaissement_attente, 
-        reglements.IDdepot, depots.date, depots.nom, depots.verrouillage, 
-        date_saisie, IDutilisateur, 
+        req = """SELECT
+        reglements.IDreglement, reglements.IDcompte_payeur, reglements.date,
+        reglements.IDmode, modes_reglements.label,
+        reglements.IDemetteur, emetteurs.nom,
+        reglements.numero_piece, reglements.montant,
+        payeurs.IDpayeur, payeurs.nom,
+        reglements.observations, numero_quittancier, IDprestation_frais, reglements.IDcompte, date_differe,
+        encaissement_attente,
+        reglements.IDdepot, depots.date, depots.nom, depots.verrouillage,
+        date_saisie, IDutilisateur,
         comptes_bancaires.nom,
         familles.IDfamille, familles.email_depots,
         reglements.avis_depot
@@ -350,7 +350,7 @@ class Dialog(wx.Dialog):
         db.ExecuterReq(req)
         listeDonnees = db.ResultatReq()
         db.Close()
-        
+
         listeListeView = []
         for item in listeDonnees :
             track = Track(self.ctrl_reglements, item)
@@ -362,7 +362,7 @@ class Dialog(wx.Dialog):
         """ Importation des données """
         DB = GestionDB.DB()
         req = """SELECT IDdepot, date, nom, verrouillage, IDcompte, observations, code_compta
-        FROM depots 
+        FROM depots
         WHERE IDdepot=%d;""" % self.IDdepot
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
@@ -395,139 +395,174 @@ class Dialog(wx.Dialog):
             self.ctrl_date.Enable(False)
             self.ctrl_nom.Enable(False)
 
-    def OnBoutonAjouter(self, event): 
+    def OnBoutonAjouter(self, event):
         # Vérifier si compte sélectionné
         IDcompte = self.ctrl_compte.GetID()
-        if IDcompte == 0 or IDcompte == None : 
+        if IDcompte == 0 or IDcompte == None :
             dlg = wx.MessageDialog(self, _(u"Vous devez obligatoirement sélectionner un compte bancaire !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
             self.ctrl_compte.SetFocus()
             return False
         # Ouverture DLG Sélection réglements
-        dlg = DLG_Saisie_depot_ajouter.Dialog(self, tracks=self.tracks, IDcompte=IDcompte)      
+        dlg = DLG_Saisie_depot_ajouter.Dialog(self, tracks=self.tracks, IDcompte=IDcompte)
         if dlg.ShowModal() == wx.ID_OK:
             self.tracks = dlg.GetTracks()
             self.ctrl_reglements.MAJ(self.tracks)
             self.MAJinfos()
-        dlg.Destroy() 
-        
+        dlg.Destroy()
+
     def OnCheckVerrouillage(self, event):
         if self.ctrl_verrouillage.GetValue() == True :
             self.bouton_ajouter.Enable(False)
         else:
             self.bouton_ajouter.Enable(True)
 
-    def OnBoutonAide(self, event): 
+    def OnBoutonAide(self, event):
         from Utils import UTILS_Aide
         UTILS_Aide.Aide("Gestiondesdpts")
 
-    def OnBoutonAnnuler(self, event): 
+    def OnBoutonAnnuler(self, event):
         dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment annuler ?\n\nLes éventuelles modifications effectuées seront perdues..."), _(u"Annulation"), wx.YES_NO|wx.YES_DEFAULT|wx.CANCEL|wx.ICON_QUESTION)
         reponse = dlg.ShowModal()
         dlg.Destroy()
         if reponse != wx.ID_YES :
             return
         self.EndModal(wx.ID_CANCEL)
-        
-    def OnBoutonOk(self, event): 
-        # Sauvegarde des paramètres
-        etat = self.Sauvegarde_depot() 
+
+    def OnBoutonOk(self, event):
+        # Sauvegarde atomique du dépôt et des règlements
+        etat = self.Sauvegarde_depot()
         if etat == False :
             return
-        # Sauvegarde des règlements
-        self.Sauvegarde_reglements()
-        
+
         # Envoi par Email des avis de dépôt
         nbreAvisDepots = self.GetNbreAvisDepots()
         if nbreAvisDepots > 0 :
             dlg = wx.MessageDialog(None, _(u"Il y a %d avis de dépôt à envoyer par Email !\n\nSouhaitez-vous le faire maintenant ?") % nbreAvisDepots, _(u"Avis de dépôt"), wx.YES_NO|wx.YES_DEFAULT|wx.ICON_QUESTION)
-            reponse = dlg.ShowModal() 
+            reponse = dlg.ShowModal()
             dlg.Destroy()
             if reponse == wx.ID_YES :
                 self.EnvoyerAvisDepots()
-            
+
         # Fermeture
         self.EndModal(wx.ID_OK)
-    
+
     def Sauvegarde_depot(self):
         # Nom
-        nom = self.ctrl_nom.GetValue() 
+        nom = self.ctrl_nom.GetValue()
         if nom == "" :
             dlg = wx.MessageDialog(self, _(u"Vous devez obligatoirement saisir un nom. Exemple : 'Chèques - Juillet 2010'... !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
             self.ctrl_nom.SetFocus()
             return False
-        
+
         # Date
         date = self.ctrl_date.GetDate()
         if date == None :
             dlg = wx.MessageDialog(self, _(u"Etes-vous sûr de ne pas vouloir saisir de date de dépôt ?"), _(u"Confirmation"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
             reponse = dlg.ShowModal()
             dlg.Destroy()
-            if reponse !=  wx.ID_YES :
+            if reponse != wx.ID_YES :
                 return False
-        
+
         # Verrouillage
-        verrouillage = self.ctrl_verrouillage.GetValue()
-        if verrouillage == True :
-            verrouillage = 1
-        else:
-            verrouillage = 0
-        
+        verrouillage = 1 if self.ctrl_verrouillage.GetValue() else 0
+
         # Compte
         IDcompte = self.ctrl_compte.GetID()
-        if IDcompte == 0 : 
+        if IDcompte == 0 :
             IDcompte = None
             dlg = wx.MessageDialog(self, _(u"Etes-vous sûr de ne pas vouloir sélectionner de compte bancaire pour ce dépôt ?"), _(u"Confirmation"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
             reponse = dlg.ShowModal()
             dlg.Destroy()
-            if reponse !=  wx.ID_YES :
+            if reponse != wx.ID_YES :
                 return False
-        
-        # Observations
-        observations = self.ctrl_observations.GetValue()
-        
-        # Code compta
-        code_compta = self.ctrl_code_compta.GetValue() 
-        
-        DB = GestionDB.DB()
-        listeDonnees = [    
-                ("nom", nom),
-                ("date", date),
-                ("verrouillage", verrouillage),
-                ("IDcompte", IDcompte),
-                ("observations", observations),
-                ("code_compta", code_compta),
-            ]
-        if self.IDdepot == None :
-            self.IDdepot = DB.ReqInsert("depots", listeDonnees)
-        else:
-            DB.ReqMAJ("depots", listeDonnees, "IDdepot", self.IDdepot)
-        DB.Close()
-        
-        return True
-        
-    def Sauvegarde_reglements(self):
-        liste_modifications = []
-        for track in self.tracks :
-            # Ajout
-            if track.IDdepot == None and track.inclus == True :
-                liste_modifications.append((self.IDdepot, track.IDreglement))
-            # Retrait
-            if track.IDdepot != None and track.inclus == False :
-                liste_modifications.append((None, track.IDreglement))
 
-        if len(liste_modifications) > 0 :
-            DB = GestionDB.DB()
-            DB.Executermany("UPDATE reglements SET IDdepot=? WHERE IDreglement=?", liste_modifications, commit=False)
+        observations = self.ctrl_observations.GetValue()
+        code_compta = self.ctrl_code_compta.GetValue()
+
+        DB = GestionDB.DB()
+        ok = True
+        nouvelIDdepot = self.IDdepot
+        listeDonnees = [
+            ("nom", nom),
+            ("date", date),
+            ("verrouillage", verrouillage),
+            ("IDcompte", IDcompte),
+            ("observations", observations),
+            ("code_compta", code_compta),
+            ]
+
+        if nouvelIDdepot == None :
+            nouvelIDdepot = DB.ReqInsert("depots", listeDonnees, commit=False)
+            if nouvelIDdepot is None :
+                ok = False
+        else :
+            if not DB.ReqMAJ("depots", listeDonnees, "IDdepot", nouvelIDdepot, commit=False) :
+                ok = False
+
+        if ok :
+            ok = self.Sauvegarde_reglements(DB=DB, IDdepot=nouvelIDdepot, commit=False)
+
+        if ok :
             DB.Commit()
+        else :
+            try :
+                DB.connexion.rollback()
+            except Exception :
+                pass
+        DB.Close()
+
+        if not ok :
+            dlg = wx.MessageDialog(self, _(u"Une erreur est survenue pendant l'enregistrement du dépôt et de ses règlements. Aucune modification n'a été conservée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
+        self.IDdepot = nouvelIDdepot
+        return True
+
+    def Sauvegarde_reglements(self, DB=None, IDdepot=None, commit=True):
+        """Rattache/détache les règlements, dans la transaction fournie si nécessaire."""
+        DBexterne = DB is not None
+        if DB is None :
+            DB = GestionDB.DB()
+        if IDdepot is None :
+            IDdepot = self.IDdepot
+
+        ok = True
+        for track in self.tracks :
+            nouvelleValeur = None
+            modifier = False
+            if track.IDdepot == None and track.inclus == True :
+                nouvelleValeur = IDdepot
+                modifier = True
+            elif track.IDdepot != None and track.inclus == False :
+                nouvelleValeur = None
+                modifier = True
+
+            if modifier :
+                if not DB.ReqMAJ("reglements", [("IDdepot", nouvelleValeur),], "IDreglement", track.IDreglement, commit=False) :
+                    ok = False
+                    break
+
+        if not DBexterne :
+            if ok and commit :
+                DB.Commit()
+            elif not ok :
+                try :
+                    DB.connexion.rollback()
+                except Exception :
+                    pass
             DB.Close()
+
+        return ok
 
     def GetIDdepot(self):
         return self.IDdepot
-    
+
     def MAJinfos(self):
         """ Créé le texte infos avec les stats du dépôt """
         # Récupération des chiffres
@@ -557,13 +592,13 @@ class Dialog(wx.Dialog):
         self.ctrl_infos.SetLabel(texte)
         # Label de staticbox
         self.staticbox_reglements_staticbox.SetLabel(self.ctrl_reglements.GetLabelListe(_(u"règlements")))
-    
+
     def OnBoutonImprimer(self, event):
         self.ctrl_reglements.OnContextMenu(None)
 
     def GetInfosDepot(self):
-        nom = self.ctrl_nom.GetValue() 
-        date = self.ctrl_date.GetDate() 
+        nom = self.ctrl_nom.GetValue()
+        date = self.ctrl_date.GetDate()
         return {"nom":nom, "date":date, "nomCompte":nomCompte, "numCompte":numCompte}
 
     def GetLabelParametres(self):
@@ -571,15 +606,15 @@ class Dialog(wx.Dialog):
 
         nom = self.ctrl_nom.GetValue()
         listeParametres.append(_(u"Nom du dépôt : %s") % nom)
-        
-        date = self.ctrl_date.GetDate() 
-        if date == None : 
+
+        date = self.ctrl_date.GetDate()
+        if date == None :
             date = _(u"Non spécifiée")
         else :
             date = DateEngFr(str(date))
         listeParametres.append(_(u"Date : %s") % date)
 
-        IDcompte = self.ctrl_compte.GetID() 
+        IDcompte = self.ctrl_compte.GetID()
         if IDcompte != 0 and IDcompte != None :
             nomCompte = self.ctrl_compte.GetStringSelection()
             numCompte = self.ctrl_compte.GetNumero()
@@ -592,10 +627,10 @@ class Dialog(wx.Dialog):
             listeParametres.append(_(u"Dépôt verrouillé"))
         else :
             listeParametres.append(_(u"Dépôt déverrouillé"))
-        
+
         labelParametres = " | ".join(listeParametres)
         return labelParametres
-    
+
     def GetNbreAvisDepots(self):
         nbreAbonnes = 0
         for track in self.tracks :
@@ -604,29 +639,29 @@ class Dialog(wx.Dialog):
         return nbreAbonnes
 
     def OnBoutonAvisDepots(self, event=None):
-        self.EnvoyerAvisDepots() 
-    
+        self.EnvoyerAvisDepots()
+
     def EnvoyerAvisDepots(self):
-        """ Envoi des avis de dépôt par Email aux familles """                        
+        """ Envoi des avis de dépôt par Email aux familles """
         # Recherche des adresses des individus
         DB = GestionDB.DB()
         req = """SELECT individus.IDindividu, mail, travail_mail
         FROM individus;"""
         DB.ExecuterReq(req)
         listeAdressesIndividus = DB.ResultatReq()
-        DB.Close() 
+        DB.Close()
         dictAdressesIndividus = {}
         for IDindividu, mail, travail_mail in listeAdressesIndividus :
             dictAdressesIndividus[IDindividu] = {"perso" : mail, "travail" : travail_mail}
-        
+
         # Recherche des titulaires
-        dictTitulaires = UTILS_Titulaires.GetTitulaires() 
-        
+        dictTitulaires = UTILS_Titulaires.GetTitulaires()
+
         # Recherche les familles abonnées à ce service
         listeDonnees = []
         for track in self.tracks :
             if track.email_depots != None and track.inclus == True :
-                
+
                 # Recherche de l'adresse d'envoi
                 IDindividu, categorie, adresse = track.email_depots.split(";")
                 if IDindividu != "" :
@@ -635,10 +670,10 @@ class Dialog(wx.Dialog):
                             adresse = dictAdressesIndividus[int(IDindividu)][categorie]
                     except :
                         adresse = u""
-                
+
                 # Noms des titulaires de la famille
                 nomTitulaires = dictTitulaires[track.IDfamille]["titulairesSansCivilite"]
-                
+
                 # Champs sur le règlement
                 dictChamps = {
                     "{ID_REGLEMENT}" : str(track.IDreglement),
@@ -651,21 +686,21 @@ class Dialog(wx.Dialog):
                     "{NUM_QUITTANCIER}" : track.numero_quittancier,
                     "{DATE_SAISIE}" : DateEngFr(str(track.date_saisie)),
                     }
-                
+
                 listeDonnees.append({"nomTitulaires": nomTitulaires, "IDreglement" : track.IDreglement, "avis_depot" : track.avis_depot, "IDfamille" : track.IDfamille, "adresse" : adresse, "pieces" : [], "champs" : dictChamps})
-        
+
         from Dlg import DLG_Selection_avis_depots
         dlg = DLG_Selection_avis_depots.Dialog(self, listeDonnees=listeDonnees)
         reponse = dlg.ShowModal()
-        listeSelections = dlg.GetListeSelections() 
+        listeSelections = dlg.GetListeSelections()
         dlg.Destroy()
         if reponse != wx.ID_OK :
             return
-        
+
         listeDonnees2 = []
         for index in listeSelections :
             listeDonnees2.append(listeDonnees[index])
-        
+
         # Chargement du Mailer
         from Dlg import DLG_Mailer
         dlg = DLG_Mailer.Dialog(self, categorie="reglement")
@@ -674,7 +709,7 @@ class Dialog(wx.Dialog):
         dlg.ShowModal()
         listeSucces = dlg.listeSucces
         dlg.Destroy()
-        
+
         # Mémorisation des avis envoyés avec succès
         DB = GestionDB.DB()
         listeIDreglements = []
@@ -683,16 +718,16 @@ class Dialog(wx.Dialog):
             listeIDreglements.append(IDreglement)
             DB.ReqMAJ("reglements", [("avis_depot", str(datetime.date.today()) ),], "IDreglement", IDreglement)
         DB.Close()
-        
+
         for track in self.tracks :
             if track.IDreglement in listeIDreglements :
                 track.avis_depot = datetime.date.today()
                 self.ctrl_reglements.RefreshObject(track)
-        
-        
-        
-        
-                
+
+
+
+
+
 
 if __name__ == u"__main__":
     app = wx.App(0)
