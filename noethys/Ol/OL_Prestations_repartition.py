@@ -549,6 +549,7 @@ class ListView(GroupListView):
             
             DB = GestionDB.DB()
             valide = True
+            erreurDB = False
             
             # Vérifie si ce n'est pas un forfait non supprimable
             if track.forfait == 2 :
@@ -611,12 +612,18 @@ class ListView(GroupListView):
                     else :
                         # Suppression des consommations associées
                         for IDconso in listeIDconso :
-                            DB.ReqDEL("consommations", "IDconso", IDconso)
+                            if not DB.ReqDEL("consommations", "IDconso", IDconso, commit=False):
+                                valide = False
+                                erreurDB = True
+                                break
                 if reponse == wx.ID_NO :
                     # Supprime la référence à la prestation des consommations
                     for IDconso in listeIDconso :
                         listeDonnees = [("IDprestation", None),]
-                        DB.ReqMAJ("consommations", listeDonnees, "IDconso", IDconso)
+                        if not DB.ReqMAJ("consommations", listeDonnees, "IDconso", IDconso, commit=False):
+                            valide = False
+                            erreurDB = True
+                            break
             
             # Recherche s'il s'agit d'une prestation de frais de gestion pour un règlement
             if track.reglement_frais != None :
@@ -626,18 +633,32 @@ class ListView(GroupListView):
                 if reponse != wx.ID_YES :
                     valide = False
             
-            # Suppression de la prestation
+            # Suppression atomique de la prestation et de ses dépendances
             if valide == True :
-                DB.ReqDEL("prestations", "IDprestation", track.IDprestation)
-                DB.ReqDEL("ventilation", "IDprestation", track.IDprestation)
-                DB.ReqDEL("deductions", "IDprestation", track.IDprestation)
+                for table in ("ventilation", "deductions", "prestations"):
+                    if not DB.ReqDEL(table, "IDprestation", track.IDprestation, commit=False):
+                        valide = False
+                        erreurDB = True
+                        break
+
+            if valide == True :
+                DB.Commit()
                 listeSuppressions.append(track)
-            
-            # MAJ du listeView
-            self.MAJ() 
-            
-        DB.Close() 
-        
+            else:
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+            DB.Close()
+
+            if erreurDB:
+                dlg = wx.MessageDialog(self, _(u"La prestation n°%d n'a pas pu être supprimée complètement. Aucune modification n'a été validée pour cette prestation.") % track.IDprestation, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+
+        # MAJ du listeView
+        self.MAJ()
+
         # Confirmation de suppression
         dlg = wx.MessageDialog(self, _(u"%d prestation(s) ont été supprimée(s) avec succès.") % len(listeSuppressions), _(u"Suppression"), wx.OK | wx.ICON_INFORMATION)
         dlg.ShowModal()
