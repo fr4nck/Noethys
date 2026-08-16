@@ -644,6 +644,8 @@ class ListView(FastObjectListView):
 
         # Enregistrement des mensualités
         DB = GestionDB.DB()
+        ok = True
+        listeMAJTracks = []
 
         for track in listeTracks :
             listeDonnees = [
@@ -667,10 +669,15 @@ class ListView(FastObjectListView):
             ]
             if track.IDprestation == None :
                 listeDonnees.append(("date_valeur", str(datetime.date.today())))
-                IDprestation = DB.ReqInsert("prestations", listeDonnees)
+                IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)
+                if IDprestation is None:
+                    ok = False
+                    break
             else :
                 IDprestation = track.IDprestation
-                DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation)
+                if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):
+                    ok = False
+                    break
 
             # MAJ des consommations
             listeUnites = []
@@ -684,16 +691,34 @@ class ListView(FastObjectListView):
             req = """UPDATE consommations SET IDprestation=%d
             WHERE IDinscription=%d AND date>='%s' AND date<='%s' AND IDunite IN %s
             ;"""% (IDprestation, track.IDinscription, track.forfait_date_debut, track.forfait_date_fin, conditionUnites)
-            DB.ExecuterReq(req)
+            if DB.ExecuterReq(req) != 1:
+                ok = False
+                break
 
-            # MAJ du track
+            # Mémorise les mises à jour d'interface jusqu'au commit global
+            listeMAJTracks.append((track, IDprestation))
+
+        if ok:
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+        DB.Close()
+
+        if not ok:
+            dlg = wx.MessageDialog(self, _(u"La génération des mensualités a échoué. Aucune mensualité sélectionnée n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
+        # Met à jour l'interface uniquement après succès complet
+        for track, IDprestation in listeMAJTracks:
             track.IDprestation = IDprestation
             track.heures_facturees = track.heures_a_facturer
             track.montant_facture = track.montant_a_facturer
             self.RefreshObject(track)
-
-        DB.Commit()
-        DB.Close()
 
         # Confirmation succès
         dlg = wx.MessageDialog(self, _(u"Les mensualités ont été générées avec succès !"), _(u"Génération terminée"), wx.OK | wx.ICON_INFORMATION)
