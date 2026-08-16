@@ -55,16 +55,16 @@ class Track(object):
         self.prelevement_sequence =  donnees["prelevement_sequence"]
         self.prelevement_titulaire =  donnees["prelevement_titulaire"]
         self.prelevement_statut =  donnees["prelevement_statut"]
-        
+
         self.type = donnees["type"]
         self.IDfacture = donnees["IDfacture"]
         self.numero = donnees["numero"]
         self.libelle = donnees["libelle"]
         self.montant = donnees["montant"]
-        
+
         self.titulaires = ""
-        self.InitNomsTitulaires() 
-        
+        self.InitNomsTitulaires()
+
         self.IDreglement = donnees["IDreglement"]
         if self.IDreglement == None :
             self.reglement = False
@@ -72,7 +72,7 @@ class Track(object):
             self.reglement = True
         self.dateReglement = donnees["dateReglement"]
         self.IDdepot = donnees["IDdepot"]
-        
+
         self.titulaire_helios = donnees["titulaire_helios"]
         self.tiers_solidaire = donnees["tiers_solidaire"]
         self.InitTitulaireHelios()
@@ -126,10 +126,10 @@ class Track(object):
         # Etat de la pièce
         self.etat = donnees["etat"] # "ajout", "modif"
         self.AnalysePiece()
-        
+
     def InitTitulaireHelios(self):
         if self.titulaire_helios in self.dictIndividus :
-            self.titulaireCivilite = self.dictIndividus[self.titulaire_helios]["civiliteAbrege"] 
+            self.titulaireCivilite = self.dictIndividus[self.titulaire_helios]["civiliteAbrege"]
             self.titulaireNom = self.dictIndividus[self.titulaire_helios]["nom"]
             self.titulairePrenom = self.dictIndividus[self.titulaire_helios]["prenom"]
             if self.titulaireCivilite == None :
@@ -179,16 +179,16 @@ class Track(object):
     def InitNomsTitulaires(self):
         if self.IDfamille != None :
             self.titulaires = self.dictTitulaires[self.IDfamille]["titulairesSansCivilite"]
-    
+
     def AnalysePiece(self):
         listeProblemes = []
-        
-        if self.titulaire_helios in (None, "") : 
+
+        if self.titulaire_helios in (None, "") :
             listeProblemes.append(_(u"Titulaire Hélios manquant"))
         else :
-            if self.titulaireRue in (None, "") or self.titulaireCP in (None, "") or self.titulaireVille in (None, "") : 
+            if self.titulaireRue in (None, "") or self.titulaireCP in (None, "") or self.titulaireVille in (None, "") :
                 listeProblemes.append(_(u"Adresse du titulaire Hélios incomplète"))
-        
+
         if self.prelevement == 1 :
             if self.prelevement_iban in (None, "") or self.prelevement_bic in (None, "") or self.prelevement_titulaire in (None, "") :
                 listeProblemes.append(_(u"Coordonnées bancaires incomplètes"))
@@ -196,7 +196,7 @@ class Track(object):
                 listeProblemes.append(_(u"Mandat SEPA manquant"))
             if self.prelevement_sequence in (None, "") :
                 listeProblemes.append(_(u"Séquence SEPA non renseignée"))
-        
+
         if len(listeProblemes) > 0 :
             self.analysePiece = False
             self.analysePieceTexte = u", ".join(listeProblemes)
@@ -216,29 +216,29 @@ def GetDictAutresDonnees():
             "idtiers_helios": idtiers_helios, "natidtiers_helios": natidtiers_helios, "reftiers_helios": reftiers_helios,
             "cattiers_helios": cattiers_helios, "natjur_helios": natjur_helios, "code_compta": code_compta
         }
-    DB.Close() 
+    DB.Close()
     return dictAutresDonnees
 
 def GetTracks(IDlot=None, IDmandat=None):
     """ Récupération des données """
-    dictTitulaires = UTILS_Titulaires.GetTitulaires() 
-    dictIndividus = UTILS_Titulaires.GetIndividus() 
+    dictTitulaires = UTILS_Titulaires.GetTitulaires()
+    dictIndividus = UTILS_Titulaires.GetIndividus()
     if IDlot != None :
         criteres = "WHERE IDlot=%d" % IDlot
     if IDmandat != None :
         criteres = "WHERE prelevement_IDmandat=%d" % IDmandat
     if IDlot == None and IDmandat == None :
         return []
-    
+
     dictAutresDonnees = GetDictAutresDonnees()
-    
+
     DB = GestionDB.DB()
-    req = """SELECT 
-    pes_pieces.IDpiece, IDlot, pes_pieces.IDfamille, 
-    prelevement, prelevement_iban, prelevement_bic, 
+    req = """SELECT
+    pes_pieces.IDpiece, IDlot, pes_pieces.IDfamille,
+    prelevement, prelevement_iban, prelevement_bic,
     prelevement_IDmandat, prelevement_rum, prelevement_date_mandat,
     prelevement_sequence, prelevement_titulaire, prelevement_statut,
-    type, IDfacture, libelle, pes_pieces.montant, 
+    type, IDfacture, libelle, pes_pieces.montant,
     reglements.IDreglement, reglements.date, reglements.IDdepot,
     comptes_payeurs.IDcompte_payeur,
     pes_pieces.titulaire_helios, pes_pieces.tiers_solidaire, pes_pieces.numero
@@ -257,10 +257,10 @@ def GetTracks(IDlot=None, IDmandat=None):
         else :
             dictTempAutresDonnees = {}
         dictTemp = {
-            "IDpiece" : IDpiece, "IDlot" : IDlot, "IDfamille" : IDfamille, 
-            "prelevement" : prelevement, "prelevement_iban" : prelevement_iban, "prelevement_bic" : prelevement_bic, 
+            "IDpiece" : IDpiece, "IDlot" : IDlot, "IDfamille" : IDfamille,
+            "prelevement" : prelevement, "prelevement_iban" : prelevement_iban, "prelevement_bic" : prelevement_bic,
             "prelevement_IDmandat" : prelevement_IDmandat, "prelevement_rum" : prelevement_rum, "prelevement_date_mandat" : prelevement_date_mandat,
-            "prelevement_sequence" : prelevement_sequence, "prelevement_titulaire" : prelevement_titulaire, "prelevement_statut" : prelevement_statut, 
+            "prelevement_sequence" : prelevement_sequence, "prelevement_titulaire" : prelevement_titulaire, "prelevement_statut" : prelevement_statut,
             "IDfacture" : IDfacture, "libelle" : libelle, "montant" : montant, "statut" : prelevement_statut, "IDlot" : IDlot, "etat" : None, "type" : type_piece,
             "IDreglement" : IDreglement, "dateReglement" : dateReglement, "IDdepot" : IDdepot, "IDcompte_payeur" : IDcompte_payeur,
             "titulaire_helios" : titulaire_helios, "tiers_solidaire": tiers_solidaire, "numero" : numero, "dictAutresDonnees" : dictTempAutresDonnees,
@@ -271,7 +271,7 @@ def GetTracks(IDlot=None, IDmandat=None):
 
 
 
-    
+
 class ListView(FastObjectListView):
     def __init__(self, *args, **kwds):
         # Récupération des paramètres perso
@@ -294,7 +294,7 @@ class ListView(FastObjectListView):
         # Binds perso
         self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.OnItemActivated)
         self.Bind(wx.EVT_CONTEXT_MENU, self.OnContextMenu)
-        
+
     def OnItemActivated(self,event):
         self.Modifier()
 
@@ -302,19 +302,19 @@ class ListView(FastObjectListView):
         if tracks != None :
             self.tracks = tracks
         self.donnees = self.tracks
-                    
-    def InitObjectListView(self):            
+
+    def InitObjectListView(self):
         # Couleur en alternance des lignes
         self.oddRowsBackColor = UTILS_Interface.GetValeur("couleur_tres_claire", wx.Colour(240, 251, 237))
         self.evenRowsBackColor = wx.Colour(255, 255, 255)
         self.useExpansionColumn = True
-                
+
         # Image list
         self.imgValide = self.AddNamedImages("valide", wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Ok.png"), wx.BITMAP_TYPE_PNG))
         self.imgRefus = self.AddNamedImages("refus", wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Interdit.png"), wx.BITMAP_TYPE_PNG))
         self.imgAttente = self.AddNamedImages("attente", wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Attente.png"), wx.BITMAP_TYPE_PNG))
         self.imgPrelevement = self.AddNamedImages("prelevement", wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Prelevement.png"), wx.BITMAP_TYPE_PNG))
-        
+
         def GetImageStatut(track):
             if track.prelevement_statut == "valide" : return self.imgValide
             if track.prelevement_statut == "refus" : return self.imgRefus
@@ -359,17 +359,17 @@ class ListView(FastObjectListView):
                 return u""
 
         def GetImagePrelevement(track):
-            if track.prelevement == 1 : 
+            if track.prelevement == 1 :
                 return self.imgPrelevement
             else :
                 return self.imgRefus
-        
+
         def GetImageAnalysePiece(track):
-            if track.analysePiece == True : 
+            if track.analysePiece == True :
                 return self.imgValide
             else :
                 return self.imgRefus
-            
+
         liste_Colonnes = [
             ColumnDefn(_(u"ID"), "left", 0, "IDprelevement", typeDonnee="entier"),
             ColumnDefn(_(u"Analyse pièce"), 'left', 120, "analysePieceTexte", typeDonnee="texte", imageGetter=GetImageAnalysePiece),
@@ -395,7 +395,7 @@ class ListView(FastObjectListView):
             ColumnDefn(_(u"Nat. Jur."), 'left', 70, "natjur_helios", typeDonnee="texte"),
             ColumnDefn(_(u"Code compta."), 'left', 95, "code_compta", typeDonnee="texte"),
             ]
-        
+
 
         self.SetColumns(liste_Colonnes)
         self.CreateCheckStateColumn(0)
@@ -404,7 +404,7 @@ class ListView(FastObjectListView):
 ##        self.SetSortColumn(self.columns[self.numColonneTri])
         self.SortBy(self.numColonneTri, ascending=self.ordreAscendant)
         self.SetObjects(self.donnees)
-       
+
     def MAJ(self, tracks=None, ID=None, selectionTrack=None, nextTrack=None, IDcompte=None, IDmode=None):
         self.InitModel(tracks, IDcompte, IDmode)
         self.InitObjectListView()
@@ -424,7 +424,7 @@ class ListView(FastObjectListView):
         else:
             noSelection = False
             ID = self.Selection()[0].IDpiece
-                
+
         # Création du menu contextuel
         menuPop = UTILS_Adaptations.Menu()
 
@@ -451,7 +451,7 @@ class ListView(FastObjectListView):
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.Modifier, id=20)
         if noSelection == True : item.Enable(False)
-                
+
         # Item Supprimer
         item = wx.MenuItem(menuPop, 30, _(u"Retirer"))
         bmp = wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Supprimer.png"), wx.BITMAP_TYPE_PNG)
@@ -474,30 +474,30 @@ class ListView(FastObjectListView):
         self.Bind(wx.EVT_MENU, self.ActiverPrelevement, id=801)
 
         menuPop.AppendSeparator()
-    
+
         # Item Apercu avant impression
         item = wx.MenuItem(menuPop, 40, _(u"Aperçu avant impression"))
         bmp = wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Apercu.png"), wx.BITMAP_TYPE_PNG)
         item.SetBitmap(bmp)
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.Apercu, id=40)
-        
+
         # Item Imprimer
         item = wx.MenuItem(menuPop, 50, _(u"Imprimer"))
         bmp = wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Imprimante.png"), wx.BITMAP_TYPE_PNG)
         item.SetBitmap(bmp)
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.Imprimer, id=50)
-        
+
         menuPop.AppendSeparator()
-    
+
         # Item Export Texte
         item = wx.MenuItem(menuPop, 600, _(u"Exporter au format Texte"))
         bmp = wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Texte2.png"), wx.BITMAP_TYPE_PNG)
         item.SetBitmap(bmp)
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.ExportTexte, id=600)
-        
+
         # Item Export Excel
         item = wx.MenuItem(menuPop, 700, _(u"Exporter au format Excel"))
         bmp = wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Excel.png"), wx.BITMAP_TYPE_PNG)
@@ -519,7 +519,7 @@ class ListView(FastObjectListView):
         from Utils import UTILS_Printer
         prt = UTILS_Printer.ObjectListViewPrinter(self, titre=_(u"Liste des pièces du bordereau"), intro=txtIntro, total=txtTotal, format="A", orientation=wx.LANDSCAPE)
         return prt
-        
+
     def Apercu(self, event=None):
         self.Impression().Preview()
 
@@ -529,29 +529,29 @@ class ListView(FastObjectListView):
     def ExportTexte(self, event=None):
         from Utils import UTILS_Export
         UTILS_Export.ExportTexte(self, titre=_(u"Liste des pièces du bordereau"))
-        
+
     def ExportExcel(self, event=None):
         from Utils import UTILS_Export
         UTILS_Export.ExportExcel(self, titre=_(u"Liste des pièces du bordereau"))
-        
+
     def Saisie_manuelle(self, event=None):
         """ Saisie manuelle """
-        dictTitulaires = UTILS_Titulaires.GetTitulaires() 
+        dictTitulaires = UTILS_Titulaires.GetTitulaires()
         dictTemp = {
-            "IDprelevement" : None, "IDfamille" : None, "prelevement" : 0, "prelevement_iban" : "", "prelevement_bic" : "", 
+            "IDprelevement" : None, "IDfamille" : None, "prelevement" : 0, "prelevement_iban" : "", "prelevement_bic" : "",
             "prelevement_rum" : "", "prelevement_date_mandat" : None,
-            "prelevement_titulaire" : "", "prelevement_statut" : "attente", "type" : "manuel", "IDfacture" : None, 
+            "prelevement_titulaire" : "", "prelevement_statut" : "attente", "type" : "manuel", "IDfacture" : None,
             "libelle" : "", "montant" : 0.00, "IDlot" : self.IDlot, "etat" : "ajout",
             "IDreglement" : None, "dateReglement" : None, "IDdepot" : None, "IDcompte_payeur" : None,
             }
         track = Track(dictTemp, dictTitulaires, self.dictIndividus)
-        dlg = DLG_Saisie_prelevement.Dialog(self, track=track)      
+        dlg = DLG_Saisie_prelevement.Dialog(self, track=track)
         if dlg.ShowModal() == wx.ID_OK:
             track = dlg.GetTrack()
             self.AddObject(track)
-            self.MAJtotaux() 
-        dlg.Destroy() 
-        
+            self.MAJtotaux()
+        dlg.Destroy()
+
     def Saisie_factures(self, event=None):
         """ Saisie de factures """
         if self.GetParent().GetVerrouillage() == True :
@@ -559,7 +559,7 @@ class ListView(FastObjectListView):
             dlg.ShowModal()
             dlg.Destroy()
             return
-        
+
         from Dlg import DLG_Pes_factures
         dlg = DLG_Pes_factures.Dialog(self, IDlot=self.IDlot)
         reponse = dlg.ShowModal()
@@ -568,29 +568,29 @@ class ListView(FastObjectListView):
         if reponse != wx.ID_OK :
             return
         self.AjoutFactures(tracks)
-    
+
     def AjoutFactures(self, tracks=[]):
         # Vérifie que cette facture n'est pas déjà présente dans le lot
         listeFacturesPresentes = []
         for track in self.GetObjects() :
             if track.IDfacture != None :
                 listeFacturesPresentes.append(track.IDfacture)
-        
-        mandats = UTILS_Mandats.Mandats() 
+
+        mandats = UTILS_Mandats.Mandats()
         dictAutresDonnees = GetDictAutresDonnees()
-        
+
         # MAJ de la liste affichée
-        dictTitulaires = UTILS_Titulaires.GetTitulaires() 
+        dictTitulaires = UTILS_Titulaires.GetTitulaires()
         listeNewTracks = []
         listeMandatsNonValides = []
         for track in tracks :
-            
+
             # Recherche un mandat valide pour la famille
             if track.prelevement in (True, 1) :
-                IDmandat = mandats.RechercheMandatFamille(track.IDfamille) 
+                IDmandat = mandats.RechercheMandatFamille(track.IDfamille)
             else :
                 IDmandat = None
-            
+
             if IDmandat == None :
                 if track.IDfamille in dictTitulaires :
                     nomTitulaires = dictTitulaires[track.IDfamille]["titulairesSansCivilite"]
@@ -609,7 +609,7 @@ class ListView(FastObjectListView):
 
             else :
                 # Récupère les données du mandat
-                dictMandat = mandats.GetDictMandat(IDmandat) 
+                dictMandat = mandats.GetDictMandat(IDmandat)
                 prelevement = 1
                 prelevement_iban = dictMandat["iban"]
                 prelevement_bic = dictMandat["bic"]
@@ -617,11 +617,11 @@ class ListView(FastObjectListView):
                 prelevement_rum = dictMandat["rum"]
                 prelevement_mandat_date = dictMandat["date"]
                 prelevement_titulaire = dictMandat["titulaire"]
-                
+
                 # Recherche de la séquence
                 analyse = mandats.AnalyseMandat(prelevement_IDmandat)
                 prelevement_sequence = analyse["prochaineSequence"]
-                
+
             if track.IDfamille in dictAutresDonnees :
                 dictTempAutresDonnees = dictAutresDonnees[track.IDfamille]
             else :
@@ -633,26 +633,26 @@ class ListView(FastObjectListView):
             else :
                 montant = track.solde
             dictTemp = {
-                "IDpiece" : None, "IDfamille" : track.IDfamille, 
-                "prelevement" : prelevement, "prelevement_iban" : prelevement_iban, "prelevement_bic" : prelevement_bic, 
+                "IDpiece" : None, "IDfamille" : track.IDfamille,
+                "prelevement" : prelevement, "prelevement_iban" : prelevement_iban, "prelevement_bic" : prelevement_bic,
                 "prelevement_IDmandat" : prelevement_IDmandat, "prelevement_rum" : prelevement_rum, "prelevement_date_mandat" : prelevement_mandat_date,
                 "prelevement_titulaire" : prelevement_titulaire, "type" : "facture", "IDfacture" : track.IDfacture, "prelevement_sequence" : prelevement_sequence,
                 "libelle" : _(u"FACT%s") % track.numero, "montant" : montant, "prelevement_statut" : "attente", "IDlot" : self.IDlot, "etat" : "ajout", "IDreglement" : None, "dateReglement" : None,
                 "IDdepot" : None, "IDcompte_payeur" : track.IDcompte_payeur, "titulaire_helios" : track.titulaire_helios, "tiers_solidaire": track.tiers_solidaire, "numero" : track.numero, "dictAutresDonnees" : dictTempAutresDonnees,
                 }
-            
+
             if track.IDfacture not in listeFacturesPresentes :
                 listeNewTracks.append(Track(dictTemp, dictTitulaires, self.dictIndividus))
-        
+
 ##        if len(listeMandatsNonValides) > 0 :
 ##            message1 = _(u"Les factures suivantes n'ont pas été intégrées car les mandats des familles sont indisponibles ou non valides :")
 ##            message2 = "\n".join(listeMandatsNonValides)
 ##            dlg = dialogs.MultiMessageDialog(self, message1, caption=_(u"Avertissement"), msg2=message2, style = wx.ICON_EXCLAMATION |wx.OK, icon=None, btnLabels={wx.ID_OK : _(u"Ok")})
-##            reponse = dlg.ShowModal() 
-##            dlg.Destroy() 
+##            reponse = dlg.ShowModal()
+##            dlg.Destroy()
 
         self.AddObjects(listeNewTracks)
-        self.MAJtotaux() 
+        self.MAJtotaux()
 
     def Modifier(self, event=None):
         if self.GetParent().GetVerrouillage() == True :
@@ -666,13 +666,13 @@ class ListView(FastObjectListView):
             dlg.Destroy()
             return
         track = self.Selection()[0]
-        dlg = DLG_Saisie_pes_piece.Dialog(self, track=track, activeMontant=False)      
+        dlg = DLG_Saisie_pes_piece.Dialog(self, track=track, activeMontant=False)
         if dlg.ShowModal() == wx.ID_OK:
             if track.etat != "ajout" :
                 track.etat = "modif"
             self.RefreshObject(track)
-            self.MAJtotaux() 
-        dlg.Destroy() 
+            self.MAJtotaux()
+        dlg.Destroy()
 
     def Supprimer(self, event=None):
         if self.GetParent().GetVerrouillage() == True :
@@ -686,21 +686,21 @@ class ListView(FastObjectListView):
             dlg.ShowModal()
             dlg.Destroy()
             return
-        
+
         if len(self.GetTracksCoches()) > 0 :
             # Suppression multiple
             listeSelections = self.GetTracksCoches()
             dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment retirer les %d pièces cochées ?") % len(listeSelections), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
-            reponse = dlg.ShowModal() 
+            reponse = dlg.ShowModal()
             dlg.Destroy()
             if reponse != wx.ID_YES :
                 return
-        
+
         else :
             # Suppression unique
             listeSelections = self.Selection()
             dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment retirer la pièce sélectionnée ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
-            reponse = dlg.ShowModal() 
+            reponse = dlg.ShowModal()
             dlg.Destroy()
             if reponse != wx.ID_YES :
                 return
@@ -715,14 +715,14 @@ class ListView(FastObjectListView):
             dlg.ShowModal()
             dlg.Destroy()
             return
-        
+
         # Suppression
         for track in listeSelections :
             if track.etat in (None, "modif") :
                 self.listeSuppressions.append(track)
             self.RemoveObject(track)
-        self.MAJtotaux() 
-        
+        self.MAJtotaux()
+
     def ActiverPrelevement(self, event):
         if event.GetId() == 800 :
             prelevement = 1
@@ -774,7 +774,7 @@ class ListView(FastObjectListView):
         for track in listeObjets :
             self.Check(track)
             self.RefreshObject(track)
-        
+
     def CocheRien(self, event=None):
         if self.GetFilter() != None :
             listeObjets = self.GetFilteredObjects()
@@ -786,31 +786,31 @@ class ListView(FastObjectListView):
 
     def GetTracksCoches(self):
         return self.GetCheckedObjects()
-    
+
     def SetStatut(self, statut="attente") :
         listeDepots = []
         for track in self.GetObjects() :
             if self.IsChecked(track) :
                 # Changement de statut
                 track.prelevement_statut = statut
-                
+
                 # Règlement automatique
                 if self.reglement_auto == True and statut == "valide" :
-                    track.reglement = True   
-                
+                    track.reglement = True
+
                 # Annulation du règlement si statut = refus
                 if statut == "refus" :
                     if track.IDdepot != None :
                         listeDepots.append(track)
                     else :
                         track.reglement = False
-                             
+
                 if track.etat != "ajout" :
                     track.etat = "modif"
                 self.RefreshObject(track)
-                
-        self.MAJtotaux() 
-        
+
+        self.MAJtotaux()
+
         if len(listeDepots) > 0 :
             dlg = wx.MessageDialog(self, _(u"Notez que Noethys n'a pas procédé changement de statut de %d pièce(s) car le règlement correspondant appartient déjà à un dépôt de règlement !") % len(listeDepots), _(u"Remarque"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
@@ -821,9 +821,9 @@ class ListView(FastObjectListView):
     def SetRegle(self, etat=False) :
         listeAnomalies = []
         listeDepots = []
-        for track in self.GetObjects() :                
+        for track in self.GetObjects() :
             if self.IsChecked(track) :
-    
+
                 if etat == True :
                     # Si on veut régler
                     if track.prelevement_statut in ("valide", "attente") :
@@ -833,7 +833,7 @@ class ListView(FastObjectListView):
                         self.RefreshObject(track)
                     else :
                         listeAnomalies.append(track)
-                
+
                 if etat == False :
                     # Si on veut annuler le règlement
                     if track.IDdepot != None :
@@ -856,7 +856,7 @@ class ListView(FastObjectListView):
             dlg.Destroy()
             return
 
-        self.MAJtotaux() 
+        self.MAJtotaux()
 
     def GetLabelListe(self):
         """ Récupère le nombre de pièces et le montant total de la liste """
@@ -871,7 +871,7 @@ class ListView(FastObjectListView):
         else :
             texte = _(u"pièce")
         label = u"%d %s (%.2f %s)" % (nbre, texte, montant, SYMBOLE)
-        return label          
+        return label
 
     def MAJtotaux(self):
         """ Créé le texte infos avec les stats du lot """
@@ -904,7 +904,7 @@ class ListView(FastObjectListView):
                 dictDetails[reglement] = {"nbre" : 0, "montant" : 0.0}
             dictDetails[reglement]["nbre"] += 1
             dictDetails[reglement]["montant"] += track.montant
-            
+
         # Création du texte
         if nbreTotal == 0 :
             texte = _(u"<B>Aucune pièce   </B>")
@@ -912,7 +912,7 @@ class ListView(FastObjectListView):
             texte = _(u"<B>%d pièce (%.2f %s) : </B>") % (nbreTotal, montantTotal, SYMBOLE)
         else :
             texte = _(u"<B>%d pièces (%.2f %s) : </B>") % (nbreTotal, montantTotal, SYMBOLE)
-        
+
         for key in ("attente", "valide", "refus", "regle", "pasregle") :
             if key in dictDetails :
                 dictDetail = dictDetails[key]
@@ -939,10 +939,10 @@ class ListView(FastObjectListView):
     def Sauvegarde(self, IDlot=None, datePrelevement=None, IDcompte=None, IDmode=None):
         """ Sauvegarde des données """
         DB = GestionDB.DB()
-        
+
         # Ajouts et suppressions
         for track in self.GetObjects() :
-            
+
             listeDonnees = [
                 ("IDlot", IDlot ),
                 ("IDfamille", track.IDfamille),
@@ -968,11 +968,11 @@ class ListView(FastObjectListView):
             if track.etat == "ajout" :
                 track.IDpiece = DB.ReqInsert("pes_pieces", listeDonnees)
                 self.RefreshObject(track)
-            
+
             # Modification
             if track.etat == "modif" :
                 DB.ReqMAJ("pes_pieces", listeDonnees, "IDpiece", track.IDpiece)
-        
+
         # Suppressions
         for track in self.listeSuppressions :
             if track.IDpiece != None :
@@ -981,8 +981,8 @@ class ListView(FastObjectListView):
                 DB.ReqDEL("reglements", "IDreglement", track.IDreglement)
                 DB.ReqDEL("ventilation", "IDreglement", track.IDreglement)
 
-        DB.Close() 
-        
+        DB.Close()
+
         # Sauvegarde des règlements
         self.SauvegardeReglements(date=datePrelevement, IDcompte=IDcompte, IDmode=IDmode)
 
@@ -990,7 +990,9 @@ class ListView(FastObjectListView):
     def SauvegardeReglements(self, date=None, IDcompte=None, IDmode=None):
         """ A effectuer après la sauvegarde des prélèvements """
         DB = GestionDB.DB()
-        
+        ok = True
+        listeMAJTracks = []
+
         # Recherche des payeurs
         req = """SELECT IDpayeur, IDcompte_payeur, nom
         FROM payeurs;"""
@@ -1002,19 +1004,19 @@ class ListView(FastObjectListView):
                 dictPayeurs[IDcompte_payeur] = []
             dictPayeurs[IDcompte_payeur].append({"nom" : nom, "IDpayeur" : IDpayeur})
 
-        
+
         # Récupération des prestations à ventiler pour chaque facture
         listeIDfactures = []
         for track in self.GetObjects() :
             if track.IDfacture != None :
                 listeIDfactures.append(track.IDfacture)
-        
+
         if len(listeIDfactures) == 0 : conditionFactures = "()"
         elif len(listeIDfactures) == 1 : conditionFactures = "(%d)" % listeIDfactures[0]
         else : conditionFactures = str(tuple(listeIDfactures))
-            
-        req = """SELECT 
-        prestations.IDprestation, prestations.IDcompte_payeur, prestations.montant, 
+
+        req = """SELECT
+        prestations.IDprestation, prestations.IDcompte_payeur, prestations.montant,
         prestations.IDfacture, SUM(ventilation.montant) AS montant_ventilation
         FROM prestations
         LEFT JOIN ventilation ON prestations.IDprestation = ventilation.IDprestation
@@ -1023,11 +1025,11 @@ class ListView(FastObjectListView):
         ;""" % conditionFactures
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
-        
+
         dictFactures = {}
         dictAventiler = {}
         for IDprestation, IDcompte_payeur, montant, IDfacture, ventilation in listeDonnees :
-            if ventilation == None : 
+            if ventilation == None :
                 ventilation = 0.0
             montant = decimal.Decimal(montant)
             ventilation = decimal.Decimal(ventilation)
@@ -1044,7 +1046,7 @@ class ListView(FastObjectListView):
                 if (IDfacture in dictAventiler) == False :
                     dictAventiler[IDfacture] = decimal.Decimal(0.0)
                 dictAventiler[IDfacture] += aventiler
-                        
+
         # Sauvegarde des règlements + ventilation
         listeSuppressionReglements = []
         for track in self.GetObjects() :
@@ -1063,7 +1065,10 @@ class ListView(FastObjectListView):
 
                     # Si pas de payeur correspond au titulaire du compte trouvé :
                     if IDpayeur == None :
-                        IDpayeur = DB.ReqInsert("payeurs", [("IDcompte_payeur", track.IDcompte_payeur), ("nom", track.prelevement_titulaire)])
+                        IDpayeur = DB.ReqInsert("payeurs", [("IDcompte_payeur", track.IDcompte_payeur), ("nom", track.prelevement_titulaire)], commit=False)
+                        if IDpayeur is None:
+                            ok = False
+                            break
 
                     # Recherche du montant du règlement
                     montant = dictAventiler[track.IDfacture] # track.montant
@@ -1089,35 +1094,61 @@ class ListView(FastObjectListView):
 
                     # Ajout
                     if track.IDreglement == None :
-                        track.IDreglement = DB.ReqInsert("reglements", listeDonnees)
+                        IDreglement = DB.ReqInsert("reglements", listeDonnees, commit=False)
+                        if IDreglement is None:
+                            ok = False
+                            break
 
                     # Modification
                     else:
-                        DB.ReqMAJ("reglements", listeDonnees, "IDreglement", track.IDreglement)
-                    track.dateReglement = date
+                        IDreglement = track.IDreglement
+                        if not DB.ReqMAJ("reglements", listeDonnees, "IDreglement", IDreglement, commit=False):
+                            ok = False
+                            break
+                    listeMAJTracks.append((track, IDreglement, date))
 
                     # ----------- Sauvegarde de la ventilation ---------
                     if track.IDfacture in dictFactures :
                         for dictFacture in dictFactures[track.IDfacture] :
                             listeDonnees = [
-                                    ("IDreglement", track.IDreglement),
+                                    ("IDreglement", IDreglement),
                                     ("IDcompte_payeur", track.IDcompte_payeur),
                                     ("IDprestation", dictFacture["IDprestation"]),
                                     ("montant", float(dictFacture["aventiler"])),
                                 ]
-                            IDventilation = DB.ReqInsert("ventilation", listeDonnees)
-            
+                            IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
+                            if IDventilation is None:
+                                ok = False
+                                break
+
             # Suppression de règlements et ventilation
             else :
 
                 if track.IDreglement != None :
-                    DB.ReqDEL("reglements", "IDreglement", track.IDreglement)
-                    DB.ReqDEL("ventilation", "IDreglement", track.IDreglement)
-            
+                    if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
+                        ok = False
+                        break
+                    if not DB.ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False):
+                        ok = False
+                        break
+
             # MAJ du track
+
+        if ok:
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+        DB.Close()
+        if not ok:
+            return False
+        for track, IDreglement, dateReglement in listeMAJTracks:
+            track.IDreglement = IDreglement
+            track.dateReglement = dateReglement
             self.RefreshObject(track)
-        
-        DB.Close() 
+        return True
 
 
 
@@ -1130,17 +1161,17 @@ class BarreRecherche(wx.SearchCtrl):
         wx.SearchCtrl.__init__(self, parent, size=(-1, -1), style=wx.TE_PROCESS_ENTER)
         self.parent = parent
         self.rechercheEnCours = False
-        
+
         self.SetDescriptiveText(_(u"Rechercher..."))
         self.ShowSearchButton(True)
-        
+
         self.listView = self.parent.ctrl_reglements
         nbreColonnes = self.listView.GetColumnCount()
         self.listView.SetFilter(Filter.TextSearch(self.listView, self.listView.columns[0:nbreColonnes]))
-        
+
         self.SetCancelBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Interdit.png"), wx.BITMAP_TYPE_PNG))
         self.SetSearchBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Loupe.png"), wx.BITMAP_TYPE_PNG))
-        
+
         self.Bind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.OnSearch)
         self.Bind(wx.EVT_SEARCHCTRL_CANCEL_BTN, self.OnCancel)
         self.Bind(wx.EVT_TEXT_ENTER, self.OnDoSearch)
@@ -1148,20 +1179,20 @@ class BarreRecherche(wx.SearchCtrl):
 
     def OnSearch(self, evt):
         self.Recherche()
-            
+
     def OnCancel(self, evt):
         self.SetValue("")
         self.Recherche()
 
     def OnDoSearch(self, evt):
         self.Recherche()
-        
+
     def Recherche(self):
         txtSearch = self.GetValue()
         self.ShowCancelButton(len(txtSearch))
         self.listView.GetFilter().SetText(txtSearch)
         self.listView.RepopulateList()
-        self.Refresh() 
+        self.Refresh()
 
 
 # -------------------------------------------------------------------------------------------------------------------------------------------
@@ -1169,10 +1200,10 @@ class BarreRecherche(wx.SearchCtrl):
 class PanelTest(wx.Panel):
     def __init__(self, *args, **kwds):
         wx.Panel.__init__(self, *args, **kwds)
-        
+
     def GetVerrouillage(self):
         return False
-        
+
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
@@ -1180,15 +1211,15 @@ class MyFrame(wx.Frame):
         sizer_1 = wx.BoxSizer(wx.VERTICAL)
         sizer_1.Add(panel, 1, wx.ALL|wx.EXPAND)
         self.SetSizer(sizer_1)
-        
+
         self.myOlv = ListView(panel, id=-1, IDlot=1, name="OL_test", style=wx.LC_REPORT|wx.SUNKEN_BORDER|wx.LC_SINGLE_SEL|wx.LC_HRULES|wx.LC_VRULES)
 ##        tracks = GetTracks(IDlot=3)
         tracks = GetTracks(IDmandat=6)
-        self.myOlv.MAJ(tracks=tracks) 
-        
+        self.myOlv.MAJ(tracks=tracks)
+
         self.bouton_test = wx.Button(panel, -1, _(u"Bouton test"))
         self.Bind(wx.EVT_BUTTON, self.OnBoutonTest, self.bouton_test)
-        
+
         sizer_2 = wx.BoxSizer(wx.VERTICAL)
         sizer_2.Add(self.myOlv, 1, wx.ALL|wx.EXPAND, 4)
         sizer_2.Add(self.bouton_test, 0, wx.ALL|wx.EXPAND, 4)
@@ -1196,13 +1227,13 @@ class MyFrame(wx.Frame):
         self.Layout()
         self.SetSize((800, 400))
         self.CenterOnScreen()
-    
+
     def OnBoutonTest(self, event):
         print("Test de la sauvegarde des reglements :")
         self.myOlv.SauvegardeReglements(date=datetime.date.today(), IDcompte=99)
-        
-        
-        
+
+
+
 
 if __name__ == '__main__':
     app = wx.App(0)
