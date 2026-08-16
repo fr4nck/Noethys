@@ -1,8 +1,0 @@
-noethys/Ctrl/CTRL_Questionnaire.py:1442:    def Sauvegarde(self, DB=None, IDdonnee=None):
-noethys/Dlg/DLG_Saisie_location_demande.py:913:        self.notebook.GetPage("questionnaire").ctrl_questionnaire.Sauvegarde(DB=DB, IDdonnee=self.IDdemande)
-noethys/Dlg/DLG_Saisie_location.py:928:            if self.ctrl_parametres.GetPageAvecCode("questionnaire").ctrl_questionnaire.Sauvegarde(DB=DB, IDdonnee=IDlocation) == False:
-noethys/Dlg/DLG_Individu_questionnaire.py:104:                    nbreDocuments = self.ctrl_questionnaire.SauvegardeDocuments(IDquestion, IDreponse)
-noethys/Dlg/DLG_Saisie_categorie_produit.py:176:        self.ctrl_questionnaire.Sauvegarde(DB=DB, IDdonnee=self.IDcategorie)
-noethys/Dlg/DLG_Famille_questionnaire.py:129:                    nbreDocuments = self.ctrl_questionnaire.SauvegardeDocuments(IDquestion, IDreponse)
-noethys/Dlg/DLG_Saisie_produit.py:538:        self.ctrl_parametres.GetPageAvecCode("questionnaire").ctrl_questionnaire.Sauvegarde(DB=DB, IDdonnee=self.IDproduit)
-noethys/Dlg/DLG_Inscription.py:985:        self.ctrl_parametres.GetPageAvecCode("questionnaire").ctrl_questionnaire.Sauvegarde(DB=DB, IDdonnee=self.IDinscription)
