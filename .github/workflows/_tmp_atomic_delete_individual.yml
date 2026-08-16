@@ -1,0 +1,52 @@
+name: Atomic delete individual
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_delete_individual.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch suppression individu
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Dlg/DLG_Supprimer_fiche.py')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('''                # Suppression de la fiche individu\n                self.SupprimerIndividu() \n                \n                # Fermeture de la fiche famille\n                return "famille"\n''','''                # Suppression de la fiche individu\n                if not self.SupprimerIndividu():\n                    return False\n\n                # Fermeture de la fiche famille\n                return "famille"\n''',1)
+          s=s.replace('''            DB.Close()\n            self.SupprimerIndividu() \n            return True\n''','''            DB.Close()\n            if not self.SupprimerIndividu():\n                return False\n            return True\n''',1)
+          start=s.index('    def SupprimerIndividu(self):')
+          end=s.index('    def OnBoutonAide(', start)
+          new='''    def SupprimerIndividu(self):\n        \"\"\"Supprime atomiquement les données principales d'un individu.\"\"\"\n        DB = GestionDB.DB()\n        ok = True\n\n        for req in (\n            \"DELETE FROM rattachements WHERE IDfamille=%d AND IDindividu=%d;\" % (self.IDfamille, self.IDindividu),\n            \"DELETE FROM liens WHERE IDfamille=%d AND IDindividu_sujet=%d;\" % (self.IDfamille, self.IDindividu),\n            \"DELETE FROM liens WHERE IDfamille=%d AND IDindividu_objet=%d;\" % (self.IDfamille, self.IDindividu),\n        ):\n            if DB.ExecuterReq(req) != 1:\n                ok = False\n                break\n\n        if ok:\n            for table in (\"vaccins\", \"problemes_sante\", \"abonnements\", \"questionnaire_reponses\", \"inscriptions\", \"scolarite\", \"transports\", \"messages\"):\n                if not DB.ReqDEL(table, \"IDindividu\", self.IDindividu, commit=False):\n                    ok = False\n                    break\n\n        if ok and not DB.ReqDEL(\"individus\", \"IDindividu\", self.IDindividu, commit=False):\n            ok = False\n\n        if not ok:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n            DB.Close()\n            dlg = wx.MessageDialog(self, _(u\"La fiche individuelle n'a pas pu être supprimée complètement. Aucune suppression n'a été validée.\"), _(u\"Erreur\"), wx.OK | wx.ICON_ERROR)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return False\n\n        DB.Commit()\n        DB.Close()\n\n        # La base PHOTOS est distincte : nettoyage secondaire, non atomique avec la base principale.\n        DBphotos = GestionDB.DB(suffixe=\"PHOTOS\")\n        photo_ok = DBphotos.ReqDEL(\"photos\", \"IDindividu\", self.IDindividu)\n        DBphotos.Close()\n        if not photo_ok:\n            dlg = wx.MessageDialog(self, _(u\"La fiche a été supprimée, mais la photo associée n'a pas pu être nettoyée.\"), _(u\"Information\"), wx.OK | wx.ICON_EXCLAMATION)\n            dlg.ShowModal()\n            dlg.Destroy()\n\n        return True\n\n'''
+          s=s[:start]+new+s[end:]
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Dlg/DLG_Supprimer_fiche.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('noethys/Dlg/DLG_Supprimer_fiche.py').read_text(encoding='utf-8')
+          b=s[s.index('    def SupprimerIndividu(self):'):s.index('    def OnBoutonAide(')]
+          assert 'commit=False' in b
+          assert 'DB.connexion.rollback()' in b
+          assert 'DBphotos = GestionDB.DB(suffixe="PHOTOS")' in b
+          assert 'if not self.SupprimerIndividu()' in s
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Dlg/DLG_Supprimer_fiche.py
+          git commit -m "fix: atomiser la suppression des individus"
+          git push origin HEAD:master
