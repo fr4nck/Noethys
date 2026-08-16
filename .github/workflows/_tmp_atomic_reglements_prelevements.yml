@@ -15,24 +15,54 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Diagnostic SEPA
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch SEPA
         run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Ol/OL_Prelevements_sepa.py')
+          s=p.read_text(encoding='utf-8')
+          a=s.index('    def SauvegardeReglements(self, date=None, IDcompte=None, IDmode=None):')
+          b=s.index('    def MemoriseReglementHistorique(', a)
+          x=s[a:b]
+          x=x.replace('        DB = GestionDB.DB()\n', '        DB = GestionDB.DB()\n        ok = True\n        listeMAJTracks = []\n', 1)
+          x=x.replace('IDpayeur = DB.ReqInsert("payeurs", [("IDcompte_payeur", track.IDcompte_payeur), ("nom", track.titulaire)])', 'IDpayeur = DB.ReqInsert("payeurs", [("IDcompte_payeur", track.IDcompte_payeur), ("nom", track.titulaire)], commit=False)\n                    if IDpayeur is None:\n                        ok = False\n                        break')
+          x=x.replace('track.IDreglement = DB.ReqInsert("reglements", listeDonnees)', 'IDreglement = DB.ReqInsert("reglements", listeDonnees, commit=False)\n                    if IDreglement is None:\n                        ok = False\n                        break')
+          x=x.replace('IDreglement=track.IDreglement, montant=track.montant', 'IDreglement=IDreglement, montant=track.montant')
+          x=x.replace('DB.ReqMAJ("reglements", listeDonnees, "IDreglement", track.IDreglement)', 'IDreglement = track.IDreglement\n                    if not DB.ReqMAJ("reglements", listeDonnees, "IDreglement", IDreglement, commit=False):\n                        ok = False\n                        break')
+          x=x.replace('track.dateReglement = date', 'listeMAJTracks.append((track, IDreglement, date))')
+          x=x.replace('(\"IDreglement\", track.IDreglement)', '(\"IDreglement\", IDreglement)')
+          x=x.replace('IDventilation = DB.ReqInsert("ventilation", listeDonnees)', 'IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)\n                        if IDventilation is None:\n                            ok = False\n                            break')
+          x=x.replace('''                    DB.ReqDEL("reglements", "IDreglement", track.IDreglement)\n                    DB.ReqDEL("ventilation", "IDreglement", track.IDreglement)''','''                    if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):\n                        ok = False\n                        break\n                    if not DB.ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False):\n                        ok = False\n                        break''')
+          x=x.replace('            self.RefreshObject(track)\n', '')
+          tail='''        DB.Close() \n\n        # Sauvegarde dans historique\n        UTILS_Historique.InsertActions(listeHistoriqueAjouts)\n    \n'''
+          if tail not in x:
+              raise SystemExit('tail SEPA introuvable')
+          x=x.replace(tail,'''        if ok and listeHistoriqueAjouts:\n            ok = UTILS_Historique.InsertActions(listeHistoriqueAjouts, DB=DB, commit=False)\n        if ok:\n            DB.Commit()\n        else:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n        DB.Close()\n        if not ok:\n            return False\n        for track, IDreglement, dateReglement in listeMAJTracks:\n            track.IDreglement = IDreglement\n            track.dateReglement = dateReglement\n            self.RefreshObject(track)\n        return True\n\n''',1)
+          s=s[:a]+x+s[b:]
+          s='\n'.join(line.rstrip() for line in s.split('\n'))
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Ol/OL_Prelevements_sepa.py
+          git diff --check
           python - <<'PY'
           from pathlib import Path
           s=Path('noethys/Ol/OL_Prelevements_sepa.py').read_text(encoding='utf-8')
           a=s.index('    def SauvegardeReglements(self, date=None, IDcompte=None, IDmode=None):')
           b=s.index('    def MemoriseReglementHistorique(',a)
           x=s[a:b]
-          i=x.rfind('DB.Close')
-          txt='TAIL_REPR='+repr(x[max(0,i-200):])+'\n'
-          txt+='REFRESH_COUNT='+str(x.count('self.RefreshObject(track)'))+'\n'
-          txt+='DELETE_PAIR='+str('DB.ReqDEL("reglements", "IDreglement", track.IDreglement)' in x and 'DB.ReqDEL("ventilation", "IDreglement", track.IDreglement)' in x)+'\n'
-          Path('.github/_tmp_diag_sepa_tail.txt').write_text(txt,encoding='utf-8')
+          assert 'ReqInsert("reglements", listeDonnees, commit=False)' in x
+          assert 'ReqInsert("ventilation", listeDonnees, commit=False)' in x
+          assert 'UTILS_Historique.InsertActions(listeHistoriqueAjouts, DB=DB, commit=False)' in x
+          assert 'DB.Commit()' in x and 'rollback()' in x
+          assert 'for track, IDreglement, dateReglement in listeMAJTracks' in x
           PY
-      - name: Publier diagnostic
+      - name: Committer
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/_tmp_diag_sepa_tail.txt
-          git commit -m "ci: publier diagnostic temporaire fin SEPA"
+          git add noethys/Ol/OL_Prelevements_sepa.py
+          git commit -m "fix: atomiser règlements SEPA"
           git push origin HEAD:master
