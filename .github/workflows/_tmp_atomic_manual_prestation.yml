@@ -1,0 +1,75 @@
+name: Atomic manual prestation
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_manual_prestation.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch prestation et deductions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # OL_Deductions : DB externe + statut explicite, rétrocompatible par défaut.
+          p=Path('noethys/Ol/OL_Deductions.py')
+          s=p.read_text(encoding='utf-8')
+          start=s.index('    def Sauvegarde(self, IDprestation=None):')
+          end=s.index('\n\n\n# -------------------------------------------------------------------------------------------------------------------------------------------', start)
+          new='''    def Sauvegarde(self, IDprestation=None, DB=None, commit=True):\n        \"\"\"Sauvegarde les déductions et retourne True en cas de succès.\"\"\"\n        DBexterne = DB is not None\n        if not DBexterne:\n            DB = GestionDB.DB()\n\n        for IDdeduction, dictDeduction in self.dictDeductions.items():\n            listeDonnees = [\n                (\"IDprestation\", IDprestation),\n                (\"IDcompte_payeur\", dictDeduction[\"IDcompte_payeur\"]),\n                (\"date\", dictDeduction[\"date\"]),\n                (\"label\", dictDeduction[\"label\"]),\n                (\"montant\", dictDeduction[\"montant\"]),\n                (\"IDaide\", dictDeduction[\"IDaide\"]),\n            ]\n\n            if dictDeduction[\"etat\"] == \"AJOUT\":\n                if DB.ReqInsert(\"deductions\", listeDonnees, commit=False) is None:\n                    if not DBexterne:\n                        DB.Close()\n                    return False\n            elif dictDeduction[\"etat\"] == \"MODIF\":\n                if not DB.ReqMAJ(\"deductions\", listeDonnees, \"IDdeduction\", IDdeduction, commit=False):\n                    if not DBexterne:\n                        DB.Close()\n                    return False\n            elif dictDeduction[\"etat\"] == \"SUPPR\":\n                if not DB.ReqDEL(\"deductions\", \"IDdeduction\", IDdeduction, commit=False):\n                    if not DBexterne:\n                        DB.Close()\n                    return False\n\n        if commit:\n            DB.Commit()\n        if not DBexterne:\n            DB.Close()\n        return True\n'''
+          s=s[:start]+new+s[end:]
+          p.write_text(s,encoding='utf-8')
+
+          # DLG prestation : transaction commune ventilations/prestation/déductions.
+          p=Path('noethys/Dlg/DLG_Saisie_prestation.py')
+          s=p.read_text(encoding='utf-8')
+          start=s.index('    def OnBoutonOk(self, event):')
+          end=s.index('    def GetIDprestation(self):', start)
+          b=s[start:end]
+
+          # Vérification de la requête de ventilation.
+          b=b.replace('''            DB.ExecuterReq(req)\n            listeVentilations = DB.ResultatReq()\n''','''            if DB.ExecuterReq(req) != 1:\n                DB.Close()\n                dlg = wx.MessageDialog(self, _(u\"Impossible de vérifier les ventilations de cette prestation.\"), _(u\"Erreur\"), wx.OK | wx.ICON_ERROR)\n                dlg.ShowModal()\n                dlg.Destroy()\n                return\n            listeVentilations = DB.ResultatReq()\n''',1)
+
+          # Ventilations ajustées dans la transaction et vérifiées.
+          b=b.replace('''                            DB.ReqMAJ("ventilation", [("montant", nouveauMontant),], "IDventilation", IDventilation)\n                            montantVentilationTmp =  (montantVentilationTmp - montantTmp) + nouveauMontant\n                        else:\n                            DB.ReqDEL("ventilation", "IDventilation", IDventilation)\n''','''                            if not DB.ReqMAJ("ventilation", [("montant", nouveauMontant),], "IDventilation", IDventilation, commit=False):\n                                DB.Close()\n                                return\n                            montantVentilationTmp =  (montantVentilationTmp - montantTmp) + nouveauMontant\n                        else:\n                            if not DB.ReqDEL("ventilation", "IDventilation", IDventilation, commit=False):\n                                DB.Close()\n                                return\n''',1)
+
+          old='''        if self.IDprestation == None :\n            listeDonnees.append(("date_valeur", str(datetime.date.today())))\n            self.IDprestation = DB.ReqInsert("prestations", listeDonnees)\n        else:\n            DB.ReqMAJ("prestations", listeDonnees, "IDprestation", self.IDprestation)\n        DB.Close()\n        \n        # Sauvegarde des déductions\n        self.ctrl_deductions.Sauvegarde(IDprestation=self.IDprestation)        \n        \n        # Fermeture de la fenêtre\n        self.EndModal(wx.ID_OK)\n'''
+          new='''        ancien_IDprestation = self.IDprestation\n        if ancien_IDprestation == None :\n            listeDonnees.append(("date_valeur", str(datetime.date.today())))\n            IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)\n            if IDprestation is None:\n                DB.Close()\n                dlg = wx.MessageDialog(self, _(u\"La prestation n'a pas pu être enregistrée. Aucune modification n'a été validée.\"), _(u\"Erreur\"), wx.OK | wx.ICON_ERROR)\n                dlg.ShowModal()\n                dlg.Destroy()\n                return\n        else:\n            IDprestation = ancien_IDprestation\n            if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):\n                DB.Close()\n                dlg = wx.MessageDialog(self, _(u\"La prestation n'a pas pu être modifiée. Aucune modification n'a été validée.\"), _(u\"Erreur\"), wx.OK | wx.ICON_ERROR)\n                dlg.ShowModal()\n                dlg.Destroy()\n                return\n\n        # Sauvegarde des déductions dans la même transaction.\n        if not self.ctrl_deductions.Sauvegarde(IDprestation=IDprestation, DB=DB, commit=False):\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n            DB.Close()\n            dlg = wx.MessageDialog(self, _(u\"Les déductions n'ont pas pu être enregistrées. Aucune modification n'a été validée.\"), _(u\"Erreur\"), wx.OK | wx.ICON_ERROR)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return\n\n        DB.Commit()\n        DB.Close()\n        self.IDprestation = IDprestation\n\n        # Fermeture de la fenêtre\n        self.EndModal(wx.ID_OK)\n'''
+          if b.count(old)!=1: raise SystemExit('bloc final prestation inattendu')
+          b=b.replace(old,new,1)
+          s=s[:start]+b+s[end:]
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Ol/OL_Deductions.py noethys/Dlg/DLG_Saisie_prestation.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          d=Path('noethys/Ol/OL_Deductions.py').read_text(encoding='utf-8')
+          p=Path('noethys/Dlg/DLG_Saisie_prestation.py').read_text(encoding='utf-8')
+          assert 'def Sauvegarde(self, IDprestation=None, DB=None, commit=True):' in d
+          assert 'commit=False' in d and 'return True' in d
+          b=p[p.index('    def OnBoutonOk(self, event):'):p.index('    def GetIDprestation(self):')]
+          assert 'DB=DB, commit=False' in b
+          assert 'ancien_IDprestation = self.IDprestation' in b
+          assert 'DB.Commit()' in b
+          assert 'self.IDprestation = IDprestation' in b
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Ol/OL_Deductions.py noethys/Dlg/DLG_Saisie_prestation.py
+          git commit -m "fix: atomiser la saisie des prestations manuelles"
+          git push origin HEAD:master
