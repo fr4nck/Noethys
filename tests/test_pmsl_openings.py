@@ -7,15 +7,30 @@ import unittest
 from noethys.Utils.UTILS_PMSL_Openings import PMSLOpeningService
 
 
-class FakeDB(object):
-    """Sous-ensemble GestionDB suffisant pour tester la prévisualisation."""
+class FakeConnection(object):
+    def __init__(self, db):
+        self.db = db
 
-    def __init__(self, units=None, groups=None, unit_groups=None, openings=None):
+    def rollback(self):
+        self.db.rollback_calls += 1
+        self.db.openings = dict(self.db._committed_openings)
+
+
+class FakeDB(object):
+    """Sous-ensemble GestionDB suffisant pour tester preview + transactions."""
+
+    def __init__(self, units=None, groups=None, unit_groups=None, openings=None, fail_on_insert=None):
         self.units = units or {}
         self.groups = groups or {}
         self.unit_groups = unit_groups or {}
-        self.openings = openings or {}
+        self.openings = dict(openings or {})
+        self._committed_openings = dict(self.openings)
+        self.fail_on_insert = fail_on_insert
+        self.insert_calls = 0
+        self.commit_calls = 0
+        self.rollback_calls = 0
         self._rows = []
+        self.connexion = FakeConnection(self)
 
     def ExecuterReq(self, query):
         match = re.search(r"FROM unites WHERE IDunite=(\d+)", query)
@@ -53,11 +68,31 @@ class FakeDB(object):
     def ResultatReq(self):
         return self._rows
 
+    def ReqInsert(self, table, values, commit=False):
+        self.insert_calls += 1
+        if self.fail_on_insert == self.insert_calls:
+            raise RuntimeError("erreur SQL injectée")
+        self.assert_no_commit(commit)
+        data = dict(values)
+        key = (int(data["IDactivite"]), int(data["IDunite"]), int(data["IDgroupe"]), data["date"])
+        new_id = max([0] + list(self.openings.values())) + 1
+        self.openings[key] = new_id
+        return new_id
+
+    def Commit(self):
+        self.commit_calls += 1
+        self._committed_openings = dict(self.openings)
+
+    @staticmethod
+    def assert_no_commit(commit):
+        if commit:
+            raise AssertionError("Le service doit grouper le lot dans une transaction unique")
+
 
 class PMSLOpeningServiceTests(unittest.TestCase):
-    def _action(self, unit_id, group_id, date_value="2026-10-04"):
+    def _action(self, unit_id, group_id, date_value="2026-10-04", ref="ref-1"):
         return {
-            "pmsl_ref": "ref-1",
+            "pmsl_ref": ref,
             "payload": {
                 "action": "upsert_opening",
                 "IDunite": unit_id,
@@ -68,10 +103,6 @@ class PMSLOpeningServiceTests(unittest.TestCase):
         }
 
     def test_unit_without_explicit_group_restriction_accepts_same_activity_group(self):
-        # Cas observé dans une sauvegarde PMSL réelle : les couples (8, 8),
-        # (9, 9), (11, 11), (12, 11) ont des ouvertures alors que la table
-        # unites_groupes ne contient aucune ligne pour ces unités. Dans Noethys,
-        # l'absence de ligne signifie « tous les groupes de l'activité ».
         db = FakeDB(units={8: 6}, groups={8: 6}, unit_groups={})
         service = PMSLOpeningService(db=db)
         result = service.preview_action(self._action(8, 8))
@@ -88,8 +119,6 @@ class PMSLOpeningServiceTests(unittest.TestCase):
         self.assertEqual([7], result["detail"]["allowed_group_ids"])
 
     def test_existing_opening_is_idempotent(self):
-        # ID 5779 / 2026-10-03 est issu de la sauvegarde de recette utilisée
-        # pour valider le contrat métier du bridge.
         openings = {(5, 7, 7, "2026-10-03"): 5779}
         db = FakeDB(units={7: 5}, groups={7: 5}, unit_groups={7: [7]}, openings=openings)
         service = PMSLOpeningService(db=db)
@@ -103,6 +132,37 @@ class PMSLOpeningServiceTests(unittest.TestCase):
         result = service.preview_action(self._action(8, 9))
         self.assertEqual("blocked", result["status"])
         self.assertEqual("activity_mismatch", result["reason"])
+
+    def test_apply_is_idempotent_after_commit(self):
+        db = FakeDB(units={8: 6}, groups={8: 6})
+        service = PMSLOpeningService(db=db)
+        batch = {"batch_uuid": "batch-idempotent", "actions": [self._action(8, 8)]}
+        first = service.apply_batch(batch)
+        first_id = first["ack_items"][0]["opening_id"]
+        self.assertEqual(1, db.insert_calls)
+        self.assertEqual(1, db.commit_calls)
+        second = service.apply_batch(batch)
+        self.assertEqual(first_id, second["ack_items"][0]["opening_id"])
+        self.assertEqual(1, db.insert_calls)
+        self.assertEqual(2, db.commit_calls)
+        self.assertEqual("unchanged", second["ack_items"][0]["response"]["operation"])
+
+    def test_mid_batch_sql_failure_rolls_back_first_insert(self):
+        db = FakeDB(units={8: 6, 9: 6}, groups={8: 6, 9: 6}, fail_on_insert=2)
+        service = PMSLOpeningService(db=db)
+        batch = {
+            "batch_uuid": "batch-rollback",
+            "actions": [
+                self._action(8, 8, "2026-10-04", "ref-1"),
+                self._action(9, 9, "2026-10-04", "ref-2"),
+            ],
+        }
+        with self.assertRaises(RuntimeError):
+            service.apply_batch(batch)
+        self.assertEqual(2, db.insert_calls)
+        self.assertEqual(0, db.commit_calls)
+        self.assertEqual(1, db.rollback_calls)
+        self.assertEqual({}, db.openings)
 
 
 if __name__ == "__main__":
