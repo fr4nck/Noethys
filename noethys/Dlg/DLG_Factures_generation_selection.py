@@ -34,7 +34,7 @@ class Panel(wx.Panel):
         # Factures à générer
         self.box_factures_staticbox = wx.StaticBox(self, -1, _(u"Factures à générer"))
 
-        self.listviewAvecFooter = OL_Factures_generation_selection.ListviewAvecFooter(self) 
+        self.listviewAvecFooter = OL_Factures_generation_selection.ListviewAvecFooter(self)
         self.ctrl_factures = self.listviewAvecFooter.GetListview()
         self.bouton_apercu = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Apercu.png"), wx.BITMAP_TYPE_ANY))
         self.ctrl_recherche = OL_Factures_generation_selection.CTRL_Outils(self, listview=self.ctrl_factures, afficherCocher=True)
@@ -109,7 +109,7 @@ class Panel(wx.Panel):
             dlg.ShowModal()
             dlg.Destroy()
             return False
-        
+
         # Demande de confirmation
         if nbreCoches < nbreTotalFactures :
             texteSupp = _(u"(Sur un total de %d factures proposées) ") % nbreTotalFactures
@@ -120,13 +120,13 @@ class Panel(wx.Panel):
         else :
             texte = _(u"Confirmez-vous la génération de %d factures %s?") % (nbreCoches, texteSupp)
         dlg = wx.MessageDialog(self, texte, _(u"Confirmation"), wx.YES_NO|wx.YES_DEFAULT|wx.CANCEL|wx.ICON_QUESTION)
-        reponse = dlg.ShowModal() 
+        reponse = dlg.ShowModal()
         dlg.Destroy()
         if reponse != wx.ID_YES :
             return False
-    
+
         # Génération des factures
-        listeFacturesGenerees = self.SauvegardeFactures() 
+        listeFacturesGenerees = self.SauvegardeFactures()
         if listeFacturesGenerees == False :
             return False
 
@@ -136,14 +136,14 @@ class Panel(wx.Panel):
 
         # Envoi des factures générées
         self.parent.listeFacturesGenerees = listeFacturesGenerees
-        
+
         return True
 
     def EcritStatusbar(self, texte=u""):
         try :
-            topWindow = wx.GetApp().GetTopWindow() 
+            topWindow = wx.GetApp().GetTopWindow()
             topWindow.SetStatusText(texte)
-        except : 
+        except :
             pass
 
     def OnBoutonApercu(self, event):
@@ -196,10 +196,10 @@ class Panel(wx.Panel):
         """ Sauvegarde des factures """
         # Récupère Utilisateur en cours
         IDutilisateur = UTILS_Identification.GetIDutilisateur()
-        
+
         # Génération des factures
         listeFacturesGenerees = []
-        
+
         # Tri par ordre alphabétique de la liste
         listeComptes = []
         for track in self.ctrl_factures.GetTracksCoches() :
@@ -208,11 +208,11 @@ class Panel(wx.Panel):
 
         # ProgressBar
         dlgProgress = wx.ProgressDialog(_(u"Génération des factures"), _(u"Initialisation..."), maximum=len(listeComptes), parent=None, style=wx.PD_SMOOTH | wx.PD_AUTO_HIDE | wx.PD_APP_MODAL)
-        
+
         # Sélection du prochain numéro de facture
         numero = self.parent.dictParametres["prochain_numero"]
         IDprefixe = self.parent.dictParametres["IDprefixe"]
-        
+
         if numero == None :
             # Recherche du prochain numéro de facture si mode AUTO
             if IDprefixe == None :
@@ -224,17 +224,17 @@ class Panel(wx.Panel):
             FROM factures
             %s;""" % conditions
             DB.ExecuterReq(req)
-            listeDonnees = DB.ResultatReq()  
-            DB.Close() 
+            listeDonnees = DB.ResultatReq()
+            DB.Close()
             if listeDonnees[0][0] == None :
                 numero = 1
             else:
                 numero = listeDonnees[0][0] + 1
-            
+
         # Sauvegarde
         DB = GestionDB.DB()
         try :
-            
+
             index = 0
             for nomTitulaires, IDcompte_payeur in listeComptes :
                 dictCompte = self.ctrl_factures.dictComptes[IDcompte_payeur]
@@ -242,13 +242,13 @@ class Panel(wx.Panel):
                 self.EcritStatusbar(texte)
                 dlgProgress.Update(index+1, texte)
 
-                listePrestations = dictCompte["listePrestations"] 
-                total = dictCompte["total"] 
-                regle = dictCompte["ventilation"] 
+                listePrestations = dictCompte["listePrestations"]
+                total = dictCompte["total"]
+                regle = dictCompte["ventilation"]
                 solde = total - regle
                 # Dates
                 date_edition = dictCompte["date_edition"]
-                date_echeance = dictCompte["date_echeance"] 
+                date_echeance = dictCompte["date_echeance"]
                 # Liste des activités
                 texteActivites = ""
                 for IDactivite in dictCompte["liste_activites"] :
@@ -263,7 +263,7 @@ class Panel(wx.Panel):
                     texteIndividus = texteIndividus[:-1]
 
                 # Sauvegarde de la facture
-                listeDonnees = [ 
+                listeDonnees = [
                     ("IDprefixe", IDprefixe),
                     ("numero", numero),
                     ("IDcompte_payeur", IDcompte_payeur),
@@ -287,24 +287,30 @@ class Panel(wx.Panel):
                 IDfacture = DB.ReqInsert("factures", listeDonnees, commit=False)
                 if IDfacture is None:
                     raise RuntimeError(_(u"La création de la facture a échoué."))
-                                    
+
                 # Attribution des IDfacture à chaque prestation
                 for IDindividu, IDprestation in listePrestations :
                     if dictCompte["individus"][IDindividu]["select"] == True :
                         listeDonnees = [ ("IDfacture", IDfacture ), ]
                         if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):
                             raise RuntimeError(_(u"Le rattachement d'une prestation à la facture a échoué."))
-                DB.Commit()
-                
-                listeFacturesGenerees.append(IDfacture) 
+
+                listeFacturesGenerees.append(IDfacture)
                 numero += 1
                 index += 1
 
-            DB.Close() 
+            # Le lot complet est validé uniquement si toutes les factures et
+            # tous leurs rattachements de prestations ont été enregistrés.
+            DB.Commit()
+            DB.Close()
             self.EcritStatusbar(u"")
             dlgProgress.Destroy()
 
         except Exception as err:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
             DB.Close()
             dlgProgress.Destroy()
             traceback.print_exc(file=sys.stdout)
@@ -313,7 +319,7 @@ class Panel(wx.Panel):
             dlg.Destroy()
             self.EcritStatusbar(u"")
             return False
-        
+
         self.EcritStatusbar(u"")
         return listeFacturesGenerees
 
@@ -339,7 +345,7 @@ class MyFrame(wx.Frame):
         self.Layout()
         self.CentreOnScreen()
         self.Bind(wx.EVT_BUTTON, self.OnBoutonTest, self.boutonTest)
-        
+
     def OnBoutonTest(self, event):
         """ Bouton Test """
         print("Validation =", self.ctrl.Validation())
