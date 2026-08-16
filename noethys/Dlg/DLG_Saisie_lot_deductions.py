@@ -332,18 +332,34 @@ class Dialog(wx.Dialog):
             if reponse in (1, 2) :
                 return False
     
-        # Sauvegarde
+        # Sauvegarde atomique
         DB = GestionDB.DB()
+        ok = True
         if len(listeAjouts) > 0 :
-            DB.Executermany(u"INSERT INTO deductions (IDprestation, IDcompte_payeur, date, montant, label) VALUES (?, ?, ?, ?, ?)", listeAjouts, commit=False)
-        if len(listeModifications) > 0 :
-            DB.Executermany(_(u"UPDATE prestations SET montant=? WHERE IDprestation=?"), listeModifications, commit=False)
-        if len(listeSupprVentilations) > 0 :
+            if not DB.Executermany(u"INSERT INTO deductions (IDprestation, IDcompte_payeur, date, montant, label) VALUES (?, ?, ?, ?, ?)", listeAjouts, commit=False):
+                ok = False
+        if ok and len(listeModifications) > 0 :
+            if not DB.Executermany(_(u"UPDATE prestations SET montant=? WHERE IDprestation=?"), listeModifications, commit=False):
+                ok = False
+        if ok and len(listeSupprVentilations) > 0 :
             if len(listeSupprVentilations) == 1 : conditionSuppressions = "(%d)" % listeSupprVentilations[0]
             else : conditionSuppressions = str(tuple(listeSupprVentilations))
-            DB.ExecuterReq("DELETE FROM ventilation WHERE IDprestation IN %s" % conditionSuppressions)
-        DB.Commit()
-        DB.Close() 
+            if DB.ExecuterReq("DELETE FROM ventilation WHERE IDprestation IN %s" % conditionSuppressions) != 1:
+                ok = False
+        if ok:
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+        DB.Close()
+
+        if not ok:
+            dlg = wx.MessageDialog(self, _(u"La création du lot de déductions a échoué. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
         
         # Confirmation
         dlg = wx.MessageDialog(self, _(u"%d déductions ont été créées avec succès.") % len(listeAjouts), _(u"Confirmation"), wx.OK | wx.ICON_INFORMATION)
