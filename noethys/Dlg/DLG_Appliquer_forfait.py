@@ -590,7 +590,10 @@ class Forfaits():
                                         ("IDcategorie_tarif", IDcategorie_tarif),
                                         ("date_valeur", str(datetime.date.today())),
                                         ]
-                                    IDprestation = DB.ReqInsert("prestations", listeDonnees)
+                                    IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)
+                                    if IDprestation is None:
+                                        DB.Close()
+                                        return False
 
                                     # Sauvegarde des déductions
                                     for deduction in listeAidesRetenues :
@@ -602,7 +605,10 @@ class Forfaits():
                                             ("label", dictAides[IDaide]["nomAide"]),
                                             ("IDaide", deduction["IDaide"]),
                                             ]
-                                        newIDdeduction = DB.ReqInsert("deductions", listeDonnees)
+                                        newIDdeduction = DB.ReqInsert("deductions", listeDonnees, commit=False)
+                                        if newIDdeduction is None:
+                                            DB.Close()
+                                            return False
 
                                     # Sauvegarde des consommations
                                     for conso in listeConsommations :
@@ -628,9 +634,13 @@ class Forfaits():
                                             ("IDprestation", IDprestation),
                                             ("forfait", type_forfait),
                                             ]
-                                        IDconso = DB.ReqInsert("consommations", listeDonnees)
+                                        IDconso = DB.ReqInsert("consommations", listeDonnees, commit=False)
+                                        if IDconso is None:
+                                            DB.Close()
+                                            return False
 
-                                    # Cloture de la DB
+                                    # Validation atomique prestation + déductions + consommations
+                                    DB.Commit()
                                     DB.Close()
 
                                     nbre_forfaits_saisis += 1
