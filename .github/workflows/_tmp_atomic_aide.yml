@@ -1,0 +1,53 @@
+name: Atomic aide
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_aide.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch aide
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Dlg/DLG_Saisie_aide.py')
+          s=p.read_text(encoding='utf-8')
+          start=s.index("        # Sauvegarde de l'aide\n", s.index('    def OnBoutonOk'))
+          end=s.index('\n\nif __name__ == u"__main__":', start)
+          new='''        # Sauvegarde atomique de l'aide et de toutes ses dépendances.\n        DB = GestionDB.DB()\n        ancien_IDaide = self.IDaide\n\n        def echec_sauvegarde():\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n            DB.Close()\n            dlg = wx.MessageDialog(self, _(u\"L'aide n'a pas pu être enregistrée complètement. Aucune modification n'a été validée.\"), _(u\"Erreur\"), wx.OK | wx.ICON_ERROR)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return False\n\n        listeDonnees = [\n            (\"IDfamille\", self.IDfamille),\n            (\"IDactivite\", IDactivite),\n            (\"nom\", nom),\n            (\"date_debut\", date_debut),\n            (\"date_fin\", date_fin),\n            (\"IDcaisse\", IDcaisse),\n            (\"montant_max\", plafond_montant),\n            (\"nbre_dates_max\", nbre_plafond_quantite),\n            (\"jours_scolaires\", jours_scolaires),\n            (\"jours_vacances\", jours_vacances),\n        ]\n        if ancien_IDaide == None:\n            IDaide = DB.ReqInsert(\"aides\", listeDonnees, commit=False)\n            if IDaide is None:\n                return echec_sauvegarde()\n        else:\n            IDaide = ancien_IDaide\n            if not DB.ReqMAJ(\"aides\", listeDonnees, \"IDaide\", IDaide, commit=False):\n                return echec_sauvegarde()\n\n        # Bénéficiaires.\n        for IDindividu in listeBeneficiaires:\n            if IDindividu not in self.listeInitialeBeneficiaires:\n                if DB.ReqInsert(\"aides_beneficiaires\", [(\"IDaide\", IDaide), (\"IDindividu\", IDindividu)], commit=False) is None:\n                    return echec_sauvegarde()\n        for IDindividu in self.listeInitialeBeneficiaires:\n            if IDindividu not in listeBeneficiaires:\n                req = \"DELETE FROM aides_beneficiaires WHERE IDaide=%d AND IDindividu=%d;\" % (IDaide, IDindividu)\n                if DB.ExecuterReq(req) != 1:\n                    return echec_sauvegarde()\n\n        # Montants, combinaisons et unités.\n        listeIDmontant = []\n        listeIDcombi = []\n        listeIDunites = []\n        for dictMontant in listeMontants:\n            IDaide_montant = dictMontant[\"IDaide_montant\"]\n            montant = dictMontant[\"montant\"]\n            if IDaide_montant == None:\n                IDaide_montant = DB.ReqInsert(\"aides_montants\", [(\"IDaide\", IDaide), (\"montant\", montant)], commit=False)\n                if IDaide_montant is None:\n                    return echec_sauvegarde()\n            else:\n                for dictMontantInitial in self.listeInitialeMontants:\n                    if dictMontantInitial[\"IDaide_montant\"] == IDaide_montant and dictMontantInitial[\"montant\"] != montant:\n                        if not DB.ReqMAJ(\"aides_montants\", [(\"montant\", montant)], \"IDaide_montant\", IDaide_montant, commit=False):\n                            return echec_sauvegarde()\n            listeIDmontant.append(IDaide_montant)\n\n            for dictCombi in dictMontant[\"combinaisons\"]:\n                IDaide_combi = dictCombi[\"IDaide_combi\"]\n                if IDaide_combi == None:\n                    IDaide_combi = DB.ReqInsert(\"aides_combinaisons\", [(\"IDaide_montant\", IDaide_montant), (\"IDaide\", IDaide)], commit=False)\n                    if IDaide_combi is None:\n                        return echec_sauvegarde()\n                listeIDcombi.append(IDaide_combi)\n\n                for dictUnite in dictCombi[\"listeUnites\"]:\n                    IDaide_combi_unite = dictUnite[\"IDaide_combi_unite\"]\n                    if IDaide_combi_unite == None:\n                        IDaide_combi_unite = DB.ReqInsert(\"aides_combi_unites\", [(\"IDunite\", dictUnite[\"IDunite\"]), (\"IDaide_combi\", IDaide_combi), (\"IDaide\", IDaide)], commit=False)\n                        if IDaide_combi_unite is None:\n                            return echec_sauvegarde()\n                    listeIDunites.append(IDaide_combi_unite)\n\n        # Suppressions dans l'ordre des dépendances.\n        for IDaide_combi_unite in self.listeInitialeUnites:\n            if IDaide_combi_unite not in listeIDunites and IDaide_combi_unite != None:\n                if not DB.ReqDEL(\"aides_combi_unites\", \"IDaide_combi_unite\", IDaide_combi_unite, commit=False):\n                    return echec_sauvegarde()\n        for IDaide_combi in self.listeInitialeCombi:\n            if IDaide_combi not in listeIDcombi and IDaide_combi != None:\n                if not DB.ReqDEL(\"aides_combinaisons\", \"IDaide_combi\", IDaide_combi, commit=False):\n                    return echec_sauvegarde()\n        for dictMontantInitial in self.listeInitialeMontants:\n            IDaide_montant = dictMontantInitial[\"IDaide_montant\"]\n            if IDaide_montant not in listeIDmontant and IDaide_montant != None:\n                if not DB.ReqDEL(\"aides_montants\", \"IDaide_montant\", IDaide_montant, commit=False):\n                    return echec_sauvegarde()\n\n        DB.Commit()\n        DB.Close()\n        self.IDaide = IDaide\n        self.EndModal(wx.ID_OK)\n        return True\n        \n        \n'''
+          s=s[:start]+new+s[end:]
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Dlg/DLG_Saisie_aide.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('noethys/Dlg/DLG_Saisie_aide.py').read_text(encoding='utf-8')
+          b=s[s.index("# Sauvegarde atomique de l'aide"):s.index('if __name__ == u"__main__"')]
+          assert 'ReqInsert("aides", listeDonnees, commit=False)' in b
+          assert 'ReqInsert("aides_beneficiaires"' in b and 'commit=False' in b
+          assert 'ReqInsert("aides_montants"' in b
+          assert 'ReqInsert("aides_combinaisons"' in b
+          assert 'ReqInsert("aides_combi_unites"' in b
+          assert 'DB.Commit()' in b
+          assert 'self.IDaide = IDaide' in b
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Dlg/DLG_Saisie_aide.py
+          git commit -m "fix: atomiser la sauvegarde des aides"
+          git push origin HEAD:master
