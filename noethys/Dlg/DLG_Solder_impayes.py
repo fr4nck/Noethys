@@ -444,51 +444,71 @@ class Dialog(wx.Dialog):
 
                                 
         # Sauvegarde des règlements + ventilation
-        for track in tracks :
+        try:
+            for track in tracks :
 
-            # Recherche du payeur
-            IDpayeur = None
-            if track.IDcompte_payeur in dictPayeurs :
-                IDpayeur = dictPayeurs[track.IDcompte_payeur][0]["IDpayeur"]
-            else :
-                if track.listeTitulaires:
-                    nomTitulaire = u"%s %s" % (track.listeTitulaires[0]["nom"], track.listeTitulaires[0]["prenom"])
-                else:
-                    nomTitulaire = "?"
-                IDpayeur = DB.ReqInsert("payeurs", [("IDcompte_payeur", track.IDcompte_payeur), ("nom", nomTitulaire)])
+                # Recherche du payeur
+                IDpayeur = None
+                if track.IDcompte_payeur in dictPayeurs :
+                    IDpayeur = dictPayeurs[track.IDcompte_payeur][0]["IDpayeur"]
+                else :
+                    if track.listeTitulaires:
+                        nomTitulaire = u"%s %s" % (track.listeTitulaires[0]["nom"], track.listeTitulaires[0]["prenom"])
+                    else:
+                        nomTitulaire = "?"
+                    IDpayeur = DB.ReqInsert("payeurs", [("IDcompte_payeur", track.IDcompte_payeur), ("nom", nomTitulaire)], commit=False)
+                    if IDpayeur is None:
+                        raise RuntimeError(_(u"La création du payeur a échoué."))
+                    dictPayeurs[track.IDcompte_payeur] = [{"nom": nomTitulaire, "IDpayeur": IDpayeur}]
                 
-            # Création des données à sauvegarder
-            listeDonnees = [
-                ("IDcompte_payeur", track.IDcompte_payeur),
-                ("date", str(datetime.date.today())),
-                ("IDmode", IDmode),
-                ("IDemetteur", IDemetteur),
-                ("numero_piece", None),
-                ("montant", float(track.impaye)),
-                ("IDpayeur", IDpayeur),
-                ("observations", _(u"Règlement créé avec la fonction 'Solder les impayés'")),
-                ("numero_quittancier", None),
-                ("IDcompte", IDcompte),
-                ("date_differe", None),
-                ("encaissement_attente", 0),
-                ("date_saisie", str(datetime.date.today())),
-                ("IDutilisateur", UTILS_Identification.GetIDutilisateur() ),
-                ]
-            
-            # Ajout
-            IDreglement = DB.ReqInsert("reglements", listeDonnees)
-                            
-            # ----------- Sauvegarde de la ventilation ---------
-            for dictPrestation in track.listePrestations :
-                listeDonnees = [    
-                        ("IDreglement", IDreglement),
-                        ("IDcompte_payeur", track.IDcompte_payeur),
-                        ("IDprestation", dictPrestation["IDprestation"]),
-                        ("montant", float(dictPrestation["impaye"])),
+                # Création des données à sauvegarder
+                listeDonnees = [
+                    ("IDcompte_payeur", track.IDcompte_payeur),
+                    ("date", str(datetime.date.today())),
+                    ("IDmode", IDmode),
+                    ("IDemetteur", IDemetteur),
+                    ("numero_piece", None),
+                    ("montant", float(track.impaye)),
+                    ("IDpayeur", IDpayeur),
+                    ("observations", _(u"Règlement créé avec la fonction 'Solder les impayés'")),
+                    ("numero_quittancier", None),
+                    ("IDcompte", IDcompte),
+                    ("date_differe", None),
+                    ("encaissement_attente", 0),
+                    ("date_saisie", str(datetime.date.today())),
+                    ("IDutilisateur", UTILS_Identification.GetIDutilisateur() ),
                     ]
-                IDventilation = DB.ReqInsert("ventilation", listeDonnees)        
-                    
-        DB.Close() 
+            
+                # Ajout
+                IDreglement = DB.ReqInsert("reglements", listeDonnees, commit=False)
+                if IDreglement is None:
+                    raise RuntimeError(_(u"La création du règlement a échoué."))
+                            
+                # ----------- Sauvegarde de la ventilation ---------
+                for dictPrestation in track.listePrestations :
+                    listeDonnees = [
+                            ("IDreglement", IDreglement),
+                            ("IDcompte_payeur", track.IDcompte_payeur),
+                            ("IDprestation", dictPrestation["IDprestation"]),
+                            ("montant", float(dictPrestation["impaye"])),
+                        ]
+                    IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
+                    if IDventilation is None:
+                        raise RuntimeError(_(u"La ventilation du règlement a échoué."))
+
+            DB.Commit()
+        except Exception as err:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            dlg = wx.MessageDialog(self, _(u"Désolé, la création des règlements a échoué :\n\n%s\n\nAucun règlement du lot n'a été conservé.") % err, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
+        DB.Close()
 
         dlg = wx.MessageDialog(self, _(u"Les %d règlements ont été créés avec succès.") % len(tracks), _(u"Confirmation"), wx.OK | wx.ICON_INFORMATION)
         dlg.ShowModal()
