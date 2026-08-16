@@ -139,7 +139,12 @@ class Dialog(wx.Dialog):
         LEFT JOIN activites ON activites.IDactivite = consommations.IDactivite
         WHERE consommations.date>='%s' AND %s
         ;"""  % (date_desinscription, condition_inscriptions)
-        DB.ExecuterReq(req)
+        if DB.ExecuterReq(req) != 1:
+            DB.Close()
+            dlg = wx.MessageDialog(self, _(u"Impossible de vérifier les consommations associées. La désinscription est annulée par sécurité."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
         liste_consommations = DB.ResultatReq()
         DB.Close()
 
@@ -162,9 +167,19 @@ class Dialog(wx.Dialog):
 
         DB = GestionDB.DB()
         if date_desinscription:
-            DB.ExecuterReq("UPDATE inscriptions SET date_desinscription='%s' WHERE %s;" % (date_desinscription, condition_inscriptions))
+            ok = DB.ExecuterReq("UPDATE inscriptions SET date_desinscription='%s' WHERE %s;" % (date_desinscription, condition_inscriptions)) == 1
         else:
-            DB.ExecuterReq("UPDATE inscriptions SET date_desinscription=NULL WHERE %s;" % condition_inscriptions)
+            ok = DB.ExecuterReq("UPDATE inscriptions SET date_desinscription=NULL WHERE %s;" % condition_inscriptions) == 1
+        if not ok:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            dlg = wx.MessageDialog(self, _(u"La désinscription n'a pas pu être enregistrée. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
         DB.Commit()
         DB.Close()
 
