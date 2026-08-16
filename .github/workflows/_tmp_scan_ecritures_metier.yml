@@ -1,0 +1,38 @@
+name: Scan ecritures metier restantes
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_scan_ecritures_metier.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan ecritures non verifiees
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          tables = ('familles','individus','reglements','factures','consommations','inscriptions','activites','comptes_payeurs')
+          roots=(Path('noethys/Dlg'),Path('noethys/Ol'))
+          for root in roots:
+              for p in root.rglob('*.py'):
+                  s=p.read_text(encoding='utf-8',errors='ignore')
+                  lines=s.splitlines()
+                  hits=[]
+                  for i,line in enumerate(lines,1):
+                      st=line.strip()
+                      if st.startswith('#'):
+                          continue
+                      if any((f'ReqInsert("{t}"' in line or f'ReqMAJ("{t}"' in line or f'ReqDEL("{t}"' in line) for t in tables):
+                          if 'commit=False' not in line and not st.startswith(('if not ', 'if DB.', 'resultat =', 'ok =')):
+                              hits.append((i,st))
+                  if hits:
+                      print('\n###',p)
+                      for i,line in hits:
+                          print(f'{i}: {line}')
+          PY
