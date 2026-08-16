@@ -1,0 +1,36 @@
+name: Scan prestations facturation restantes
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_scan_prestations_facturation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan suppressions prestations et dependances
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          roots=(Path('noethys/Dlg'),Path('noethys/Ol'),Path('noethys/Utils'))
+          for root in roots:
+              if not root.exists():
+                  continue
+              for p in root.rglob('*.py'):
+                  s=p.read_text(encoding='utf-8',errors='ignore')
+                  if 'prestations' not in s:
+                      continue
+                  hits=[]
+                  for i,line in enumerate(s.splitlines(),1):
+                      if any(x in line for x in ('ReqDEL("prestations"','DELETE FROM prestations','ReqMAJ("prestations"','UPDATE prestations SET')):
+                          hits.append((i,line.strip()))
+                  if hits:
+                      print('\n###',p)
+                      for i,line in hits:
+                          print(f'{i}: {line}')
+          PY
