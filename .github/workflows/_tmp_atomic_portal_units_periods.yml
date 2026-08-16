@@ -1,0 +1,72 @@
+name: Atomic portal units periods
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_portal_units_periods.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Sécuriser unités et périodes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new, label):
+              p=Path(path)
+              s=p.read_text(encoding='utf-8')
+              if s.count(old)!=1:
+                  raise SystemExit('%s motif inattendu (%d)' % (label, s.count(old)))
+              p.write_text(s.replace(old,new,1), encoding='utf-8')
+
+          # Liste des unités : suppression + renumérotation atomiques.
+          replace_once('noethys/Ol/OL_Portail_unites.py', '''            DB = GestionDB.DB()\n            DB.ReqDEL("portail_unites", "IDunite", track.IDunite)\n            DB.Close()\n            self.MAJordre(track.IDunite)\n            self.MAJ()\n''', '''            DB = GestionDB.DB()\n            succes = DB.ReqDEL("portail_unites", "IDunite", track.IDunite, commit=False)\n            ordre = 1\n            for index in range(0, len(self.donnees)) :\n                objet = self.GetObjectAt(index)\n                if objet.IDunite != track.IDunite :\n                    if succes:\n                        succes = DB.ReqMAJ("portail_unites", [("ordre", ordre),], "IDunite", objet.IDunite, commit=False)\n                    ordre += 1\n            if succes:\n                DB.Commit()\n            else:\n                try:\n                    DB.connexion.rollback()\n                except Exception:\n                    pass\n            DB.Close()\n            if succes:\n                self.MAJ()\n            else:\n                dlgErreur = wx.MessageDialog(self, _(u"La suppression de l'unité a échoué. Aucune modification n'a été conservée."), _(u"Erreur de suppression"), wx.OK | wx.ICON_ERROR)\n                dlgErreur.ShowModal()\n                dlgErreur.Destroy()\n''', 'suppression unité')
+
+          # Déplacement vers le haut atomique et sans mutation UI avant commit.
+          replace_once('noethys/Ol/OL_Portail_unites.py', '''        DB = GestionDB.DB()\n        # Modifie groupe actuel\n        DB.ReqMAJ("portail_unites", [("ordre", ordre-1),], "IDunite", IDunite)\n        self.Selection()[0].ordre = ordre-1\n        # Modifie unité a remplacer\n        index = self.GetIndexOf(self.Selection()[0])\n        unite2 = self.GetObjectAt(index-1)\n        IDunite2 = unite2.IDunite\n        DB.ReqMAJ("portail_unites", [("ordre", ordre),], "IDunite", IDunite2)\n        DB.Close()\n        self.MAJ(IDunite)\n''', '''        DB = GestionDB.DB()\n        index = self.GetIndexOf(self.Selection()[0])\n        unite2 = self.GetObjectAt(index-1)\n        IDunite2 = unite2.IDunite\n        succes = DB.ReqMAJ("portail_unites", [("ordre", ordre-1),], "IDunite", IDunite, commit=False)\n        if succes:\n            succes = DB.ReqMAJ("portail_unites", [("ordre", ordre),], "IDunite", IDunite2, commit=False)\n        if succes:\n            DB.Commit()\n        else:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n        DB.Close()\n        if succes:\n            self.MAJ(IDunite)\n        else:\n            dlgErreur = wx.MessageDialog(self, _(u"Le déplacement de l'unité a échoué. L'ordre précédent a été conservé."), _(u"Erreur de déplacement"), wx.OK | wx.ICON_ERROR)\n            dlgErreur.ShowModal()\n            dlgErreur.Destroy()\n''', 'monter unité')
+
+          # Déplacement vers le bas atomique.
+          replace_once('noethys/Ol/OL_Portail_unites.py', '''        DB = GestionDB.DB()\n        # Modifie groupe actuel\n        DB.ReqMAJ("portail_unites", [("ordre", ordre+1),], "IDunite", IDunite)\n        self.Selection()[0].ordre = ordre+1\n        # Modifie unité a remplacer\n        index = self.GetIndexOf(self.Selection()[0])\n        unite2 = self.GetObjectAt(index+1)\n        IDunite2 = unite2.IDunite\n        DB.ReqMAJ("portail_unites", [("ordre", ordre),], "IDunite", IDunite2)\n        DB.Close()\n        self.MAJ(IDunite)\n''', '''        DB = GestionDB.DB()\n        index = self.GetIndexOf(self.Selection()[0])\n        unite2 = self.GetObjectAt(index+1)\n        IDunite2 = unite2.IDunite\n        succes = DB.ReqMAJ("portail_unites", [("ordre", ordre+1),], "IDunite", IDunite, commit=False)\n        if succes:\n            succes = DB.ReqMAJ("portail_unites", [("ordre", ordre),], "IDunite", IDunite2, commit=False)\n        if succes:\n            DB.Commit()\n        else:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n        DB.Close()\n        if succes:\n            self.MAJ(IDunite)\n        else:\n            dlgErreur = wx.MessageDialog(self, _(u"Le déplacement de l'unité a échoué. L'ordre précédent a été conservé."), _(u"Erreur de déplacement"), wx.OK | wx.ICON_ERROR)\n            dlgErreur.ShowModal()\n            dlgErreur.Destroy()\n''', 'descendre unité')
+
+          # Formulaire unité : ne fermer que si l'écriture réussit.
+          replace_once('noethys/Dlg/DLG_Saisie_portail_unite.py', '''        if self.IDunite == None :\n            self.IDunite = DB.ReqInsert("portail_unites", listeDonnees)\n        else:\n            DB.ReqMAJ("portail_unites", listeDonnees, "IDunite", self.IDunite)\n        DB.Close()\n\n        # Fermeture de la fenêtre\n        self.EndModal(wx.ID_OK)\n''', '''        if self.IDunite == None :\n            nouvel_IDunite = DB.ReqInsert("portail_unites", listeDonnees)\n            succes = nouvel_IDunite is not None\n        else:\n            succes = DB.ReqMAJ("portail_unites", listeDonnees, "IDunite", self.IDunite)\n            nouvel_IDunite = self.IDunite\n        DB.Close()\n\n        if not succes:\n            dlg = wx.MessageDialog(self, _(u"L'enregistrement de l'unité a échoué. Aucune validation n'a été effectuée."), _(u"Erreur d'enregistrement"), wx.OK | wx.ICON_ERROR)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return False\n\n        self.IDunite = nouvel_IDunite\n        # Fermeture de la fenêtre\n        self.EndModal(wx.ID_OK)\n''', 'sauvegarde unité')
+
+          # Période : suppression contrôlée.
+          replace_once('noethys/Ol/OL_Portail_periodes.py', '''            DB = GestionDB.DB()\n            DB.ReqDEL("portail_periodes", "IDperiode", track.IDperiode)\n            DB.Close() \n            self.MAJ()\n''', '''            DB = GestionDB.DB()\n            succes = DB.ReqDEL("portail_periodes", "IDperiode", track.IDperiode)\n            DB.Close()\n            if succes:\n                self.MAJ()\n            else:\n                dlgErreur = wx.MessageDialog(self, _(u"La suppression de la période a échoué. La période a été conservée."), _(u"Erreur de suppression"), wx.OK | wx.ICON_ERROR)\n                dlgErreur.ShowModal()\n                dlgErreur.Destroy()\n''', 'suppression période')
+
+          # Formulaire période : ne fermer que si l'écriture réussit.
+          replace_once('noethys/Dlg/DLG_Saisie_portail_periode.py', '''        if self.IDperiode == None :\n            self.IDperiode = DB.ReqInsert("portail_periodes", listeDonnees)\n        else :\n            DB.ReqMAJ("portail_periodes", listeDonnees, "IDperiode", self.IDperiode)\n        DB.Close()\n\n        # Fermeture\n        self.EndModal(wx.ID_OK)\n''', '''        if self.IDperiode == None :\n            nouvel_IDperiode = DB.ReqInsert("portail_periodes", listeDonnees)\n            succes = nouvel_IDperiode is not None\n        else :\n            succes = DB.ReqMAJ("portail_periodes", listeDonnees, "IDperiode", self.IDperiode)\n            nouvel_IDperiode = self.IDperiode\n        DB.Close()\n\n        if not succes:\n            dlg = wx.MessageDialog(self, _(u"L'enregistrement de la période a échoué. Aucune validation n'a été effectuée."), _(u"Erreur d'enregistrement"), wx.OK | wx.ICON_ERROR)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return\n\n        self.IDperiode = nouvel_IDperiode\n        # Fermeture\n        self.EndModal(wx.ID_OK)\n''', 'sauvegarde période')
+          PY
+          python -m py_compile noethys/Ol/OL_Portail_unites.py noethys/Ol/OL_Portail_periodes.py noethys/Dlg/DLG_Saisie_portail_unite.py noethys/Dlg/DLG_Saisie_portail_periode.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          checks={
+            'noethys/Ol/OL_Portail_unites.py':['Aucune modification n\'a été conservée','L\'ordre précédent a été conservé','commit=False'],
+            'noethys/Dlg/DLG_Saisie_portail_unite.py':['Aucune validation n\'a été effectuée','nouvel_IDunite'],
+            'noethys/Ol/OL_Portail_periodes.py':['La période a été conservée'],
+            'noethys/Dlg/DLG_Saisie_portail_periode.py':['Aucune validation n\'a été effectuée','nouvel_IDperiode'],
+          }
+          for f, needles in checks.items():
+              s=Path(f).read_text(encoding='utf-8')
+              for n in needles:
+                  assert n in s, (f,n)
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Ol/OL_Portail_unites.py noethys/Ol/OL_Portail_periodes.py noethys/Dlg/DLG_Saisie_portail_unite.py noethys/Dlg/DLG_Saisie_portail_periode.py
+          git commit -m 'fix: sécuriser unités et périodes du portail'
+          git push origin HEAD:master
