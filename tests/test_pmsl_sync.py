@@ -49,6 +49,25 @@ class FakeOpeningService(object):
         self.closed = True
 
 
+class ReplayOpeningService(FakeOpeningService):
+    """Premier passage crée, second passage retrouve l'ouverture existante."""
+
+    def __init__(self):
+        FakeOpeningService.__init__(self, valid=True)
+        self.created = False
+
+    def preview_batch(self, batch):
+        self.preview_calls += 1
+        status = "unchanged" if self.created else "create"
+        return {"valid": True, "counts": {"create": 0 if self.created else 1, "unchanged": 1 if self.created else 0, "blocked": 0}, "items": [{"status": status}]}
+
+    def apply_batch(self, batch):
+        self.apply_calls += 1
+        operation = "unchanged" if self.created else "created"
+        self.created = True
+        return {"ack_items": [{"pmsl_ref": "ref-1", "state": "applied", "opening_id": 6428, "response": {"operation": operation}}]}
+
+
 class PMSLSyncServiceTests(unittest.TestCase):
     def test_preview_never_applies_or_acks(self):
         client = FakeClient()
@@ -99,6 +118,26 @@ class PMSLSyncServiceTests(unittest.TestCase):
         self.assertIn("réseau indisponible", item["ack_error"])
         self.assertFalse(result["aucune_ecriture_effectuee"])
         self.assertFalse(result["synchronisation_complete"])
+
+    def test_retry_after_ack_failure_reuses_existing_opening_then_sends_ack(self):
+        client = FakeClient(ack_failure=True)
+        openings = ReplayOpeningService()
+        service = PMSLSyncService(client, opening_service=openings)
+
+        first = service.run(apply=True)
+        self.assertTrue(first["results"][0]["applied"])
+        self.assertFalse(first["results"][0]["ack_sent"])
+        self.assertEqual("created", first["results"][0]["application"]["ack_items"][0]["response"]["operation"])
+
+        client.ack_failure = False
+        second = service.run(apply=True)
+        item = second["results"][0]
+        self.assertTrue(item["applied"])
+        self.assertTrue(item["ack_sent"])
+        self.assertTrue(item["sync_complete"])
+        self.assertEqual("unchanged", item["application"]["ack_items"][0]["response"]["operation"])
+        self.assertEqual(6428, item["application"]["ack_items"][0]["opening_id"])
+        self.assertEqual(1, len(client.acks))
 
 
 if __name__ == "__main__":
