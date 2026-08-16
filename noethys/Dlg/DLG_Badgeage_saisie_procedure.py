@@ -27,7 +27,7 @@ from Data.DATA_Tables import DB_DATA as DICT_TABLES
 
 class CTRL_Style(wx.Choice):
     def __init__(self, parent):
-        wx.Choice.__init__(self, parent, -1, size=(-1, -1)) 
+        wx.Choice.__init__(self, parent, -1, size=(-1, -1))
         self.parent = parent
         listeItems = []
         self.dictDonnees = {}
@@ -53,7 +53,7 @@ class CTRL_Style(wx.Choice):
 
 class CTRL_Theme(wx.ListBox):
     def __init__(self, parent):
-        wx.ListBox.__init__(self, parent, -1, size=(-1, -1)) 
+        wx.ListBox.__init__(self, parent, -1, size=(-1, -1))
         self.parent = parent
         self.SetMinSize((100, 70))
         listeItems = []
@@ -85,8 +85,8 @@ class CTRL_Activite(wx.CheckListBox):
         self.parent = parent
         self.SetMinSize((100, 70))
         self.data = []
-        self.Importation() 
-    
+        self.Importation()
+
     def Importation(self):
         DB = GestionDB.DB()
         req = """SELECT IDactivite, nom, abrege
@@ -97,9 +97,9 @@ class CTRL_Activite(wx.CheckListBox):
         DB.Close()
         listeValeurs = []
         for IDactivite, nom, abrege in listeDonnees :
-            listeValeurs.append((IDactivite, nom, False)) 
+            listeValeurs.append((IDactivite, nom, False))
         self.SetData(listeValeurs)
-        
+
     def SetData(self, listeValeurs=[]):
         """ items = (ID, label, checked) """
         self.data = []
@@ -112,7 +112,7 @@ class CTRL_Activite(wx.CheckListBox):
             if checked == True :
                 self.Check(index)
             index += 1
-    
+
     def GetIDcoches(self):
         listeIDcoches = []
         NbreItems = len(self.data)
@@ -120,10 +120,10 @@ class CTRL_Activite(wx.CheckListBox):
             if self.IsChecked(index):
                 listeIDcoches.append(self.data[index][0])
         return listeIDcoches
-    
+
     def GetTexteCoches(self):
         listeIDcoches = []
-        listeTemp = self.GetIDcoches() 
+        listeTemp = self.GetIDcoches()
         if len(listeTemp) == 0 : return None
         for ID in listeTemp :
             listeIDcoches.append(str(ID))
@@ -145,7 +145,7 @@ class CTRL_Interface(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
         self.parent = parent
-        
+
         # Interface
         self.box_interface_staticbox = wx.StaticBox(self, -1, _(u"Interface"))
         self.label_style = wx.StaticText(self, -1, _(u"Style :"))
@@ -155,7 +155,7 @@ class CTRL_Interface(wx.Panel):
         self.label_image = wx.StaticText(self, -1, _(u"Image :"))
         self.ctrl_image = wx.TextCtrl(self, -1, u"")
         self.bouton_image = wx.Button(self, -1, u"...", size=(20, 20))
-        
+
         # Identification
         self.box_identification_staticbox = wx.StaticBox(self, -1, _(u"Système d'identification"))
         self.radio_barre = wx.RadioButton(self, -1, _(u"Barre numérique"), style=wx.RB_GROUP)
@@ -173,7 +173,7 @@ class CTRL_Interface(wx.Panel):
         self.Bind(wx.EVT_CHECKBOX, self.OnCheckActivites, self.check_activites)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonImage, self.bouton_image)
         self.Bind(wx.EVT_LISTBOX, self.OnChoixTheme, self.ctrl_theme)
-        
+
         # Init contrôles
         self.OnChoixTheme(None)
         self.OnChoixIdentification(None)
@@ -190,7 +190,7 @@ class CTRL_Interface(wx.Panel):
 
     def __do_layout(self):
         grid_sizer_base = wx.FlexGridSizer(rows=1, cols=2, vgap=10, hgap=10)
-        
+
         # Interface
         box_interface = wx.StaticBoxSizer(self.box_interface_staticbox, wx.VERTICAL)
         grid_sizer_interface = wx.FlexGridSizer(rows=4, cols=2, vgap=10, hgap=10)
@@ -199,17 +199,17 @@ class CTRL_Interface(wx.Panel):
         grid_sizer_interface.Add(self.label_theme, 0, wx.ALIGN_RIGHT, 0)
         grid_sizer_interface.Add(self.ctrl_theme, 0, wx.EXPAND, 0)
         grid_sizer_interface.Add(self.label_image, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 0)
-        
+
         grid_sizer_image = wx.BoxSizer(wx.HORIZONTAL)
         grid_sizer_image.Add(self.ctrl_image, 1, wx.EXPAND, 0)
         grid_sizer_image.Add(self.bouton_image, 0, wx.EXPAND, 0)
         grid_sizer_interface.Add(grid_sizer_image, 0, wx.EXPAND, 0)
-        
+
         grid_sizer_interface.AddGrowableRow(1)
         grid_sizer_interface.AddGrowableCol(1)
         box_interface.Add(grid_sizer_interface, 1, wx.ALL|wx.EXPAND, 10)
         grid_sizer_base.Add(box_interface, 1, wx.EXPAND, 0)
-        
+
         # Identification
         sizer_identification = wx.StaticBoxSizer(self.box_identification_staticbox, wx.VERTICAL)
         grid_sizer_identification = wx.FlexGridSizer(rows=6, cols=1, vgap=5, hgap=5)
@@ -222,13 +222,13 @@ class CTRL_Interface(wx.Panel):
         grid_sizer_identification.AddGrowableCol(0)
         sizer_identification.Add(grid_sizer_identification, 1, wx.ALL|wx.EXPAND, 10)
         grid_sizer_base.Add(sizer_identification, 1, wx.EXPAND, 0)
-        
+
         self.SetSizer(grid_sizer_base)
         grid_sizer_base.Fit(self)
         grid_sizer_base.AddGrowableRow(0)
         grid_sizer_base.AddGrowableCol(0)
         grid_sizer_base.AddGrowableCol(1)
-    
+
     def OnChoixTheme(self, event):
         if self.ctrl_theme.GetID() == "personnalise" :
             etat = True
@@ -250,7 +250,7 @@ class CTRL_Interface(wx.Panel):
         # Ouverture de la fenêtre de dialogue
         dlg = wx.FileDialog(
             self, message=_(u"Choisissez une image"),
-            defaultDir=cheminDefaut, 
+            defaultDir=cheminDefaut,
             defaultFile="",
             wildcard=wildcard,
             style=wx.FD_OPEN
@@ -267,7 +267,7 @@ class CTRL_Interface(wx.Panel):
         # self.check_activites.Enable(self.radio_liste.GetValue())
         # self.OnCheckActivites(None)
 
-    def OnCheckActivites(self, event): 
+    def OnCheckActivites(self, event):
         if self.check_activites.GetValue() == True :
             self.ctrl_activites.Enable(True)
         else :
@@ -288,15 +288,15 @@ class CTRL_Interface(wx.Panel):
 ##                dlg.ShowModal()
 ##                dlg.Destroy()
 ##                return False
-        
+
         if self.check_activites.GetValue() and len(self.ctrl_activites.GetIDcoches()) == 0 :
                 dlg = wx.MessageDialog(self, _(u"Vous avez sélectionné l'activation des inscrits mais sans sélectionner d'activités !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
                 dlg.ShowModal()
                 dlg.Destroy()
                 return False
-        
+
         return True
-            
+
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -306,10 +306,10 @@ class Dialog(wx.Dialog):
         self.parent = parent
         self.IDprocedure = IDprocedure
         self.defaut = defaut
-        
+
         self.listeInitialeActions = []
         self.listeInitialeMessages = []
-        
+
         # Généralités
         self.box_generalites_staticbox = wx.StaticBox(self, -1, _(u"Généralités"))
         self.label_nom = wx.StaticText(self, -1, _(u"Nom :"))
@@ -328,14 +328,14 @@ class Dialog(wx.Dialog):
         # Actions
         self.box_actions_staticbox = wx.StaticBox(self, -1, _(u"Actions"))
         self.ctrl_actions = OL_Badgeage_actions.ListView(self, id=-1, name="OL_test", style=wx.LC_REPORT|wx.SUNKEN_BORDER|wx.LC_SINGLE_SEL|wx.LC_HRULES|wx.LC_VRULES)
-        self.ctrl_actions.MAJ() 
-        
+        self.ctrl_actions.MAJ()
+
         self.bouton_ajouter = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Ajouter.png"), wx.BITMAP_TYPE_ANY))
         self.bouton_modifier = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Modifier.png"), wx.BITMAP_TYPE_ANY))
         self.bouton_supprimer = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Supprimer.png"), wx.BITMAP_TYPE_ANY))
         self.bouton_monter = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Fleche_haut.png"), wx.BITMAP_TYPE_ANY))
         self.bouton_descendre = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Fleche_bas.png"), wx.BITMAP_TYPE_ANY))
-        
+
         # Boutons
         self.bouton_aide = CTRL_Bouton_image.CTRL(self, texte=_(u"Aide"), cheminImage="Images/32x32/Aide.png")
         self.bouton_ok = CTRL_Bouton_image.CTRL(self, texte=_(u"Ok"), cheminImage="Images/32x32/Valider.png")
@@ -352,10 +352,10 @@ class Dialog(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, self.OnBoutonAide, self.bouton_aide)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonOk, self.bouton_ok)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonAnnuler, self.bouton_annuler)
-        
+
         # Init
         if self.IDprocedure != None :
-            self.Importation() 
+            self.Importation()
 
     def __set_properties(self):
         self.SetTitle(_(u"Saisie d'une procédure"))
@@ -375,7 +375,7 @@ class Dialog(wx.Dialog):
 
     def __do_layout(self):
         grid_sizer_base = wx.FlexGridSizer(rows=5, cols=1, vgap=10, hgap=10)
-        
+
         # Généralités
         box_generalites = wx.StaticBoxSizer(self.box_generalites_staticbox, wx.VERTICAL)
         grid_sizer_generalites = wx.FlexGridSizer(rows=2, cols=2, vgap=10, hgap=10)
@@ -384,10 +384,10 @@ class Dialog(wx.Dialog):
         grid_sizer_generalites.AddGrowableCol(1)
         box_generalites.Add(grid_sizer_generalites, 1, wx.ALL|wx.EXPAND, 10)
         grid_sizer_base.Add(box_generalites, 1, wx.LEFT|wx.RIGHT|wx.TOP|wx.EXPAND, 10)
-        
+
         # Interface
         grid_sizer_base.Add(self.ctrl_interface, 1, wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
-        
+
         # Options
         box_options = wx.StaticBoxSizer(self.box_options_staticbox, wx.VERTICAL)
         grid_sizer_options = wx.FlexGridSizer(rows=1, cols=4, vgap=10, hgap=10)
@@ -396,7 +396,7 @@ class Dialog(wx.Dialog):
         grid_sizer_options.Add(self.check_confirmation, 0, wx.ALIGN_CENTER_VERTICAL, 0)
         box_options.Add(grid_sizer_options, 1, wx.ALL|wx.EXPAND, 10)
         grid_sizer_base.Add(box_options, 1, wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
-        
+
         # Actions
         box_actions = wx.StaticBoxSizer(self.box_actions_staticbox, wx.VERTICAL)
         grid_sizer_actions = wx.FlexGridSizer(rows=1, cols=2, vgap=5, hgap=5)
@@ -414,7 +414,7 @@ class Dialog(wx.Dialog):
         grid_sizer_actions.AddGrowableCol(0)
         box_actions.Add(grid_sizer_actions, 1, wx.ALL|wx.EXPAND, 10)
         grid_sizer_base.Add(box_actions, 1, wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
-        
+
         # Boutons
         grid_sizer_boutons = wx.FlexGridSizer(rows=1, cols=4, vgap=10, hgap=10)
         grid_sizer_boutons.Add(self.bouton_aide, 0, 0, 0)
@@ -423,7 +423,7 @@ class Dialog(wx.Dialog):
         grid_sizer_boutons.Add(self.bouton_annuler, 0, 0, 0)
         grid_sizer_boutons.AddGrowableCol(1)
         grid_sizer_base.Add(grid_sizer_boutons, 1, wx.LEFT|wx.RIGHT|wx.BOTTOM|wx.EXPAND, 10)
-        
+
         self.SetSizer(grid_sizer_base)
         grid_sizer_base.Fit(self)
         grid_sizer_base.AddGrowableRow(3)
@@ -431,29 +431,29 @@ class Dialog(wx.Dialog):
         self.Layout()
         self.CenterOnScreen()
 
-    def OnBoutonAjouter(self, event): 
+    def OnBoutonAjouter(self, event):
         self.ctrl_actions.Ajouter()
 
-    def OnBoutonModifier(self, event): 
+    def OnBoutonModifier(self, event):
         self.ctrl_actions.Modifier()
 
-    def OnBoutonSupprimer(self, event): 
+    def OnBoutonSupprimer(self, event):
         self.ctrl_actions.Supprimer()
 
-    def OnBoutonMonter(self, event): 
+    def OnBoutonMonter(self, event):
         self.ctrl_actions.Monter()
 
-    def OnBoutonDescendre(self, event): 
+    def OnBoutonDescendre(self, event):
         self.ctrl_actions.Descendre()
 
-    def OnBoutonAide(self, event): 
+    def OnBoutonAide(self, event):
         from Utils import UTILS_Aide
         UTILS_Aide.Aide("Paramtreruneprocdure")
 
-    def OnBoutonAnnuler(self, event): 
+    def OnBoutonAnnuler(self, event):
         self.EndModal(wx.ID_CANCEL)
 
-    def OnBoutonOk(self, event): 
+    def OnBoutonOk(self, event):
         # Vérification de la saisie
         nom_procedure = self.ctrl_nom.GetValue()
         if nom_procedure == "" :
@@ -462,11 +462,11 @@ class Dialog(wx.Dialog):
             dlg.Destroy()
             self.ctrl_nom.SetFocus()
             return False
-        
-        etat = self.ctrl_interface.Validation() 
+
+        etat = self.ctrl_interface.Validation()
         if etat == False :
             return False
-        
+
         # Actions
         listeActions = self.ctrl_actions.GetDonnees()
         if len(listeActions) == 0 :
@@ -475,19 +475,19 @@ class Dialog(wx.Dialog):
             dlg.Destroy()
             if reponse !=  wx.ID_YES :
                 return False
-        
+
         # Sauvegarde
-        etat = self.Sauvegarde() 
+        etat = self.Sauvegarde()
         if etat == False :
             return False
-        
+
         # Fermeture fenêtre
         self.EndModal(wx.ID_OK)
 
     def Importation(self):
         """Importation des données """
         DB = GestionDB.DB()
-        
+
         # Importation de la procédure
         req = """SELECT nom, style, theme, image, systeme, activites, confirmation, vocal, tutoiement
         FROM badgeage_procedures
@@ -497,16 +497,16 @@ class Dialog(wx.Dialog):
         listeProcedures = DB.ResultatReq()
         if len(listeProcedures) == 0 : return
         nom, style, theme, image, systeme, activites, confirmation, vocal, tutoiement = listeProcedures[0]
-        
+
         self.ctrl_nom.SetValue(nom)
         self.ctrl_interface.ctrl_style.SetID(style)
         self.ctrl_interface.ctrl_theme.SetID(theme)
         self.ctrl_interface.OnChoixTheme(None)
         if image != None :
-            self.ctrl_interface.ctrl_image.SetValue(image) 
-        if systeme == "barre_numerique" : self.ctrl_interface.radio_barre.SetValue(True) 
-        if systeme == "clavier_numerique" : self.ctrl_interface.radio_clavier.SetValue(True) 
-        if systeme == "liste_individus" : self.ctrl_interface.radio_liste.SetValue(True) 
+            self.ctrl_interface.ctrl_image.SetValue(image)
+        if systeme == "barre_numerique" : self.ctrl_interface.radio_barre.SetValue(True)
+        if systeme == "clavier_numerique" : self.ctrl_interface.radio_clavier.SetValue(True)
+        if systeme == "liste_individus" : self.ctrl_interface.radio_liste.SetValue(True)
         self.ctrl_interface.OnChoixIdentification(None)
         if activites != None :
             listeTemp = activites.split(";")
@@ -525,13 +525,13 @@ class Dialog(wx.Dialog):
         for nom, type, info in DICT_TABLES["badgeage_actions"] :
             listeChamps.append(nom)
         req = """SELECT %s
-        FROM badgeage_actions 
+        FROM badgeage_actions
         WHERE IDprocedure=%d
         ORDER BY ordre
         ;""" % (", ".join(listeChamps), self.IDprocedure)
         DB.ExecuterReq(req)
         listeActions = DB.ResultatReq()
-        
+
         listeDonnees = []
         ordre = 1
         for ligne in listeActions :
@@ -542,7 +542,7 @@ class Dialog(wx.Dialog):
                 dictTemp[nomChamp] = valeur
                 index += 1
             dictTemp["ordre"] = ordre
-            
+
             # Importation des messages
             if dictTemp["action"] == "message" :
                 req = """SELECT IDmessage, message
@@ -556,40 +556,41 @@ class Dialog(wx.Dialog):
                     listeMessages.append((IDmessage, message))
                     self.listeInitialeMessages.append(IDmessage)
                 dictTemp["action_messages"] = listeMessages
-            
+
             self.listeInitialeActions.append(dictTemp["IDaction"])
             listeDonnees.append(dictTemp)
             ordre += 1
-        
+
         self.ctrl_actions.SetDonnees(listeDonnees)
-        
+
         DB.Close()
 
 
     def Sauvegarde(self):
-        """ Sauvegarde de la procédure et des actions """
+        """ Sauvegarde transactionnelle de la procédure, des actions et des messages. """
         DB = GestionDB.DB()
+        ok = True
+        nouvelIDprocedure = self.IDprocedure
 
         nom = self.ctrl_nom.GetValue()
-        style = self.ctrl_interface.ctrl_style.GetID() 
-        theme = self.ctrl_interface.ctrl_theme.GetID() 
+        style = self.ctrl_interface.ctrl_style.GetID()
+        theme = self.ctrl_interface.ctrl_theme.GetID()
         if theme == "personnalise" :
-            image = self.ctrl_interface.ctrl_image.GetValue() 
+            image = self.ctrl_interface.ctrl_image.GetValue()
         else :
             image = None
         if self.ctrl_interface.radio_barre.GetValue() : systeme = "barre_numerique"
         if self.ctrl_interface.radio_clavier.GetValue() : systeme = "clavier_numerique"
         if self.ctrl_interface.radio_liste.GetValue() : systeme = "liste_individus"
         if self.ctrl_interface.check_activites.GetValue() == True :
-            activites = self.ctrl_interface.ctrl_activites.GetTexteCoches() 
+            activites = self.ctrl_interface.ctrl_activites.GetTexteCoches()
         else :
             activites = None
         confirmation = int(self.check_confirmation.GetValue())
         vocal = int(self.check_vocal.GetValue())
         tutoiement = int(self.check_tutoiement.GetValue())
-        
-        # Sauvegarde de la procédure
-        listeDonnees = [    
+
+        listeDonnees = [
                 ("nom", nom),
                 ("defaut", self.defaut),
                 ("style", style),
@@ -601,70 +602,99 @@ class Dialog(wx.Dialog):
                 ("vocal", vocal),
                 ("tutoiement", tutoiement),
             ]
-        if self.IDprocedure == None :
-            self.IDprocedure = DB.ReqInsert("badgeage_procedures", listeDonnees)
+        if nouvelIDprocedure == None :
+            nouvelIDprocedure = DB.ReqInsert("badgeage_procedures", listeDonnees, commit=False)
+            if nouvelIDprocedure is None :
+                ok = False
         else:
-            DB.ReqMAJ("badgeage_procedures", listeDonnees, "IDprocedure", self.IDprocedure)
-            
-        # Sauvegarde des actions
+            if not DB.ReqMAJ("badgeage_procedures", listeDonnees, "IDprocedure", nouvelIDprocedure, commit=False) :
+                ok = False
+
         listeActions = self.ctrl_actions.GetDonnees()
-        
         listeChamps = []
         for nom, type, info in DICT_TABLES["badgeage_actions"] :
             listeChamps.append(nom)
-        
+
         ordre = 1
         listeIDaction = []
         listeIDmessage = []
-        for dictAction in listeActions :
-            IDaction = dictAction["IDaction"]
-            
-            # Création de l'enregistrement
-            listeDonnees = [("IDprocedure", self.IDprocedure), ("ordre", ordre), ]
-            for code in listeChamps :
-                if code not in ("IDaction", "IDprocedure", "ordre") :
-                    if code in dictAction :
-                        valeur = dictAction[code]
-                    else :
-                        valeur = None
-                    listeDonnees.append((code, valeur))
-            
-            # Sauvegarde de l'action
-            if IDaction == None :
-                IDaction = DB.ReqInsert("badgeage_actions", listeDonnees)
-            else:
-                DB.ReqMAJ("badgeage_actions", listeDonnees, "IDaction", IDaction)
-            
-            # Sauvegarde des messages
-            if "action_messages" in dictAction :
-                listeMessages = dictAction["action_messages"]
-                for IDmessage, message in listeMessages :
-                    if IDmessage == None :
-                        IDmessage = DB.ReqInsert("badgeage_messages", [("IDprocedure", self.IDprocedure), ("IDaction", IDaction), ("message", message)])
-                    else:
-                        DB.ReqMAJ("badgeage_messages", [("message", message),], "IDmessage", IDmessage)
-                    listeIDmessage.append(IDmessage) 
-                    
-            listeIDaction.append(IDaction) 
-            
-            ordre += 1
-            
-        # Suppression des actions et des messages supprimés
-        for IDaction in self.listeInitialeActions :
-            if IDaction not in listeIDaction :
-                DB.ReqDEL("badgeage_actions", "IDaction", IDaction)
-        
-        for IDmessage in self.listeInitialeMessages :
-            if IDmessage not in listeIDmessage :
-                DB.ReqDEL("badgeage_messages", "IDmessage", IDmessage)
-        
+        if ok :
+            for dictAction in listeActions :
+                IDaction = dictAction["IDaction"]
+                listeDonnees = [("IDprocedure", nouvelIDprocedure), ("ordre", ordre), ]
+                for code in listeChamps :
+                    if code not in ("IDaction", "IDprocedure", "ordre") :
+                        if code in dictAction :
+                            valeur = dictAction[code]
+                        else :
+                            valeur = None
+                        listeDonnees.append((code, valeur))
+
+                if IDaction == None :
+                    IDaction = DB.ReqInsert("badgeage_actions", listeDonnees, commit=False)
+                    if IDaction is None :
+                        ok = False
+                        break
+                else:
+                    if not DB.ReqMAJ("badgeage_actions", listeDonnees, "IDaction", IDaction, commit=False) :
+                        ok = False
+                        break
+
+                if "action_messages" in dictAction :
+                    for IDmessage, message in dictAction["action_messages"] :
+                        if IDmessage == None :
+                            IDmessage = DB.ReqInsert("badgeage_messages", [("IDprocedure", nouvelIDprocedure), ("IDaction", IDaction), ("message", message)], commit=False)
+                            if IDmessage is None :
+                                ok = False
+                                break
+                        else:
+                            if not DB.ReqMAJ("badgeage_messages", [("message", message),], "IDmessage", IDmessage, commit=False) :
+                                ok = False
+                                break
+                        listeIDmessage.append(IDmessage)
+                    if not ok :
+                        break
+
+                listeIDaction.append(IDaction)
+                ordre += 1
+
+        # Supprimer d'abord les messages, puis les actions devenues obsolètes.
+        if ok :
+            for IDmessage in self.listeInitialeMessages :
+                if IDmessage not in listeIDmessage :
+                    if not DB.ReqDEL("badgeage_messages", "IDmessage", IDmessage, commit=False) :
+                        ok = False
+                        break
+
+        if ok :
+            for IDaction in self.listeInitialeActions :
+                if IDaction not in listeIDaction :
+                    if not DB.ReqDEL("badgeage_actions", "IDaction", IDaction, commit=False) :
+                        ok = False
+                        break
+
+        if ok :
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
         DB.Close()
+
+        if not ok :
+            dlg = wx.MessageDialog(self, _(u"Une erreur est survenue pendant l'enregistrement de la procédure de badgeage. Aucune modification n'a été conservée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
+        self.IDprocedure = nouvelIDprocedure
         return True
-    
+
     def GetIDprocedure(self):
         return self.IDprocedure
-    
-    
+
+
 
 if __name__ == u"__main__":
     app = wx.App(0)
