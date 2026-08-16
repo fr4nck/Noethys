@@ -38,3 +38,4 @@ jobs:
           git add noethys/Dlg/DLG_Saisie_lot_cotisations.py
           git commit -m 'fix: atomiser la création des cotisations par lot'
           git push origin master
+# rerun 2
