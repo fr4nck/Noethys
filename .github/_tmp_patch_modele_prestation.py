@@ -1,0 +1,93 @@
+from pathlib import Path
+
+p = Path('noethys/Dlg/DLG_Saisie_modele_prestation.py')
+s = p.read_text(encoding='utf-8')
+a = s.index('        # Sauvegarde de la prestation\n')
+b = s.index('        # Fermeture de la fenêtre\n', a)
+new = '''        # Sauvegarde transactionnelle du modèle et de ses lignes de tarifs
+        listeDonnees = [
+                ("categorie", categorie),
+                ("label", label),
+                ("IDactivite", IDactivite),
+                ("IDtarif", IDtarif),
+                ("IDcategorie_tarif", IDcategorie_tarif),
+                ("code_compta", code_comptable),
+                ("tva", tva),
+                ("public", public),
+                ("IDtype_quotient", IDtype_quotient),
+                ]
+        DB = GestionDB.DB()
+        ok = True
+        nouvelIDmodele = self.IDmodele
+
+        if nouvelIDmodele == None :
+            nouvelIDmodele = DB.ReqInsert("modeles_prestations", listeDonnees, commit=False)
+            if nouvelIDmodele is None :
+                ok = False
+        else:
+            if not DB.ReqMAJ("modeles_prestations", listeDonnees, "IDmodele", nouvelIDmodele, commit=False) :
+                ok = False
+
+        # Cette sauvegarde ne touche pas la DB lorsque track_tarif est fourni.
+        if ok and self.ctrl_tarification.Sauvegarde() is False :
+            ok = False
+
+        listeFinaleID = []
+        if ok :
+            for track_ligne in self.track_tarif.lignes:
+                track_ligne.IDmodele = nouvelIDmodele
+                listeDonnees = track_ligne.Get_listedonnees_pour_db()
+
+                if track_ligne.IDligne == None:
+                    if DB.isNetwork == False:
+                        req = """SELECT max(IDligne) FROM tarifs_lignes;"""
+                        if DB.ExecuterReq(req) != "ok" :
+                            ok = False
+                            break
+                        listeTemp = DB.ResultatReq()
+                        if listeTemp[0][0] == None:
+                            newID = 1
+                        else:
+                            newID = listeTemp[0][0] + 1
+                        listeDonnees.append(("IDligne", newID))
+                        IDligne = DB.ReqInsert("tarifs_lignes", listeDonnees, commit=False)
+                    else:
+                        IDligne = DB.ReqInsert("tarifs_lignes", listeDonnees, commit=False)
+                    if IDligne is None :
+                        ok = False
+                        break
+                else:
+                    IDligne = track_ligne.IDligne
+                    if not DB.ReqMAJ("tarifs_lignes", listeDonnees, "IDligne", IDligne, commit=False) :
+                        ok = False
+                        break
+                    listeFinaleID.append(IDligne)
+
+        if ok :
+            for IDligne in self.listeInitialeIDlignes:
+                if IDligne not in listeFinaleID:
+                    if not DB.ReqDEL("tarifs_lignes", "IDligne", IDligne, commit=False) :
+                        ok = False
+                        break
+
+        if ok :
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+        DB.Close()
+
+        if not ok :
+            dlg = wx.MessageDialog(self, _(u"Une erreur est survenue pendant l'enregistrement du modèle de prestation. Aucune modification n'a été conservée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
+        self.IDmodele = nouvelIDmodele
+
+'''
+s = s[:a] + new + s[b:]
+s = '\n'.join(line.rstrip() for line in s.splitlines()) + '\n'
+p.write_text(s, encoding='utf-8')
