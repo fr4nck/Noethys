@@ -762,6 +762,8 @@ class ListView(FastObjectListView):
     def Sauvegarde(self, IDlot=None, datePrelevement=None, IDcompte=None, IDmode=None):
         """ Sauvegarde des données """
         DB = GestionDB.DB()
+        ok = True
+        listeMAJPrelevements = []
 
         # Ajouts et suppressions
         for track in self.GetObjects() :
@@ -786,25 +788,52 @@ class ListView(FastObjectListView):
 
             # Ajout
             if track.etat == "ajout" :
-                track.IDprelevement = DB.ReqInsert("prelevements", listeDonnees)
-                self.RefreshObject(track)
+                IDprelevement = DB.ReqInsert("prelevements", listeDonnees, commit=False)
+                if IDprelevement is None:
+                    ok = False
+                    break
+                listeMAJPrelevements.append((track, IDprelevement))
 
             # Modification
             if track.etat == "modif" :
-                DB.ReqMAJ("prelevements", listeDonnees, "IDprelevement", track.IDprelevement)
+                if not DB.ReqMAJ("prelevements", listeDonnees, "IDprelevement", track.IDprelevement, commit=False):
+                    ok = False
+                    break
 
         # Suppressions
         for track in self.listeSuppressions :
             if track.IDprelevement != None :
-                DB.ReqDEL("prelevements", "IDprelevement", track.IDprelevement)
+                if not DB.ReqDEL("prelevements", "IDprelevement", track.IDprelevement, commit=False):
+                    ok = False
+                    break
             if track.IDreglement != None :
-                DB.ReqDEL("reglements", "IDreglement", track.IDreglement)
-                DB.ReqDEL("ventilation", "IDreglement", track.IDreglement)
+                if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
+                    ok = False
+                    break
+                if not DB.ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False):
+                    ok = False
+                    break
 
+        if ok:
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
         DB.Close()
 
-        # Sauvegarde des règlements
-        self.SauvegardeReglements(date=datePrelevement, IDcompte=IDcompte, IDmode=IDmode)
+        if not ok:
+            return False
+
+        for track, IDprelevement in listeMAJPrelevements:
+            track.IDprelevement = IDprelevement
+            self.RefreshObject(track)
+
+        # Sauvegarde des règlements uniquement si le lot est cohérent
+        if self.SauvegardeReglements(date=datePrelevement, IDcompte=IDcompte, IDmode=IDmode) is False:
+            return False
+        return True
 
 
     def SauvegardeReglements(self, date=None, IDcompte=None, IDmode=None):
