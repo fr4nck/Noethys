@@ -1,0 +1,36 @@
+name: tmp patch modele prestation
+on:
+  push:
+    paths:
+      - 'tools/tmp_patch_modele_prestation.py'
+      - '.github/workflows/tmp-patch-modele-prestation.yml'
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Patch
+        run: python tools/tmp_patch_modele_prestation.py
+      - name: Checks
+        run: |
+          python -m py_compile noethys/Dlg/DLG_Appliquer_modele_prestation.py
+          git diff --check
+          grep -q 'ReqInsert("prestations", listeDonnees, commit=False)' noethys/Dlg/DLG_Appliquer_modele_prestation.py
+          grep -q 'if not listeDonnees:' noethys/Dlg/DLG_Appliquer_modele_prestation.py
+          grep -q 'DB.Commit()' noethys/Dlg/DLG_Appliquer_modele_prestation.py
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Dlg/DLG_Appliquer_modele_prestation.py
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: sécuriser application des modèles de prestation'
+          git pull --rebase origin master
+          git push origin HEAD:master
