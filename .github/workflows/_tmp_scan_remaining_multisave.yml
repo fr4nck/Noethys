@@ -1,0 +1,47 @@
+name: Scan remaining multisaves
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_scan_remaining_multisave.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Scanner
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          roots=[Path('noethys/Dlg'),Path('noethys/Ctrl'),Path('noethys/Utils')]
+          writes={'ReqInsert','ReqMAJ','ReqDEL','Executermany','ExecuterReq'}
+          for root in roots:
+              for p in root.rglob('*.py'):
+                  try:
+                      text=p.read_text(encoding='utf-8')
+                      tree=ast.parse(text)
+                  except Exception:
+                      continue
+                  for node in ast.walk(tree):
+                      if not isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef)):
+                          continue
+                      calls=[]; commits=0; rollbacks=0; closes=0
+                      for sub in ast.walk(node):
+                          if isinstance(sub,ast.Call):
+                              fn=sub.func
+                              name=fn.attr if isinstance(fn,ast.Attribute) else fn.id if isinstance(fn,ast.Name) else ''
+                              if name in writes: calls.append(name)
+                              elif name=='Commit': commits+=1
+                              elif name=='rollback': rollbacks+=1
+                              elif name=='EndModal': closes+=1
+                      if len(calls)>=2 and ('Sauveg' in node.name or 'Suppr' in node.name or 'Valid' in node.name or 'Ajout' in node.name or 'Modif' in node.name or closes):
+                          print(f'{p}:{node.lineno} {node.name} writes={len(calls)} commits={commits} rollbacks={rollbacks} endmodal={closes} calls={calls}')
+          PY
