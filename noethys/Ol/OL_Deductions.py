@@ -339,39 +339,44 @@ class ListView(FastObjectListView):
         return total
         
     
-    def Sauvegarde(self, IDprestation=None):
-        """ Effectue une sauvegarde des données SI on est en mode MODIFICATIONS VIRTUELLES """
-        DB = GestionDB.DB()
-        
-        for IDdeduction, dictDeduction in self.dictDeductions.items() :
-            IDcompte_payeur = dictDeduction["IDcompte_payeur"]
-            date = dictDeduction["date"]
-            label = dictDeduction["label"]
-            montant = dictDeduction["montant"]
-            IDaide = dictDeduction["IDaide"]
-            
-            listeDonnees = [    
-                    ("IDprestation", IDprestation),
-                    ("IDcompte_payeur", IDcompte_payeur),
-                    ("date", date ),
-                    ("label", label),
-                    ("montant", montant),
-                    ("IDaide", IDaide),
-                    ]
-                    
-            # Ajout
-            if dictDeduction["etat"] == "AJOUT" :
-                IDdeduction = DB.ReqInsert("deductions", listeDonnees)
-            
-            # Modification
-            if dictDeduction["etat"] == "MODIF" :
-                DB.ReqMAJ("deductions", listeDonnees, "IDdeduction", IDdeduction)
-            
-            # Suppression
-            if dictDeduction["etat"] == "SUPPR" :
-                DB.ReqDEL("deductions", "IDdeduction", IDdeduction)
-        
-        DB.Close()
+    def Sauvegarde(self, IDprestation=None, DB=None, commit=True):
+        """Sauvegarde les déductions et retourne True en cas de succès."""
+        DBexterne = DB is not None
+        if not DBexterne:
+            DB = GestionDB.DB()
+
+        for IDdeduction, dictDeduction in self.dictDeductions.items():
+            listeDonnees = [
+                ("IDprestation", IDprestation),
+                ("IDcompte_payeur", dictDeduction["IDcompte_payeur"]),
+                ("date", dictDeduction["date"]),
+                ("label", dictDeduction["label"]),
+                ("montant", dictDeduction["montant"]),
+                ("IDaide", dictDeduction["IDaide"]),
+            ]
+
+            if dictDeduction["etat"] == "AJOUT":
+                if DB.ReqInsert("deductions", listeDonnees, commit=False) is None:
+                    if not DBexterne:
+                        DB.Close()
+                    return False
+            elif dictDeduction["etat"] == "MODIF":
+                if not DB.ReqMAJ("deductions", listeDonnees, "IDdeduction", IDdeduction, commit=False):
+                    if not DBexterne:
+                        DB.Close()
+                    return False
+            elif dictDeduction["etat"] == "SUPPR":
+                if not DB.ReqDEL("deductions", "IDdeduction", IDdeduction, commit=False):
+                    if not DBexterne:
+                        DB.Close()
+                    return False
+
+        if commit:
+            DB.Commit()
+        if not DBexterne:
+            DB.Close()
+        return True
+
 
 
 # -------------------------------------------------------------------------------------------------------------------------------------------

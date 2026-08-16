@@ -854,7 +854,12 @@ class Dialog(wx.Dialog):
             LEFT JOIN reglements ON reglements.IDreglement = ventilation.IDreglement
             WHERE IDprestation=%d
             ORDER BY reglements.date;""" % self.IDprestation
-            DB.ExecuterReq(req)
+            if DB.ExecuterReq(req) != 1:
+                DB.Close()
+                dlg = wx.MessageDialog(self, _(u"Impossible de vérifier les ventilations de cette prestation."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
             listeVentilations = DB.ResultatReq()
             montantVentilation = 0.0
             for IDventilation, montantTmp in listeVentilations :
@@ -867,10 +872,14 @@ class Dialog(wx.Dialog):
                     if montantVentilationTmp > montant :
                         nouveauMontant = montantTmp - (montantVentilationTmp - montant)
                         if nouveauMontant > 0.0 :
-                            DB.ReqMAJ("ventilation", [("montant", nouveauMontant),], "IDventilation", IDventilation)
+                            if not DB.ReqMAJ("ventilation", [("montant", nouveauMontant),], "IDventilation", IDventilation, commit=False):
+                                DB.Close()
+                                return
                             montantVentilationTmp =  (montantVentilationTmp - montantTmp) + nouveauMontant
                         else:
-                            DB.ReqDEL("ventilation", "IDventilation", IDventilation)
+                            if not DB.ReqDEL("ventilation", "IDventilation", IDventilation, commit=False):
+                                DB.Close()
+                                return
 
         # Sauvegarde de la prestation
         listeDonnees = [    
@@ -890,16 +899,41 @@ class Dialog(wx.Dialog):
                 ("tva", tva),
                 ("code_produit_local", code_produit_local),
             ]
-        if self.IDprestation == None :
+        ancien_IDprestation = self.IDprestation
+        if ancien_IDprestation == None :
             listeDonnees.append(("date_valeur", str(datetime.date.today())))
-            self.IDprestation = DB.ReqInsert("prestations", listeDonnees)
+            IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)
+            if IDprestation is None:
+                DB.Close()
+                dlg = wx.MessageDialog(self, _(u"La prestation n'a pas pu être enregistrée. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
         else:
-            DB.ReqMAJ("prestations", listeDonnees, "IDprestation", self.IDprestation)
+            IDprestation = ancien_IDprestation
+            if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):
+                DB.Close()
+                dlg = wx.MessageDialog(self, _(u"La prestation n'a pas pu être modifiée. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
+
+        # Sauvegarde des déductions dans la même transaction.
+        if not self.ctrl_deductions.Sauvegarde(IDprestation=IDprestation, DB=DB, commit=False):
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            dlg = wx.MessageDialog(self, _(u"Les déductions n'ont pas pu être enregistrées. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
+
+        DB.Commit()
         DB.Close()
-        
-        # Sauvegarde des déductions
-        self.ctrl_deductions.Sauvegarde(IDprestation=self.IDprestation)        
-        
+        self.IDprestation = IDprestation
+
         # Fermeture de la fenêtre
         self.EndModal(wx.ID_OK)
     
