@@ -486,8 +486,9 @@ class Dialog(wx.Dialog):
                 DB.Close()
                 
                 # Suppression de la fiche individu
-                self.SupprimerIndividu() 
-                
+                if not self.SupprimerIndividu():
+                    return False
+
                 # Fermeture de la fiche famille
                 return "famille"
                 
@@ -501,34 +502,58 @@ class Dialog(wx.Dialog):
                 return False
 
             DB.Close()
-            self.SupprimerIndividu() 
+            if not self.SupprimerIndividu():
+                return False
             return True
     
     def SupprimerIndividu(self):
-        # Suppression de l'individu
+        """Supprime atomiquement les données principales d'un individu."""
         DB = GestionDB.DB()
-        req = "DELETE FROM rattachements WHERE IDfamille=%d AND IDindividu=%d;" % (self.IDfamille, self.IDindividu)
-        DB.ExecuterReq(req)
-        req = "DELETE FROM liens WHERE IDfamille=%d AND IDindividu_sujet=%d;" % (self.IDfamille, self.IDindividu)
-        DB.ExecuterReq(req)
-        req = "DELETE FROM liens WHERE IDfamille=%d AND IDindividu_objet=%d;" % (self.IDfamille, self.IDindividu)
-        DB.ExecuterReq(req)
-        DB.ReqDEL("vaccins", "IDindividu", self.IDindividu)
-        DB.ReqDEL("problemes_sante", "IDindividu", self.IDindividu)
-        DB.ReqDEL("abonnements", "IDindividu", self.IDindividu)
-        DB.ReqDEL("individus", "IDindividu", self.IDindividu)
-        DB.ReqDEL("questionnaire_reponses", "IDindividu", self.IDindividu)
-        DB.ReqDEL("inscriptions", "IDindividu", self.IDindividu)
-        DB.ReqDEL("scolarite", "IDindividu", self.IDindividu)
-        DB.ReqDEL("transports", "IDindividu", self.IDindividu)
-        DB.ReqDEL("messages", "IDindividu", self.IDindividu)
-        DB.Commit() 
+        ok = True
+
+        for req in (
+            "DELETE FROM rattachements WHERE IDfamille=%d AND IDindividu=%d;" % (self.IDfamille, self.IDindividu),
+            "DELETE FROM liens WHERE IDfamille=%d AND IDindividu_sujet=%d;" % (self.IDfamille, self.IDindividu),
+            "DELETE FROM liens WHERE IDfamille=%d AND IDindividu_objet=%d;" % (self.IDfamille, self.IDindividu),
+        ):
+            if DB.ExecuterReq(req) != 1:
+                ok = False
+                break
+
+        if ok:
+            for table in ("vaccins", "problemes_sante", "abonnements", "questionnaire_reponses", "inscriptions", "scolarite", "transports", "messages"):
+                if not DB.ReqDEL(table, "IDindividu", self.IDindividu, commit=False):
+                    ok = False
+                    break
+
+        if ok and not DB.ReqDEL("individus", "IDindividu", self.IDindividu, commit=False):
+            ok = False
+
+        if not ok:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            dlg = wx.MessageDialog(self, _(u"La fiche individuelle n'a pas pu être supprimée complètement. Aucune suppression n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
+        DB.Commit()
         DB.Close()
-        # Suppression de la photo 
-        DB = GestionDB.DB(suffixe="PHOTOS")
-        DB.ReqDEL("photos", "IDindividu", self.IDindividu)
-        DB.Close()
-        
+
+        # La base PHOTOS est distincte : nettoyage secondaire, non atomique avec la base principale.
+        DBphotos = GestionDB.DB(suffixe="PHOTOS")
+        photo_ok = DBphotos.ReqDEL("photos", "IDindividu", self.IDindividu)
+        DBphotos.Close()
+        if not photo_ok:
+            dlg = wx.MessageDialog(self, _(u"La fiche a été supprimée, mais la photo associée n'a pas pu être nettoyée."), _(u"Information"), wx.OK | wx.ICON_EXCLAMATION)
+            dlg.ShowModal()
+            dlg.Destroy()
+
+        return True
+
     def OnBoutonAide(self, event): 
         from Utils import UTILS_Aide
         UTILS_Aide.Aide("Compositiondelafamille")
