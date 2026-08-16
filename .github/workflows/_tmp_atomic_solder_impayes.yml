@@ -1,0 +1,41 @@
+name: Atomic solder impayes
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_solder_impayes.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Patch
+        run: python .github/_tmp_patch_solder_impayes.py
+      - name: Verify
+        run: |
+          python -m py_compile noethys/Dlg/DLG_Solder_impayes.py
+          python - <<'PY'
+          from pathlib import Path
+          t=Path('noethys/Dlg/DLG_Solder_impayes.py').read_text(encoding='utf-8')
+          assert 'DB.ReqInsert("payeurs"' in t and 'commit=False' in t
+          assert 'DB.ReqInsert("reglements", listeDonnees, commit=False)' in t
+          assert 'DB.ReqInsert("ventilation", listeDonnees, commit=False)' in t
+          assert 'dictPayeurs[track.IDcompte_payeur] = ' in t
+          assert 'Aucun règlement du lot n\'a été conservé.' in t
+          PY
+          git diff --check
+          git diff -- noethys/Dlg/DLG_Solder_impayes.py
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Dlg/DLG_Solder_impayes.py
+          git commit -m 'fix: atomiser la création des règlements impayés'
+          git push origin master
