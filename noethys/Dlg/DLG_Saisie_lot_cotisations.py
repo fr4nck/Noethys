@@ -231,74 +231,94 @@ class Dialog(wx.Dialog):
 
         dlgprogress = wx.ProgressDialog(_(u"Génération des cotisations"), _(u"Veuillez patienter..."), maximum=len(liste_tracks), parent=None, style=wx.PD_SMOOTH | wx.PD_AUTO_HIDE | wx.PD_APP_MODAL)
         index = 1
-        for track in liste_tracks :
+        try:
+            for track in liste_tracks :
 
-            dlgprogress.Update(index, _(u"Génération de la cotisation %d sur %d") % (index, len(liste_tracks)))
+                dlgprogress.Update(index, _(u"Génération de la cotisation %d sur %d") % (index, len(liste_tracks)))
 
-            if numero_manuel == True :
-                numero = track.numero
+                if numero_manuel == True :
+                    numero = track.numero
 
-            if type_cotisation == "famille":
-                IDfamille = track.IDfamille
-            else :
-                IDfamille = None
+                if type_cotisation == "famille":
+                    IDfamille = track.IDfamille
+                else :
+                    IDfamille = None
 
-            listeDonnees = [
-                ("IDfamille", IDfamille),
-                ("IDindividu", track.IDindividu),
-                ("IDtype_cotisation", IDtype_cotisation),
-                ("IDunite_cotisation", IDunite_cotisation),
-                ("date_saisie", date_saisie),
-                ("IDutilisateur", IDutilisateur),
-                ("date_creation_carte", date_creation_carte),
-                ("numero", numero),
-                ("date_debut", date_debut),
-                ("date_fin", date_fin),
-                ("observations", observations),
-                ("activites", activites),
-            ]
-            IDcotisation = DB.ReqInsert("cotisations", listeDonnees)
-
-            # Sauvegarde de la prestation
-            facturer = self.ctrl_parametres.ctrl_facturer.GetValue()
-            date_facturation = self.ctrl_parametres.ctrl_date_prestation.GetDate()
-            montant = self.ctrl_parametres.ctrl_montant.GetMontant()
-            label_prestation = self.ctrl_parametres.ctrl_label.GetValue()
-
-            if facturer == True:
-
-                # Création d'une prestation
                 listeDonnees = [
-                    ("IDcompte_payeur", track.IDcompte_payeur),
-                    ("date", date_facturation),
-                    ("categorie", "cotisation"),
-                    ("label", label_prestation),
-                    ("montant_initial", montant),
-                    ("montant", montant),
-                    ("IDfamille", track.IDfamille),
+                    ("IDfamille", IDfamille),
                     ("IDindividu", track.IDindividu),
+                    ("IDtype_cotisation", IDtype_cotisation),
+                    ("IDunite_cotisation", IDunite_cotisation),
+                    ("date_saisie", date_saisie),
+                    ("IDutilisateur", IDutilisateur),
+                    ("date_creation_carte", date_creation_carte),
+                    ("numero", numero),
+                    ("date_debut", date_debut),
+                    ("date_fin", date_fin),
+                    ("observations", observations),
+                    ("activites", activites),
                 ]
-                listeDonnees.append(("date_valeur", str(datetime.date.today())))
-                IDprestation = DB.ReqInsert("prestations", listeDonnees)
+                IDcotisation = DB.ReqInsert("cotisations", listeDonnees, commit=False)
+                if IDcotisation is None:
+                    raise RuntimeError(_(u"La création de la cotisation a échoué."))
 
-                # Insertion du IDprestation dans la cotisation
-                DB.ReqMAJ("cotisations", [("IDprestation", IDprestation), ], "IDcotisation", IDcotisation)
+                # Sauvegarde de la prestation
+                facturer = self.ctrl_parametres.ctrl_facturer.GetValue()
+                date_facturation = self.ctrl_parametres.ctrl_date_prestation.GetDate()
+                montant = self.ctrl_parametres.ctrl_montant.GetMontant()
+                label_prestation = self.ctrl_parametres.ctrl_label.GetValue()
 
-            # Mémorise l'action dans l'historique
-            date_debut_periode = UTILS_Dates.DateEngFr(str(date_debut))
-            date_fin_periode = UTILS_Dates.DateEngFr(str(date_fin))
-            UTILS_Historique.InsertActions([{
-                "IDindividu": track.IDindividu,
-                "IDfamille": track.IDfamille,
-                "IDcategorie": 21,
-                "action": _(u"Saisie de la cotisation ID%d '%s' pour la période du %s au %s") % (IDcotisation, label_prestation, date_debut_periode, date_fin_periode),
-            }, ])
+                if facturer == True:
 
-            # Génération du prochain numéro de cotisation
-            if numero != None :
-                numero = UTILS_Texte.Incrementer(numero)
+                    # Création d'une prestation
+                    listeDonnees = [
+                        ("IDcompte_payeur", track.IDcompte_payeur),
+                        ("date", date_facturation),
+                        ("categorie", "cotisation"),
+                        ("label", label_prestation),
+                        ("montant_initial", montant),
+                        ("montant", montant),
+                        ("IDfamille", track.IDfamille),
+                        ("IDindividu", track.IDindividu),
+                    ]
+                    listeDonnees.append(("date_valeur", str(datetime.date.today())))
+                    IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)
+                    if IDprestation is None:
+                        raise RuntimeError(_(u"La création de la prestation associée à la cotisation a échoué."))
 
-            index += 1
+                    # Insertion du IDprestation dans la cotisation
+                    if not DB.ReqMAJ("cotisations", [("IDprestation", IDprestation), ], "IDcotisation", IDcotisation, commit=False):
+                        raise RuntimeError(_(u"Le rattachement de la prestation à la cotisation a échoué."))
+
+                DB.Commit()
+
+                # Mémorise l'action dans l'historique
+                date_debut_periode = UTILS_Dates.DateEngFr(str(date_debut))
+                date_fin_periode = UTILS_Dates.DateEngFr(str(date_fin))
+                UTILS_Historique.InsertActions([{
+                    "IDindividu": track.IDindividu,
+                    "IDfamille": track.IDfamille,
+                    "IDcategorie": 21,
+                    "action": _(u"Saisie de la cotisation ID%d '%s' pour la période du %s au %s") % (IDcotisation, label_prestation, date_debut_periode, date_fin_periode),
+                }, ])
+
+                # Génération du prochain numéro de cotisation
+                if numero != None :
+                    numero = UTILS_Texte.Incrementer(numero)
+
+                index += 1
+
+        except Exception as err:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            dlgprogress.Destroy()
+            dlg = wx.MessageDialog(self, _(u"Désolé, la génération des cotisations a échoué :\n\n%s") % err, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
 
         DB.Close()
         dlgprogress.Destroy()
