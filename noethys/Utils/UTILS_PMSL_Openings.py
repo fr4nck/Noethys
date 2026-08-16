@@ -120,7 +120,8 @@ class PMSLOpeningService(object):
             self.db.Commit()
         except Exception:
             try:
-                self.db.Rollback()
+                if getattr(self.db, "connexion", None):
+                    self.db.connexion.rollback()
             except Exception:
                 pass
             raise
