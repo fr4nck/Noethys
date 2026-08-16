@@ -9,8 +9,12 @@ from __future__ import unicode_literals
 
 import datetime
 
-from noethys import GestionDB
-from noethys.Utils.UTILS_PMSL_NoethysBridge import build_ack_item
+try:
+    from noethys import GestionDB
+    from noethys.Utils.UTILS_PMSL_NoethysBridge import build_ack_item
+except ImportError:  # lancement historique depuis le répertoire noethys
+    import GestionDB
+    from Utils.UTILS_PMSL_NoethysBridge import build_ack_item
 
 
 class PMSLOpeningError(Exception):
@@ -120,8 +124,9 @@ class PMSLOpeningService(object):
             self.db.Commit()
         except Exception:
             try:
-                if getattr(self.db, "connexion", None):
-                    self.db.connexion.rollback()
+                connexion = getattr(self.db, "connexion", None)
+                if connexion is not None:
+                    connexion.rollback()
             except Exception:
                 pass
             raise
