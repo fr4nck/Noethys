@@ -5689,13 +5689,26 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                 
                 # Ajout
                 if IDtransport < 0 :
-                    newID = DB.ReqInsert("transports", listeDonnees)
+                    newID = DB.ReqInsert("transports", listeDonnees, commit=False)
+                    if newID is None:
+                        try:
+                            DB.connexion.rollback()
+                        except Exception:
+                            pass
+                        DB.Close()
+                        return False
                     listeNewID[IDtransport] = newID
                 
                 # Modification
                 else :
                     if dictTransport["etat"] == "MODIF" :
-                        DB.ReqMAJ("transports", listeDonnees, "IDtransport", IDtransport)
+                        if not DB.ReqMAJ("transports", listeDonnees, "IDtransport", IDtransport, commit=False):
+                            try:
+                                DB.connexion.rollback()
+                            except Exception:
+                                pass
+                            DB.Close()
+                            return False
         
         # SUPPRESSIONS
         for IDtransport in self.listeTransportsInitiale :
@@ -5704,10 +5717,18 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                 if IDtransport in list(dictTransports.keys()) :
                     supprimer = False
             if supprimer == True :
-                DB.ReqDEL("transports", "IDtransport", IDtransport)
+                if not DB.ReqDEL("transports", "IDtransport", IDtransport, commit=False):
+                    try:
+                        DB.connexion.rollback()
+                    except Exception:
+                        pass
+                    DB.Close()
+                    return False
                     
-        # Cloture de la DB
+        # Validation atomique des ajouts, modifications et suppressions.
+        DB.Commit()
         DB.Close()
+        return True
     
     def MemoriseParametres(self):
         """ Mémorisation des paramètres """

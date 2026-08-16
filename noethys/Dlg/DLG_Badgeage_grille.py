@@ -158,7 +158,8 @@ class CTRL(wx.Panel):
         try:
             if self.grille.Sauvegarde() == False:
                 return False
-            self.grille.SauvegardeTransports()
+            if self.grille.SauvegardeTransports() == False:
+                return False
             return True
         except Exception as err:
             print("Erreur durant la sauvegarde de la grille : %s" % err)
