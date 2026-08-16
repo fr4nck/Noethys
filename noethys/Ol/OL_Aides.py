@@ -419,13 +419,32 @@ class ListView(FastObjectListView):
         dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment supprimer cette aide ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
         if dlg.ShowModal() == wx.ID_YES :
             DB = GestionDB.DB()
-            DB.ReqDEL("aides", "IDaide", IDaide)
-            DB.ReqDEL("aides_beneficiaires", "IDaide", IDaide)
-            DB.ReqDEL("aides_montants", "IDaide", IDaide)
-            DB.ReqDEL("aides_combinaisons", "IDaide", IDaide)
-            DB.ReqDEL("aides_combi_unites", "IDaide", IDaide)
-            DB.Close() 
-            self.MAJ()
+            suppressions = (
+                ("aides_combi_unites", "IDaide"),
+                ("aides_combinaisons", "IDaide"),
+                ("aides_montants", "IDaide"),
+                ("aides_beneficiaires", "IDaide"),
+                ("aides", "IDaide"),
+            )
+            ok = True
+            for table, champ in suppressions:
+                if not DB.ReqDEL(table, champ, IDaide, commit=False):
+                    ok = False
+                    break
+            if ok:
+                DB.Commit()
+            else:
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+            DB.Close()
+            if ok:
+                self.MAJ()
+            else:
+                erreur = wx.MessageDialog(self, _(u"La suppression de l'aide a échoué. Aucune donnée n'a été supprimée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                erreur.ShowModal()
+                erreur.Destroy()
         dlg.Destroy()
 
 
