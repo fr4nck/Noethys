@@ -154,9 +154,15 @@ class CTRL(wx.Panel):
         self.ctrl_titre.SetNom(u"%s %s" % (self.dictInfosIndividu["nom"], self.dictInfosIndividu["prenom"]))
 
     def Sauvegarde(self):
-        """ Sauvegarde de la grille """
-        self.grille.Sauvegarde()
-        self.grille.SauvegardeTransports()
+        """ Sauvegarde de la grille. Retourne False si une écriture échoue. """
+        try:
+            if self.grille.Sauvegarde() == False:
+                return False
+            self.grille.SauvegardeTransports()
+            return True
+        except Exception as err:
+            print("Erreur durant la sauvegarde de la grille : %s" % err)
+            return False
     
     def GetCase(self, IDunite=None, date=None, memo=False):
         """ Récupère une case d'après un IDunite """

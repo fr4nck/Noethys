@@ -1456,7 +1456,12 @@ class Traitement():
             reponse = dlg.GetReponse()
             dlg.Destroy()
             if reponse_modal == wx.ID_OK :
-                self.Save_grille(dlg.ctrl_grille)
+                if self.Save_grille(dlg.ctrl_grille) == False:
+                    self.EcritLog(_(u"[ERREUR] Les consommations n'ont pas pu être enregistrées."))
+                    dlg = wx.MessageDialog(self.parent, _(u"Les réservations n'ont pas pu être enregistrées. La demande reste non validée."), _(u"Erreur d'enregistrement"), wx.OK | wx.ICON_ERROR)
+                    dlg.ShowModal()
+                    dlg.Destroy()
+                    return False
                 self.EcritLog(_(u"Enregistrement des consommations"))
                 if reponse == "" :
                     return {"etat" : False, "reponse" : reponse}
@@ -1642,7 +1647,7 @@ class Traitement():
 
     def Save_grille(self, ctrl_grille=None):
         """ Sauvegarde de la grille des conso """
-        ctrl_grille.Sauvegarde()
+        return ctrl_grille.Sauvegarde()
 
     def Appliquer_reservations(self, ctrl_grille=None, log_jumeau=None):
         """ Appliquer la saisie ou suppression des réservations """

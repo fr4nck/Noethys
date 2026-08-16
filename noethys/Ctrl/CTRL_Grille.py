@@ -5350,7 +5350,9 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
             for champ in listeChampsPrestations :
                 listeInterrogations.append("?")
             texteInterrogations = ", ".join(listeInterrogations)
-            DB.Executermany("INSERT INTO prestations (%s) VALUES (%s)" % (texteChampsTemp, texteInterrogations), listeAjoutsPrestations, commit=False)
+            if not DB.Executermany("INSERT INTO prestations (%s) VALUES (%s)" % (texteChampsTemp, texteInterrogations), listeAjoutsPrestations, commit=False):
+                DB.Close()
+                return False
 
         # Ajout optimisé des déductions
         if len(listeAjoutsDeductions) > 0 :
@@ -5359,7 +5361,9 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
             for champ in listeChampsDeductions :
                 listeInterrogations.append("?")
             texteInterrogations = ", ".join(listeInterrogations)
-            DB.Executermany("INSERT INTO deductions (%s) VALUES (%s)" % (texteChampsTemp, texteInterrogations), listeAjoutsDeductions, commit=False)
+            if not DB.Executermany("INSERT INTO deductions (%s) VALUES (%s)" % (texteChampsTemp, texteInterrogations), listeAjoutsDeductions, commit=False):
+                DB.Close()
+                return False
 
 
         # ------------- Sauvegarde des prestations modifiées ------------------
@@ -5375,7 +5379,9 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
 
         # Modifications
         if len(listeModifications) > 0 :
-            DB.Executermany("UPDATE prestations SET label=?, montant_initial=?, montant=?, forfait_date_debut=?, forfait_date_fin=?, code_compta=?, code_produit_local=?, tva=? WHERE IDprestation=?", listeModifications, commit=False)
+            if not DB.Executermany("UPDATE prestations SET label=?, montant_initial=?, montant=?, forfait_date_debut=?, forfait_date_fin=?, code_compta=?, code_produit_local=?, tva=? WHERE IDprestation=?", listeModifications, commit=False):
+                DB.Close()
+                return False
 
         # Suppression
         if len(listeSuppressions) > 0 :
@@ -5383,7 +5389,13 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                 conditionSuppression = "(%d)" % listeSuppressions[0]
             else : 
                 conditionSuppression = str(tuple(listeSuppressions))
-            DB.ExecuterReq("DELETE FROM ventilation WHERE IDprestation IN %s" % conditionSuppression)
+            if not DB.ExecuterReq("DELETE FROM ventilation WHERE IDprestation IN %s" % conditionSuppression):
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+                DB.Close()
+                return False
 
 
         # ------------- Suppression des prestations et déductions à supprimer ------------------
@@ -5394,9 +5406,27 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                 conditionSuppression = "(%d)" % self.listePrestationsSupprimees[0]
             else : 
                 conditionSuppression = str(tuple(self.listePrestationsSupprimees))
-            DB.ExecuterReq("DELETE FROM prestations WHERE IDprestation IN %s" % conditionSuppression)
-            DB.ExecuterReq("DELETE FROM ventilation WHERE IDprestation IN %s" % conditionSuppression)
-            DB.ExecuterReq("DELETE FROM deductions WHERE IDprestation IN %s" % conditionSuppression)
+            if not DB.ExecuterReq("DELETE FROM prestations WHERE IDprestation IN %s" % conditionSuppression):
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+                DB.Close()
+                return False
+            if not DB.ExecuterReq("DELETE FROM ventilation WHERE IDprestation IN %s" % conditionSuppression):
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+                DB.Close()
+                return False
+            if not DB.ExecuterReq("DELETE FROM deductions WHERE IDprestation IN %s" % conditionSuppression):
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+                DB.Close()
+                return False
 
         # --------------- Sauvegarde du DictConso --------------------
         listeAjouts = []
@@ -5525,14 +5555,18 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
             for champ in listeChamps :
                 listeInterrogations.append("?")
             texteInterrogations = ", ".join(listeInterrogations)
-            DB.Executermany("INSERT INTO consommations (%s) VALUES (%s)" % (texteChampsTemp, texteInterrogations), listeAjouts, commit=False)
+            if not DB.Executermany("INSERT INTO consommations (%s) VALUES (%s)" % (texteChampsTemp, texteInterrogations), listeAjouts, commit=False):
+                DB.Close()
+                return False
 
         # Modifications
         if len(listeModifications) > 0 :
             listeChampsTemp = []
             for champ in listeChamps :
                 listeChampsTemp.append(("%s=?" % champ))
-            DB.Executermany("UPDATE consommations SET %s WHERE IDconso=?" % ", ".join(listeChampsTemp), listeModifications, commit=False)
+            if not DB.Executermany("UPDATE consommations SET %s WHERE IDconso=?" % ", ".join(listeChampsTemp), listeModifications, commit=False):
+                DB.Close()
+                return False
 
         # Suppression
         if len(listeSuppressions) > 0 :
@@ -5540,10 +5574,15 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                 conditionSuppression = "(%d)" % listeSuppressions[0]
             else : 
                 conditionSuppression = str(tuple(listeSuppressions))
-            DB.ExecuterReq("DELETE FROM consommations WHERE IDconso IN %s" % conditionSuppression)
+            if not DB.ExecuterReq("DELETE FROM consommations WHERE IDconso IN %s" % conditionSuppression):
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+                DB.Close()
+                return False
 
-        # Application des modifications dans la base de données
-        DB.Commit()
+        # Les consommations, prestations, mémos et historique sont validés ensemble.
 
         # ---------------- Sauvegarde des mémos journaliers -------------------
         for key, valeurs in self.dictMemos.items() :
@@ -5563,12 +5602,19 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
             # Ajout
             if statut == "ajout" :
                 IDmemo = DB.ReqInsert("memo_journee", listeDonnees, commit=False)
+                if IDmemo is None:
+                    DB.Close()
+                    return False
             # Modification
             if statut == "modification" :
-                DB.ReqMAJ("memo_journee", listeDonnees, "IDmemo", IDmemo, commit=False)
+                if not DB.ReqMAJ("memo_journee", listeDonnees, "IDmemo", IDmemo, commit=False):
+                    DB.Close()
+                    return False
             # Suppression
             if statut == "suppression" :
-                DB.ReqDEL("memo_journee", "IDmemo", IDmemo, commit=False)
+                if not DB.ReqDEL("memo_journee", "IDmemo", IDmemo, commit=False):
+                    DB.Close()
+                    return False
 
         # ----------------- Mémorisation de l'action dans l'historique général -------------------
         listeAjoutsHistorique = []
@@ -5606,6 +5652,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
 
         # Cloture de la DB
         DB.Close()
+        return True
 
 
     def SauvegardeTransports(self):

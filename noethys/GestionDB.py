@@ -310,20 +310,24 @@ class DB:
             del DICT_CONNEXIONS[self.IDconnexion]
                 
     def Executermany(self, req="", listeDonnees=[], commit=True):
-        """ Executemany pour local ou réseau """    
-        """ Exemple de req : "INSERT INTO table (IDtable, nom) VALUES (?, ?)" """  
-        """ Exemple de listeDonnees : [(1, 2), (3, 4), (5, 6)] """     
+        """ Executemany pour local ou réseau. Retourne True en cas de succès. """
         # Adaptation réseau/local
         if self.isNetwork == True :
-            # Version MySQL
             req = req.replace("?", "%s")
         else:
-            # Version Sqlite
             req = req.replace("%s", "?")
-        # Executemany
-        self.cursor.executemany(req, listeDonnees)
-        if commit == True :
-            self.connexion.commit()
+        try:
+            self.cursor.executemany(req, listeDonnees)
+            if commit == True :
+                self.connexion.commit()
+            return True
+        except Exception as err:
+            print("Requete sql executemany incorrecte :\n%s\nErreur detectee:\n%s" % (req, err))
+            try:
+                self.connexion.rollback()
+            except Exception:
+                pass
+            return False
 
     def Ajouter(self, table, champs, valeurs):
         # champs et valeurs sont des tuples
