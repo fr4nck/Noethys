@@ -11,6 +11,7 @@ from Ctrl import CTRL_Bouton_image
 from Utils import UTILS_Config
 from Utils.UTILS_Traduction import _
 from Utils.UTILS_PMSL_Sync import run_sync
+from Utils.UTILS_PMSL_ReturnSync import push_reference
 
 
 class Dialog(wx.Dialog):
@@ -44,6 +45,10 @@ class Dialog(wx.Dialog):
         self.ctrl_secret = wx.TextCtrl(self, -1, u"", style=wx.TE_PASSWORD)
         self.label_limit = wx.StaticText(self, -1, _(u"Lots maximum :"))
         self.ctrl_limit = wx.SpinCtrl(self, -1, min=1, max=100, initial=20)
+        self.label_date_start = wx.StaticText(self, -1, _(u"Référentiel du :"))
+        self.ctrl_date_start = wx.TextCtrl(self, -1, u"")
+        self.label_date_end = wx.StaticText(self, -1, _(u"au :"))
+        self.ctrl_date_end = wx.TextCtrl(self, -1, u"")
         self.info_secret = wx.StaticText(self, -1, _(u"Le secret n'est pas enregistré sur le poste."))
 
         self.box_resultat = wx.StaticBox(self, -1, _(u"Résultat"))
@@ -54,6 +59,8 @@ class Dialog(wx.Dialog):
             cheminImage="Images/32x32/Actualiser.png")
         self.bouton_appliquer = CTRL_Bouton_image.CTRL(
             self, texte=_(u"Appliquer"), cheminImage="Images/32x32/Valider.png")
+        self.bouton_envoyer = CTRL_Bouton_image.CTRL(
+            self, texte=_(u"Envoyer le référentiel vers PMSL"), cheminImage="Images/32x32/Export.png")
         self.bouton_fermer = CTRL_Bouton_image.CTRL(
             self, texte=_(u"Fermer"), cheminImage="Images/32x32/Fermer.png")
 
@@ -63,6 +70,7 @@ class Dialog(wx.Dialog):
 
         self.Bind(wx.EVT_BUTTON, self.OnTester, self.bouton_tester)
         self.Bind(wx.EVT_BUTTON, self.OnAppliquer, self.bouton_appliquer)
+        self.Bind(wx.EVT_BUTTON, self.OnEnvoyerReferentiel, self.bouton_envoyer)
         self.Bind(wx.EVT_BUTTON, self.OnFermer, self.bouton_fermer)
         self.Bind(wx.EVT_TEXT, self.OnConfigurationChange, self.ctrl_url)
         self.Bind(wx.EVT_TEXT, self.OnConfigurationChange, self.ctrl_instance)
@@ -85,7 +93,7 @@ class Dialog(wx.Dialog):
         base.Add(self.ctrl_bandeau, 0, wx.EXPAND, 0)
 
         box_connexion = wx.StaticBoxSizer(self.box_connexion, wx.VERTICAL)
-        grid = wx.FlexGridSizer(rows=5, cols=2, vgap=8, hgap=10)
+        grid = wx.FlexGridSizer(rows=7, cols=2, vgap=8, hgap=10)
         grid.Add(self.label_url, 0, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
         grid.Add(self.ctrl_url, 1, wx.EXPAND)
         grid.Add(self.label_instance, 0, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
@@ -96,6 +104,10 @@ class Dialog(wx.Dialog):
         grid.Add(self.info_secret, 0, wx.EXPAND)
         grid.Add(self.label_limit, 0, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
         grid.Add(self.ctrl_limit, 0)
+        grid.Add(self.label_date_start, 0, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
+        grid.Add(self.ctrl_date_start, 1, wx.EXPAND)
+        grid.Add(self.label_date_end, 0, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
+        grid.Add(self.ctrl_date_end, 1, wx.EXPAND)
         grid.AddGrowableCol(1)
         box_connexion.Add(grid, 1, wx.ALL | wx.EXPAND, 10)
         base.Add(box_connexion, 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 10)
@@ -107,6 +119,7 @@ class Dialog(wx.Dialog):
         boutons = wx.BoxSizer(wx.HORIZONTAL)
         boutons.Add(self.bouton_tester, 0)
         boutons.Add(self.bouton_appliquer, 0, wx.LEFT, 10)
+        boutons.Add(self.bouton_envoyer, 0, wx.LEFT, 10)
         boutons.AddStretchSpacer()
         boutons.Add(self.bouton_fermer, 0)
         base.Add(boutons, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
@@ -123,6 +136,8 @@ class Dialog(wx.Dialog):
             "pmsl_bridge_url": u"",
             "pmsl_bridge_source_instance": u"noethys-sport",
             "pmsl_bridge_limit": 20,
+            "pmsl_export_date_start": u"",
+            "pmsl_export_date_end": u"",
         })
         self.ctrl_url.SetValue(values.get("pmsl_bridge_url") or u"")
         self.ctrl_instance.SetValue(values.get("pmsl_bridge_source_instance") or u"noethys-sport")
@@ -130,6 +145,8 @@ class Dialog(wx.Dialog):
             self.ctrl_limit.SetValue(int(values.get("pmsl_bridge_limit") or 20))
         except (TypeError, ValueError):
             self.ctrl_limit.SetValue(20)
+        self.ctrl_date_start.SetValue(values.get("pmsl_export_date_start") or u"")
+        self.ctrl_date_end.SetValue(values.get("pmsl_export_date_end") or u"")
 
     def _save_config(self):
         # Le secret n'est jamais persisté.
@@ -137,6 +154,8 @@ class Dialog(wx.Dialog):
             "pmsl_bridge_url": self.ctrl_url.GetValue().strip(),
             "pmsl_bridge_source_instance": self.ctrl_instance.GetValue().strip(),
             "pmsl_bridge_limit": int(self.ctrl_limit.GetValue()),
+            "pmsl_export_date_start": self.ctrl_date_start.GetValue().strip(),
+            "pmsl_export_date_end": self.ctrl_date_end.GetValue().strip(),
         })
 
     def _parameters(self):
@@ -166,6 +185,39 @@ class Dialog(wx.Dialog):
         self.retry_pending = False
         self.bouton_appliquer.SetTexte(_(u"Appliquer"))
         self._run(False)
+
+    def OnEnvoyerReferentiel(self, event=None):
+        busy = None
+        try:
+            url, secret, instance, limit = self._parameters()
+            date_start = self.ctrl_date_start.GetValue().strip() or None
+            date_end = self.ctrl_date_end.GetValue().strip() or None
+            self._save_config()
+            busy = wx.BusyInfo(_(u"Envoi du référentiel Noethys vers PMSL..."), self)
+            if 'phoenix' in wx.PlatformInfo:
+                wx.SafeYield(self, True)
+            else:
+                wx.Yield()
+            result = push_reference(url, secret, instance, date_start=date_start, date_end=date_end)
+        except Exception as err:
+            if busy is not None:
+                del busy
+            self._message(_(u"Échec de l'envoi du référentiel vers PMSL.\n\n%s") % err, wx.ICON_ERROR)
+            return
+        if busy is not None:
+            del busy
+        response = result.get("response") or {}
+        counts = result.get("counts") or {}
+        lines = [
+            _(u"Référentiel Noethys envoyé vers PMSL."),
+            _(u"Activités : %d | Unités : %d | Groupes : %d | Ouvertures : %d") % (int(counts.get("activities") or 0), int(counts.get("units") or 0), int(counts.get("groups") or 0), int(counts.get("openings") or 0)),
+            _(u"Lot PMSL : %s") % (response.get("batch_uuid") or u"—"),
+            _(u"Lignes PMSL : %d") % int(response.get("line_count") or 0),
+            _(u"Déjà reçu : %s") % (u"oui" if response.get("already_registered") else u"non"),
+            _(u"Statut : prévisualisation - validation humaine obligatoire."),
+        ]
+        self.ctrl_resultat.SetValue(u"\n".join(lines))
+        self._message(_(u"Le référentiel a été placé en prévisualisation dans PMSL. Aucune donnée PMSL n'a été appliquée automatiquement."), wx.ICON_INFORMATION)
 
     def OnAppliquer(self, event=None):
         if not self.preview_ok:
