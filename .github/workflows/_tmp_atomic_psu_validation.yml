@@ -1,0 +1,59 @@
+name: Atomic PSU validation
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_psu_validation.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch validation PSU
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Ol/OL_Contratspsu_validation.py')
+          s=p.read_text(encoding='utf-8')
+          a=s.index('    def Valider(self):')
+          b=s.index('\n\n\n\n# -------------------------------------------------------------------------------------------------------------------------------------------', a)
+          old=s[a:b]
+          new=old
+          new=new.replace('        DB = GestionDB.DB()\n\n        for track in listeTracks :', '        DB = GestionDB.DB()\n        ok = True\n        listeMAJTracks = []\n\n        for track in listeTracks :')
+          new=new.replace('IDprestation = DB.ReqInsert("prestations", listeDonnees)', 'IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)\n                if IDprestation is None:\n                    ok = False\n                    break')
+          new=new.replace('DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation)', 'if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):\n                    ok = False\n                    break')
+          new=new.replace('            DB.ExecuterReq(req)\n\n            # MAJ du track\n            track.IDprestation = IDprestation\n            track.heures_facturees = track.heures_a_facturer\n            track.montant_facture = track.montant_a_facturer\n            self.RefreshObject(track)\n\n        DB.Commit()\n        DB.Close()\n\n        # Confirmation succès', '            if DB.ExecuterReq(req) != 1:\n                ok = False\n                break\n\n            # Mémorise les mises à jour d\'interface jusqu\'au commit global\n            listeMAJTracks.append((track, IDprestation))\n\n        if ok:\n            DB.Commit()\n        else:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n        DB.Close()\n\n        if not ok:\n            dlg = wx.MessageDialog(self, _(u"La génération des mensualités a échoué. Aucune mensualité sélectionnée n\'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return False\n\n        # Met à jour l\'interface uniquement après succès complet\n        for track, IDprestation in listeMAJTracks:\n            track.IDprestation = IDprestation\n            track.heures_facturees = track.heures_a_facturer\n            track.montant_facture = track.montant_a_facturer\n            self.RefreshObject(track)\n\n        # Confirmation succès')
+          if new==old:
+              raise SystemExit('aucune modification PSU')
+          s=s[:a]+new+s[b:]
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Ol/OL_Contratspsu_validation.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('noethys/Ol/OL_Contratspsu_validation.py').read_text(encoding='utf-8')
+          b=s[s.index('    def Valider(self):'):s.index('# -------------------------------------------------------------------------------------------------------------------------------------------', s.index('    def Valider(self):'))]
+          assert 'ReqInsert("prestations", listeDonnees, commit=False)' in b
+          assert 'ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False)' in b
+          assert 'if DB.ExecuterReq(req) != 1:' in b
+          assert 'listeMAJTracks.append((track, IDprestation))' in b
+          assert 'DB.Commit()' in b and 'rollback()' in b
+          assert b.index('for track, IDprestation in listeMAJTracks') > b.index('DB.Close()')
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Ol/OL_Contratspsu_validation.py
+          git commit -m "fix: atomiser validation des mensualites PSU"
+          git push origin HEAD:master
