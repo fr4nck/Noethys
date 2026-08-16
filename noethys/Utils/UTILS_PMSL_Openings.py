@@ -52,9 +52,15 @@ class PMSLOpeningService(object):
                                 detail={"unit_activity_id": int(unit[1]), "group_activity_id": int(group[1])})
         activity_id = int(unit[1])
 
-        association = self._one("SELECT IDunite_groupe FROM unites_groupes WHERE IDunite=%d AND IDgroupe=%d" % (unit_id, group_id))
-        if not association:
-            return self._result(action, "blocked", reason="unit_group_not_linked")
+        # Sémantique Noethys native : une unité sans ligne dans unites_groupes est
+        # utilisable avec tous les groupes de son activité. Si des lignes existent,
+        # elles constituent au contraire la liste restrictive des groupes autorisés.
+        linked_groups = self._all("SELECT IDgroupe FROM unites_groupes WHERE IDunite=%d" % unit_id)
+        if linked_groups:
+            allowed_group_ids = [int(row[0]) for row in linked_groups]
+            if group_id not in allowed_group_ids:
+                return self._result(action, "blocked", reason="unit_group_not_linked",
+                                    detail={"allowed_group_ids": allowed_group_ids})
 
         existing = self._one(
             "SELECT IDouverture FROM ouvertures WHERE IDactivite=%d AND IDunite=%d AND IDgroupe=%d AND date='%s'"
@@ -133,9 +139,12 @@ class PMSLOpeningService(object):
         return {"preview": preview, "ack_items": ack_items}
 
     def _one(self, query):
-        self.db.ExecuterReq(query)
-        rows = self.db.ResultatReq()
+        rows = self._all(query)
         return rows[0] if rows else None
+
+    def _all(self, query):
+        self.db.ExecuterReq(query)
+        return self.db.ResultatReq() or []
 
     @staticmethod
     def _positive_int(value):
