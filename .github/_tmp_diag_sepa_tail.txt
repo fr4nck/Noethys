@@ -1,3 +1,0 @@
-TAIL_REPR='ent=track.IDreglement, montant=track.montant))\n            \n            # MAJ du track\n            self.RefreshObject(track)\n            \n            # Sauvegarde dans historique\n            \n        DB.Close() \n\n        # Sauvegarde dans historique\n        UTILS_Historique.InsertActions(listeHistoriqueAjouts)\n    \n'
-REFRESH_COUNT=1
-DELETE_PAIR=True
