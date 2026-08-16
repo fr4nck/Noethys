@@ -717,6 +717,9 @@ class ListView(FastObjectListView):
                     break
 
         if ok:
+            ok = self.SauvegardeReglements(date=datePrelevement, IDcompte=IDcompte, IDmode=IDmode, DB=DB, commit=False) is not False
+
+        if ok:
             DB.Commit()
         else:
             try:
@@ -731,16 +734,14 @@ class ListView(FastObjectListView):
         for track, IDprelevement in listeMAJPrelevements:
             track.IDprelevement = IDprelevement
             self.RefreshObject(track)
-
-        # Sauvegarde des règlements uniquement si le lot est cohérent
-        if self.SauvegardeReglements(date=datePrelevement, IDcompte=IDcompte, IDmode=IDmode) is False:
-            return False
         return True
 
 
-    def SauvegardeReglements(self, date=None, IDcompte=None, IDmode=None):
+    def SauvegardeReglements(self, date=None, IDcompte=None, IDmode=None, DB=None, commit=True):
         """ A effectuer après la sauvegarde des prélèvements """
-        DB = GestionDB.DB()
+        DBexterne = DB is not None
+        if DB is None:
+            DB = GestionDB.DB()
         ok = True
         listeMAJTracks = []
 
@@ -872,16 +873,19 @@ class ListView(FastObjectListView):
 
             # MAJ du track
 
-        if ok:
-            DB.Commit()
-        else:
-            try:
-                DB.connexion.rollback()
-            except Exception:
-                pass
-        DB.Close()
         if not ok:
+            if commit:
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+            if not DBexterne:
+                DB.Close()
             return False
+        if commit:
+            DB.Commit()
+        if not DBexterne:
+            DB.Close()
         for track, IDreglement, dateReglement in listeMAJTracks:
             track.IDreglement = IDreglement
             track.dateReglement = dateReglement
