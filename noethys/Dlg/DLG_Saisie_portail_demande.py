@@ -592,17 +592,23 @@ class Dialog(wx.Dialog):
             self.ctrl_date_validation.Enable(False)
             self.panel_bandeau.SetBackgroundColour(wx.Colour(255, 255, 255))
 
-        # MAJ du track
+        # Sauvegarde dans la base avant de refléter le nouvel état dans l'interface.
+        DB = GestionDB.DB()
+        succes = DB.ReqMAJ("portail_actions", [("etat", etat), ("reponse", reponse), ("traitement_date", traitement_date), ("email_date", self.track.email_date)], "IDaction", self.track.IDaction)
+        DB.Close()
+        if not succes:
+            dlg = wx.MessageDialog(self, _(u"La demande n'a pas pu être enregistrée. Son état précédent a été conservé."), _(u"Erreur d'enregistrement"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
+        # MAJ du track uniquement après succès de l'écriture.
         self.track.reponse = reponse
         self.track.etat = etat
         self.track.traitement_date = traitement_date
         self.panel_bandeau.Refresh()
         self.track.Refresh()
-
-        # Sauvegarde dans la base
-        DB = GestionDB.DB()
-        DB.ReqMAJ("portail_actions", [("etat", etat), ("reponse", reponse), ("traitement_date", traitement_date), ("email_date", self.track.email_date)], "IDaction", self.track.IDaction)
-        DB.Close()
+        return True
 
     def GetEtat(self):
         if self.radio_attente.GetValue() == True:
