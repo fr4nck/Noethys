@@ -1,0 +1,811 @@
+=== IDdepot / depots ===
+noethys/Dlg/DLG_Comptes_bancaires.py:27:        intro = _(u"Vous pouvez ici saisir, modifier ou supprimer des comptes bancaires. Ces données sont utilisées lors du dépôt bancaire des règlements puisque vous pouvez associer un règlement à un compte dès sa saisie.")
+noethys/Dlg/DLG_Saisie_reglement.py:555:        self.avis_depot = None
+noethys/Dlg/DLG_Saisie_reglement.py:592:        self.IDdepot = None
+noethys/Dlg/DLG_Saisie_reglement.py:924:        # Verrou si règlement dans dépôt
+noethys/Dlg/DLG_Saisie_reglement.py:925:        if self.IDdepot != None :
+noethys/Dlg/DLG_Saisie_reglement.py:974:        if self.IDdepot != None :
+noethys/Dlg/DLG_Saisie_reglement.py:975:            texte += _(u"Dépôt n°%d<BR>") % self.IDdepot
+noethys/Dlg/DLG_Saisie_reglement.py:993:        # Avis de dépôt
+noethys/Dlg/DLG_Saisie_reglement.py:994:        if self.avis_depot != None :
+noethys/Dlg/DLG_Saisie_reglement.py:995:            texte += _(u"Avis de dépôt envoyé par Email le %s<BR>") % DateEngFr(str(self.avis_depot))
+noethys/Dlg/DLG_Saisie_reglement.py:1107:        if self.ctrl_check_differe.GetValue() == True and self.IDdepot == None :
+noethys/Dlg/DLG_Saisie_reglement.py:1272:        encaissement_attente, IDdepot, date_saisie, IDutilisateur, avis_depot
+noethys/Dlg/DLG_Saisie_reglement.py:1282:        IDcompte_payeur, date, IDmode, IDemetteur, numero_piece, montant, IDpayeur, observations, numero_quittancier, IDprestation_frais, IDcompte, date_differe, encaissement_attente, IDdepot, date_saisie, IDutilisateur, avis_depot = listeDonnees[0]
+noethys/Dlg/DLG_Saisie_reglement.py:1296:        self.avis_depot = avis_depot
+noethys/Dlg/DLG_Saisie_reglement.py:1313:        if IDdepot != None :
+noethys/Dlg/DLG_Saisie_reglement.py:1321:        self.IDdepot = IDdepot
+noethys/Dlg/DLG_Options_impression_pdf.py:51:        propriete = wxpg.ColourProperty(label=_(u"Fond ligne dépôt"), name="couleur_fond_1", value=wx.Colour(204, 204, 255))
+noethys/Dlg/DLG_Saisie_periode_gestion.py:28:    ("depots", _(u"Dépôts de règlements")),
+noethys/Dlg/DLG_Saisie_periode_gestion.py:179:        verrou_consommations, verrou_prestations, verrou_factures, verrou_reglements, verrou_depots, verrou_cotisations
+noethys/Dlg/DLG_Saisie_periode_gestion.py:185:        date_debut, date_fin, observations, verrou_consommations, verrou_prestations, verrou_factures, verrou_reglements, verrou_depots, verrou_cotisations = listeTemp[0]
+noethys/Dlg/DLG_Saisie_periode_gestion.py:198:        if verrou_depots == 1 : liste_verrous.append("depots")
+noethys/Dlg/DLG_Saisie_periode_gestion.py:234:        verrou_depots = int("depots" in liste_verrous)
+noethys/Dlg/DLG_Saisie_periode_gestion.py:248:            ("verrou_depots", verrou_depots),
+noethys/Dlg/DLG_Filtres_cotisations.py:103:         if filtre["type"] == "depot" :
+noethys/Dlg/DLG_Filtres_cotisations.py:105:            req = """SELECT IDdepot_cotisation, nom FROM depots_cotisations WHERE IDdepot_cotisation=%d;""" % filtre["IDdepot_cotisation"]
+noethys/Dlg/DLG_Filtres_cotisations.py:226:        req = """SELECT IDdepot_cotisation, nom
+noethys/Dlg/DLG_Filtres_cotisations.py:227:        FROM depots_cotisations
+noethys/Dlg/DLG_Filtres_cotisations.py:232:        listeItems = [_(u"Aucun dépôt de cotisations"),]
+noethys/Dlg/DLG_Filtres_cotisations.py:410:        self.check_depot = wx.CheckBox(self, -1, _(u"Dépôt de cotisations :"))
+noethys/Dlg/DLG_Filtres_cotisations.py:411:        self.check_depot.SetToolTip(wx.ToolTip(_(u"Filtre dépôt de cotisations")))
+noethys/Dlg/DLG_Filtres_cotisations.py:412:        self.ctrl_depot = CTRL_Depots_cotisations(self)
+noethys/Dlg/DLG_Filtres_cotisations.py:413:        self.ctrl_depot.SetToolTip(wx.ToolTip(_(u"Sélectionnez un dépôt de cotisations dans la liste")))
+noethys/Dlg/DLG_Filtres_cotisations.py:414:        self.Bind(wx.EVT_CHECKBOX, self.OnCheck, self.check_depot)
+noethys/Dlg/DLG_Filtres_cotisations.py:499:        grid_sizer_depot = wx.FlexGridSizer(rows=1, cols=2, vgap=5, hgap=5)
+noethys/Dlg/DLG_Filtres_cotisations.py:500:        grid_sizer_depot.Add(self.check_depot, 0, wx.ALIGN_CENTER_VERTICAL, 0)
+noethys/Dlg/DLG_Filtres_cotisations.py:501:        grid_sizer_depot.Add(self.ctrl_depot, 0, wx.EXPAND, 0)
+noethys/Dlg/DLG_Filtres_cotisations.py:502:        grid_sizer_depot.AddGrowableCol(1)
+noethys/Dlg/DLG_Filtres_cotisations.py:503:        grid_sizer_contenu.Add(grid_sizer_depot, 1, wx.EXPAND, 0)
+noethys/Dlg/DLG_Filtres_cotisations.py:553:        self.ctrl_depot.Enable(self.check_depot.GetValue())
+noethys/Dlg/DLG_Filtres_cotisations.py:662:        if self.check_depot.GetValue() == True :
+noethys/Dlg/DLG_Filtres_cotisations.py:663:            IDdepot_cotisation = self.ctrl_depot.GetID()
+noethys/Dlg/DLG_Filtres_cotisations.py:664:            if IDdepot_cotisation == None :
+noethys/Dlg/DLG_Filtres_cotisations.py:665:                dlg = wx.MessageDialog(self, _(u"Filtre Dépôt de cotisations : Vous n'avez sélectionné aucun dépôt dans la liste proposée !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Dlg/DLG_Filtres_cotisations.py:670:            filtres.append({"type" : "depot", "IDdepot_cotisation" : IDdepot_cotisation})
+noethys/Dlg/DLG_Filtres_cotisations.py:739:            if filtre["type"] == "depot" :
+noethys/Dlg/DLG_Filtres_cotisations.py:740:                self.check_depot.SetValue(True)
+noethys/Dlg/DLG_Filtres_cotisations.py:741:                self.ctrl_depot.SetID(filtre["IDdepot_cotisation"])
+noethys/Dlg/DLG_Export_compta.py:119:    if ligne["type"] == "depot" :
+noethys/Dlg/DLG_Export_compta.py:123:            FormateDate(ligne["date_depot"], "%d%m%y"),
+noethys/Dlg/DLG_Export_compta.py:348:            condition = "reglements.IDdepot IS NOT NULL AND depots.date IS NOT NULL AND depots.date>='%s' AND depots.date<='%s' AND modes_reglements.type_comptable='%s' " % (self.date_debut, self.date_fin, typeComptable)
+noethys/Dlg/DLG_Export_compta.py:360:        reglements.IDdepot, depots.date, depots.nom,  
+noethys/Dlg/DLG_Export_compta.py:367:        LEFT JOIN depots ON reglements.IDdepot=depots.IDdepot
+noethys/Dlg/DLG_Export_compta.py:378:        for IDreglement, IDcompte_payeur, dateReglement, IDmode, labelMode, numero_piece, montant, IDpayeur, nomPayeur, numero_quittancier, IDcompte, date_differe, attente, IDdepot, dateDepot, nomDepot, date_saisie, IDfamille, code_compta_mode, numeroCompte, nomCompte in listeDonnees :
+noethys/Dlg/DLG_Export_compta.py:409:                # Formatage libellé dépôt
+noethys/Dlg/DLG_Export_compta.py:460:            condition = "reglements.IDdepot IS NOT NULL AND depots.date IS NOT NULL AND depots.date>='%s' AND depots.date<='%s' AND modes_reglements.type_comptable='%s' " % (self.date_debut, self.date_fin, typeComptable)
+noethys/Dlg/DLG_Export_compta.py:466:        depots.IDdepot, depots.date, depots.nom, depots.code_compta, reglements.IDmode, modes_reglements.label, modes_reglements.type_comptable,
+noethys/Dlg/DLG_Export_compta.py:469:        FROM depots
+noethys/Dlg/DLG_Export_compta.py:470:        LEFT JOIN reglements ON reglements.IDdepot = depots.IDdepot
+noethys/Dlg/DLG_Export_compta.py:472:        LEFT JOIN comptes_bancaires ON comptes_bancaires.IDcompte = depots.IDcompte
+noethys/Dlg/DLG_Export_compta.py:474:        GROUP BY depots.IDdepot, reglements.IDmode
+noethys/Dlg/DLG_Export_compta.py:475:        ORDER BY depots.date;""" % condition
+noethys/Dlg/DLG_Export_compta.py:481:        for IDdepot, date, nomDepot, code_compta, IDmode, nomMode, type_comptable, montant, nbreReglements, numeroCompte, nomCompte in listeDonnees :
+noethys/Dlg/DLG_Export_compta.py:486:                "IDdepot" : IDdepot, "date_depot" : UTILS_Dates.DateEngEnDateDD(date), "nom_depot" : nomDepot, "code_compta" : code_compta, "IDmode" : IDmode, "nomMode" : nomMode, 
+noethys/Dlg/DLG_Export_compta.py:490:            dictDepots[IDdepot] = dictTemp
+noethys/Dlg/DLG_Export_compta.py:495:            dlg = Dialog_codes(None, dictCodes=dictDepots, keyStr=False, titre=_(u"Vérification des codes comptables des dépôts de type %s") % typeComptable)
+noethys/Dlg/DLG_Export_compta.py:508:        for IDdepot, dictDepot in dictDepots.items() :
+noethys/Dlg/DLG_Export_compta.py:512:                # Formatage libellé dépôt
+noethys/Dlg/DLG_Export_compta.py:514:                    texte = self.dictParametres["format_depot"],
+noethys/Dlg/DLG_Export_compta.py:516:                        ("{IDDEPOT}", str(dictDepot["IDdepot"])),
+noethys/Dlg/DLG_Export_compta.py:517:                        ("{NOM_DEPOT}", dictDepot["nom_depot"]), 
+noethys/Dlg/DLG_Export_compta.py:518:                        ("{DATE_DEPOT}", FormateDate(dictDepot["date_depot"])), 
+noethys/Dlg/DLG_Export_compta.py:524:                # Mémorisation ligne dépôt
+noethys/Dlg/DLG_Export_compta.py:526:                    "type" : "depot",
+noethys/Dlg/DLG_Export_compta.py:527:                    "IDdepot" : dictDepot["IDdepot"],
+noethys/Dlg/DLG_Export_compta.py:529:                    "nom_depot" : dictDepot["nom_depot"],
+noethys/Dlg/DLG_Export_compta.py:530:                    "date_depot" : dictDepot["date_depot"],
+noethys/Dlg/DLG_Export_compta.py:542:            for IDdepot, dictTemp in dictDepots.items() :
+noethys/Dlg/DLG_Export_compta.py:760:            {"type":"choix", "label":_(u"Regroupement des règlements"), "description":_(u"Mode de regroupement des règlements"), "code":"option_regroupement_reglements", "tip":_(u"Sélectionnez le mode de regroupement des règlements"), "choix":[_(u"Par mode de règlement"), _(u"Par dépôt de règlement")], "defaut":0, "obligatoire":True},
+noethys/Dlg/DLG_Export_compta.py:779:            {"type":"chaine", "label":_(u"Dépôt"), "description":_(u"Format du libellé des dépôts"), "code":"format_depot", "tip":_(u"Saisissez le format du libellé des dépôts. Vous pouvez utiliser les mots-clés suivants : {IDDEPOT} {NOM_DEPOT} {DATE_DEPOT} {MODE_REGLEMENT} {TYPE_COMPTABLE} {NBRE_REGLEMENTS}."), "defaut":u"{NOM_DEPOT} - {DATE_DEPOT}", "obligatoire":True},
+noethys/Dlg/DLG_Export_compta.py:1043:            condition = "reglements.IDdepot IS NOT NULL AND depots.date IS NOT NULL AND depots.date>='%s' AND depots.date<='%s' " % (dictParametres["date_debut"], dictParametres["date_fin"])
+noethys/Dlg/DLG_Export_compta.py:1053:        depots.date, depots.nom,  
+noethys/Dlg/DLG_Export_compta.py:1060:        LEFT JOIN depots ON reglements.IDdepot=depots.IDdepot
+noethys/Dlg/DLG_Export_compta.py:1072:        for IDreglement, date_reglement, label_mode, numero_piece, montant, date_depot, nom_depot, date_saisie, IDfamille, code_compta_mode, numero_compte, nom_compte, nom_payeur in listeDonnees :
+noethys/Dlg/DLG_Export_compta.py:1074:            date_depot = UTILS_Dates.DateEngEnDateDD(date_depot)
+noethys/Dlg/DLG_Famille_reglements.py:141:        self.hyper_prelevement = Hyperlien(self, label=_(u"Avis de dépôt par Email"), infobulle=_(u"Cliquez ici pour activer l'envoi automatique par email des avis de dépôt des règlements"), URL="depot")
+noethys/Dlg/DLG_Famille_reglements.py:151:        if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("familles_depot_email", "modifier") == False : return
+noethys/Dlg/DLG_Famille_reglements.py:153:        intro = _(u"Sélectionnez ici l'adresse Email à laquelle envoyer les avis de dépôt des règlements. Noethys enverra ainsi un avis de dépôt après la validation d'un dépôt de règlements.")
+noethys/Dlg/DLG_Famille_reglements.py:154:        titre = _(u"Activation de l'envoi des avis de dépôt par Email")
+noethys/Dlg/DLG_Famille_reglements.py:155:        dlg = DLG_Selection_email.Dialog(self, IDfamille=self.IDfamille, champ="email_depots", intro=intro, titre=titre)
+noethys/Dlg/DLG_Famille_reglements.py:162:        req = """SELECT IDfamille, email_depots FROM familles WHERE IDfamille=%d;""" % self.IDfamille
+noethys/Dlg/DLG_Famille_reglements.py:201:        self.ctrl_depot = CTRL_Depot(self, IDfamille)
+noethys/Dlg/DLG_Famille_reglements.py:239:        grid_sizer_options.Add(self.ctrl_depot, 0, wx.LEFT|wx.ALIGN_CENTER_VERTICAL, 5)
+noethys/Dlg/DLG_Famille_reglements.py:372:        self.ctrl_depot.MAJ() 
+noethys/Dlg/DLG_Depots_prestations.py:44:            texte = _(u"Sélectionnez un dépôt pour commencer...")
+noethys/Dlg/DLG_Depots_prestations.py:60:        intro = _(u"Sélectionnez un dépôt pour afficher le détail des prestations ventilées avec les règlements inclus dans ce dépôt. Il est ensuite possible d'exporter les résultats sous forme de PDF ou sous Ms Excel.")
+noethys/Dlg/DLG_Depots_prestations.py:61:        titre = _(u"Détail des prestations d'un dépôt")
+noethys/Dlg/DLG_Depots_prestations.py:65:        # Sélection du dépôt
+noethys/Dlg/DLG_Depots_prestations.py:66:        self.staticbox_depot = wx.StaticBox(self, -1, _(u"Sélection du dépôt"))
+noethys/Dlg/DLG_Depots_prestations.py:69:        self.bouton_rechercher = CTRL_Bouton_image.CTRL(self, texte=_(u"Sélectionner un dépôt"), cheminImage="Images/32x32/Loupe.png")
+noethys/Dlg/DLG_Depots_prestations.py:73:        self.ctrl_resultats = CTRL_Depot_prestations.CTRL(self, IDdepot=None)
+noethys/Dlg/DLG_Depots_prestations.py:103:        self.bouton_rechercher.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour rechercher un dépôt")))
+noethys/Dlg/DLG_Depots_prestations.py:115:        staticbox_depot = wx.StaticBoxSizer(self.staticbox_depot, wx.VERTICAL)
+noethys/Dlg/DLG_Depots_prestations.py:116:        grid_sizer_depot = wx.FlexGridSizer(rows=1, cols=3, vgap=5, hgap=5)
+noethys/Dlg/DLG_Depots_prestations.py:117:        grid_sizer_depot.Add(self.ctrl_infos, 0, wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, 0)
+noethys/Dlg/DLG_Depots_prestations.py:118:        grid_sizer_depot.Add(self.bouton_rechercher, 0, wx.ALIGN_CENTER_VERTICAL, 0)
+noethys/Dlg/DLG_Depots_prestations.py:119:        grid_sizer_depot.AddGrowableCol(0)
+noethys/Dlg/DLG_Depots_prestations.py:120:        staticbox_depot.Add(grid_sizer_depot, 1, wx.ALL|wx.EXPAND, 10)
+noethys/Dlg/DLG_Depots_prestations.py:121:        grid_sizer_base.Add(staticbox_depot, 1, wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
+noethys/Dlg/DLG_Depots_prestations.py:167:        # Importation de la liste des dépôts
+noethys/Dlg/DLG_Depots_prestations.py:169:        req = """SELECT depots.IDdepot, depots.date, depots.nom, SUM(reglements.montant), COUNT(reglements.IDreglement)
+noethys/Dlg/DLG_Depots_prestations.py:170:        FROM depots
+noethys/Dlg/DLG_Depots_prestations.py:171:        LEFT JOIN reglements ON reglements.IDdepot = depots.IDdepot
+noethys/Dlg/DLG_Depots_prestations.py:172:        GROUP BY depots.IDdepot
+noethys/Dlg/DLG_Depots_prestations.py:173:        ORDER BY depots.date;"""
+noethys/Dlg/DLG_Depots_prestations.py:179:        for IDdepot, date, nom, total, quantite in listeDepots:
+noethys/Dlg/DLG_Depots_prestations.py:183:            listeDonnees.append({"IDdepot": IDdepot, "nom": nom})
+noethys/Dlg/DLG_Depots_prestations.py:186:        dlg = wx.SingleChoiceDialog(None, _(u"Sélectionnez un dépôt dans la liste :"), _(u"Sélection d'un dépôt"), listeLabels, wx.CHOICEDLG_STYLE)
+noethys/Dlg/DLG_Depots_prestations.py:196:        self.ctrl_resultats.SetIDdepot(dictDepot["IDdepot"])
+noethys/Dlg/DLG_Depots_prestations.py:248:        UTILS_Aide.Aide("Detaildesprestationsdundepot")
+noethys/Dlg/DLG_Famille_cotisations.py:31:        codesColonnes = ["IDcotisation", "date_debut", "date_fin", "beneficiaires", "nom", "numero", "date_creation_carte", "depot_nom", "activites", "observations"]
+noethys/Dlg/DLG_Depots.py:22:from Ol import OL_Reglements_depots
+noethys/Dlg/DLG_Depots.py:68:        self.IDdepot = donnees[17]
+noethys/Dlg/DLG_Depots.py:69:        self.date_depot = donnees[18]
+noethys/Dlg/DLG_Depots.py:70:        if self.date_depot != None :
+noethys/Dlg/DLG_Depots.py:71:            self.date_depot = DateEngEnDateDD(self.date_depot)
+noethys/Dlg/DLG_Depots.py:72:        self.nom_depot = donnees[19]
+noethys/Dlg/DLG_Depots.py:73:        self.verrouillage_depot = donnees[20]
+noethys/Dlg/DLG_Depots.py:80:        self.email_depots = donnees[25]
+noethys/Dlg/DLG_Depots.py:81:        self.avis_depot = donnees[26]
+noethys/Dlg/DLG_Depots.py:84:        if self.IDdepot == None or self.IDdepot == 0 :
+noethys/Dlg/DLG_Depots.py:105:        intro = _(u"Vous pouvez ici saisir, modifier ou supprimer des dépôts bancaires. ")
+noethys/Dlg/DLG_Depots.py:106:        titre = _(u"Gestion des dépôts")
+noethys/Dlg/DLG_Depots.py:111:        self.listviewAvecFooter1 = OL_Reglements_depots.ListviewAvecFooter(self, kwargs={"inclus" : False, "selectionPossible" : False, "size" : (-1, 180) }) 
+noethys/Dlg/DLG_Depots.py:116:        self.staticbox_depots = wx.StaticBox(self, -1, _(u"Dépôts"))
+noethys/Dlg/DLG_Depots.py:118:        self.ctrl_depots = self.listviewAvecFooter2.GetListview()
+noethys/Dlg/DLG_Depots.py:119:        self.ctrl_recherche = OL_Depots.CTRL_Outils(self, listview=self.ctrl_depots)
+noethys/Dlg/DLG_Depots.py:128:        self.check_images.SetValue(UTILS_Config.GetParametre("depots_afficher_images", defaut=True))
+noethys/Dlg/DLG_Depots.py:146:        self.ctrl_depots.MAJ()
+noethys/Dlg/DLG_Depots.py:150:        self.SetTitle(_(u"Gestion des dépôts"))
+noethys/Dlg/DLG_Depots.py:151:        self.bouton_ajouter.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour ajouter un dépôt")))
+noethys/Dlg/DLG_Depots.py:152:        self.bouton_modifier.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour modifier le dépôt sélectionné dans la liste")))
+noethys/Dlg/DLG_Depots.py:153:        self.bouton_supprimer.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour supprimer le dépôt sélectionné dans la liste")))
+noethys/Dlg/DLG_Depots.py:154:        self.bouton_imprimer.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour imprimer la liste des dépôts affichés")))
+noethys/Dlg/DLG_Depots.py:155:        self.check_images.SetToolTip(wx.ToolTip(_(u"Cochez cette case pour afficher les images des modes et émetteurs dans chaque fenêtre du gestionnaire de dépôts")))
+noethys/Dlg/DLG_Depots.py:178:        staticbox_depots = wx.StaticBoxSizer(self.staticbox_depots, wx.VERTICAL)
+noethys/Dlg/DLG_Depots.py:179:        grid_sizer_depots = wx.FlexGridSizer(rows=1, cols=2, vgap=5, hgap=5)
+noethys/Dlg/DLG_Depots.py:186:        grid_sizer_depots.Add(grid_sizer_gauche, 1, wx.EXPAND, 0)
+noethys/Dlg/DLG_Depots.py:194:        grid_sizer_depots.Add(grid_sizer_droit, 1, wx.EXPAND, 0)
+noethys/Dlg/DLG_Depots.py:196:        grid_sizer_depots.AddGrowableRow(0)
+noethys/Dlg/DLG_Depots.py:197:        grid_sizer_depots.AddGrowableCol(0)
+noethys/Dlg/DLG_Depots.py:198:        staticbox_depots.Add(grid_sizer_depots, 1, wx.ALL|wx.EXPAND, 5)
+noethys/Dlg/DLG_Depots.py:199:        grid_sizer_base.Add(staticbox_depots, 1, wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
+noethys/Dlg/DLG_Depots.py:220:        UTILS_Config.SetParametre("depots_afficher_images", self.check_images.GetValue())
+noethys/Dlg/DLG_Depots.py:240:        reglements.IDdepot, depots.date, depots.nom, depots.verrouillage, 
+noethys/Dlg/DLG_Depots.py:243:        familles.IDfamille, familles.email_depots,
+noethys/Dlg/DLG_Depots.py:244:        reglements.avis_depot
+noethys/Dlg/DLG_Depots.py:249:        LEFT JOIN depots ON reglements.IDdepot=depots.IDdepot
+noethys/Dlg/DLG_Depots.py:253:        WHERE reglements.IDdepot IS NULL
+noethys/Dlg/DLG_Depots.py:267:        self.ctrl_depots.Ajouter(None)
+noethys/Dlg/DLG_Depots.py:270:        self.ctrl_depots.Modifier(None)
+noethys/Dlg/DLG_Depots.py:273:        self.ctrl_depots.Supprimer(None)
+noethys/Dlg/DLG_Depots.py:297:        self.ctrl_depots.Apercu(None)
+noethys/Dlg/DLG_Depots.py:300:        self.ctrl_depots.Imprimer(None)
+noethys/Dlg/DLG_Synthese_impayes.py:135:        self.options_depots = ChoixPeriode(self, type="depots", label=_(u"Uniquement les règlements déposés"), infobulle=_(u"Ne seront considérés dans le calcul que les règlements qui ont été déposés en banque sur la période indiquée"))
+noethys/Dlg/DLG_Synthese_impayes.py:199:        grid_sizer_options.Add(self.options_depots, 0, wx.ALIGN_CENTER_VERTICAL, 0)
+noethys/Dlg/DLG_Synthese_impayes.py:486:        if self.ctrl_parametres.options_depots.GetEtat() == True :
+noethys/Dlg/DLG_Synthese_impayes.py:488:            self.ctrl_stats.filtreDepots_dateDebut = self.ctrl_parametres.options_depots.GetDateDebut()
+noethys/Dlg/DLG_Synthese_impayes.py:489:            self.ctrl_stats.filtreDepots_dateFin = self.ctrl_parametres.options_depots.GetDateFin()
+noethys/Dlg/DLG_Synthese_impayes.py:531:        if self.ctrl_parametres.options_depots.GetEtat() == True :
+noethys/Dlg/DLG_Synthese_impayes.py:532:            date_debut_depot = self.ctrl_parametres.options_depots.GetDateDebut()
+noethys/Dlg/DLG_Synthese_impayes.py:533:            if date_debut_depot == None : date_debut_depot = "---"
+noethys/Dlg/DLG_Synthese_impayes.py:534:            date_fin_depot = self.ctrl_parametres.options_depots.GetDateFin()
+noethys/Dlg/DLG_Synthese_impayes.py:535:            if date_fin_depot == None : date_fin_depot = "---"
+noethys/Dlg/DLG_Synthese_impayes.py:536:            listeParametres.append(_(u"Uniquement les règlements déposés du %s au %s") % (date_debut_depot, date_fin_depot))
+noethys/Dlg/DLG_Depots_cotisations.py:21:from Ol import OL_Cotisations_depots
+noethys/Dlg/DLG_Depots_cotisations.py:55:        self.IDdepot_cotisation = donnees[9]
+noethys/Dlg/DLG_Depots_cotisations.py:114:        if self.IDdepot_cotisation == None :
+noethys/Dlg/DLG_Depots_cotisations.py:115:            self.depotStr = _(u"Non déposée")
+noethys/Dlg/DLG_Depots_cotisations.py:117:            self.depotStr = _(u"Dépôt n°%d") % self.IDdepot_cotisation
+noethys/Dlg/DLG_Depots_cotisations.py:120:        if self.IDdepot_cotisation == None or self.IDdepot_cotisation == 0 :
+noethys/Dlg/DLG_Depots_cotisations.py:134:        intro = _(u"Vous pouvez ici saisir, modifier ou supprimer des dépôts de cotisations. Ces dépôts sont utiles si, par exemple, votre cotisation se présente sous la forme d'une carte d'adhérent dont vous devez renvoyer un bordereau de création à une fédération ou une maison-mère. Vous pouvez ainsi savoir quels sont les bordereaux qui ont déjà été envoyés...")
+noethys/Dlg/DLG_Depots_cotisations.py:135:        titre = _(u"Gestion des dépôts de cotisations")
+noethys/Dlg/DLG_Depots_cotisations.py:153:        self.ctrl_cotisations = OL_Cotisations_depots.ListView(self, id=-1, inclus=False, selectionPossible=False, size=(-1, 150), style=wx.LC_REPORT|wx.SUNKEN_BORDER|wx.LC_SINGLE_SEL|wx.LC_HRULES|wx.LC_VRULES)
+noethys/Dlg/DLG_Depots_cotisations.py:158:        self.staticbox_depots = wx.StaticBox(self, -1, _(u"Dépôts de cotisations"))
+noethys/Dlg/DLG_Depots_cotisations.py:160:        self.ctrl_depots = self.listviewAvecFooter.GetListview()
+noethys/Dlg/DLG_Depots_cotisations.py:161:        self.ctrl_depots.MAJ()
+noethys/Dlg/DLG_Depots_cotisations.py:162:        self.ctrl_recherche = OL_Depots_cotisations.CTRL_Outils(self, listview=self.ctrl_depots)
+noethys/Dlg/DLG_Depots_cotisations.py:183:        self.SetTitle(_(u"Gestion des dépôts de cotisations"))
+noethys/Dlg/DLG_Depots_cotisations.py:184:        self.bouton_ajouter.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour ajouter un dépôt")))
+noethys/Dlg/DLG_Depots_cotisations.py:185:        self.bouton_modifier.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour modifier le dépôt sélectionné dans la liste")))
+noethys/Dlg/DLG_Depots_cotisations.py:186:        self.bouton_supprimer.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour supprimer le dépôt sélectionné dans la liste")))
+noethys/Dlg/DLG_Depots_cotisations.py:187:        self.bouton_imprimer.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour imprimer la liste des dépôts affichés")))
+noethys/Dlg/DLG_Depots_cotisations.py:210:        staticbox_depots = wx.StaticBoxSizer(self.staticbox_depots, wx.VERTICAL)
+noethys/Dlg/DLG_Depots_cotisations.py:211:        grid_sizer_depots = wx.FlexGridSizer(rows=1, cols=2, vgap=5, hgap=5)
+noethys/Dlg/DLG_Depots_cotisations.py:218:        grid_sizer_depots.Add(grid_sizer_gauche, 1, wx.EXPAND, 0)
+noethys/Dlg/DLG_Depots_cotisations.py:226:        grid_sizer_depots.Add(grid_sizer_droit, 1, wx.EXPAND, 0)
+noethys/Dlg/DLG_Depots_cotisations.py:228:        grid_sizer_depots.AddGrowableRow(0)
+noethys/Dlg/DLG_Depots_cotisations.py:229:        grid_sizer_depots.AddGrowableCol(0)
+noethys/Dlg/DLG_Depots_cotisations.py:230:        staticbox_depots.Add(grid_sizer_depots, 1, wx.ALL|wx.EXPAND, 5)
+noethys/Dlg/DLG_Depots_cotisations.py:231:        grid_sizer_base.Add(staticbox_depots, 1, wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
+noethys/Dlg/DLG_Depots_cotisations.py:261:        cotisations.IDdepot_cotisation, cotisations.date_debut, cotisations.date_fin, cotisations.IDprestation, 
+noethys/Dlg/DLG_Depots_cotisations.py:269:        WHERE cotisations.IDdepot_cotisation IS NULL;
+noethys/Dlg/DLG_Depots_cotisations.py:281:        self.ctrl_depots.Ajouter(None)
+noethys/Dlg/DLG_Depots_cotisations.py:284:        self.ctrl_depots.Modifier(None)
+noethys/Dlg/DLG_Depots_cotisations.py:287:        self.ctrl_depots.Supprimer(None)
+noethys/Dlg/DLG_Depots_cotisations.py:311:        self.ctrl_depots.Apercu(None)
+noethys/Dlg/DLG_Depots_cotisations.py:314:        self.ctrl_depots.Imprimer(None)
+noethys/Dlg/DLG_Saisie_cotisation.py:495:        self.label_depot = wx.StaticText(self, -1, _(u"Dépôt :"))
+noethys/Dlg/DLG_Saisie_cotisation.py:496:        self.ctrl_depot = wx.TextCtrl(self, -1, u"")
+noethys/Dlg/DLG_Saisie_cotisation.py:530:        self.ctrl_depot.Enable(False)
+noethys/Dlg/DLG_Saisie_cotisation.py:536:            self.label_depot.Show(False)
+noethys/Dlg/DLG_Saisie_cotisation.py:537:            self.ctrl_depot.Show(False)
+noethys/Dlg/DLG_Saisie_cotisation.py:564:        self.ctrl_depot.SetMinSize((70, -1))
+noethys/Dlg/DLG_Saisie_cotisation.py:565:        self.ctrl_depot.SetToolTip(wx.ToolTip(_(u"Numero et date du dépôt")))
+noethys/Dlg/DLG_Saisie_cotisation.py:635:        grid_sizer_carte.Add(self.label_depot, 0, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL, 0)
+noethys/Dlg/DLG_Saisie_cotisation.py:636:        grid_sizer_carte.Add(self.ctrl_depot, 0, wx.EXPAND, 0)
+noethys/Dlg/DLG_Saisie_cotisation.py:1071:        IDdepot_cotisation, date_debut, date_fin, IDprestation, observations, activites
+noethys/Dlg/DLG_Saisie_cotisation.py:1079:        IDfamille, IDindividu, IDtype_cotisation, IDunite_cotisation, date_saisie, IDutilisateur, date_creation_carte, numero, IDdepot_cotisation, date_debut, date_fin, IDprestation, observations, activites = listeDonnees[0]
+noethys/Dlg/DLG_Saisie_cotisation.py:1110:        if IDdepot_cotisation == None:
+noethys/Dlg/DLG_Saisie_cotisation.py:1111:            self.ctrl_depot.SetValue(_(u"Non déposée"))
+noethys/Dlg/DLG_Saisie_cotisation.py:1113:            self.ctrl_depot.SetValue(_(u"Déposée sur le dépôt n°%d") % IDdepot_cotisation)
+noethys/Dlg/DLG_Noedoc.py:727:            (_(u"Numéro ID du dépôt de cotisation"), u"064", "{IDDEPOT_COTISATION}"),
+noethys/Dlg/DLG_Noedoc.py:735:            (_(u"Nom de dépôt de cotisations"), _(u"Dépôt Janvier 2014"), "{NOM_DEPOT}"),
+noethys/Dlg/DLG_Selection_avis_depots.py:19:from Ol import OL_Avis_depots
+noethys/Dlg/DLG_Selection_avis_depots.py:52:        intro = _(u"Sélectionnez les avis de dépôts à envoyer par Email et cliquez sur le bouton OK pour accéder à l'éditeur d'Emails. Si cette liste est vide, c'est qu'aucune famille concernée n'est abonnée à ce service. Les cases non cochées par défaut indiquent qu'un avis a déjà été envoyé.")
+noethys/Dlg/DLG_Selection_avis_depots.py:53:        titre = _(u"Sélection des avis de dépôts à envoyer")
+noethys/Dlg/DLG_Selection_avis_depots.py:57:        self.ctrl_donnees = OL_Avis_depots.ListView(self, id=-1, listeDonnees=listeDonnees, style=wx.LC_HRULES|wx.LC_VRULES|wx.LC_REPORT|wx.SUNKEN_BORDER|wx.LC_SINGLE_SEL)
+noethys/Dlg/DLG_Selection_avis_depots.py:59:        self.ctrl_recherche = OL_Avis_depots.BarreRecherche(self, listview=self.ctrl_donnees)
+noethys/Dlg/DLG_Saisie_depot.py:21:from Ol import OL_Reglements_depots
+noethys/Dlg/DLG_Saisie_depot.py:22:from Dlg import DLG_Saisie_depot_ajouter
+noethys/Dlg/DLG_Saisie_depot.py:142:        self.IDdepot = donnees[17]
+noethys/Dlg/DLG_Saisie_depot.py:143:        self.date_depot = donnees[18]
+noethys/Dlg/DLG_Saisie_depot.py:144:        if self.date_depot != None :
+noethys/Dlg/DLG_Saisie_depot.py:145:            self.date_depot = DateEngEnDateDD(self.date_depot)
+noethys/Dlg/DLG_Saisie_depot.py:146:        self.nom_depot = donnees[19]
+noethys/Dlg/DLG_Saisie_depot.py:147:        self.verrouillage_depot = donnees[20]
+noethys/Dlg/DLG_Saisie_depot.py:154:        self.email_depots = donnees[25]
+noethys/Dlg/DLG_Saisie_depot.py:155:        self.avis_depot = donnees[26]
+noethys/Dlg/DLG_Saisie_depot.py:158:        if self.IDdepot == None or self.IDdepot == 0 :
+noethys/Dlg/DLG_Saisie_depot.py:173:    def __init__(self, parent, IDdepot=None):
+noethys/Dlg/DLG_Saisie_depot.py:174:        wx.Dialog.__init__(self, parent, -1, name="DLG_Saisie_depot", style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER|wx.MAXIMIZE_BOX|wx.MINIMIZE_BOX)
+noethys/Dlg/DLG_Saisie_depot.py:176:        self.IDdepot = IDdepot
+noethys/Dlg/DLG_Saisie_depot.py:180:        self.label_nom = wx.StaticText(self, -1, _(u"Nom du dépôt :"))
+noethys/Dlg/DLG_Saisie_depot.py:182:        self.label_date = wx.StaticText(self, -1, _(u"Date du dépôt :"))
+noethys/Dlg/DLG_Saisie_depot.py:195:        self.listviewAvecFooter = OL_Reglements_depots.ListviewAvecFooter(self, kwargs={"inclus" : True, "selectionPossible" : False}) 
+noethys/Dlg/DLG_Saisie_depot.py:204:        self.bouton_avis_depots = CTRL_Bouton_image.CTRL(self, texte=_(u"Envoyer les avis de dépôt"), cheminImage="Images/32x32/Emails_exp.png")
+noethys/Dlg/DLG_Saisie_depot.py:214:        self.Bind(wx.EVT_BUTTON, self.OnBoutonAvisDepots, self.bouton_avis_depots)
+noethys/Dlg/DLG_Saisie_depot.py:223:        if self.IDdepot != None :
+noethys/Dlg/DLG_Saisie_depot.py:224:            self.SetTitle(_(u"Modification d'un dépôt"))
+noethys/Dlg/DLG_Saisie_depot.py:228:            self.SetTitle(_(u"Saisie d'un dépôt"))
+noethys/Dlg/DLG_Saisie_depot.py:239:        self.ctrl_date.SetToolTip(wx.ToolTip(_(u"Saisissez la date de dépôt")))
+noethys/Dlg/DLG_Saisie_depot.py:240:        self.bouton_imprimer.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour imprimer la liste des règlements du dépôt")))
+noethys/Dlg/DLG_Saisie_depot.py:241:        self.bouton_avis_depots.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour envoyer par Email des avis de dépôts")))
+noethys/Dlg/DLG_Saisie_depot.py:242:        self.ctrl_verrouillage.SetToolTip(wx.ToolTip(_(u"Cochez cette case si le dépôt doit être verrouillé. Dans ce cas, il devient impossible de modifier la liste des règlements qui le contient !")))
+noethys/Dlg/DLG_Saisie_depot.py:243:        self.ctrl_code_compta.SetToolTip(wx.ToolTip(_(u"Saisissez le code comptable de ce dépôt. Utile uniquement pour l'export des écritures comptables vers des logiciels de compta.")))
+noethys/Dlg/DLG_Saisie_depot.py:246:        self.bouton_ajouter.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour ajouter ou retirer des règlements de ce dépôt")))
+noethys/Dlg/DLG_Saisie_depot.py:303:        grid_sizer_boutons.Add(self.bouton_avis_depots, 0, 0, 0)
+noethys/Dlg/DLG_Saisie_depot.py:319:        if self.IDdepot == None : 
+noethys/Dlg/DLG_Saisie_depot.py:320:            IDdepot = 0
+noethys/Dlg/DLG_Saisie_depot.py:322:            IDdepot = self.IDdepot
+noethys/Dlg/DLG_Saisie_depot.py:333:        reglements.IDdepot, depots.date, depots.nom, depots.verrouillage, 
+noethys/Dlg/DLG_Saisie_depot.py:336:        familles.IDfamille, familles.email_depots,
+noethys/Dlg/DLG_Saisie_depot.py:337:        reglements.avis_depot
+noethys/Dlg/DLG_Saisie_depot.py:342:        LEFT JOIN depots ON reglements.IDdepot=depots.IDdepot
+noethys/Dlg/DLG_Saisie_depot.py:346:        WHERE reglements.IDdepot IS NULL OR reglements.IDdepot=%d
+noethys/Dlg/DLG_Saisie_depot.py:349:        """ % IDdepot
+noethys/Dlg/DLG_Saisie_depot.py:364:        req = """SELECT IDdepot, date, nom, verrouillage, IDcompte, observations, code_compta
+noethys/Dlg/DLG_Saisie_depot.py:365:        FROM depots 
+noethys/Dlg/DLG_Saisie_depot.py:366:        WHERE IDdepot=%d;""" % self.IDdepot
+noethys/Dlg/DLG_Saisie_depot.py:371:        IDdepot, date, nom, verrouillage, IDcompte, observations, code_compta = listeDonnees[0]
+noethys/Dlg/DLG_Saisie_depot.py:391:        # Vérifie que le dépôt n'est pas dans une période de gestion verrouillée
+noethys/Dlg/DLG_Saisie_depot.py:392:        if self.gestion.Verification("depots", date) == False:
+noethys/Dlg/DLG_Saisie_depot.py:408:        dlg = DLG_Saisie_depot_ajouter.Dialog(self, tracks=self.tracks, IDcompte=IDcompte)      
+noethys/Dlg/DLG_Saisie_depot.py:435:        etat = self.Sauvegarde_depot() 
+noethys/Dlg/DLG_Saisie_depot.py:441:        # Envoi par Email des avis de dépôt
+noethys/Dlg/DLG_Saisie_depot.py:444:            dlg = wx.MessageDialog(None, _(u"Il y a %d avis de dépôt à envoyer par Email !\n\nSouhaitez-vous le faire maintenant ?") % nbreAvisDepots, _(u"Avis de dépôt"), wx.YES_NO|wx.YES_DEFAULT|wx.ICON_QUESTION)
+noethys/Dlg/DLG_Saisie_depot.py:453:    def Sauvegarde_depot(self):
+noethys/Dlg/DLG_Saisie_depot.py:466:            dlg = wx.MessageDialog(self, _(u"Etes-vous sûr de ne pas vouloir saisir de date de dépôt ?"), _(u"Confirmation"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
+noethys/Dlg/DLG_Saisie_depot.py:483:            dlg = wx.MessageDialog(self, _(u"Etes-vous sûr de ne pas vouloir sélectionner de compte bancaire pour ce dépôt ?"), _(u"Confirmation"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
+noethys/Dlg/DLG_Saisie_depot.py:504:        if self.IDdepot == None :
+noethys/Dlg/DLG_Saisie_depot.py:505:            self.IDdepot = DB.ReqInsert("depots", listeDonnees)
+noethys/Dlg/DLG_Saisie_depot.py:507:            DB.ReqMAJ("depots", listeDonnees, "IDdepot", self.IDdepot)
+noethys/Dlg/DLG_Saisie_depot.py:516:            if track.IDdepot == None and track.inclus == True :
+noethys/Dlg/DLG_Saisie_depot.py:517:                liste_modifications.append((self.IDdepot, track.IDreglement))
+noethys/Dlg/DLG_Saisie_depot.py:519:            if track.IDdepot != None and track.inclus == False :
+noethys/Dlg/DLG_Saisie_depot.py:524:            DB.Executermany("UPDATE reglements SET IDdepot=? WHERE IDreglement=?", liste_modifications, commit=False)
+noethys/Dlg/DLG_Saisie_depot.py:528:    def GetIDdepot(self):
+noethys/Dlg/DLG_Saisie_depot.py:529:        return self.IDdepot
+noethys/Dlg/DLG_Saisie_depot.py:532:        """ Créé le texte infos avec les stats du dépôt """
+noethys/Dlg/DLG_Saisie_depot.py:573:        listeParametres.append(_(u"Nom du dépôt : %s") % nom)
+noethys/Dlg/DLG_Saisie_depot.py:602:            if track.email_depots != None and track.inclus == True and track.avis_depot == None :
+noethys/Dlg/DLG_Saisie_depot.py:610:        """ Envoi des avis de dépôt par Email aux familles """                        
+noethys/Dlg/DLG_Saisie_depot.py:628:            if track.email_depots != None and track.inclus == True :
+noethys/Dlg/DLG_Saisie_depot.py:631:                IDindividu, categorie, adresse = track.email_depots.split(";")
+noethys/Dlg/DLG_Saisie_depot.py:655:                listeDonnees.append({"nomTitulaires": nomTitulaires, "IDreglement" : track.IDreglement, "avis_depot" : track.avis_depot, "IDfamille" : track.IDfamille, "adresse" : adresse, "pieces" : [], "champs" : dictChamps})
+noethys/Dlg/DLG_Saisie_depot.py:657:        from Dlg import DLG_Selection_avis_depots
+noethys/Dlg/DLG_Saisie_depot.py:658:        dlg = DLG_Selection_avis_depots.Dialog(self, listeDonnees=listeDonnees)
+noethys/Dlg/DLG_Saisie_depot.py:684:            DB.ReqMAJ("reglements", [("avis_depot", str(datetime.date.today()) ),], "IDreglement", IDreglement)
+noethys/Dlg/DLG_Saisie_depot.py:689:                track.avis_depot = datetime.date.today()
+noethys/Dlg/DLG_Saisie_depot.py:700:    dialog_1 = Dialog(None, IDdepot=1)
+noethys/Dlg/DLG_Saisie_depot.py:706:##    DB.ReqMAJ("reglements", [("avis_depot", None),], "IDreglement", 11)
+noethys/Dlg/DLG_Saisie_transport.py:145:                self.SetPyData(niveauUnite, {"type" : "depot", "ID" : IDunite, "label" : label})
+noethys/Dlg/DLG_Infos_fichier.py:115:        # Nbre de dépôts
+noethys/Dlg/DLG_Infos_fichier.py:116:        GetQuantite(_(u"Nombre de dépôts bancaires"), "IDdepot", "depots")
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:21:from Ol import OL_Cotisations_depots
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:22:from Dlg import DLG_Saisie_depot_cotisation_ajouter
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:78:        self.IDdepot_cotisation = donnees[9]
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:137:        if self.IDdepot_cotisation == None :
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:138:            self.depotStr = _(u"Non déposée")
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:140:            self.depotStr = _(u"Dépôt n°%d") % self.IDdepot_cotisation
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:143:        if self.IDdepot_cotisation == None or self.IDdepot_cotisation == 0 :
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:153:    def __init__(self, parent, IDdepot_cotisation=None):
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:154:        wx.Dialog.__init__(self, parent, -1, name="DLG_Saisie_depot_cotisation", style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER|wx.MAXIMIZE_BOX|wx.MINIMIZE_BOX)
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:156:        self.IDdepot_cotisation = IDdepot_cotisation
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:173:        self.label_nom = wx.StaticText(self, -1, _(u"Nom du dépôt :"))
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:175:        self.label_date = wx.StaticText(self, -1, _(u"Date du dépôt :"))
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:184:        self.ctrl_cotisations = OL_Cotisations_depots.ListView(self, id=-1, inclus=True, selectionPossible=False, name="OL_cotisations_depot", style=wx.LC_REPORT|wx.SUNKEN_BORDER|wx.LC_SINGLE_SEL|wx.LC_HRULES|wx.LC_VRULES)
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:204:        if self.IDdepot_cotisation != None :
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:205:            self.SetTitle(_(u"Modification d'un dépôt de cotisations"))
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:209:            self.SetTitle(_(u"Saisie d'un dépôt de cotisations"))
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:220:        self.ctrl_date.SetToolTip(wx.ToolTip(_(u"Saisissez la date de dépôt")))
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:221:        self.bouton_imprimer.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour imprimer la liste des cotisations du dépôt")))
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:222:        self.ctrl_verrouillage.SetToolTip(wx.ToolTip(_(u"Cochez cette case si le dépôt doit être verrouillé. Dans ce cas, il devient impossible de modifier la liste des cotisations qui le contient !")))
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:224:        self.bouton_ajouter.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour ajouter ou retirer des cotisations de ce dépôt")))
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:291:        if self.IDdepot_cotisation == None : 
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:292:            IDdepot_cotisation = 0
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:294:            IDdepot_cotisation = self.IDdepot_cotisation
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:302:        cotisations.IDdepot_cotisation, cotisations.date_debut, cotisations.date_fin, cotisations.IDprestation, 
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:310:        WHERE cotisations.IDdepot_cotisation IS NULL OR cotisations.IDdepot_cotisation=%d;
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:311:        """ % IDdepot_cotisation
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:326:        req = """SELECT IDdepot_cotisation, date, nom, verrouillage, observations
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:327:        FROM depots_cotisations
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:328:        WHERE IDdepot_cotisation=%d;""" % self.IDdepot_cotisation
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:333:        IDdepot, date, nom, verrouillage, observations = listeDonnees[0]
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:347:        dlg = DLG_Saisie_depot_cotisation_ajouter.Dialog(self, tracks=self.tracks)      
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:366:        etat = self.Sauvegarde_depot() 
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:374:    def Sauvegarde_depot(self):
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:387:            dlg = wx.MessageDialog(self, _(u"Etes-vous sûr de ne pas vouloir saisir de date de dépôt ?"), _(u"Confirmation"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:410:        if self.IDdepot_cotisation == None :
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:411:            self.IDdepot_cotisation = DB.ReqInsert("depots_cotisations", listeDonnees)
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:413:            DB.ReqMAJ("depots_cotisations", listeDonnees, "IDdepot_cotisation", self.IDdepot_cotisation)
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:422:            if track.IDdepot_cotisation == None and track.inclus == True :
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:423:                DB.ReqMAJ("cotisations", [("IDdepot_cotisation", self.IDdepot_cotisation),], "IDcotisation", track.IDcotisation)
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:425:            if track.IDdepot_cotisation != None and track.inclus == False :
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:426:                DB.ReqMAJ("cotisations", [("IDdepot_cotisation", None),], "IDcotisation", track.IDcotisation)
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:429:    def GetIDdepotCotisation(self):
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:430:        return self.IDdepot_cotisation
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:433:        """ Créé le texte infos avec les stats du dépôt """
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:480:        listeParametres.append(_(u"Nom du dépôt : %s") % nom)
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:501:    dialog_1 = Dialog(None, IDdepot_cotisation=1)
+noethys/Dlg/DLG_Individu_pieces.py:48:        codesColonnes = ["IDcotisation", "date_debut", "date_fin", "beneficiaires", "nom", "numero", "date_creation_carte", "depot_nom", "activites", "observations"]
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:19:from Ol import OL_Cotisations_depots
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:26:        wx.Dialog.__init__(self, parent, -1, name="DLG_Saisie_depot_cotisation_ajouter", style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER|wx.MAXIMIZE_BOX|wx.MINIMIZE_BOX)
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:30:        self.label_intro = wx.StaticText(self, -1, _(u"Double-cliquez sur une cotisation pour l'affecter ou non au dépôt."), style=wx.ALIGN_CENTER)
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:33:        self.ctrl_tri = wx.Choice(self, -1, choices = (_(u"Ordre de saisie"), _(u"Date de début de validité"), _(u"Date de fin de validité"), _(u"Nom des titulaires"), _(u"Type de cotisation"), _(u"Nom de cotisation"), _(u"Numéro de carte"), _(u"Date de dépôt")))
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:42:        self.ctrl_cotisations_disponibles = OL_Cotisations_depots.ListView(self, id=-1, inclus=False, name="OL_cotisations_depot", style=wx.LC_REPORT|wx.SUNKEN_BORDER|wx.LC_SINGLE_SEL|wx.LC_HRULES|wx.LC_VRULES)
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:50:        # Reglements du dépôt
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:51:        self.staticbox_cotisations_depot_staticbox = wx.StaticBox(self, -1, _(u"Cotisations du dépôt"))
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:52:        self.ctrl_cotisations_depot = OL_Cotisations_depots.ListView(self, id=-1, inclus=True, name="OL_cotisations_depot", style=wx.LC_REPORT|wx.SUNKEN_BORDER|wx.LC_SINGLE_SEL|wx.LC_HRULES|wx.LC_VRULES)
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:79:        self.bouton_bas_tout.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour ajouter toutes les cotisations dans le dépôt")))
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:80:        self.bouton_bas.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour ajouter la cotisation disponible selectionné dans le dépôt")))
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:85:        self.bouton_haut.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour retirer la cotisation sélectionnée du dépôt")))
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:86:        self.bouton_haut_tout.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour retirer toutes les cotisations du dépôt")))
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:125:        staticbox_reglements_depot = wx.StaticBoxSizer(self.staticbox_cotisations_depot_staticbox, wx.VERTICAL)
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:126:        staticbox_reglements_depot.Add(self.ctrl_cotisations_depot, 1, wx.ALL|wx.EXPAND, 5)
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:127:        grid_sizer_base.Add(staticbox_reglements_depot, 1, wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:149:        self.ctrl_cotisations_depot.MAJ(tracks, selectionTrack=selectionTrack, nextTrack=nextTrack) 
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:165:        self.ctrl_cotisations_depot.numColonneTri = selection
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:171:        self.ctrl_cotisations_depot.ordreAscendant = selection
+noethys/Dlg/DLG_Saisie_depot_cotisation_ajouter.py:178:        self.ctrl_cotisations_depot.Deplacer()
+noethys/Dlg/DLG_Synthese_ventilation.py:19:from Ctrl import CTRL_Selection_depots
+noethys/Dlg/DLG_Synthese_ventilation.py:52:class Page_depots(wx.Panel):
+noethys/Dlg/DLG_Synthese_ventilation.py:57:        self.ctrl_depots = CTRL_Selection_depots.CTRL(self)
+noethys/Dlg/DLG_Synthese_ventilation.py:58:        self.ctrl_depots.MAJ() 
+noethys/Dlg/DLG_Synthese_ventilation.py:69:        grid_sizer_base.Add(self.ctrl_depots, 0, wx.EXPAND, 0)
+noethys/Dlg/DLG_Synthese_ventilation.py:175:            ("DEPOTS", _(u"Affiche les dépôts sélectionnés"), Page_depots(self)),
+noethys/Dlg/DLG_Synthese_ventilation.py:201:        intro = _(u"Ceci est un tableau d'analyse croisée Ventilation/Dépôts qui vous permet d'afficher deux types de données : 1) Les prestations, regroupées par période, que les règlements des dépôts sélectionnés ont servi à payer, et 2) les dépôts dont les règlements ont servi à payer les prestations d'une période donnée. Ces résultats vous permettront donc de mettre en corrélation les dépôts et les prestations à la fin d'un exercice comptable.")
+noethys/Dlg/DLG_Synthese_ventilation.py:202:        titre = _(u"Tableau d'analyse croisée ventilation/dépôts")
+noethys/Dlg/DLG_Synthese_ventilation.py:364:            # Page dépôts
+noethys/Dlg/DLG_Synthese_ventilation.py:366:                listeDepots = page.ctrl_depots.GetDepots()
+noethys/Dlg/DLG_Synthese_prestations.py:246:        self.options_depots = ChoixPeriode(self, type="depots", label=_(u"Uniquement les règlements déposés"), infobulle=_(u"Ne seront considérés dans le calcul que les règlements qui ont été déposés en banque sur la période indiquée"))
+noethys/Dlg/DLG_Synthese_prestations.py:310:        grid_sizer_options.Add(self.options_depots, 0, wx.ALIGN_CENTER_VERTICAL, 0)
+noethys/Dlg/DLG_Synthese_prestations.py:618:        if self.ctrl_parametres.options_depots.GetEtat() == True :
+noethys/Dlg/DLG_Synthese_prestations.py:620:            self.ctrl_stats.filtreDepots_dateDebut = self.ctrl_parametres.options_depots.GetDateDebut()
+noethys/Dlg/DLG_Synthese_prestations.py:621:            self.ctrl_stats.filtreDepots_dateFin = self.ctrl_parametres.options_depots.GetDateFin()
+noethys/Dlg/DLG_Synthese_prestations.py:663:        if self.ctrl_parametres.options_depots.GetEtat() == True :
+noethys/Dlg/DLG_Synthese_prestations.py:664:            date_debut_depot = self.ctrl_parametres.options_depots.GetDateDebut()
+noethys/Dlg/DLG_Synthese_prestations.py:665:            if date_debut_depot == None : date_debut_depot = "---"
+noethys/Dlg/DLG_Synthese_prestations.py:666:            date_fin_depot = self.ctrl_parametres.options_depots.GetDateFin()
+noethys/Dlg/DLG_Synthese_prestations.py:667:            if date_fin_depot == None : date_fin_depot = "---"
+noethys/Dlg/DLG_Synthese_prestations.py:668:            listeParametres.append(_(u"Uniquement les règlements déposés du %s au %s") % (date_debut_depot, date_fin_depot))
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:19:from Ol import OL_Reglements_depots
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:121:        wx.Dialog.__init__(self, parent, -1, name="DLG_Saisie_depot_ajouter", style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER|wx.MAXIMIZE_BOX|wx.MINIMIZE_BOX)
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:126:        self.label_intro = wx.StaticText(self, -1, _(u"Double-cliquez sur un règlement pour l'affecter ou non au dépôt."), style=wx.ALIGN_CENTER)
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:148:        self.listviewAvecFooter1 = OL_Reglements_depots.ListviewAvecFooter(self, kwargs={"inclus" : False, "sortable" : True, "style": wx.LC_REPORT|wx.SUNKEN_BORDER|wx.LC_HRULES|wx.LC_VRULES|wx.LB_MULTIPLE})
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:157:        # Reglements du dépôt
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:158:        self.staticbox_reglements_depot_staticbox = wx.StaticBox(self, -1, _(u"Règlements du dépôt"))
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:159:        self.listviewAvecFooter2 = OL_Reglements_depots.ListviewAvecFooter(self, kwargs={"inclus" : True, "style": wx.LC_REPORT|wx.SUNKEN_BORDER|wx.LC_HRULES|wx.LC_VRULES|wx.LB_MULTIPLE})
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:160:        self.ctrl_reglements_depot = self.listviewAvecFooter2.GetListview()
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:193:        self.bouton_bas_tout.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour ajouter tous les règlements dans le dépôt")))
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:194:        self.bouton_bas.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour ajouter le règlement disponible selectionné dans le dépôt")))
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:199:        self.bouton_haut.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour retirer le règlement sélectionné du dépôt")))
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:200:        self.bouton_haut_tout.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour retirer tous les règlements du dépôt")))
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:254:        staticbox_reglements_depot = wx.StaticBoxSizer(self.staticbox_reglements_depot_staticbox, wx.VERTICAL)
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:255:        staticbox_reglements_depot.Add(self.listviewAvecFooter2, 1, wx.ALL|wx.EXPAND, 5)
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:256:        grid_sizer_base.Add(staticbox_reglements_depot, 1, wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:283:        # MAJ Liste règlements du dépôt
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:284:        self.ctrl_reglements_depot.MAJ(self.tracks, selectionTrack=selectionTrack, nextTrack=nextTrack) 
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:285:        self.staticbox_reglements_depot_staticbox.SetLabel(self.ctrl_reglements_depot.GetLabelListe(_(u"règlements dans ce dépôt")))
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:293:                ctrl = self.ctrl_reglements_depot
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:311:        #self.ctrl_reglements_depot.numColonneTri = selection
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:317:        #self.ctrl_reglements_depot.ordreAscendant = selection
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:324:        self.ctrl_reglements_depot.Deplacer()
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:354:                    dlg = wx.MessageDialog(self, _(u"Vous avez sélectionné le règlement suivant alors qu'il a été saisi avec l'option 'Encaissement en attente' :\n\n> %s\n\nIl vous est donc impossible de l'inclure dans ce dépôt !") % label, _(u"Règlement en attente"), wx.OK | wx.ICON_ERROR)
+noethys/Dlg/DLG_Saisie_depot_ajouter.py:370:            conclusion = _(u"Souhaitez-vous tout de même les inclure dans ce dépôt ?")
+noethys/Ol/OL_Liste_cotisations.py:46:        self.IDdepot_cotisation = donnees[9]
+noethys/Ol/OL_Liste_cotisations.py:104:        if self.IDdepot_cotisation == None:
+noethys/Ol/OL_Liste_cotisations.py:105:            self.depotStr = _(u"Non déposée")
+noethys/Ol/OL_Liste_cotisations.py:107:            self.depotStr = _(u"Dépôt n°%d") % self.IDdepot_cotisation
+noethys/Ol/OL_Liste_cotisations.py:298:                if filtre["type"] == "depot":
+noethys/Ol/OL_Liste_cotisations.py:300:                        "cotisations.IDdepot_cotisation=%d" % filtre["IDdepot_cotisation"])
+noethys/Ol/OL_Liste_cotisations.py:341:            cotisations.IDdepot_cotisation, cotisations.date_debut, cotisations.date_fin, cotisations.IDprestation, 
+noethys/Ol/OL_Liste_cotisations.py:381:                cotisations.IDdepot_cotisation, cotisations.date_debut, cotisations.date_fin, cotisations.IDprestation, 
+noethys/Ol/OL_Liste_cotisations.py:421:                cotisations.IDdepot_cotisation, cotisations.date_debut, cotisations.date_fin, cotisations.IDprestation,
+noethys/Ol/OL_Liste_cotisations.py:518:            if track.IDdepot_cotisation == None:
+noethys/Ol/OL_Liste_cotisations.py:572:            "depot_nom": ColumnDefn(_(u"Dépôt carte"), 'left', 100, "depotStr", typeDonnee="texte", imageGetter=GetImageDepot),
+noethys/Ol/OL_Depots_cotisations.py:48:        self.IDdepot_cotisation = donnees[0]
+noethys/Ol/OL_Depots_cotisations.py:63:##        if DICT_DETAILS_DEPOTS.has_key(self.IDdepot_cotisation) :
+noethys/Ol/OL_Depots_cotisations.py:64:##            dictDetails = DICT_DETAILS_DEPOTS[self.IDdepot_cotisation]
+noethys/Ol/OL_Depots_cotisations.py:65:##            # Totaux du dépôt
+noethys/Ol/OL_Depots_cotisations.py:111:##        depots_cotisations.IDdepot, reglements.IDmode, modes_reglements.label,
+noethys/Ol/OL_Depots_cotisations.py:113:##        FROM depots
+noethys/Ol/OL_Depots_cotisations.py:114:##        LEFT JOIN reglements ON reglements.IDdepot = depots.IDdepot
+noethys/Ol/OL_Depots_cotisations.py:116:##        GROUP BY depots.IDdepot, reglements.IDmode
+noethys/Ol/OL_Depots_cotisations.py:122:##        for IDdepot, IDmode, nom_mode, montant, nbre in listeDonnees :
+noethys/Ol/OL_Depots_cotisations.py:124:##                if DICT_DETAILS_DEPOTS.has_key(IDdepot) == False :
+noethys/Ol/OL_Depots_cotisations.py:125:##                    DICT_DETAILS_DEPOTS[IDdepot] = {"nbre" : 0, "montant" : 0.0} 
+noethys/Ol/OL_Depots_cotisations.py:126:##                if DICT_DETAILS_DEPOTS[IDdepot].has_key(IDmode) == False :
+noethys/Ol/OL_Depots_cotisations.py:127:##                    DICT_DETAILS_DEPOTS[IDdepot][IDmode] = {"nom" : nom_mode, "nbre" : 0, "montant" : 0.0} 
+noethys/Ol/OL_Depots_cotisations.py:128:##                DICT_DETAILS_DEPOTS[IDdepot][IDmode]["nbre"] += nbre
+noethys/Ol/OL_Depots_cotisations.py:129:##                DICT_DETAILS_DEPOTS[IDdepot][IDmode]["montant"] += montant
+noethys/Ol/OL_Depots_cotisations.py:130:##                DICT_DETAILS_DEPOTS[IDdepot]["nbre"] += nbre
+noethys/Ol/OL_Depots_cotisations.py:131:##                DICT_DETAILS_DEPOTS[IDdepot]["montant"] += montant
+noethys/Ol/OL_Depots_cotisations.py:138:        depots_cotisations.IDdepot_cotisation, depots_cotisations.date, depots_cotisations.nom, 
+noethys/Ol/OL_Depots_cotisations.py:139:        depots_cotisations.verrouillage, depots_cotisations.observations,
+noethys/Ol/OL_Depots_cotisations.py:141:        FROM depots_cotisations
+noethys/Ol/OL_Depots_cotisations.py:142:        LEFT JOIN cotisations ON cotisations.IDdepot_cotisation = depots_cotisations.IDdepot_cotisation
+noethys/Ol/OL_Depots_cotisations.py:143:        GROUP BY depots_cotisations.IDdepot_cotisation
+noethys/Ol/OL_Depots_cotisations.py:144:        ORDER BY depots_cotisations.date;
+noethys/Ol/OL_Depots_cotisations.py:192:            ColumnDefn(_(u"ID"), "left", 42, "IDdepot_cotisation", typeDonnee="entier", imageGetter=GetImageVerrouillage),
+noethys/Ol/OL_Depots_cotisations.py:202:        self.SetEmptyListMsg(_(u"Aucun dépôt de cotisations"))
+noethys/Ol/OL_Depots_cotisations.py:233:            ID = self.Selection()[0].IDdepot_cotisation
+noethys/Ol/OL_Depots_cotisations.py:300:        prt = UTILS_Printer.ObjectListViewPrinter(self, titre=_(u"Liste des dépôts de cotisations"), format="A", orientation=wx.LANDSCAPE)
+noethys/Ol/OL_Depots_cotisations.py:305:        prt = UTILS_Printer.ObjectListViewPrinter(self, titre=_(u"Liste des dépôts de cotisations"), format="A", orientation=wx.LANDSCAPE)
+noethys/Ol/OL_Depots_cotisations.py:310:        UTILS_Export.ExportTexte(self, titre=_(u"Liste des dépôts de cotisations"))
+noethys/Ol/OL_Depots_cotisations.py:314:        UTILS_Export.ExportExcel(self, titre=_(u"Liste des dépôts de cotisations"))
+noethys/Ol/OL_Depots_cotisations.py:317:        if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("cotisations_depots", "creer") == False : return
+noethys/Ol/OL_Depots_cotisations.py:318:        from Dlg import DLG_Saisie_depot_cotisation
+noethys/Ol/OL_Depots_cotisations.py:319:        dlg = DLG_Saisie_depot_cotisation.Dialog(self, IDdepot_cotisation=None) 
+noethys/Ol/OL_Depots_cotisations.py:321:            IDdepot_cotisation = dlg.GetIDdepotCotisation()
+noethys/Ol/OL_Depots_cotisations.py:322:            self.MAJ(IDdepot_cotisation)
+noethys/Ol/OL_Depots_cotisations.py:327:        if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("cotisations_depots", "modifier") == False : return
+noethys/Ol/OL_Depots_cotisations.py:329:            dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucun dépôt de cotisations à modifier dans la liste !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ol/OL_Depots_cotisations.py:333:        IDdepot_cotisation = self.Selection()[0].IDdepot_cotisation
+noethys/Ol/OL_Depots_cotisations.py:334:        from Dlg import DLG_Saisie_depot_cotisation
+noethys/Ol/OL_Depots_cotisations.py:335:        dlg = DLG_Saisie_depot_cotisation.Dialog(self, IDdepot_cotisation=IDdepot_cotisation)      
+noethys/Ol/OL_Depots_cotisations.py:337:            self.MAJ(IDdepot_cotisation)
+noethys/Ol/OL_Depots_cotisations.py:342:        if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("cotisations_depots", "supprimer") == False : return
+noethys/Ol/OL_Depots_cotisations.py:344:            dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucun dépôt de cotisations à supprimer dans la liste"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ol/OL_Depots_cotisations.py:348:        IDdepot_cotisation = self.Selection()[0].IDdepot_cotisation
+noethys/Ol/OL_Depots_cotisations.py:351:            dlg = wx.MessageDialog(self, _(u"Des cotisations sont déjà associées à ce dépôt. Vous ne pouvez donc pas le supprimer !"), _(u"Suppression impossible"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ol/OL_Depots_cotisations.py:355:        dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment supprimer ce dépôt de cotisations ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
+noethys/Ol/OL_Depots_cotisations.py:358:            DB.ReqDEL("depots_cotisations", "IDdepot_cotisation", IDdepot_cotisation)
+noethys/Ol/OL_Depots_cotisations.py:382:        self.SetDescriptiveText(_(u"Rechercher un dépôt de cotisations..."))
+noethys/Ol/OL_Depots_cotisations.py:385:        self.listView = self.parent.ctrl_depots
+noethys/Ol/OL_Depots_cotisations.py:420:            "nom" : {"mode" : "nombre", "singulier" : _(u"dépôt"), "pluriel" : _(u"dépôts"), "alignement" : wx.ALIGN_CENTER},
+noethys/Ol/OL_Reglements_depots.py:98:                message = _(u"Vous devez d'abord sélectionner un règlement à retirer du dépôt !")
+noethys/Ol/OL_Reglements_depots.py:100:                message = _(u"Vous devez d'abord sélectionner un règlement disponible à ajouter au dépôt !")
+noethys/Ol/OL_Reglements_depots.py:195:        self.afficheImages = UTILS_Config.GetParametre("depots_afficher_images", defaut=True)
+noethys/Ol/OL_Reglements_depots.py:212:        dictImages["standard"]["avis_depot_oui"] = imageList.Add(self.ConvertTailleImage(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Emails_exp.png"), wx.BITMAP_TYPE_PNG), taille))
+noethys/Ol/OL_Reglements_depots.py:213:        dictImages["standard"]["avis_depot_non"] = imageList.Add(self.ConvertTailleImage(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Emails_exp_gris.png"), wx.BITMAP_TYPE_PNG), taille))
+noethys/Ol/OL_Reglements_depots.py:268:            if track.IDdepot == None :
+noethys/Ol/OL_Reglements_depots.py:290:            if track.avis_depot != None :
+noethys/Ol/OL_Reglements_depots.py:291:                return dictImages["standard"]["avis_depot_oui"]
+noethys/Ol/OL_Reglements_depots.py:292:            if track.email_depots!= None :
+noethys/Ol/OL_Reglements_depots.py:293:                return dictImages["standard"]["avis_depot_non"]
+noethys/Ol/OL_Reglements_depots.py:335:            ColumnDefn(_(u"Avis"), 'left', 110, "avis_depot", typeDonnee="date", stringConverter=FormateDateCourt, imageGetter=GetImageAvisDepot),
+noethys/Ol/OL_Reglements_depots.py:346:            self.SetEmptyListMsg(_(u"Aucun règlement dans ce dépôt"))
+noethys/Ol/OL_Reglements_depots.py:388:        if self.GetGrandParent().GetName() == "DLG_Saisie_depot" :
+noethys/Ol/OL_Reglements_depots.py:444:            if self.GetGrandParent().GetName() == "DLG_Saisie_depot" :
+noethys/Ol/OL_Reglements_depots.py:446:            if self.GetGrandParent().GetName() == "DLG_Saisie_depot_ajouter" :
+noethys/Ol/OL_Periodes_gestion.py:54:        verrou_consommations, verrou_prestations, verrou_factures, verrou_reglements, verrou_depots, verrou_cotisations
+noethys/Ol/OL_Prelevements_sepa.py:120:        self.IDdepot = donnees["IDdepot"]
+noethys/Ol/OL_Prelevements_sepa.py:172:    reglements.IDreglement, reglements.date, reglements.IDdepot,
+noethys/Ol/OL_Prelevements_sepa.py:184:    for IDprelevement, IDlot, IDfamille, prelevement_banque, prelevement_iban, prelevement_bic, IDmandat, prelevement_reference_mandat, prelevement_date_mandat, sequence, titulaire, type_prelevement, IDfacture, libelle, montant, statut, nomBanque, IDreglement, dateReglement, IDdepot, IDcompte_payeur in listeDonnees :
+noethys/Ol/OL_Prelevements_sepa.py:191:            "IDreglement" : IDreglement, "dateReglement" : dateReglement, "IDdepot" : IDdepot, "IDcompte_payeur" : IDcompte_payeur,
+noethys/Ol/OL_Prelevements_sepa.py:460:                    "IDdepot" : None, "IDcompte_payeur" : track.IDcompte_payeur,
+noethys/Ol/OL_Prelevements_sepa.py:485:##            "IDreglement" : None, "dateReglement" : None, "IDdepot" : None, "IDcompte_payeur" : None,
+noethys/Ol/OL_Prelevements_sepa.py:576:            if track.IDdepot != None :
+noethys/Ol/OL_Prelevements_sepa.py:579:            dlg = wx.MessageDialog(self, _(u"Suppression interdite car %d prélèvement(s) de la sélection ont déjà un règlement attribué à un dépôt de règlement !") % len(listeDepots), _(u"Remarque"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ol/OL_Prelevements_sepa.py:626:                    if track.IDdepot != None :
+noethys/Ol/OL_Prelevements_sepa.py:638:            dlg = wx.MessageDialog(self, _(u"Notez que Noethys n'a pas procédé changement de statut de %d prélèvement(s) car le règlement correspondant appartient déjà à un dépôt de règlement !") % len(listeDepots), _(u"Remarque"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ol/OL_Prelevements_sepa.py:662:                    if track.IDdepot != None :
+noethys/Ol/OL_Prelevements_sepa.py:677:            dlg = wx.MessageDialog(self, _(u"Notez que Noethys n'a pas procédé à la suppression de %d prélèvement(s) car le règlement correspondant appartient déjà à un dépôt de règlement !") % len(listeDepots), _(u"Remarque"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ol/OL_Depots.py:49:        self.IDdepot = donnees[0]
+noethys/Ol/OL_Depots.py:63:        if self.IDdepot in DICT_DETAILS_DEPOTS :
+noethys/Ol/OL_Depots.py:64:            dictDetails = DICT_DETAILS_DEPOTS[self.IDdepot]
+noethys/Ol/OL_Depots.py:65:            # Totaux du dépôt
+noethys/Ol/OL_Depots.py:111:        depots.IDdepot, reglements.IDmode, modes_reglements.label,
+noethys/Ol/OL_Depots.py:113:        FROM depots
+noethys/Ol/OL_Depots.py:114:        LEFT JOIN reglements ON reglements.IDdepot = depots.IDdepot
+noethys/Ol/OL_Depots.py:116:        GROUP BY depots.IDdepot, reglements.IDmode
+noethys/Ol/OL_Depots.py:122:        for IDdepot, IDmode, nom_mode, montant, nbre in listeDonnees :
+noethys/Ol/OL_Depots.py:124:                if (IDdepot in DICT_DETAILS_DEPOTS) == False :
+noethys/Ol/OL_Depots.py:125:                    DICT_DETAILS_DEPOTS[IDdepot] = {"nbre" : 0, "montant" : 0.0} 
+noethys/Ol/OL_Depots.py:126:                if (IDmode in DICT_DETAILS_DEPOTS[IDdepot]) == False :
+noethys/Ol/OL_Depots.py:127:                    DICT_DETAILS_DEPOTS[IDdepot][IDmode] = {"nom" : nom_mode, "nbre" : 0, "montant" : 0.0} 
+noethys/Ol/OL_Depots.py:128:                DICT_DETAILS_DEPOTS[IDdepot][IDmode]["nbre"] += nbre
+noethys/Ol/OL_Depots.py:129:                DICT_DETAILS_DEPOTS[IDdepot][IDmode]["montant"] += montant
+noethys/Ol/OL_Depots.py:130:                DICT_DETAILS_DEPOTS[IDdepot]["nbre"] += nbre
+noethys/Ol/OL_Depots.py:131:                DICT_DETAILS_DEPOTS[IDdepot]["montant"] += montant
+noethys/Ol/OL_Depots.py:138:        IDdepot, depots.date, depots.nom, verrouillage, 
+noethys/Ol/OL_Depots.py:139:        depots.IDcompte, comptes_bancaires.nom, comptes_bancaires.numero, 
+noethys/Ol/OL_Depots.py:141:        FROM depots
+noethys/Ol/OL_Depots.py:142:        LEFT JOIN comptes_bancaires ON comptes_bancaires.IDcompte = depots.IDcompte
+noethys/Ol/OL_Depots.py:143:        ORDER BY depots.date;
+noethys/Ol/OL_Depots.py:194:            ColumnDefn(_(u"ID"), "left", 42, "IDdepot", typeDonnee="entier", imageGetter=GetImageVerrouillage),
+noethys/Ol/OL_Depots.py:205:        self.SetEmptyListMsg(_(u"Aucun dépôt"))
+noethys/Ol/OL_Depots.py:236:            ID = self.Selection()[0].IDdepot
+noethys/Ol/OL_Depots.py:303:        prt = UTILS_Printer.ObjectListViewPrinter(self, titre=_(u"Liste des dépôts"), format="A", orientation=wx.LANDSCAPE)
+noethys/Ol/OL_Depots.py:308:        prt = UTILS_Printer.ObjectListViewPrinter(self, titre=_(u"Liste des dépôts"), format="A", orientation=wx.LANDSCAPE)
+noethys/Ol/OL_Depots.py:313:        UTILS_Export.ExportTexte(self, titre=_(u"Liste des dépôts"))
+noethys/Ol/OL_Depots.py:317:        UTILS_Export.ExportExcel(self, titre=_(u"Liste des dépôts"))
+noethys/Ol/OL_Depots.py:320:        if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("reglements_depots", "creer") == False : return
+noethys/Ol/OL_Depots.py:321:        from Dlg import DLG_Saisie_depot
+noethys/Ol/OL_Depots.py:322:        dlg = DLG_Saisie_depot.Dialog(self, IDdepot=None) 
+noethys/Ol/OL_Depots.py:324:            IDdepot = dlg.GetIDdepot()
+noethys/Ol/OL_Depots.py:325:            self.MAJ(IDdepot)
+noethys/Ol/OL_Depots.py:330:        if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("reglements_depots", "modifier") == False : return
+noethys/Ol/OL_Depots.py:332:            dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucun dépôt à modifier dans la liste !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ol/OL_Depots.py:336:        IDdepot = self.Selection()[0].IDdepot
+noethys/Ol/OL_Depots.py:337:        from Dlg import DLG_Saisie_depot
+noethys/Ol/OL_Depots.py:338:        dlg = DLG_Saisie_depot.Dialog(self, IDdepot=IDdepot)      
+noethys/Ol/OL_Depots.py:340:            self.MAJ(IDdepot)
+noethys/Ol/OL_Depots.py:345:        if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("reglements_depots", "supprimer") == False : return
+noethys/Ol/OL_Depots.py:347:            dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucun dépôt à supprimer dans la liste"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ol/OL_Depots.py:352:        IDdepot = self.Selection()[0].IDdepot
+noethys/Ol/OL_Depots.py:355:            dlg = wx.MessageDialog(self, _(u"Des règlements sont déjà associés à ce dépôt. Vous ne pouvez donc pas le supprimer !"), _(u"Suppression impossible"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ol/OL_Depots.py:362:        if gestion.Verification("depots", track.date) == False: return False
+noethys/Ol/OL_Depots.py:365:        dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment supprimer ce dépôt ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
+noethys/Ol/OL_Depots.py:368:            DB.ReqDEL("depots", "IDdepot", IDdepot)
+noethys/Ol/OL_Depots.py:392:        self.SetDescriptiveText(_(u"Rechercher un dépôt..."))
+noethys/Ol/OL_Depots.py:395:        self.listView = self.parent.ctrl_depots
+noethys/Ol/OL_Depots.py:430:            "nom" : {"mode" : "nombre", "singulier" : _(u"dépôt"), "pluriel" : _(u"dépôts"), "alignement" : wx.ALIGN_CENTER},
+noethys/Ol/OL_PES_mandat.py:69:        self.IDdepot = donnees["IDdepot"]
+noethys/Ol/OL_PES_mandat.py:144:        reglements.IDreglement, reglements.date, reglements.IDdepot,
+noethys/Ol/OL_PES_mandat.py:158:        for IDpiece, IDlot, IDfamille, prelevement, prelevement_iban, prelevement_bic, prelevement_IDmandat, prelevement_rum, prelevement_date_mandat, prelevement_sequence, prelevement_titulaire, prelevement_statut, type_piece, IDfacture, libelle, montant, IDreglement, dateReglement, IDdepot, IDcompte_payeur, titulaire_helios, nomLot, datePrelevement in listeDonnees :
+noethys/Ol/OL_PES_mandat.py:165:                "IDreglement" : IDreglement, "dateReglement" : dateReglement, "IDdepot" : IDdepot, "IDcompte_payeur" : IDcompte_payeur,
+noethys/Ol/OL_Prelevements_national.py:77:        self.IDdepot = donnees["IDdepot"]
+noethys/Ol/OL_Prelevements_national.py:107:    reglements.IDreglement, reglements.date, reglements.IDdepot,
+noethys/Ol/OL_Prelevements_national.py:119:    for IDprelevement, IDfamille, prelevement_etab, prelevement_guichet, prelevement_numero, prelevement_banque, prelevement_cle, prelevement_iban, prelevement_bic, prelevement_reference_mandat, prelevement_date_mandat, titulaire, type_prelevement, IDfacture, libelle, montant, statut, IDlot, nomBanque, IDreglement, dateReglement, IDdepot, IDcompte_payeur in listeDonnees :
+noethys/Ol/OL_Prelevements_national.py:126:            "IDreglement" : IDreglement, "dateReglement" : dateReglement, "IDdepot" : IDdepot, "IDcompte_payeur" : IDcompte_payeur,
+noethys/Ol/OL_Prelevements_national.py:391:            "IDreglement" : None, "dateReglement" : None, "IDdepot" : None, "IDcompte_payeur" : None,
+noethys/Ol/OL_Prelevements_national.py:429:                "IDdepot" : None, "IDcompte_payeur" : track.IDcompte_payeur,
+noethys/Ol/OL_Prelevements_national.py:480:            if track.IDdepot != None :
+noethys/Ol/OL_Prelevements_national.py:483:            dlg = wx.MessageDialog(self, _(u"Suppression interdite car %d prélèvement(s) de la sélection ont déjà un règlement attribué à un dépôt de règlement !") % len(listeDepots), _(u"Remarque"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ol/OL_Prelevements_national.py:526:                    if track.IDdepot != None :
+noethys/Ol/OL_Prelevements_national.py:538:            dlg = wx.MessageDialog(self, _(u"Notez que Noethys n'a pas procédé changement de statut de %d prélèvement(s) car le règlement correspondant appartient déjà à un dépôt de règlement !") % len(listeDepots), _(u"Remarque"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ol/OL_Prelevements_national.py:562:                    if track.IDdepot != None :
+noethys/Ol/OL_Prelevements_national.py:577:            dlg = wx.MessageDialog(self, _(u"Notez que Noethys n'a pas procédé à la suppression de %d prélèvement(s) car le règlement correspondant appartient déjà à un dépôt de règlement !") % len(listeDepots), _(u"Remarque"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ol/OL_Cotisations_depots.py:73:                message = _(u"Vous devez d'abord sélectionner une cotisation à retirer du dépôt !")
+noethys/Ol/OL_Cotisations_depots.py:75:                message = _(u"Vous devez d'abord sélectionner une cotisation disponible à ajouter au dépôt !")
+noethys/Ol/OL_Cotisations_depots.py:119:            if track.IDdepot_cotisation == None : return "pasok"
+noethys/Ol/OL_Cotisations_depots.py:149:            self.SetEmptyListMsg(_(u"Aucune cotisation dans ce dépôt"))
+noethys/Ol/OL_Cotisations_depots.py:275:            if self.GetParent().GetName() == "DLG_Saisie_depot_cotisation" :
+noethys/Ol/OL_Cotisations_depots.py:277:            if self.GetParent().GetName() == "DLG_Saisie_depot_cotisation_ajouter" :
+noethys/Ol/OL_Avis_depots.py:35:        self.avis_depot = donnees["avis_depot"]
+noethys/Ol/OL_Avis_depots.py:138:        prt = UTILS_Printer.ObjectListViewPrinter(self, titre=_(u"Liste des avis de dépôts"), format="A", orientation=wx.PORTRAIT)
+noethys/Ol/OL_Avis_depots.py:143:        prt = UTILS_Printer.ObjectListViewPrinter(self, titre=_(u"Liste des avis de dépôts"), format="A", orientation=wx.PORTRAIT)
+noethys/Ol/OL_Avis_depots.py:148:        UTILS_Export.ExportTexte(self, titre=_(u"Liste des avis de dépôts"))
+noethys/Ol/OL_Avis_depots.py:152:        UTILS_Export.ExportExcel(self, titre=_(u"Liste des avis de dépôts"))
+noethys/Ol/OL_Avis_depots.py:160:            if track.avis_depot == None :
+noethys/Ol/OL_Reglements.py:75:        self.IDdepot = donnees[17]
+noethys/Ol/OL_Reglements.py:76:        self.date_depot = donnees[18]
+noethys/Ol/OL_Reglements.py:77:        if self.date_depot != None:
+noethys/Ol/OL_Reglements.py:78:            self.date_depot = DateEngEnDateDD(self.date_depot)
+noethys/Ol/OL_Reglements.py:79:        self.nom_depot = donnees[19]
+noethys/Ol/OL_Reglements.py:80:        self.verrouillage_depot = donnees[20]
+noethys/Ol/OL_Reglements.py:107:        self.IDdepot = kwds.pop("IDdepot", None)
+noethys/Ol/OL_Reglements.py:142:        if self.mode == "depot":
+noethys/Ol/OL_Reglements.py:143:            if self.IDdepot == None:
+noethys/Ol/OL_Reglements.py:144:                criteres = "WHERE reglements.IDdepot IS NULL"
+noethys/Ol/OL_Reglements.py:146:                criteres = "WHERE reglements.IDdepot=%d" % self.IDdepot
+noethys/Ol/OL_Reglements.py:169:        reglements.IDdepot, depots.date, depots.nom, depots.verrouillage, 
+noethys/Ol/OL_Reglements.py:179:        LEFT JOIN depots ON reglements.IDdepot=depots.IDdepot
+noethys/Ol/OL_Reglements.py:238:            if track.IDdepot == None:
+noethys/Ol/OL_Reglements.py:277:            ColumnDefn(_(u"Dépôt"), 'left', 90, "date_depot", typeDonnee="date",
+noethys/Ol/OL_Reglements.py:525:        IDdepot = self.Selection()[0].IDdepot
+noethys/Ol/OL_Reglements.py:527:        # Si appartient à un dépot : annulation
+noethys/Ol/OL_Reglements.py:528:        if IDdepot != None:
+noethys/Ol/OL_Reglements.py:529:            dlg = wx.MessageDialog(self, _(u"Ce règlement est déjà attribué à un dépôt. Vous ne pouvez donc pas le supprimer !"), _(
+noethys/Ol/OL_PES_pieces.py:74:        self.IDdepot = donnees["IDdepot"]
+noethys/Ol/OL_PES_pieces.py:242:    reglements.IDreglement, reglements.date, reglements.IDdepot,
+noethys/Ol/OL_PES_pieces.py:254:    for IDpiece, IDlot, IDfamille, prelevement, prelevement_iban, prelevement_bic, prelevement_IDmandat, prelevement_rum, prelevement_date_mandat, prelevement_sequence, prelevement_titulaire, prelevement_statut, type_piece, IDfacture, libelle, montant, IDreglement, dateReglement, IDdepot, IDcompte_payeur, titulaire_helios, tiers_solidaire, numero in listeDonnees :
+noethys/Ol/OL_PES_pieces.py:265:            "IDreglement" : IDreglement, "dateReglement" : dateReglement, "IDdepot" : IDdepot, "IDcompte_payeur" : IDcompte_payeur,
+noethys/Ol/OL_PES_pieces.py:545:            "IDreglement" : None, "dateReglement" : None, "IDdepot" : None, "IDcompte_payeur" : None,
+noethys/Ol/OL_PES_pieces.py:641:                "IDdepot" : None, "IDcompte_payeur" : track.IDcompte_payeur, "titulaire_helios" : track.titulaire_helios, "tiers_solidaire": track.tiers_solidaire, "numero" : track.numero, "dictAutresDonnees" : dictTempAutresDonnees,
+noethys/Ol/OL_PES_pieces.py:711:            if track.IDdepot != None :
+noethys/Ol/OL_PES_pieces.py:714:            dlg = wx.MessageDialog(self, _(u"Suppression interdite car %d pièce(s) de la sélection ont déjà un règlement attribué à un dépôt de règlement !") % len(listeDepots), _(u"Remarque"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ol/OL_PES_pieces.py:803:                    if track.IDdepot != None :
+noethys/Ol/OL_PES_pieces.py:815:            dlg = wx.MessageDialog(self, _(u"Notez que Noethys n'a pas procédé changement de statut de %d pièce(s) car le règlement correspondant appartient déjà à un dépôt de règlement !") % len(listeDepots), _(u"Remarque"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ol/OL_PES_pieces.py:839:                    if track.IDdepot != None :
+noethys/Ol/OL_PES_pieces.py:854:            dlg = wx.MessageDialog(self, _(u"Notez que Noethys n'a pas procédé à la suppression de %d pièce(s) car le règlement correspondant appartient déjà à un dépôt de règlement !") % len(listeDepots), _(u"Remarque"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ol/OL_Liste_reglements_detail.py:51:        self.IDdepot = donnees[11]
+noethys/Ol/OL_Liste_reglements_detail.py:52:        self.date_depot = donnees[12]
+noethys/Ol/OL_Liste_reglements_detail.py:53:        if self.date_depot != None :
+noethys/Ol/OL_Liste_reglements_detail.py:54:            self.date_depot = UTILS_Dates.DateEngEnDateDD(self.date_depot)
+noethys/Ol/OL_Liste_reglements_detail.py:55:        self.nom_depot = donnees[13]
+noethys/Ol/OL_Liste_reglements_detail.py:180:        payeurs.nom, reglements.IDdepot, depots.date, depots.nom, comptes_payeurs.IDfamille
+noethys/Ol/OL_Liste_reglements_detail.py:185:        LEFT JOIN depots ON reglements.IDdepot=depots.IDdepot
+noethys/Ol/OL_Liste_reglements_detail.py:237:            if track.IDdepot == None :
+noethys/Ol/OL_Liste_reglements_detail.py:265:            ColumnDefn(_(u"Date dépôt"), 'left', 75, "date_depot", typeDonnee="date", stringConverter=FormateDateCourt),
+noethys/Ol/OL_Liste_reglements_detail.py:266:            ColumnDefn(_(u"Nom dépôt"), 'left', 110, "nom_depot", typeDonnee="texte"),
+noethys/Ol/OL_Prelevements.py:77:        self.IDdepot = donnees["IDdepot"]
+noethys/Ol/OL_Prelevements.py:140:        reglements.IDreglement, reglements.date, reglements.IDdepot,
+noethys/Ol/OL_Prelevements.py:154:        for IDprelevement, IDlot, IDfamille, prelevement_banque, prelevement_iban, prelevement_bic, IDmandat, prelevement_reference_mandat, prelevement_date_mandat, sequence, titulaire, type_prelevement, IDfacture, libelle, montant, statut, nomBanque, IDreglement, dateReglement, IDdepot, IDcompte_payeur, dateLot, nomLot in listeDonnees :
+noethys/Ol/OL_Prelevements.py:163:                "IDreglement" : IDreglement, "dateReglement" : dateReglement, "IDdepot" : IDdepot, "IDcompte_payeur" : IDcompte_payeur,
+noethys/Ol/OL_Comptes_bancaires.py:253:        # Vérifie que ce compte n'a pas déjà été attribué à un dépôt
+noethys/Ol/OL_Comptes_bancaires.py:255:        req = """SELECT COUNT(IDdepot)
+noethys/Ol/OL_Comptes_bancaires.py:256:        FROM depots 
+noethys/Ol/OL_Comptes_bancaires.py:263:            dlg = wx.MessageDialog(self, _(u"Ce compte a déjà été attribué à %d dépôt(s) de règlements.\n\nVous ne pouvez donc pas le supprimer !") % nbre, _(u"Suppression impossible"), wx.OK | wx.ICON_EXCLAMATION)
+noethys/Ctrl/CTRL_Repartition.py:83:        self.IDdepot = donnees[17]
+noethys/Ctrl/CTRL_Repartition.py:84:        self.date_depot = donnees[18]
+noethys/Ctrl/CTRL_Repartition.py:85:        if self.date_depot != None :
+noethys/Ctrl/CTRL_Repartition.py:86:            self.date_depot = DateEngEnDateDD(self.date_depot)
+noethys/Ctrl/CTRL_Repartition.py:87:            self.date_depot_str = DateEngFr(donnees[18])
+noethys/Ctrl/CTRL_Repartition.py:89:            self.date_depot_str = u""
+noethys/Ctrl/CTRL_Repartition.py:90:        self.nom_depot = donnees[19]
+noethys/Ctrl/CTRL_Repartition.py:91:        self.verrouillage_depot = donnees[20]
+noethys/Ctrl/CTRL_Repartition.py:113:        if self.IDdepot == None :
+noethys/Ctrl/CTRL_Repartition.py:179:        reglements.IDdepot, depots.date, depots.nom, depots.verrouillage, 
+noethys/Ctrl/CTRL_Repartition.py:187:        LEFT JOIN depots ON reglements.IDdepot=depots.IDdepot
+noethys/Ctrl/CTRL_Repartition.py:240:            self.SetItemText(regroupement, track.date_depot_str, 7)
+noethys/Ctrl/CTRL_Liste_cotisations.py:27:    def __init__(self, parent, filtres=[], codesColonnes = ["IDcotisation", "date_debut", "date_fin", "beneficiaires", "rue", "cp", "ville", "nom", "type_cotisation", "unite_cotisation", "numero", "montant", "solde", "date_creation_carte", "depot_nom", "activites", "observations"], \
+noethys/Ctrl/CTRL_Synthese_modes_reglements.py:136:            condition = " (depots.date>='%s' and depots.date<='%s') " % (self.date_debut, self.date_fin)
+noethys/Ctrl/CTRL_Synthese_modes_reglements.py:138:            condition = " (depots.IDdepot IS NULL)"
+noethys/Ctrl/CTRL_Synthese_modes_reglements.py:166:        reglements.date, reglements.date_saisie, reglements.IDmode, depots.date,
+noethys/Ctrl/CTRL_Synthese_modes_reglements.py:171:        LEFT JOIN depots ON depots.IDdepot = reglements.IDdepot
+noethys/Ctrl/CTRL_Synthese_modes_reglements.py:224:            LEFT JOIN depots ON depots.IDdepot = reglements.IDdepot
+noethys/Ctrl/CTRL_Synthese_modes_reglements.py:234:            LEFT JOIN depots ON depots.IDdepot = reglements.IDdepot
+noethys/Ctrl/CTRL_Selection_depots.py:44:        self.SetToolTip(wx.ToolTip(_(u"Cochez les dépôts à afficher")))
+noethys/Ctrl/CTRL_Selection_depots.py:73:            # Recherche des dépôts cochés
+noethys/Ctrl/CTRL_Selection_depots.py:78:                    IDdepot = self.GetPyData(item)["ID"]
+noethys/Ctrl/CTRL_Selection_depots.py:79:                    listeDepots.append(IDdepot)
+noethys/Ctrl/CTRL_Selection_depots.py:89:            for IDdepot in listeDepotsTemp :
+noethys/Ctrl/CTRL_Selection_depots.py:90:                listeDepots.append(IDdepot)
+noethys/Ctrl/CTRL_Selection_depots.py:104:        # Tri des dépôts par année
+noethys/Ctrl/CTRL_Selection_depots.py:124:                label = _(u"Sans date de dépôt")
+noethys/Ctrl/CTRL_Selection_depots.py:139:                self.SetPyData(niveauDepot, {"type" : "depot", "ID" : dictDepot["IDdepot"], "label" : label})
+noethys/Ctrl/CTRL_Selection_depots.py:151:        req = """SELECT IDdepot, date, nom, verrouillage, IDcompte
+noethys/Ctrl/CTRL_Selection_depots.py:152:        FROM depots
+noethys/Ctrl/CTRL_Selection_depots.py:157:        for IDdepot, date, nom, verrouillage, IDcompte in listeDonnees :
+noethys/Ctrl/CTRL_Selection_depots.py:159:            dictTemp = {"IDdepot":IDdepot, "date":date, "nom":nom, "verrouillage":verrouillage, "IDcompte":IDcompte}
+noethys/Ctrl/CTRL_Synthese_ventilation.py:59:        propriete = wxpg.ColourProperty(label=_(u"Fond ligne dépôt"), name="couleur_fond_depot", value=wx.Colour(230, 230, 255))
+noethys/Ctrl/CTRL_Synthese_ventilation.py:109:        self.type = "depots"
+noethys/Ctrl/CTRL_Synthese_ventilation.py:129:    def SetModeAffichage(self, mode="depots"):
+noethys/Ctrl/CTRL_Synthese_ventilation.py:139:        self.type = "depots"
+noethys/Ctrl/CTRL_Synthese_ventilation.py:151:    def Importation_depots(self):
+noethys/Ctrl/CTRL_Synthese_ventilation.py:159:        req = """SELECT depots.IDdepot, depots.date, nom, verrouillage, depots.IDcompte,
+noethys/Ctrl/CTRL_Synthese_ventilation.py:161:        FROM depots
+noethys/Ctrl/CTRL_Synthese_ventilation.py:162:        LEFT JOIN reglements ON reglements.IDdepot = depots.IDdepot
+noethys/Ctrl/CTRL_Synthese_ventilation.py:163:        WHERE depots.IDdepot IN %s
+noethys/Ctrl/CTRL_Synthese_ventilation.py:164:        GROUP BY depots.IDdepot
+noethys/Ctrl/CTRL_Synthese_ventilation.py:165:        ORDER BY depots.date
+noethys/Ctrl/CTRL_Synthese_ventilation.py:170:        for IDdepot, date, nom, verrouillage, IDcompte, montantTotal in listeDonnees :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:173:            dictDepots[IDdepot] = {"date":date, "nom":nom, "verrouillage":verrouillage, "IDcompte":IDcompte, "montantTotal":montantTotal}
+noethys/Ctrl/CTRL_Synthese_ventilation.py:182:        if self.type == "depots" :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:184:            if len(self.listeDepots) == 0 : condition = "depots.IDdepot IN ()"
+noethys/Ctrl/CTRL_Synthese_ventilation.py:185:            elif len(self.listeDepots) == 1 : condition = "depots.IDdepot IN (%d)" % self.listeDepots[0]
+noethys/Ctrl/CTRL_Synthese_ventilation.py:186:            else : condition = "depots.IDdepot IN %s" % str(tuple(self.listeDepots))
+noethys/Ctrl/CTRL_Synthese_ventilation.py:194:        # Récupèration de la ventilation des prestations des dépôts
+noethys/Ctrl/CTRL_Synthese_ventilation.py:197:        reglements.date, reglements.date_saisie, depots.IDdepot, depots.date,
+noethys/Ctrl/CTRL_Synthese_ventilation.py:204:        LEFT JOIN depots ON depots.IDdepot = reglements.IDdepot
+noethys/Ctrl/CTRL_Synthese_ventilation.py:213:        for IDventilation, IDreglement, IDprestation, montantVentilation, dateReglement, dateSaisieReglement, IDdepot, dateDepotReglement, datePrestation, labelPrestation, IDactivite, nomActivite, abregeActivite, code_compta_prestation, code_compta_activite, code_compta_tarif in listeVentilation :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:219:            # Compte le nombre de règlements dans chaque dépôt
+noethys/Ctrl/CTRL_Synthese_ventilation.py:220:            if (IDdepot in dictIDreglements) == False :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:221:                dictIDreglements[IDdepot] = []
+noethys/Ctrl/CTRL_Synthese_ventilation.py:222:            if IDreglement not in dictIDreglements[IDdepot] :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:223:                dictIDreglements[IDdepot].append(IDreglement)
+noethys/Ctrl/CTRL_Synthese_ventilation.py:246:                if (IDdepot in dictVentilation) == False :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:247:                    dictVentilation[IDdepot] = {}
+noethys/Ctrl/CTRL_Synthese_ventilation.py:248:                if (periode in dictVentilation[IDdepot]) == False :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:249:                    dictVentilation[IDdepot][periode] = {}
+noethys/Ctrl/CTRL_Synthese_ventilation.py:250:                if (labelPrestation in dictVentilation[IDdepot][periode]) == False :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:251:                    dictVentilation[IDdepot][periode][labelPrestation] = 0.0
+noethys/Ctrl/CTRL_Synthese_ventilation.py:252:                dictVentilation[IDdepot][periode][labelPrestation] += montantVentilation
+noethys/Ctrl/CTRL_Synthese_ventilation.py:284:        if self.type == "depots" :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:306:        dictDepots = self.Importation_depots()
+noethys/Ctrl/CTRL_Synthese_ventilation.py:308:        # Si on est en type PRESTATIONS, on crée un dépôt virtuel pour les règlements non déposées
+noethys/Ctrl/CTRL_Synthese_ventilation.py:326:        if self.type == "depots" :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:342:        # Tri des dépôts par date de dépôt
+noethys/Ctrl/CTRL_Synthese_ventilation.py:344:        for IDdepot, dictDepot in dictDepots.items() :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:349:            listeDepotsTemp.append( (dateDepot, IDdepot, dictDepot) )
+noethys/Ctrl/CTRL_Synthese_ventilation.py:355:        for dateDepot, IDdepot, dictDepot in listeDepotsTemp :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:357:                dateStr = _(u"Sans date de dépôt")
+noethys/Ctrl/CTRL_Synthese_ventilation.py:361:            if IDdepot == None : label = dictDepot["nom"]
+noethys/Ctrl/CTRL_Synthese_ventilation.py:371:                if IDdepot in dictVentilation and periode in dictVentilation[IDdepot] :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:373:                    for labelPrestation, montantVentilation in dictVentilation[IDdepot][periode].items() : 
+noethys/Ctrl/CTRL_Synthese_ventilation.py:383:            if self.type == "depots" :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:384:                totalDepot = dictDepots[IDdepot]["montantTotal"]
+noethys/Ctrl/CTRL_Synthese_ventilation.py:406:                if IDdepot in dictVentilation :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:407:                    if periode in dictVentilation[IDdepot] :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:408:                        for labelPrestation, montantVentilation in dictVentilation[IDdepot][periode].items() : 
+noethys/Ctrl/CTRL_Synthese_ventilation.py:424:                    if IDdepot in dictVentilation :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:425:                        if periode in dictVentilation[IDdepot] :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:426:                            if labelPrestation in dictVentilation[IDdepot][periode] :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:427:                                valeur = dictVentilation[IDdepot][periode][labelPrestation]
+noethys/Ctrl/CTRL_Synthese_ventilation.py:441:                if self.type == "depots" and self.affichage_details == True :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:466:            for dateDepot, IDdepot, dictDepot in listeDepotsTemp :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:468:                    if IDdepot in dictVentilation :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:469:                        if periode in dictVentilation[IDdepot]:
+noethys/Ctrl/CTRL_Synthese_ventilation.py:470:                            if label in dictVentilation[IDdepot][periode]:
+noethys/Ctrl/CTRL_Synthese_ventilation.py:471:                                valeur = dictVentilation[IDdepot][periode][label]
+noethys/Ctrl/CTRL_Synthese_ventilation.py:479:        if self.type == "depots" :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:516:                if self.type == "depots" :
+noethys/Ctrl/CTRL_Synthese_ventilation.py:575:            dataTableau.append( (_(u"Analyse croisée ventilation/dépôts"), _(u"%s\nEdité le %s") % (UTILS_Organisateur.GetNom(), dateDuJour)) )
+noethys/Ctrl/CTRL_Synthese_ventilation.py:643:            listeStyles.append( ('BACKGROUND', (0, indexColoration+1), (-1, indexColoration+1), UTILS_Divers.ConvertCouleurWXpourPDF(dictOptions["couleur_fond_depot"])))
+noethys/Ctrl/CTRL_Synthese_ventilation.py:822:##        # Type dépôts
+noethys/Ctrl/CTRL_Synthese_prestations.py:131:            conditionDepots = " AND (depots.date>='%s' and depots.date<='%s') " % (self.filtreDepots_dateDebut, self.filtreDepots_dateFin)
+noethys/Ctrl/CTRL_Synthese_prestations.py:139:        reglements.date, reglements.date_saisie, depots.date,
+noethys/Ctrl/CTRL_Synthese_prestations.py:144:        LEFT JOIN depots ON depots.IDdepot = reglements.IDdepot
+noethys/Ctrl/CTRL_Droits.py:120:    { "label" : _(u"Param. avis dépôt par Email"), "code" : "familles_depot_email", "actions" : ["modifier",], "restriction" : False },
+noethys/Ctrl/CTRL_Droits.py:160:    { "label" : _(u"Dépôts de cotisations"), "code" : "cotisations_depots", "actions" : ["consulter", "modifier", "creer", "supprimer"], "restriction" : False },
+noethys/Ctrl/CTRL_Droits.py:165:    { "label" : _(u"Dépôts de réglements"), "code" : "reglements_depots", "actions" : ["consulter", "modifier", "creer", "supprimer"], "restriction" : False },
+noethys/Ctrl/CTRL_Synthese_impayes.py:135:            conditionDepots = " AND (depots.date>='%s' AND depots.date<='%s') " % (self.filtreDepots_dateDebut, self.filtreDepots_dateFin)
+noethys/Ctrl/CTRL_Synthese_impayes.py:143:        reglements.date, reglements.date_saisie, depots.date,
+noethys/Ctrl/CTRL_Synthese_impayes.py:148:        LEFT JOIN depots ON depots.IDdepot = reglements.IDdepot
+noethys/Ctrl/CTRL_Depot_prestations.py:31:    def __init__(self, parent, IDdepot=None):
+noethys/Ctrl/CTRL_Depot_prestations.py:34:        self.IDdepot = IDdepot
+noethys/Ctrl/CTRL_Depot_prestations.py:50:    def SetIDdepot(self, IDdepot=None):
+noethys/Ctrl/CTRL_Depot_prestations.py:51:        self.IDdepot = IDdepot
+noethys/Ctrl/CTRL_Depot_prestations.py:69:        if self.IDdepot == None:
+noethys/Ctrl/CTRL_Depot_prestations.py:76:        WHERE IDdepot=%d;""" % self.IDdepot
+noethys/Ctrl/CTRL_Depot_prestations.py:79:        montant_depot = liste_donnees[0][0]
+noethys/Ctrl/CTRL_Depot_prestations.py:80:        if not montant_depot:
+noethys/Ctrl/CTRL_Depot_prestations.py:81:            montant_depot = 0.0
+noethys/Ctrl/CTRL_Depot_prestations.py:89:        WHERE reglements.IDdepot=%d
+noethys/Ctrl/CTRL_Depot_prestations.py:90:        ORDER BY ventilation.IDprestation; """ % self.IDdepot
+noethys/Ctrl/CTRL_Depot_prestations.py:127:        if montant_depot > total:
+noethys/Ctrl/CTRL_Depot_prestations.py:128:            montant_avoirs = montant_depot - total
+noethys/Ctrl/CTRL_Depot_prestations.py:295:        nomDoc = FonctionsPerso.GenerationNomDoc("depot_prestations", "pdf")
+noethys/Ctrl/CTRL_Depot_prestations.py:304:        dataTableau.append( (_(u"Détail des prestations d'un dépôt"), _(u"%s\nEdité le %s") % (UTILS_Organisateur.GetNom(), dateDuJour)) )
+noethys/Ctrl/CTRL_Depot_prestations.py:371:        titre = _(u"Détail des prestations d'un dépôt")
+noethys/Ctrl/CTRL_Depot_prestations.py:507:        # Ajout du nom du dépôt
+noethys/Ctrl/CTRL_Depot_prestations.py:534:        self.ctrl_stats = CTRL(panel, IDdepot=1)
+=== ecritures reglements/ventilation/depots ===
+noethys/Dlg/DLG_Saisie_reglement.py:1497:            IDreglement = DB.ReqInsert("reglements", listeDonnees, commit=False)
+noethys/Dlg/DLG_Saisie_reglement.py:1504:            if not DB.ReqMAJ("reglements", listeDonnees, "IDreglement", IDreglement, commit=False):
+noethys/Dlg/DLG_Saisie_reglement.py:1542:                if not DB.ReqDEL("ventilation", "IDprestation", IDprestationFrais, commit=False):
+noethys/Dlg/DLG_Saisie_reglement.py:1551:            if not DB.ReqDEL("ventilation", "IDprestation", IDprestationFrais, commit=False):
+noethys/Dlg/DLG_Saisie_location.py:920:                    if not DB.ReqDEL("ventilation", "IDprestation", IDprestation, commit=False):
+noethys/Dlg/DLG_Saisie_cotisation.py:1008:                                if not DB.ReqMAJ("ventilation", [("montant", nouveauMontant), ], "IDventilation", IDventilation, commit=False):
+noethys/Dlg/DLG_Saisie_cotisation.py:1014:                                if not DB.ReqDEL("ventilation", "IDventilation", IDventilation, commit=False):
+noethys/Dlg/DLG_Saisie_cotisation.py:1028:                if not DB.ReqDEL("ventilation", "IDprestation", IDprestation, commit=False):
+noethys/Dlg/DLG_Saisie_depot.py:505:            self.IDdepot = DB.ReqInsert("depots", listeDonnees)
+noethys/Dlg/DLG_Saisie_depot.py:507:            DB.ReqMAJ("depots", listeDonnees, "IDdepot", self.IDdepot)
+noethys/Dlg/DLG_Saisie_depot.py:684:            DB.ReqMAJ("reglements", [("avis_depot", str(datetime.date.today()) ),], "IDreglement", IDreglement)
+noethys/Dlg/DLG_Saisie_depot.py:706:##    DB.ReqMAJ("reglements", [("avis_depot", None),], "IDreglement", 11)
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:411:            self.IDdepot_cotisation = DB.ReqInsert("depots_cotisations", listeDonnees)
+noethys/Dlg/DLG_Saisie_depot_cotisation.py:413:            DB.ReqMAJ("depots_cotisations", listeDonnees, "IDdepot_cotisation", self.IDdepot_cotisation)
+noethys/Dlg/DLG_Saisie_remboursement.py:469:        IDreglement = DB.ReqInsert("reglements", listeDonnees, commit=False)
+noethys/Dlg/DLG_Saisie_remboursement.py:488:        IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
+noethys/Dlg/DLG_Solder_impayes.py:479:            IDreglement = DB.ReqInsert("reglements", listeDonnees)
+noethys/Dlg/DLG_Solder_impayes.py:489:                IDventilation = DB.ReqInsert("ventilation", listeDonnees)        
+noethys/Dlg/DLG_Saisie_prestation.py:875:                            if not DB.ReqMAJ("ventilation", [("montant", nouveauMontant),], "IDventilation", IDventilation, commit=False):
+noethys/Dlg/DLG_Saisie_prestation.py:880:                            if not DB.ReqDEL("ventilation", "IDventilation", IDventilation, commit=False):
+noethys/Ol/OL_Depots_cotisations.py:358:            DB.ReqDEL("depots_cotisations", "IDdepot_cotisation", IDdepot_cotisation)
+noethys/Ol/OL_Reglements_depots.py:460:            DB.ReqDEL("reglements", "IDreglement", IDreglement)
+noethys/Ol/OL_Reglements_depots.py:461:            DB.ReqDEL("ventilation", "IDreglement", IDreglement)
+noethys/Ol/OL_Prelevements_sepa.py:810:                if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
+noethys/Ol/OL_Prelevements_sepa.py:813:                if not DB.ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False):
+noethys/Ol/OL_Prelevements_sepa.py:935:                    IDreglement = DB.ReqInsert("reglements", listeDonnees, commit=False)
+noethys/Ol/OL_Prelevements_sepa.py:944:                    if not DB.ReqMAJ("reglements", listeDonnees, "IDreglement", IDreglement, commit=False):
+noethys/Ol/OL_Prelevements_sepa.py:959:                        IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
+noethys/Ol/OL_Prelevements_sepa.py:968:                    if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
+noethys/Ol/OL_Prelevements_sepa.py:971:                    if not DB.ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False):
+noethys/Ol/OL_Depots.py:368:            DB.ReqDEL("depots", "IDdepot", IDdepot)
+noethys/Ol/OL_Prelevements_national.py:712:                if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
+noethys/Ol/OL_Prelevements_national.py:715:                if not DB.ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False):
+noethys/Ol/OL_Prelevements_national.py:836:                    IDreglement = DB.ReqInsert("reglements", listeDonnees, commit=False)
+noethys/Ol/OL_Prelevements_national.py:844:                    if not DB.ReqMAJ("reglements", listeDonnees, "IDreglement", IDreglement, commit=False):
+noethys/Ol/OL_Prelevements_national.py:858:                        IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
+noethys/Ol/OL_Prelevements_national.py:867:                    if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
+noethys/Ol/OL_Prelevements_national.py:870:                    if not DB.ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False):
+noethys/Ol/OL_Emetteurs.py:289:            DB.ReqMAJ("reglements", [("IDemetteur", None),], "IDemetteur", IDemetteur)
+noethys/Ol/OL_PES_pieces.py:981:                DB.ReqDEL("reglements", "IDreglement", track.IDreglement)
+noethys/Ol/OL_PES_pieces.py:982:                DB.ReqDEL("ventilation", "IDreglement", track.IDreglement)
+noethys/Ol/OL_PES_pieces.py:1097:                        IDreglement = DB.ReqInsert("reglements", listeDonnees, commit=False)
+noethys/Ol/OL_PES_pieces.py:1105:                        if not DB.ReqMAJ("reglements", listeDonnees, "IDreglement", IDreglement, commit=False):
+noethys/Ol/OL_PES_pieces.py:1119:                            IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
+noethys/Ol/OL_PES_pieces.py:1128:                    if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
+noethys/Ol/OL_PES_pieces.py:1131:                    if not DB.ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False):
+noethys/Ol/OL_Locations.py:278:            if not DB.ReqDEL("ventilation", "IDprestation", IDprestation, commit=False):
+noethys/Ol/OL_Verification_ventilation.py:269:                                    DB.ReqMAJ("ventilation", [("montant", float(nouveauMontant)),], "IDventilation", IDventilation)
+noethys/Ol/OL_Verification_ventilation.py:286:                            IDventilation = DB.ReqInsert("ventilation", listeDonnees)
+noethys/Ol/OL_Prestations.py:676:                    DB.ReqDEL("ventilation", "IDprestation", track.IDprestation, commit=False),
+noethys/Ctrl/CTRL_Ventilation.py:794:                    IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
+noethys/Ctrl/CTRL_Ventilation.py:800:                    if not DB.ReqMAJ("ventilation", listeDonnees, "IDventilation", IDventilation, commit=False):
+noethys/Ctrl/CTRL_Ventilation.py:805:                if not DB.ReqDEL("ventilation", "IDventilation", IDventilation, commit=False):
+noethys/Ctrl/CTRL_Ventilation.py:1008:##            DB.ReqDEL("ventilation", "IDreglement", IDreglement)
