@@ -6,8 +6,12 @@ est valide, puis l'accusé est renvoyé à PMSL.
 """
 from __future__ import unicode_literals
 
-from noethys.Utils.UTILS_PMSL_NoethysBridge import PMSLNoethysBridgeClient
-from noethys.Utils.UTILS_PMSL_Openings import PMSLOpeningService, PMSLOpeningError
+try:
+    from noethys.Utils.UTILS_PMSL_NoethysBridge import PMSLNoethysBridgeClient
+    from noethys.Utils.UTILS_PMSL_Openings import PMSLOpeningService, PMSLOpeningError
+except ImportError:  # lancement historique depuis le répertoire noethys
+    from Utils.UTILS_PMSL_NoethysBridge import PMSLNoethysBridgeClient
+    from Utils.UTILS_PMSL_Openings import PMSLOpeningService, PMSLOpeningError
 
 
 class PMSLSyncService(object):
