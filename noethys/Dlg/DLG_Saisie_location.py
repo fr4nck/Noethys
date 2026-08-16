@@ -838,6 +838,8 @@ class Dialog(wx.Dialog):
 
         # Sauvegarde
         DB = GestionDB.DB()
+        ok = True
+        dernier_IDlocation = self.IDlocation
 
         for dict_location in liste_valides:
             date_debut = dict_location["date_debut"]
@@ -862,13 +864,22 @@ class Dialog(wx.Dialog):
 
             if self.IDlocation == None :
                 listeDonnees.append(("date_saisie", datetime.date.today()))
-                IDlocation = DB.ReqInsert("locations", listeDonnees)
+                IDlocation = DB.ReqInsert("locations", listeDonnees, commit=False)
+                if IDlocation is None:
+                    ok = False
+                    break
                 texte_historique = _(u"Saisie de la location ID%d : %s %s") % (IDlocation, nom_produit, periode)
-                UTILS_Historique.InsertActions([{"IDfamille": IDfamille, "IDcategorie": 37, "action": texte_historique, "IDdonnee": IDlocation}], DB=DB)
+                if not UTILS_Historique.InsertActions([{"IDfamille": IDfamille, "IDcategorie": 37, "action": texte_historique, "IDdonnee": IDlocation}], DB=DB, commit=False):
+                    ok = False
+                    break
             else:
-                DB.ReqMAJ("locations", listeDonnees, "IDlocation", IDlocation)
+                if not DB.ReqMAJ("locations", listeDonnees, "IDlocation", IDlocation, commit=False):
+                    ok = False
+                    break
                 texte_historique = _(u"Modification de la location ID%d : %s %s") % (IDlocation, nom_produit, periode)
-                UTILS_Historique.InsertActions([{"IDfamille": IDfamille, "IDcategorie": 38, "action": texte_historique, "IDdonnee": IDlocation}], DB=DB)
+                if not UTILS_Historique.InsertActions([{"IDfamille": IDfamille, "IDcategorie": 38, "action": texte_historique, "IDdonnee": IDlocation}], DB=DB, commit=False):
+                    ok = False
+                    break
 
             # Sauvegarde des prestations
             listeID = []
@@ -892,25 +903,51 @@ class Dialog(wx.Dialog):
 
                 if IDprestation == None :
                     listeDonnees.append(("date_valeur", str(datetime.date.today())))
-                    IDprestation = DB.ReqInsert("prestations", listeDonnees)
+                    IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)
+                    if IDprestation is None:
+                        ok = False
+                        break
                 else:
                     if track_prestation.dirty == True :
-                        DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation)
+                        if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):
+                            ok = False
+                            break
                 listeID.append(IDprestation)
 
             # Suppression des prestations obsolètes
             for IDprestation in self.liste_initiale_IDprestation :
                 if IDprestation not in listeID :
-                    DB.ReqDEL("prestations", "IDprestation", IDprestation)
-                    DB.ReqDEL("ventilation", "IDprestation", IDprestation)
+                    if not DB.ReqDEL("ventilation", "IDprestation", IDprestation, commit=False):
+                        ok = False
+                        break
+                    if not DB.ReqDEL("prestations", "IDprestation", IDprestation, commit=False):
+                        ok = False
+                        break
 
             # Sauvegarde du questionnaire
-            self.ctrl_parametres.GetPageAvecCode("questionnaire").ctrl_questionnaire.Sauvegarde(DB=DB, IDdonnee=IDlocation)
+            if self.ctrl_parametres.GetPageAvecCode("questionnaire").ctrl_questionnaire.Sauvegarde(DB=DB, IDdonnee=IDlocation) == False:
+                ok = False
+                break
+
+
+        if ok:
+            DB.Commit()
+            dernier_IDlocation = IDlocation
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+        DB.Close()
+
+        if not ok:
+            dlg = wx.MessageDialog(self, _(u"La location n'a pas pu être enregistrée complètement. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
 
         # Mémorise l'IDlocation
-        self.IDlocation = IDlocation
-
-        DB.Close()
+        self.IDlocation = dernier_IDlocation
 
         # Fermeture de la fenêtre
         self.EndModal(wx.ID_OK)

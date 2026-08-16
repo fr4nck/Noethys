@@ -270,19 +270,45 @@ def Supprimer_location(parent, IDlocation=None):
         return False
 
     DB = GestionDB.DB()
+    ok = True
     for dict_location in liste_valides:
-        # Suppression
-        DB.ReqDEL("locations", "IDlocation", dict_location["IDlocation"])
-        DB.ExecuterReq("DELETE FROM questionnaire_reponses WHERE type='location' AND IDdonnee=%d;" % dict_location["IDlocation"])
-        DB.ReqMAJ("locations_demandes", [("statut", "attente"), ], "IDlocation", dict_location["IDlocation"])
-        DB.ReqMAJ("locations_demandes", [("IDlocation", None), ], "IDlocation", dict_location["IDlocation"])
-        DB.ExecuterReq("DELETE FROM prestations WHERE categorie='location' AND IDdonnee=%d;" % dict_location["IDlocation"])
+        IDlocation = dict_location["IDlocation"]
+        # Dépendances avant la location principale
         for IDprestation in dict_location["prestations"]:
-            DB.ReqDEL("ventilation", "IDprestation", IDprestation)
-        # Historique
-        texte_historique = _(u"Suppression de la location ID%d : %s %s") % (dict_location["IDlocation"], dict_location["label_produit"], dict_location["periode"])
-        UTILS_Historique.InsertActions([{"IDfamille": dict_location["IDfamille"], "IDcategorie": 39, "action": texte_historique, "IDdonnee": dict_location["IDlocation"]}], DB=DB)
+            if not DB.ReqDEL("ventilation", "IDprestation", IDprestation, commit=False):
+                ok = False
+                break
+        if not ok:
+            break
+        if DB.ExecuterReq("DELETE FROM prestations WHERE categorie='location' AND IDdonnee=%d;" % IDlocation) != 1:
+            ok = False
+            break
+        if DB.ExecuterReq("DELETE FROM questionnaire_reponses WHERE type='location' AND IDdonnee=%d;" % IDlocation) != 1:
+            ok = False
+            break
+        if not DB.ReqMAJ("locations_demandes", [("statut", "attente"), ("IDlocation", None)], "IDlocation", IDlocation, commit=False):
+            ok = False
+            break
+        if not DB.ReqDEL("locations", "IDlocation", IDlocation, commit=False):
+            ok = False
+            break
+        texte_historique = _(u"Suppression de la location ID%d : %s %s") % (IDlocation, dict_location["label_produit"], dict_location["periode"])
+        if not UTILS_Historique.InsertActions([{"IDfamille": dict_location["IDfamille"], "IDcategorie": 39, "action": texte_historique, "IDdonnee": IDlocation}], DB=DB, commit=False):
+            ok = False
+            break
+    if ok:
+        DB.Commit()
+    else:
+        try:
+            DB.connexion.rollback()
+        except Exception:
+            pass
     DB.Close()
+    if not ok:
+        dlg = wx.MessageDialog(parent, _(u"La suppression des locations a échoué. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+        dlg.ShowModal()
+        dlg.Destroy()
+        return False
 
     return True
 
