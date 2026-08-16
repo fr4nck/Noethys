@@ -1236,27 +1236,30 @@ class Facturation():
 
 
 def SuppressionFacture(listeFactures=[], mode="suppression"):
-    """ Suppression d'une facture """
-    dlgAttente = wx.BusyInfo(
-        _(u"%s des factures en cours...") % mode.capitalize(), None)
+    """ Suppression ou annulation atomique, facture par facture. """
+    dlgAttente = wx.BusyInfo(_(u"%s des factures en cours...") % mode.capitalize(), None)
     if 'phoenix' not in wx.PlatformInfo:
         wx.Yield()
     DB = GestionDB.DB()
 
-    # Suppression
-    if mode == "suppression":
-        for IDfacture in listeFactures:
-            DB.ReqMAJ("prestations", [
-                      ("IDfacture", None),], "IDfacture", IDfacture)
-            DB.ReqDEL("factures", "IDfacture", IDfacture)
-
-    # Annulation
-    if mode == "annulation":
-        for IDfacture in listeFactures:
-            DB.ReqMAJ("prestations", [
-                      ("IDfacture", None),], "IDfacture", IDfacture)
-            DB.ReqMAJ("factures", [("etat", "annulation"),],
-                      "IDfacture", IDfacture)
+    for IDfacture in listeFactures:
+        ok = DB.ReqMAJ("prestations", [("IDfacture", None),], "IDfacture", IDfacture, commit=False)
+        if ok:
+            if mode == "suppression":
+                ok = DB.ReqDEL("factures", "IDfacture", IDfacture, commit=False)
+            elif mode == "annulation":
+                ok = DB.ReqMAJ("factures", [("etat", "annulation"),], "IDfacture", IDfacture, commit=False)
+            else:
+                ok = False
+        if not ok:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            del dlgAttente
+            return False
+        DB.Commit()
 
     DB.Close()
     del dlgAttente
@@ -1264,39 +1267,33 @@ def SuppressionFacture(listeFactures=[], mode="suppression"):
 
 
 def ModificationFacture(listeFactures=[], dict_valeurs={}):
-    """ Modification des caractéristique d'une facture """
+    """ Modification atomique des caractéristiques, facture par facture. """
     dlgAttente = wx.BusyInfo(_(u"Modification des factures en cours..."), None)
     if 'phoenix' not in wx.PlatformInfo:
         wx.Yield()
     DB = GestionDB.DB()
 
+    mapping = (
+        ("IDlot", "IDlot"),
+        ("date_emission", "date_edition"),
+        ("date_echeance", "date_echeance"),
+        ("mention1", "mention1"),
+        ("mention2", "mention2"),
+        ("mention3", "mention3"),
+    )
+
     for IDfacture in listeFactures:
-
-        # Modification IDlot
-        if "IDlot" in dict_valeurs:
-            DB.ReqMAJ(
-                "factures", [("IDlot", dict_valeurs["IDlot"]), ], "IDfacture", IDfacture)
-
-        # Modification Date émission
-        if "date_emission" in dict_valeurs:
-            DB.ReqMAJ("factures", [
-                      ("date_edition", dict_valeurs["date_emission"]), ], "IDfacture", IDfacture)
-
-        # Modification Date_échéance
-        if "date_echeance" in dict_valeurs:
-            DB.ReqMAJ("factures", [
-                      ("date_echeance", dict_valeurs["date_echeance"]), ], "IDfacture", IDfacture)
-
-        # Modification Mentions
-        if "mention1" in dict_valeurs:
-            DB.ReqMAJ(
-                "factures", [("mention1", dict_valeurs["mention1"]), ], "IDfacture", IDfacture)
-        if "mention2" in dict_valeurs:
-            DB.ReqMAJ(
-                "factures", [("mention2", dict_valeurs["mention2"]), ], "IDfacture", IDfacture)
-        if "mention3" in dict_valeurs:
-            DB.ReqMAJ(
-                "factures", [("mention3", dict_valeurs["mention3"]), ], "IDfacture", IDfacture)
+        for cle, champ in mapping:
+            if cle in dict_valeurs:
+                if not DB.ReqMAJ("factures", [(champ, dict_valeurs[cle]),], "IDfacture", IDfacture, commit=False):
+                    try:
+                        DB.connexion.rollback()
+                    except Exception:
+                        pass
+                    DB.Close()
+                    del dlgAttente
+                    return False
+        DB.Commit()
 
     DB.Close()
     del dlgAttente
