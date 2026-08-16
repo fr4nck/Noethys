@@ -522,28 +522,45 @@ class Dialog(wx.Dialog):
         # ------------- SAUVEGARDE -------------------------------------------------------------------------------------------------------------------
 
         if self.mode_modele == True :
-            # Sauvegarde du modèle de contrat
+            # Sauvegarde atomique du modèle de contrat et de son BLOB.
             donneesStr = cPickle.dumps(listePeriodes)
-
             DB = GestionDB.DB()
+            ancien_IDmodele = self.IDmodele
             listeDonnees = [
-                ("nom", nom ),
+                ("nom", nom),
                 ("IDactivite", self.IDactivite),
                 ("date_debut", date_debut),
-                ("date_fin", date_fin ),
+                ("date_fin", date_fin),
                 ("observations", observations),
                 ("IDtarif", IDtarif),
                 ]
-            if self.IDmodele == None :
-                self.IDmodele = DB.ReqInsert("modeles_contrats", listeDonnees)
-            else :
-                DB.ReqMAJ("modeles_contrats", listeDonnees, "IDmodele", self.IDmodele)
-            
-            # Sauvegarde des données BLOB
-            DB.MAJimage(table="modeles_contrats", key="IDmodele", IDkey=self.IDmodele, blobImage=donneesStr, nomChampBlob="donnees")
-            
-            DB.Close() 
-        
+            if ancien_IDmodele == None:
+                IDmodele = DB.ReqInsert("modeles_contrats", listeDonnees, commit=False)
+                if IDmodele is None:
+                    DB.Close()
+                    return False
+            else:
+                IDmodele = ancien_IDmodele
+                if not DB.ReqMAJ("modeles_contrats", listeDonnees, "IDmodele", IDmodele, commit=False):
+                    DB.Close()
+                    return False
+
+            if not DB.MAJimage(table="modeles_contrats", key="IDmodele", IDkey=IDmodele, blobImage=donneesStr, nomChampBlob="donnees", commit=False):
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+                DB.Close()
+                dlg = wx.MessageDialog(self, _(u"Le modèle de contrat n'a pas pu être enregistré complètement. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return False
+
+            DB.Commit()
+            DB.Close()
+            self.IDmodele = IDmodele
+            return True
+
         # --------------------------------------------------------------------------------------------------------------------------------
         else :
             # Sauvegarde atomique du contrat, de ses prestations et consommations.
