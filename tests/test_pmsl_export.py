@@ -4,6 +4,8 @@ from __future__ import unicode_literals
 import unittest
 
 from noethys.Utils.UTILS_PMSL_Export import PMSLExportService
+from noethys.Utils.UTILS_PMSL_ReturnSync import _validate_preview_response
+from noethys.Utils.UTILS_PMSL_NoethysBridge import PMSLBridgeError
 
 
 class FakeDB(object):
@@ -58,9 +60,37 @@ class PMSLExportTests(unittest.TestCase):
         client = FakeClient()
         result = service.push(client, "2026-09-01", "2026-10-31")
         self.assertEqual(1, len(client.payloads))
-        self.assertTrue(result["response"]["accepted"])
-        self.assertEqual("preview", result["response"]["status"])
-        self.assertTrue(result["response"]["requires_human_validation"])
+        response = _validate_preview_response(result["response"])
+        self.assertTrue(response["accepted"])
+        self.assertEqual("preview", response["status"])
+        self.assertTrue(response["requires_human_validation"])
+        self.assertEqual("incoming-1", response["batch_uuid"])
+
+    def test_return_contract_rejects_non_preview_status(self):
+        with self.assertRaises(PMSLBridgeError):
+            _validate_preview_response({
+                "accepted": True,
+                "status": "applied",
+                "requires_human_validation": True,
+                "batch_uuid": "incoming-1",
+            })
+
+    def test_return_contract_rejects_missing_human_validation(self):
+        with self.assertRaises(PMSLBridgeError):
+            _validate_preview_response({
+                "accepted": True,
+                "status": "preview",
+                "requires_human_validation": False,
+                "batch_uuid": "incoming-1",
+            })
+
+    def test_return_contract_requires_batch_uuid(self):
+        with self.assertRaises(PMSLBridgeError):
+            _validate_preview_response({
+                "accepted": True,
+                "status": "preview",
+                "requires_human_validation": True,
+            })
 
     def test_invalid_date_is_rejected_before_query(self):
         service = PMSLExportService(db=FakeDB())
