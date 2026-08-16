@@ -15,32 +15,84 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Diagnostiquer structures
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch reglements prelevements
         run: |
           python - <<'PY'
           from pathlib import Path
-          out=[]
-          for path in ('noethys/Ol/OL_Prelevements_sepa.py','noethys/Ol/OL_Prelevements_national.py','noethys/Ol/OL_PES_pieces.py'):
-              s=Path(path).read_text(encoding='utf-8')
-              out.append('\n### '+path)
-              marker='    def SauvegardeReglements(self, date=None, IDcompte=None, IDmode=None):'
-              out.append('marker='+str(s.count(marker)))
-              if marker in s:
-                  a=s.index(marker)
-                  tail=s[a:a+12000]
-                  out.append('sep4='+str('\n\n\n\n# -------------------------------------------------------------------------------------------------------------------------------------------' in tail))
-                  out.append('close_history='+str('        DB.Close() \n\n        # Sauvegarde dans historique\n        UTILS_Historique.InsertActions(listeHistoriqueAjouts)' in tail))
-                  out.append('close='+str('        DB.Close() ' in tail))
-                  out.append('holder_titulaire='+str('("nom", track.titulaire)' in tail))
-                  out.append('holder_pes='+str('("nom", track.prelevement_titulaire)' in tail))
-                  out.append('reg_insert='+str('track.IDreglement = DB.ReqInsert("reglements", listeDonnees)' in tail))
-                  out.append('vent_insert='+str('IDventilation = DB.ReqInsert("ventilation", listeDonnees)' in tail))
-          Path('.github/_tmp_diag_reglements_prelevements.txt').write_text('\n'.join(out),encoding='utf-8')
+
+          def patch(path, holder_expr, with_history=False):
+              p=Path(path)
+              s=p.read_text(encoding='utf-8')
+              a=s.index('    def SauvegardeReglements(self, date=None, IDcompte=None, IDmode=None):')
+              if with_history:
+                  b=s.index('    def MemoriseReglementHistorique(', a)
+              else:
+                  b=s.index('# -------------------------------------------------------------------------------------------------------------------------------------------', a)
+              block=s[a:b]
+              block=block.replace('        DB = GestionDB.DB()\n', '        DB = GestionDB.DB()\n        ok = True\n        listeMAJTracks = []\n', 1)
+              src='IDpayeur = DB.ReqInsert("payeurs", [("IDcompte_payeur", track.IDcompte_payeur), ("nom", '+holder_expr+')])'
+              dst='IDpayeur = DB.ReqInsert("payeurs", [("IDcompte_payeur", track.IDcompte_payeur), ("nom", '+holder_expr+')], commit=False)\n                    if IDpayeur is None:\n                        ok = False\n                        break'
+              if src not in block: raise SystemExit('payeur inattendu '+path)
+              block=block.replace(src,dst)
+              src='track.IDreglement = DB.ReqInsert("reglements", listeDonnees)'
+              dst='IDreglement = DB.ReqInsert("reglements", listeDonnees, commit=False)\n                    if IDreglement is None:\n                        ok = False\n                        break'
+              if src not in block: raise SystemExit('insert reglement inattendu '+path)
+              block=block.replace(src,dst)
+              block=block.replace('IDreglement=track.IDreglement, montant=track.montant', 'IDreglement=IDreglement, montant=track.montant')
+              src='DB.ReqMAJ("reglements", listeDonnees, "IDreglement", track.IDreglement)'
+              dst='IDreglement = track.IDreglement\n                    if not DB.ReqMAJ("reglements", listeDonnees, "IDreglement", IDreglement, commit=False):\n                        ok = False\n                        break'
+              block=block.replace(src,dst)
+              block=block.replace('track.dateReglement = date', 'listeMAJTracks.append((track, IDreglement, date))')
+              block=block.replace('(\"IDreglement\", track.IDreglement)', '(\"IDreglement\", IDreglement)')
+              src='IDventilation = DB.ReqInsert("ventilation", listeDonnees)'
+              dst='IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)\n                        if IDventilation is None:\n                            ok = False\n                            break'
+              block=block.replace(src,dst)
+              old='''                    DB.ReqDEL("reglements", "IDreglement", track.IDreglement)\n                    DB.ReqDEL("ventilation", "IDreglement", track.IDreglement)'''
+              new='''                    if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):\n                        ok = False\n                        break\n                    if not DB.ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False):\n                        ok = False\n                        break'''
+              if old not in block: raise SystemExit('suppression inattendue '+path)
+              block=block.replace(old,new)
+              block=block.replace('            self.RefreshObject(track)\n', '')
+              if with_history:
+                  oldtail='''        DB.Close() \n\n        # Sauvegarde dans historique\n        UTILS_Historique.InsertActions(listeHistoriqueAjouts)\n    \n'''
+                  newtail='''        if ok and listeHistoriqueAjouts:\n            ok = UTILS_Historique.InsertActions(listeHistoriqueAjouts, DB=DB, commit=False)\n        if ok:\n            DB.Commit()\n        else:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n        DB.Close()\n        if not ok:\n            return False\n        for track, IDreglement, dateReglement in listeMAJTracks:\n            track.IDreglement = IDreglement\n            track.dateReglement = dateReglement\n            self.RefreshObject(track)\n        return True\n\n'''
+              else:
+                  oldtail='        DB.Close() \n\n\n\n\n\n'
+                  if oldtail not in block:
+                      oldtail='        DB.Close() \n\n\n\n\n'
+                  newtail='''        if ok:\n            DB.Commit()\n        else:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n        DB.Close()\n        if not ok:\n            return False\n        for track, IDreglement, dateReglement in listeMAJTracks:\n            track.IDreglement = IDreglement\n            track.dateReglement = dateReglement\n            self.RefreshObject(track)\n        return True\n\n'''
+              if oldtail not in block: raise SystemExit('tail inattendu '+path)
+              block=block.replace(oldtail,newtail,1)
+              s=s[:a]+block+s[b:]
+              p.write_text(s,encoding='utf-8')
+
+          patch('noethys/Ol/OL_Prelevements_sepa.py', 'track.titulaire', True)
+          patch('noethys/Ol/OL_Prelevements_national.py', 'track.titulaire', False)
+          patch('noethys/Ol/OL_PES_pieces.py', 'track.prelevement_titulaire', False)
           PY
-      - name: Publier diagnostic
+          python -m py_compile noethys/Ol/OL_Prelevements_sepa.py noethys/Ol/OL_Prelevements_national.py noethys/Ol/OL_PES_pieces.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          specs=[('noethys/Ol/OL_Prelevements_sepa.py','    def MemoriseReglementHistorique('),('noethys/Ol/OL_Prelevements_national.py','# -------------------------------------------------------------------------------------------------------------------------------------------'),('noethys/Ol/OL_PES_pieces.py','# -------------------------------------------------------------------------------------------------------------------------------------------')]
+          for path,end in specs:
+              s=Path(path).read_text(encoding='utf-8')
+              a=s.index('    def SauvegardeReglements(self, date=None, IDcompte=None, IDmode=None):')
+              b=s.index(end,a)
+              x=s[a:b]
+              assert 'listeMAJTracks = []' in x
+              assert 'ReqInsert("reglements", listeDonnees, commit=False)' in x
+              assert 'ReqInsert("ventilation", listeDonnees, commit=False)' in x
+              assert 'ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False)' in x
+              assert 'ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False)' in x
+              assert 'DB.Commit()' in x and 'rollback()' in x and 'return True' in x
+          PY
+      - name: Committer
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/_tmp_diag_reglements_prelevements.txt
-          git commit -m "ci: publier diagnostic temporaire règlements prélèvements"
+          git add noethys/Ol/OL_Prelevements_sepa.py noethys/Ol/OL_Prelevements_national.py noethys/Ol/OL_PES_pieces.py
+          git commit -m "fix: atomiser règlements SEPA national et PES"
           git push origin HEAD:master
