@@ -26,6 +26,7 @@ class Dialog(wx.Dialog):
                                  wx.MAXIMIZE_BOX | wx.MINIMIZE_BOX)
         self.parent = parent
         self.preview_ok = False
+        self.retry_pending = False
 
         titre = _(u"Synchronisation PMSL Équipe")
         intro = _(u"Échange direct avec PMSL Équipe. Le test récupère les lots et simule les ouvertures sans modifier Noethys. L'application n'est proposée qu'après une simulation valide et renvoie ensuite les accusés à PMSL.")
@@ -150,24 +151,33 @@ class Dialog(wx.Dialog):
             raise ValueError(_(u"Le secret partagé doit contenir au moins 24 caractères."))
         return url, secret, instance, int(self.ctrl_limit.GetValue())
 
-    def OnConfigurationChange(self, event=None):
+    def _reset_apply_state(self):
         self.preview_ok = False
+        self.retry_pending = False
+        self.bouton_appliquer.SetTexte(_(u"Appliquer"))
         self.bouton_appliquer.Enable(False)
+
+    def OnConfigurationChange(self, event=None):
+        self._reset_apply_state()
         if event is not None:
             event.Skip()
 
     def OnTester(self, event=None):
+        self.retry_pending = False
+        self.bouton_appliquer.SetTexte(_(u"Appliquer"))
         self._run(False)
 
     def OnAppliquer(self, event=None):
         if not self.preview_ok:
             self._message(_(u"Relancez d'abord une simulation valide avec la configuration actuelle."), wx.ICON_EXCLAMATION)
             return
-        dlg = wx.MessageDialog(
-            self,
-            _(u"Cette opération va créer dans Noethys les ouvertures manquantes des lots PMSL valides, puis envoyer les accusés de traitement à PMSL.\n\nContinuer ?"),
-            _(u"Appliquer la synchronisation PMSL"),
-            wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+        if self.retry_pending:
+            message = _(u"Des ouvertures ont déjà été appliquées dans Noethys, mais PMSL n'a pas reçu tous les accusés.\n\nLa reprise est idempotente : les ouvertures existantes ne seront pas dupliquées et les accusés seront renvoyés.\n\nRéessayer ?")
+            titre = _(u"Réessayer les accusés PMSL")
+        else:
+            message = _(u"Cette opération va créer dans Noethys les ouvertures manquantes des lots PMSL valides, puis envoyer les accusés de traitement à PMSL.\n\nContinuer ?")
+            titre = _(u"Appliquer la synchronisation PMSL")
+        dlg = wx.MessageDialog(self, message, titre, wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
         answer = dlg.ShowModal()
         dlg.Destroy()
         if answer == wx.ID_YES:
@@ -191,19 +201,28 @@ class Dialog(wx.Dialog):
             result = run_sync(url, secret, instance, apply=apply, limit=limit)
         except Exception as err:
             del busy
-            self.preview_ok = False
-            self.bouton_appliquer.Enable(False)
+            self._reset_apply_state()
             self.ctrl_resultat.SetValue(_(u"Échec de la synchronisation :\n%s") % err)
             self._message(_(u"La synchronisation PMSL a échoué.\n\n%s") % err, wx.ICON_ERROR)
             return
         del busy
         self.ctrl_resultat.SetValue(self._format_result(result))
         if apply:
-            self.preview_ok = False
-            self.bouton_appliquer.Enable(False)
-            self._message(_(u"Traitement terminé. Les lots appliqués ont été accusés auprès de PMSL."), wx.ICON_INFORMATION)
+            if result.get("synchronisation_complete"):
+                self._reset_apply_state()
+                self._message(_(u"Traitement terminé. Tous les lots appliqués ont été accusés auprès de PMSL."), wx.ICON_INFORMATION)
+            else:
+                # Les écritures locales peuvent déjà être committées. On maintient
+                # donc une action de reprise idempotente au lieu de masquer l'échec.
+                self.preview_ok = True
+                self.retry_pending = True
+                self.bouton_appliquer.SetTexte(_(u"Réessayer les accusés"))
+                self.bouton_appliquer.Enable(True)
+                self._message(_(u"Les ouvertures Noethys ont été traitées, mais au moins un accusé n'a pas atteint PMSL.\n\nVous pouvez utiliser « Réessayer les accusés ». Les ouvertures existantes ne seront pas recréées."), wx.ICON_EXCLAMATION)
         else:
             self.preview_ok = self._is_preview_valid(result)
+            self.retry_pending = False
+            self.bouton_appliquer.SetTexte(_(u"Appliquer"))
             self.bouton_appliquer.Enable(self.preview_ok and result.get("batch_count", 0) > 0)
             if result.get("batch_count", 0) == 0:
                 self._message(_(u"Aucun lot PMSL en attente pour cette instance Noethys."), wx.ICON_INFORMATION)
@@ -226,6 +245,8 @@ class Dialog(wx.Dialog):
         lines.append(u"Mode : %s" % (u"APPLICATION" if mode == "apply" else u"SIMULATION"))
         lines.append(u"Instance : %s" % (result.get("source_instance") or u"—"))
         lines.append(u"Lots : %d" % int(result.get("batch_count") or 0))
+        if mode == "apply":
+            lines.append(u"Synchronisation complète : %s" % (u"oui" if result.get("synchronisation_complete") else u"NON"))
         lines.append(u"")
         for index, item in enumerate(result.get("results") or [], 1):
             preview = item.get("preview") or {}
@@ -236,13 +257,18 @@ class Dialog(wx.Dialog):
             lines.append(u"   À créer : %d | Déjà présentes : %d | Bloquées : %d" % (
                 int(counts.get("create") or 0), int(counts.get("unchanged") or 0), int(counts.get("blocked") or 0)))
             if item.get("applied"):
-                lines.append(u"   Application : effectuée | ACK PMSL : %s" % (u"envoyé" if item.get("ack_sent") else u"non envoyé"))
+                lines.append(u"   Application locale : effectuée")
+                lines.append(u"   ACK PMSL : %s" % (u"envoyé" if item.get("ack_sent") else u"EN ATTENTE"))
+                if item.get("ack_error"):
+                    lines.append(u"   ! Erreur ACK : %s" % item.get("ack_error"))
             for row in preview.get("items") or []:
                 if row.get("status") == "blocked":
                     lines.append(u"   ! %s : %s" % (row.get("pmsl_ref") or u"action", row.get("reason") or u"blocage inconnu"))
             lines.append(u"")
         if mode != "apply":
             lines.append(u"Aucune écriture effectuée dans Noethys.")
+        elif not result.get("synchronisation_complete"):
+            lines.append(u"Au moins un ACK PMSL reste à transmettre. Une reprise idempotente est possible.")
         return u"\n".join(lines)
 
     def _message(self, text, icon):
