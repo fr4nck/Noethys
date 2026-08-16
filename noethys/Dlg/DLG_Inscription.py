@@ -636,11 +636,19 @@ class Page_Activite(wx.Panel):
             ("date_desinscription", date_desinscription),
             ("statut", statut),
             ]
+        ancien_IDinscription = self.IDinscription
         if self.parent.mode == "saisie" :
             listeDonnees.append(("date_inscription", str(datetime.date.today())))
-            self.IDinscription = DB.ReqInsert("inscriptions", listeDonnees)
+            IDinscription = DB.ReqInsert("inscriptions", listeDonnees, commit=False)
+            if IDinscription is None:
+                DB.Close()
+                return False
+            self.IDinscription = IDinscription
         else :
-            DB.ReqMAJ("inscriptions", listeDonnees, "IDinscription", self.IDinscription)
+            IDinscription = self.IDinscription
+            if not DB.ReqMAJ("inscriptions", listeDonnees, "IDinscription", IDinscription, commit=False):
+                DB.Close()
+                return False
 
         # Création d'une prestation négative pour la famille correspondant au remboursement
         if self.dict_remboursement != None:
@@ -657,16 +665,23 @@ class Page_Activite(wx.Panel):
                 ("categorie", "autre"),
                 ("date_valeur", str(datetime.date.today())),
             ]
-            DB.ReqInsert("prestations", listeDonnees)
+            if DB.ReqInsert("prestations", listeDonnees, commit=False) is None:
+                self.IDinscription = ancien_IDinscription
+                DB.Close()
+                return False
 
         # Si une action consommation est nécessaire, on l'exécute
         if self.action_consommation != None:
-            self.action_consommation(DB, date_desinscription)
+            if self.action_consommation(DB, date_desinscription) == False:
+                self.IDinscription = ancien_IDinscription
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+                DB.Close()
+                return False
 
-        DB.Commit()
-        DB.Close()
-
-        # Mémorise l'action dans l'historique
+        # Mémorise l'action dans l'historique dans la même transaction.
         if self.parent.mode == "saisie" :
             IDcategorie_historique = 18
             texte_historique = _(u"Inscription à l'activité '%s' sur le groupe '%s' avec la tarification '%s'") % (nomActivite, nomGroupe, nomCategorie)
@@ -674,12 +689,22 @@ class Page_Activite(wx.Panel):
             IDcategorie_historique = 20
             texte_historique = _(u"Modification de l'inscription à l'activité '%s' sur le groupe '%s' avec la tarification '%s'") % (nomActivite, nomGroupe, nomCategorie)
 
-        UTILS_Historique.InsertActions([{
+        if UTILS_Historique.InsertActions([{
             "IDindividu" : self.parent.IDindividu,
             "IDfamille" : IDfamille,
             "IDcategorie" : IDcategorie_historique,
             "action" : texte_historique,
-            },])
+            }], DB=DB, commit=False) == False:
+            self.IDinscription = ancien_IDinscription
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            return False
+
+        DB.Commit()
+        DB.Close()
 
         # Saisie de forfaits auto
         #if self.parent.mode == "saisie" :
@@ -708,11 +733,11 @@ class Page_Activite(wx.Panel):
 
     def SupprimerConsommations(self, db, date_desinscription):
         req = "DELETE FROM consommations WHERE IDinscription=%d AND date>'%s';" % (self.IDinscription, date_desinscription)
-        db.ExecuterReq(req)
+        return db.ExecuterReq(req) == 1
 
     def PreserverConsommations(self, db, date_desinscription):
         req = "UPDATE consommations SET IDinscription=NULL WHERE IDinscription=%d AND date>'%s';" % (self.IDinscription, date_desinscription)
-        db.ExecuterReq(req)
+        return db.ExecuterReq(req) == 1
 
     def OnCheckDepart(self, event=None):
         """Sur check demande informations complementaires, sur uncheck reinscription."""

@@ -95,14 +95,18 @@ def InsertActions(listeActions=[], DB=None, commit=True):
         DBexterne = DB is not None
         if not DBexterne:
             DB = GestionDB.DB()
-        try:
-            DB.Executermany(req, listeAjouts, commit=False)
-        except Exception:
+        ok = DB.Executermany(req, listeAjouts, commit=False)
+        if not ok:
             # Compatibilité avec les anciennes bases sans colonne IDdonnee.
             req = u"INSERT INTO historique (date, heure, IDutilisateur, IDfamille, IDindividu, IDcategorie, action) VALUES (?, ?, ?, ?, ?, ?, ?)"
             listeAjoutsCompat = [ligne[:-1] for ligne in listeAjouts]
-            DB.Executermany(req, listeAjoutsCompat, commit=False)
+            ok = DB.Executermany(req, listeAjoutsCompat, commit=False)
+        if not ok:
+            if not DBexterne:
+                DB.Close()
+            return False
         if commit:
             DB.Commit()
         if not DBexterne:
             DB.Close()
+    return True
