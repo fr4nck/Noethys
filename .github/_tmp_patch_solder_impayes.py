@@ -48,8 +48,9 @@ text = text.replace('''                    IDventilation = DB.ReqInsert("ventila
             dlg.ShowModal()
             dlg.Destroy()
             return False
-                    
-        DB.Close() 
+
+        DB.Close()
 ''',1)
 
+text = text.replace('listeDonnees = [    \n', 'listeDonnees = [\n')
 path.write_text(text, encoding='utf-8')
