@@ -1,0 +1,51 @@
+name: Scan metier post atomic
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_scan_metier_post_atomic.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Scanner les ecritures metier restantes
+        run: |
+          python - <<'PY' > .github/_tmp_scan_metier_post_atomic.txt
+          from pathlib import Path
+          roots=(Path('noethys/Dlg'),Path('noethys/Ol'))
+          ops=('ReqInsert(','ReqMAJ(','ReqDEL(')
+          for root in roots:
+              for p in root.rglob('*.py'):
+                  s=p.read_text(encoding='utf-8',errors='ignore')
+                  lines=s.splitlines()
+                  hits=[]
+                  for i,line in enumerate(lines,1):
+                      st=line.strip()
+                      if st.startswith('#') or 'commit=False' in line:
+                          continue
+                      if any(op in line for op in ops):
+                          # privilégier les appels non affectés/non contrôlés
+                          if not st.startswith(('if not ', 'if DB.', 'resultat =', 'ok =', 'ID')):
+                              hits.append((i,st))
+                  if len(hits) >= 2:
+                      print('\n###',p)
+                      for i,line in hits:
+                          print(f'{i}: {line}')
+          PY
+      - name: Publier rapport
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/_tmp_scan_metier_post_atomic.txt
+          git commit -m "ci: publier scan métier post-atomicité"
+          git push origin HEAD:master
