@@ -25,20 +25,88 @@ jobs:
 
           p=Path('noethys/Ctrl/CTRL_Ventilation.py')
           s=p.read_text(encoding='utf-8')
-          old='''    def Sauvegarde(self, IDreglement=None, DBtemp=None):\n        """ Sauvegarde des données """\n        if DBtemp == None :\n            DB = GestionDB.DB()\n        else :\n            DB = DBtemp\n\n        for ligne in self.listeLignesPrestations :\n            IDprestation = ligne.IDprestation\n            montant = float(ligne.ventilationActuelle)\n            \n            if IDprestation in self.dictVentilationInitiale :\n                IDventilation = self.dictVentilationInitiale[IDprestation]\n            else:\n                IDventilation = None\n            \n            if ligne.GetEtat() == True :\n                listeDonnees = [    \n                        ("IDreglement", IDreglement),\n                        ("IDcompte_payeur", self.IDcompte_payeur),\n                        ("IDprestation", IDprestation),\n                        ("montant", montant),\n                    ]\n                if IDventilation == None :\n                    IDventilation = DB.ReqInsert("ventilation", listeDonnees)\n                else:\n                    DB.ReqMAJ("ventilation", listeDonnees, "IDventilation", IDventilation)\n            else :\n                if IDventilation != None :\n                    DB.ReqDEL("ventilation", "IDventilation", IDventilation)\n\n        if DBtemp == None :\n            DB.Close()\n        \n        return True\n'''
-          new='''    def Sauvegarde(self, IDreglement=None, DBtemp=None):\n        """ Sauvegarde des données. Retourne False si une écriture échoue. """\n        DB = GestionDB.DB() if DBtemp is None else DBtemp\n        commit_local = DBtemp is None\n\n        for ligne in self.listeLignesPrestations :\n            IDprestation = ligne.IDprestation\n            montant = float(ligne.ventilationActuelle)\n            IDventilation = self.dictVentilationInitiale.get(IDprestation)\n\n            if ligne.GetEtat() == True :\n                listeDonnees = [\n                        ("IDreglement", IDreglement),\n                        ("IDcompte_payeur", self.IDcompte_payeur),\n                        ("IDprestation", IDprestation),\n                        ("montant", montant),\n                    ]\n                if IDventilation is None :\n                    IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)\n                    if IDventilation is None:\n                        if commit_local:\n                            DB.Close()\n                        return False\n                else:\n                    if not DB.ReqMAJ("ventilation", listeDonnees, "IDventilation", IDventilation, commit=False):\n                        if commit_local:\n                            DB.Close()\n                        return False\n            elif IDventilation is not None:\n                if not DB.ReqDEL("ventilation", "IDventilation", IDventilation, commit=False):\n                    if commit_local:\n                        DB.Close()\n                    return False\n\n        if commit_local:\n            DB.Commit()\n            DB.Close()\n        return True\n'''
-          if s.count(old)!=1:
-              raise SystemExit('CTRL_Ventilation.Sauvegarde motif inattendu')
-          s=s.replace(old,new,1)
+          start=s.index('    def Sauvegarde(self, IDreglement=None, DBtemp=None):')
+          end=s.index('\n\n# -----------------------------------------------------------------------------------------------------------------------', start)
+          new='''    def Sauvegarde(self, IDreglement=None, DBtemp=None):
+        """ Sauvegarde des données. Retourne False si une écriture échoue. """
+        DB = GestionDB.DB() if DBtemp is None else DBtemp
+        commit_local = DBtemp is None
+
+        for ligne in self.listeLignesPrestations :
+            IDprestation = ligne.IDprestation
+            montant = float(ligne.ventilationActuelle)
+            IDventilation = self.dictVentilationInitiale.get(IDprestation)
+
+            if ligne.GetEtat() == True :
+                listeDonnees = [
+                        ("IDreglement", IDreglement),
+                        ("IDcompte_payeur", self.IDcompte_payeur),
+                        ("IDprestation", IDprestation),
+                        ("montant", montant),
+                    ]
+                if IDventilation is None :
+                    IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
+                    if IDventilation is None:
+                        if commit_local:
+                            DB.Close()
+                        return False
+                else:
+                    if not DB.ReqMAJ("ventilation", listeDonnees, "IDventilation", IDventilation, commit=False):
+                        if commit_local:
+                            DB.Close()
+                        return False
+            elif IDventilation is not None:
+                if not DB.ReqDEL("ventilation", "IDventilation", IDventilation, commit=False):
+                    if commit_local:
+                        DB.Close()
+                    return False
+
+        if commit_local:
+            DB.Commit()
+            DB.Close()
+        return True
+'''
+          s=s[:start]+new+s[end:]
           p.write_text(s,encoding='utf-8')
 
           p=Path('noethys/Dlg/DLG_Saisie_reglement.py')
           s=p.read_text(encoding='utf-8')
-          old='''        if self.IDreglement == None :\n            self.nouveauReglement = True\n            self.IDreglement = DB.ReqInsert("reglements", listeDonnees)\n        else:\n            self.nouveauReglement = False\n            DB.ReqMAJ("reglements", listeDonnees, "IDreglement", self.IDreglement)\n        \n        # --- Sauvegarde de la ventilation ---\n        self.ctrl_ventilation.Sauvegarde(self.IDreglement, DB)\n'''
-          new='''        ancien_IDreglement = self.IDreglement\n        if ancien_IDreglement is None :\n            self.nouveauReglement = True\n            IDreglement = DB.ReqInsert("reglements", listeDonnees, commit=False)\n            if IDreglement is None:\n                DB.Close()\n                return False\n        else:\n            self.nouveauReglement = False\n            IDreglement = ancien_IDreglement\n            if not DB.ReqMAJ("reglements", listeDonnees, "IDreglement", IDreglement, commit=False):\n                DB.Close()\n                return False\n\n        # --- Sauvegarde de la ventilation ---\n        if self.ctrl_ventilation.Sauvegarde(IDreglement, DB) == False:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n            DB.Close()\n            return False\n'''
-          if s.count(old)!=1:
-              raise SystemExit('bloc règlement motif inattendu')
+          old='''        if self.IDreglement == None :
+            self.nouveauReglement = True
+            self.IDreglement = DB.ReqInsert("reglements", listeDonnees)
+        else:
+            self.nouveauReglement = False
+            DB.ReqMAJ("reglements", listeDonnees, "IDreglement", self.IDreglement)
+        
+        # --- Sauvegarde de la ventilation ---
+        self.ctrl_ventilation.Sauvegarde(self.IDreglement, DB)
+'''
+          new='''        ancien_IDreglement = self.IDreglement
+        if ancien_IDreglement is None :
+            self.nouveauReglement = True
+            IDreglement = DB.ReqInsert("reglements", listeDonnees, commit=False)
+            if IDreglement is None:
+                DB.Close()
+                return False
+        else:
+            self.nouveauReglement = False
+            IDreglement = ancien_IDreglement
+            if not DB.ReqMAJ("reglements", listeDonnees, "IDreglement", IDreglement, commit=False):
+                DB.Close()
+                return False
+
+        # --- Sauvegarde de la ventilation ---
+        if self.ctrl_ventilation.Sauvegarde(IDreglement, DB) == False:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            return False
+'''
+          if s.count(old)!=1: raise SystemExit('bloc règlement motif inattendu')
           s=s.replace(old,new,1)
+          if s.count('(\"reglement_frais\", self.IDreglement),')!=1: raise SystemExit('frais lien inattendu')
           s=s.replace('(\"reglement_frais\", self.IDreglement),','(\"reglement_frais\", IDreglement),',1)
           s=s.replace('                IDprestationFrais = DB.ReqInsert("prestations", listeDonnees)\n','''                IDprestationFrais = DB.ReqInsert("prestations", listeDonnees, commit=False)\n                if IDprestationFrais is None:\n                    DB.Close()\n                    return False\n''',1)
           s=s.replace('                DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestationFrais)\n                DB.ReqDEL("ventilation", "IDprestation", IDprestationFrais)\n','''                if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestationFrais, commit=False):\n                    DB.Close()\n                    return False\n                if not DB.ReqDEL("ventilation", "IDprestation", IDprestationFrais, commit=False):\n                    DB.Close()\n                    return False\n''',1)
@@ -55,7 +123,6 @@ jobs:
           assert 'ReqInsert("ventilation", listeDonnees, commit=False)' in v
           assert 'if self.ctrl_ventilation.Sauvegarde(IDreglement, DB) == False:' in r
           assert 'DB.Commit()\n        DB.Close()\n        self.IDreglement = IDreglement' in r
-          assert '("reglement_frais", IDreglement)' in r
           PY
       - name: Committer
         run: |
