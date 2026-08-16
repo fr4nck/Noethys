@@ -304,11 +304,30 @@ def E4072():
             wx.Yield()
         selections = dlg.GetSelections()
         DB = GestionDB.DB()
+        ok = True
         for index in selections:
             texte, label, listePrestationsTemp = listeDonnees[index]
             for IDprestation in listePrestationsTemp:
-                DB.ReqDEL("prestations", "IDprestation", IDprestation)
+                for table in ("ventilation", "deductions", "prestations"):
+                    if not DB.ReqDEL(table, "IDprestation", IDprestation, commit=False):
+                        ok = False
+                        break
+                if not ok:
+                    break
+            if not ok:
+                break
+        if ok:
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
         DB.Close()
+        if not ok:
+            dlgErreur = wx.MessageDialog(None, _(u"La procédure de suppression a échoué. Aucune prestation sélectionnée n'a été supprimée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlgErreur.ShowModal()
+            dlgErreur.Destroy()
         del dlgAttente
     dlg.Destroy()
     print("Fin de la procedure E4072.")

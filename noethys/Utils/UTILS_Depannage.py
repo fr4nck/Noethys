@@ -54,30 +54,62 @@ class CotisationsSansIndividus(Anomalie):
         IDcotisation = self.kwds["IDcotisation"]
         IDindividu = self.kwds["IDindividu"]
         IDprestation = self.kwds["IDprestation"]
-        DB.ReqDEL("cotisations", "IDcotisation", IDcotisation)
+        ok = True
         if IDprestation != None :
-            DB.ReqDEL("prestations", "IDprestation", IDprestation)
-            DB.ReqDEL("ventilation", "IDprestation", IDprestation)
-        self.corrige = True
+            for table in ("ventilation", "deductions", "prestations"):
+                if not DB.ReqDEL(table, "IDprestation", IDprestation, commit=False):
+                    ok = False
+                    break
+        if ok and not DB.ReqDEL("cotisations", "IDcotisation", IDcotisation, commit=False):
+            ok = False
+        if ok:
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+        self.corrige = ok
 
 class CotisationsSansFamilles(Anomalie):
     def Correction(self, DB=None):
         IDcotisation = self.kwds["IDcotisation"]
         IDfamille = self.kwds["IDfamille"]
         IDprestation = self.kwds["IDprestation"]
-        DB.ReqDEL("cotisations", "IDcotisation", IDcotisation)
+        ok = True
         if IDprestation != None :
-            DB.ReqDEL("prestations", "IDprestation", IDprestation)
-            DB.ReqDEL("ventilation", "IDprestation", IDprestation)
-        self.corrige = True
+            for table in ("ventilation", "deductions", "prestations"):
+                if not DB.ReqDEL(table, "IDprestation", IDprestation, commit=False):
+                    ok = False
+                    break
+        if ok and not DB.ReqDEL("cotisations", "IDcotisation", IDcotisation, commit=False):
+            ok = False
+        if ok:
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+        self.corrige = ok
 
 class PrestationsSansFamilles(Anomalie):
     def Correction(self, DB=None):
         IDprestation = self.kwds["IDprestation"]
         IDfamille = self.kwds["IDfamille"]
-        DB.ReqDEL("prestations", "IDprestation", IDprestation)
-        DB.ReqDEL("ventilation", "IDprestation", IDprestation)
-        self.corrige = True
+        ok = True
+        for table in ("ventilation", "deductions", "prestations"):
+            if not DB.ReqDEL(table, "IDprestation", IDprestation, commit=False):
+                ok = False
+                break
+        if ok:
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+        self.corrige = ok
 
 class VentilationsSansPrestations(Anomalie):
     def Correction(self, DB=None):
