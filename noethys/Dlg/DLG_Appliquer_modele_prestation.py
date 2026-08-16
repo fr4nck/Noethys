@@ -372,6 +372,12 @@ class Dialog(wx.Dialog):
         req = "SELECT IDcompte_payeur FROM familles WHERE IDfamille=%d" % self.IDfamille
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
+        if not listeDonnees:
+            DB.Close()
+            dlg = wx.MessageDialog(self, _(u"Aucun compte payeur n'est associé à cette famille."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
         IDcompte_payeur = listeDonnees[0][0]
 
         # Sauvegarde de la prestation
@@ -392,8 +398,21 @@ class Dialog(wx.Dialog):
             ("tva", tva),
             ]
         listeDonnees.append(("date_valeur", str(datetime.date.today())))
-        self.IDprestation = DB.ReqInsert("prestations", listeDonnees)
+        IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)
+        if IDprestation is None:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            dlg = wx.MessageDialog(self, _(u"La création de la prestation a échoué."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
+
+        DB.Commit()
         DB.Close()
+        self.IDprestation = IDprestation
 
         # Fermeture de la fenêtre
         self.EndModal(wx.ID_OK)
