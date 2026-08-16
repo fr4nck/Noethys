@@ -69,7 +69,7 @@ class CTRL_Categories(wx.TextCtrl):
         # Recherche des caractéristiques des catégories
         db = GestionDB.DB()
         req = """SELECT IDcategorie, nom
-        FROM produits_categories 
+        FROM produits_categories
         WHERE IDcategorie IN %s;""" % condition
         db.ExecuterReq(req)
         self.listeDonnees = db.ResultatReq()
@@ -112,7 +112,7 @@ class CTRL_Produits(wx.TextCtrl):
         # Recherche des caractéristiques des produits
         db = GestionDB.DB()
         req = """SELECT produits.IDproduit, produits.nom, produits.IDcategorie, produits.observations, produits_categories.nom
-        FROM produits 
+        FROM produits
         LEFT JOIN produits_categories ON produits_categories.IDcategorie = produits.IDcategorie
         WHERE IDproduit IN %s;""" % condition
         db.ExecuterReq(req)
@@ -432,7 +432,7 @@ class CTRL_Attribution(html.HtmlWindow):
         DB = GestionDB.DB()
         req = """SELECT IDfamille, locations.IDproduit, locations.observations, date_debut, date_fin,
         produits.nom, produits_categories.nom
-        FROM locations 
+        FROM locations
         LEFT JOIN produits ON produits.IDproduit = locations.IDproduit
         LEFT JOIN produits_categories ON produits_categories.IDcategorie = produits.IDcategorie
         WHERE IDlocation=%d;""" % self.IDlocation
@@ -503,7 +503,7 @@ class PAGE_Statut_attribuee(wx.Panel):
         DB = GestionDB.DB()
         req = """SELECT IDfamille, locations.IDproduit, locations.observations, date_debut, date_fin,
         produits.nom, produits_categories.nom
-        FROM locations 
+        FROM locations
         LEFT JOIN produits ON produits.IDproduit = locations.IDproduit
         LEFT JOIN produits_categories ON produits_categories.IDcategorie = produits.IDcategorie
         WHERE IDlocation=%d;""" % self.IDlocation
@@ -869,9 +869,11 @@ class Dialog(wx.Dialog):
         if IDlocation != None :
             statut = "attribuee"
 
-        # Sauvegarde
+        # Sauvegarde transactionnelle de la demande, des filtres et du questionnaire
         DB = GestionDB.DB()
-        listeDonnees = [    
+        ok = True
+        nouvelIDdemande = self.IDdemande
+        listeDonnees = [
             ("date", date_demande),
             ("IDfamille", IDfamille),
             ("observations", observations),
@@ -882,38 +884,64 @@ class Dialog(wx.Dialog):
             ("IDlocation", IDlocation),
             ]
 
-        if self.IDdemande == None :
-            self.IDdemande = DB.ReqInsert("locations_demandes", listeDonnees)
+        if nouvelIDdemande == None :
+            nouvelIDdemande = DB.ReqInsert("locations_demandes", listeDonnees, commit=False)
+            if nouvelIDdemande is None:
+                ok = False
         else:
-            DB.ReqMAJ("locations_demandes", listeDonnees, "IDdemande", self.IDdemande)
+            if not DB.ReqMAJ("locations_demandes", listeDonnees, "IDdemande", nouvelIDdemande, commit=False):
+                ok = False
 
-        # Sauvegarde des filtres
         listeID = []
-        for dictFiltre in self.notebook.GetPage("criteres").ctrl_filtres.GetDonnees() :
-            listeID.append(dictFiltre["IDfiltre"])
-            listeDonnees = [
-                ("IDquestion", dictFiltre["IDquestion"]),
-                ("categorie", "location_demande"),
-                ("choix", dictFiltre["choix"]),
-                ("criteres", dictFiltre["criteres"]),
-                ("IDdonnee", self.IDdemande),
-                ]
+        if ok:
+            for dictFiltre in self.notebook.GetPage("criteres").ctrl_filtres.GetDonnees():
+                IDfiltre = dictFiltre["IDfiltre"]
+                listeDonnees = [
+                    ("IDquestion", dictFiltre["IDquestion"]),
+                    ("categorie", "location_demande"),
+                    ("choix", dictFiltre["choix"]),
+                    ("criteres", dictFiltre["criteres"]),
+                    ("IDdonnee", nouvelIDdemande),
+                    ]
+                if IDfiltre == None:
+                    IDfiltre = DB.ReqInsert("questionnaire_filtres", listeDonnees, commit=False)
+                    if IDfiltre is None:
+                        ok = False
+                        break
+                else:
+                    if not DB.ReqMAJ("questionnaire_filtres", listeDonnees, "IDfiltre", IDfiltre, commit=False):
+                        ok = False
+                        break
+                listeID.append(IDfiltre)
 
-            # Sauvegarde dans DB
-            if dictFiltre["IDfiltre"] == None :
-                IDfiltre = DB.ReqInsert("questionnaire_filtres", listeDonnees)
-            else :
-                DB.ReqMAJ("questionnaire_filtres", listeDonnees, "IDfiltre", dictFiltre["IDfiltre"])
+        if ok:
+            for dictInitialFiltre in self.listeInitialeFiltres:
+                IDfiltre = dictInitialFiltre["IDfiltre"]
+                if IDfiltre not in listeID:
+                    if not DB.ReqDEL("questionnaire_filtres", "IDfiltre", IDfiltre, commit=False):
+                        ok = False
+                        break
 
-        for dictInitialFiltre in self.listeInitialeFiltres :
-            if dictInitialFiltre["IDfiltre"] not in listeID :
-                DB.ReqDEL("questionnaire_filtres", "IDfiltre", dictInitialFiltre["IDfiltre"])
+        if ok:
+            if self.notebook.GetPage("questionnaire").ctrl_questionnaire.Sauvegarde(DB=DB, IDdonnee=nouvelIDdemande) is False:
+                ok = False
 
-        # Sauvegarde du questionnaire
-        self.notebook.GetPage("questionnaire").ctrl_questionnaire.Sauvegarde(DB=DB, IDdonnee=self.IDdemande)
-
-        # Fermeture de la base
+        if ok:
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
         DB.Close()
+
+        if not ok:
+            dlg = wx.MessageDialog(self, _(u"Une erreur est survenue pendant l'enregistrement de la demande de location. Aucune modification n'a été conservée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
+        self.IDdemande = nouvelIDdemande
 
         # Fermeture de la fenêtre
         self.EndModal(wx.ID_OK)

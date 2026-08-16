@@ -45,7 +45,7 @@ LISTE_CONTROLES = [
     {"code" : "documents", "label" : _(u"Porte-documents"), "image" : "Document.png", "options" : {"hauteur":60}, "filtre" : None},
     {"code" : "codebarres", "label" : _(u"Code-barres"), "image" : "Codebarres.png", "options" : {"norme":"39"}, "filtre" : "texte" },
     {"code" : "rfid", "label" : _(u"Badge RFID"), "image" : "Rfid.png" , "filtre" : "texte"},
-    ] 
+    ]
 
 LISTE_NORMES_CODESBARRES = [
     {"code" : "Codabar", "label" : "Codabar"},
@@ -84,10 +84,10 @@ class DLG_Choix_creation(wx.Dialog):
         self.bouton_question = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/BoutonsImages/Questionnaire_question.png"), wx.BITMAP_TYPE_ANY))
         self.bouton_aide = CTRL_Bouton_image.CTRL(self, texte=_(u"Aide"), cheminImage="Images/32x32/Aide.png")
         self.bouton_annuler = CTRL_Bouton_image.CTRL(self, id=wx.ID_CANCEL, texte=_(u"Annuler"), cheminImage="Images/32x32/Annuler.png")
-        
+
         self.bouton_categorie.SetMinSize((140, 120))
         self.bouton_question.SetMinSize((140, 120))
-        
+
         self.__set_properties()
         self.__do_layout()
 
@@ -125,13 +125,13 @@ class DLG_Choix_creation(wx.Dialog):
         self.Layout()
         self.CenterOnScreen()
 
-    def OnBoutonCategorie(self, event): 
+    def OnBoutonCategorie(self, event):
         self.EndModal(100)
 
-    def OnBoutonQuestion(self, event): 
+    def OnBoutonQuestion(self, event):
         self.EndModal(200)
 
-    def OnBoutonAide(self, event): 
+    def OnBoutonAide(self, event):
         from Utils import UTILS_Aide
         UTILS_Aide.Aide("Questionnaires")
 
@@ -140,30 +140,30 @@ class DLG_Choix_creation(wx.Dialog):
 
 class CTRL_ligne_texte(wx.TextCtrl):
     def __init__(self, parent, item=None, track=None):
-        wx.TextCtrl.__init__(self, parent, id=-1, value="", size=(track.largeur, -1)) 
+        wx.TextCtrl.__init__(self, parent, id=-1, value="", size=(track.largeur, -1))
         self.parent = parent
         self.item = item
         self.track = track
-    
+
     def SetValeur(self, valeur=None):
         if valeur == None : valeur = u""
         self.SetValue(valeur)
-    
+
     def SetValeurStr(self, valeur=None):
         self.SetValeur(valeur)
-    
+
     def ValidationValeur(self):
         return True
 
     def GetValeur(self):
-        valeur = self.GetValue() 
+        valeur = self.GetValue()
         if valeur == "" : valeur = None
         return valeur
 
     def GetValeurStr(self):
         return self.GetValeur()
 
-                    
+
 # -------------------------------------------------------------------------------------------------------------------
 
 class CTRL_bloc_texte(wx.TextCtrl):
@@ -172,11 +172,11 @@ class CTRL_bloc_texte(wx.TextCtrl):
             hauteur = int(track.dictOptions["hauteur"])
         else:
             hauteur = 60
-        wx.TextCtrl.__init__(self, parent, id=-1, value="", size=(track.largeur, hauteur), style=wx.TE_MULTILINE) 
+        wx.TextCtrl.__init__(self, parent, id=-1, value="", size=(track.largeur, hauteur), style=wx.TE_MULTILINE)
         self.parent = parent
         self.item = item
         self.track = track
-    
+
     def SetValeur(self, valeur=None):
         if valeur == None : valeur = u""
         self.SetValue(valeur)
@@ -188,7 +188,7 @@ class CTRL_bloc_texte(wx.TextCtrl):
         return True
 
     def GetValeur(self):
-        valeur = self.GetValue() 
+        valeur = self.GetValue()
         if valeur == "" : valeur = None
         return valeur
 
@@ -199,11 +199,11 @@ class CTRL_bloc_texte(wx.TextCtrl):
 
 class CTRL_entier(wx.SpinCtrl):
     def __init__(self, parent, item=None, track=None):
-        wx.SpinCtrl.__init__(self, parent, id=-1, value="", size=(track.largeur, -1)) 
+        wx.SpinCtrl.__init__(self, parent, id=-1, value="", size=(track.largeur, -1))
         self.parent = parent
         self.item = item
         self.track = track
-        
+
         if "min" in self.track.dictOptions:
             min = int(self.track.dictOptions["min"])
         else:
@@ -213,24 +213,24 @@ class CTRL_entier(wx.SpinCtrl):
         else:
             max = 99999
         self.SetRange(min,max)
-    
+
     def SetValeur(self, valeur=None):
         if valeur == None : valeur = u""
         self.SetValue(valeur)
 
     def SetValeurStr(self, valeur=None):
         if valeur == None or valeur == "" : return
-        try : 
+        try :
             valeur = int(valeur)
             self.SetValeur(valeur)
-        except : 
+        except :
             pass
 
     def ValidationValeur(self):
         return True
 
     def GetValeur(self):
-        valeur = self.GetValue() 
+        valeur = self.GetValue()
         if valeur == "" : valeur = None
         return valeur
 
@@ -255,28 +255,28 @@ class CTRL_decimal(FS.FloatSpin):
         else:
             max = 99999
 
-        FS.FloatSpin.__init__(self, parent, id=-1, min_val=min, max_val=max, increment=0.1, agwStyle=FS.FS_RIGHT, size=(track.largeur, -1)) 
+        FS.FloatSpin.__init__(self, parent, id=-1, min_val=min, max_val=max, increment=0.1, agwStyle=FS.FS_RIGHT, size=(track.largeur, -1))
         self.SetFormat("%f")
         self.SetDigits(6)
-        
-    
+
+
     def SetValeur(self, valeur=None):
         if valeur == None : valeur = 0.0
         self.SetValue(valeur)
 
     def SetValeurStr(self, valeur=None):
         if valeur == None or valeur == "" : return
-        try : 
+        try :
             valeur = float(valeur)
             self.SetValeur(valeur)
-        except : 
+        except :
             pass
 
     def ValidationValeur(self):
         return True
 
     def GetValeur(self):
-        valeur = self.GetValue() 
+        valeur = self.GetValue()
         if valeur == "" : valeur = None
         return valeur
 
@@ -289,13 +289,13 @@ class CTRL_decimal(FS.FloatSpin):
 
 class CTRL_montant(CTRL_Saisie_euros.CTRL):
     def __init__(self, parent, item=None, track=None):
-        CTRL_Saisie_euros.CTRL.__init__(self, parent, size=(track.largeur, -1)) 
+        CTRL_Saisie_euros.CTRL.__init__(self, parent, size=(track.largeur, -1))
         self.parent = parent
         self.item = item
         self.track = track
         self.SetBackgroundColour((255, 255, 255))
         self.SetToolTip(wx.ToolTip(_(u"Saisissez un montant")))
-    
+
     def SetValeur(self, valeur=None):
         if valeur == None : valeur = u""
         try :
@@ -312,12 +312,12 @@ class CTRL_montant(CTRL_Saisie_euros.CTRL):
         return True
 
     def GetValeur(self):
-        valeur = self.GetMontant() 
+        valeur = self.GetMontant()
         return valeur
 
     def GetValeurStr(self):
         valeur = self.GetValeur()
-        if valeur == None : 
+        if valeur == None :
             return None
         else :
             return str(valeur)
@@ -327,7 +327,7 @@ class CTRL_montant(CTRL_Saisie_euros.CTRL):
 
 class CTRL_liste_deroulante(wx.Choice):
     def __init__(self, parent, item=None, track=None):
-        wx.Choice.__init__(self, parent, id=-1, size=(track.largeur, -1)) 
+        wx.Choice.__init__(self, parent, id=-1, size=(track.largeur, -1))
         self.parent = parent
         self.item = item
         self.track = track
@@ -340,9 +340,9 @@ class CTRL_liste_deroulante(wx.Choice):
             self.dictDonnees[index] = dictChoix
             index += 1
         self.SetItems(self.listeLabels)
-    
+
     def SetValeur(self, IDchoix=None):
-        if IDchoix == None : 
+        if IDchoix == None :
             self.Select(0)
         for index, dictChoix in self.dictDonnees.items() :
             if IDchoix == dictChoix["IDchoix"] :
@@ -350,17 +350,17 @@ class CTRL_liste_deroulante(wx.Choice):
 
     def SetValeurStr(self, valeur=None):
         if valeur == None or valeur == "" : return
-        try : 
+        try :
             valeur = int(valeur)
             self.SetValeur(valeur)
-        except : 
+        except :
             pass
 
     def ValidationValeur(self):
         return True
 
     def GetValeur(self):
-        index = self.GetSelection() 
+        index = self.GetSelection()
         if index in self.dictDonnees :
             dictChoix = self.dictDonnees[index]
             return dictChoix["IDchoix"]
@@ -369,7 +369,7 @@ class CTRL_liste_deroulante(wx.Choice):
 
     def GetValeurStr(self):
         valeur = self.GetValeur()
-        if valeur == None : 
+        if valeur == None :
             return None
         return str(valeur)
 
@@ -381,7 +381,7 @@ class CTRL_liste_coches(wx.CheckListBox):
             hauteur = int(track.dictOptions["hauteur"])
         else:
             hauteur = -1
-        wx.CheckListBox.__init__(self, parent, id=-1, size=(track.largeur, hauteur)) 
+        wx.CheckListBox.__init__(self, parent, id=-1, size=(track.largeur, hauteur))
         self.parent = parent
         self.item = item
         self.track = track
@@ -406,13 +406,13 @@ class CTRL_liste_coches(wx.CheckListBox):
 
     def SetValeurStr(self, valeur=None):
         if valeur == None or valeur == "" : return
-        try : 
+        try :
             listTemp = valeur.split(";")
             listeIDchoix = []
             for IDchoix in listTemp :
                 listeIDchoix.append(int(IDchoix))
             self.SetValeur(listeIDchoix)
-        except : 
+        except :
             pass
 
     def ValidationValeur(self):
@@ -434,7 +434,7 @@ class CTRL_liste_coches(wx.CheckListBox):
             listeStr.append(str(IDchoix))
         texte = ";".join(listeStr)
         return texte
-        
+
     def OnContextMenu(self, event):
         """Ouverture du menu contextuel """
         # Création du menu contextuel
@@ -474,11 +474,11 @@ class CTRL_liste_coches(wx.CheckListBox):
 
 class CTRL_case_coche(wx.CheckBox):
     def __init__(self, parent, item=None, track=None):
-        wx.CheckBox.__init__(self, parent, id=-1, size=(-1, -1)) 
+        wx.CheckBox.__init__(self, parent, id=-1, size=(-1, -1))
         self.parent = parent
         self.item = item
         self.track = track
-    
+
     def SetValeur(self, valeur=None):
         if valeur == None : valeur = u""
         self.SetValue(valeur)
@@ -487,15 +487,15 @@ class CTRL_case_coche(wx.CheckBox):
         if valeur == None or valeur == "" : return
         try :
             valeur = int(valeur)
-            self.SetValeur(valeur) 
-        except : 
+            self.SetValeur(valeur)
+        except :
             pass
 
     def ValidationValeur(self):
         return True
 
     def GetValeur(self):
-        valeur = self.GetValue() 
+        valeur = self.GetValue()
         return int(valeur)
 
     def GetValeurStr(self):
@@ -505,13 +505,13 @@ class CTRL_case_coche(wx.CheckBox):
 
 class CTRL_date(CTRL_Saisie_date.Date2):
     def __init__(self, parent, item=None, track=None):
-        CTRL_Saisie_date.Date2.__init__(self, parent) 
+        CTRL_Saisie_date.Date2.__init__(self, parent)
         self.parent = parent
         self.item = item
         self.track = track
         self.SetBackgroundColour((255, 255, 255))
         self.ctrl_date.SetToolTip(wx.ToolTip(_(u"Saisissez une date")))
-    
+
     def SetValeur(self, valeur=None):
         if valeur == None : valeur = u""
         self.SetDate(valeur)
@@ -524,12 +524,12 @@ class CTRL_date(CTRL_Saisie_date.Date2):
         return True
 
     def GetValeur(self):
-        valeur = self.GetDate() 
+        valeur = self.GetDate()
         return valeur
 
     def GetValeurStr(self):
         valeur = self.GetValeur()
-        if valeur == None : 
+        if valeur == None :
             return None
         else :
             return str(valeur)
@@ -542,16 +542,16 @@ class CTRL_slider(wx.Panel):
             hauteur = int(track.dictOptions["hauteur"])
         else:
             hauteur = -1
-        wx.Panel.__init__(self, parent, id=-1, size=(track.largeur, hauteur)) 
+        wx.Panel.__init__(self, parent, id=-1, size=(track.largeur, hauteur))
         self.parent = parent
         self.item = item
         self.track = track
         self.SetBackgroundColour(wx.Colour(255, 255, 255))
-        
+
         # Contrôles
         self.label_valeur = wx.StaticText(self, -1, "0")
         self.label_valeur.SetMinSize((25, -1))
-        
+
         self.ctrl_slider = wx.Slider(self, -1, style=wx.SL_HORIZONTAL|wx.SL_AUTOTICKS)
         if "min" in track.dictOptions:
             min = int(track.dictOptions["min"])
@@ -572,11 +572,11 @@ class CTRL_slider(wx.Panel):
         grid_sizer_base.Add(self.label_valeur, 0, wx.ALIGN_CENTER_VERTICAL, 0)
         grid_sizer_base.Add(self.ctrl_slider, 1, wx.EXPAND, 0)
         self.SetSizer(grid_sizer_base)
-        grid_sizer_base.AddGrowableCol(1)        
+        grid_sizer_base.AddGrowableCol(1)
         self.Layout()
 
-    def OnSlider(self, event): 
-        valeur = self.ctrl_slider.GetValue() 
+    def OnSlider(self, event):
+        valeur = self.ctrl_slider.GetValue()
         self.label_valeur.SetLabel(str(valeur))
 
     def SetValeur(self, valeur=None):
@@ -586,17 +586,17 @@ class CTRL_slider(wx.Panel):
 
     def SetValeurStr(self, valeur=None):
         if valeur == None or valeur == "" : return
-        try : 
+        try :
             valeur = int(valeur)
             self.SetValeur(valeur)
-        except : 
+        except :
             pass
 
     def ValidationValeur(self):
         return True
 
     def GetValeur(self):
-        return self.ctrl_slider.GetValue() 
+        return self.ctrl_slider.GetValue()
 
     def GetValeurStr(self):
         return str(self.GetValeur())
@@ -609,7 +609,7 @@ class CTRL_couleur(wx.lib.colourselect.ColourSelect):
             hauteur = int(track.dictOptions["hauteur"])
         else:
             hauteur = 20
-        wx.lib.colourselect.ColourSelect.__init__(self, parent, id=-1, label="", colour=(255, 255, 255), size=(track.largeur, hauteur)) 
+        wx.lib.colourselect.ColourSelect.__init__(self, parent, id=-1, label="", colour=(255, 255, 255), size=(track.largeur, hauteur))
         self.parent = parent
         self.item = item
         self.track = track
@@ -622,10 +622,10 @@ class CTRL_couleur(wx.lib.colourselect.ColourSelect):
 
     def SetValeurStr(self, valeur=None):
         if valeur == None or valeur == "" : return
-        try : 
+        try :
             valeur = ConvertCouleur(valeur)
             self.SetValeur(valeur)
-        except : 
+        except :
             pass
 
     def ValidationValeur(self):
@@ -633,10 +633,10 @@ class CTRL_couleur(wx.lib.colourselect.ColourSelect):
 
     def GetValeur(self):
         return self.GetColour()
-    
+
     def GetValeurStr(self):
         return str(self.GetValeur())
-        
+
 # -------------------------------------------------------------------------------------------------------------------
 
 ##class CTRL_potentiometre(wx.Panel):
@@ -645,16 +645,16 @@ class CTRL_couleur(wx.lib.colourselect.ColourSelect):
 ##            hauteur = int(track.dictOptions["hauteur"])
 ##        else:
 ##            hauteur = 100
-##        wx.Panel.__init__(self, parent, id=-1, size=(track.largeur, hauteur)) 
+##        wx.Panel.__init__(self, parent, id=-1, size=(track.largeur, hauteur))
 ##        self.parent = parent
 ##        self.item = item
 ##        self.track = track
-##        
+##
 ##        # Contrôles
 ##        self.label_valeur = wx.StaticText(self, -1, "0")
 ##        self.label_valeur.SetMinSize((25, -1))
 ##        self.SetBackgroundColour((255, 255, 255))
-##        
+##
 ##        self.ctrl_poten = wx.lib.agw.knobctrl.KnobCtrl(self, -1, size=(hauteur, hauteur))
 ##        if track.dictOptions.has_key("min"):
 ##            min = int(track.dictOptions["min"])
@@ -668,7 +668,7 @@ class CTRL_couleur(wx.lib.colourselect.ColourSelect):
 ##        self.ctrl_poten.SetAngularRange(-45, 225)
 ##        self.ctrl_poten.SetTagsColour((180, 180, 180))
 ##        self.Bind(wx.lib.agw.knobctrl.EVT_KC_ANGLE_CHANGED, self.OnKnob, self.ctrl_poten)
-##        
+##
 ##        self.SetValeur(((max-min)/2))
 ##
 ##        # Layout
@@ -676,11 +676,11 @@ class CTRL_couleur(wx.lib.colourselect.ColourSelect):
 ##        grid_sizer_base.Add(self.label_valeur, 0, wx.ALIGN_CENTER_VERTICAL, 0)
 ##        grid_sizer_base.Add(self.ctrl_poten, 1, wx.EXPAND, 0)
 ##        self.SetSizer(grid_sizer_base)
-##        grid_sizer_base.AddGrowableCol(1)        
+##        grid_sizer_base.AddGrowableCol(1)
 ##        self.Layout()
 ##
-##    def OnKnob(self, event): 
-##        valeur = self.ctrl_poten.GetValue() 
+##    def OnKnob(self, event):
+##        valeur = self.ctrl_poten.GetValue()
 ##        self.label_valeur.SetLabel(str(valeur))
 ##
 ##    def SetValeur(self, valeur=None):
@@ -690,17 +690,17 @@ class CTRL_couleur(wx.lib.colourselect.ColourSelect):
 ##
 ##    def SetValeurStr(self, valeur=None):
 ##        if valeur == None or valeur == "" : return
-##        try : 
+##        try :
 ##            valeur = int(valeur)
 ##            self.SetValeur(valeur)
-##        except : 
+##        except :
 ##            pass
 ##
 ##    def ValidationValeur(self):
 ##        return True
 ##
 ##    def GetValeur(self):
-##        return self.ctrl_poten.GetValue() 
+##        return self.ctrl_poten.GetValue()
 ##
 ##    def GetValeurStr(self):
 ##        return str(self.GetValeur())
@@ -713,30 +713,30 @@ class CTRL_documents(wx.Panel):
             hauteur = int(track.dictOptions["hauteur"])
         else:
             hauteur = -1
-        wx.Panel.__init__(self, parent, id=-1, size=(track.largeur, hauteur)) 
+        wx.Panel.__init__(self, parent, id=-1, size=(track.largeur, hauteur))
         self.parent = parent
         self.item = item
         self.track = track
         self.SetBackgroundColour(wx.Colour(255, 255, 255))
-        
+
         # Contrôles
-        if hauteur < 30 : 
+        if hauteur < 30 :
             hauteur = 30
         self.ctrl_vignettes = CTRL_Vignettes_documents.CTRL(self, type_donnee="reponse", IDreponse=None, afficheLabels=False, tailleVignette=hauteur-20, style=wx.BORDER_SUNKEN)
 
         self.bouton_outils = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Outils.png"), wx.BITMAP_TYPE_ANY))
         self.bouton_outils.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour accéder aux commandes disponibles")))
         self.Bind(wx.EVT_BUTTON, self.OnBoutonOutils, self.bouton_outils)
-        
+
         # Layout
         grid_sizer_base = wx.FlexGridSizer(rows=1, cols=2, vgap=0, hgap=0)
         grid_sizer_base.Add(self.ctrl_vignettes, 1, wx.EXPAND, 0)
         grid_sizer_base.Add(self.bouton_outils, 0, wx.EXPAND, 0)
         self.SetSizer(grid_sizer_base)
-        grid_sizer_base.AddGrowableCol(0)        
+        grid_sizer_base.AddGrowableCol(0)
         self.Layout()
 
-    def OnBoutonOutils(self, event): 
+    def OnBoutonOutils(self, event):
         self.ctrl_vignettes.OnContextMenu()
 
     def SetValeur(self, valeur=None):
@@ -761,31 +761,31 @@ class CTRL_documents(wx.Panel):
     def Sauvegarde(self, IDreponse=None) :
         nbreDocuments = self.ctrl_vignettes.Sauvegarde(IDreponse)
         return nbreDocuments
-    
+
     def GetNbreDocuments(self):
-        return self.ctrl_vignettes.GetNbreDocuments() 
+        return self.ctrl_vignettes.GetNbreDocuments()
 
 # -------------------------------------------------------------------------------------------------------------------
 
 class CTRL_codebarres(wx.TextCtrl):
     def __init__(self, parent, item=None, track=None):
-        wx.TextCtrl.__init__(self, parent, id=-1, value="", size=(track.largeur, -1)) 
+        wx.TextCtrl.__init__(self, parent, id=-1, value="", size=(track.largeur, -1))
         self.parent = parent
         self.item = item
         self.track = track
-    
+
     def SetValeur(self, valeur=None):
         if valeur == None : valeur = u""
         self.SetValue(valeur)
-    
+
     def SetValeurStr(self, valeur=None):
         self.SetValeur(valeur)
-    
+
     def ValidationValeur(self):
         return True
 
     def GetValeur(self):
-        valeur = self.GetValue() 
+        valeur = self.GetValue()
         if valeur == "" : valeur = None
         return valeur
 
@@ -796,33 +796,33 @@ class CTRL_codebarres(wx.TextCtrl):
 
 class CTRL_rfid(wx.Panel):
     def __init__(self, parent, item=None, track=None):
-        wx.Panel.__init__(self, parent, id=-1, size=(track.largeur, -1)) 
+        wx.Panel.__init__(self, parent, id=-1, size=(track.largeur, -1))
         self.parent = parent
         self.item = item
         self.track = track
         self.SetBackgroundColour(wx.Colour(255, 255, 255))
-        
+
         # Contrôles
         self.ctrl_code = wx.TextCtrl(self, -1, "")
         self.bouton_modifier = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Rfid.png"), wx.BITMAP_TYPE_ANY))
         self.bouton_modifier.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour scanner un badge")))
         self.Bind(wx.EVT_BUTTON, self.OnBoutonModifier, self.bouton_modifier)
-        
+
         # Layout
         grid_sizer_base = wx.FlexGridSizer(rows=1, cols=2, vgap=0, hgap=0)
         grid_sizer_base.Add(self.ctrl_code, 1, wx.EXPAND, 0)
         grid_sizer_base.Add(self.bouton_modifier, 0, wx.EXPAND, 0)
         self.SetSizer(grid_sizer_base)
-        grid_sizer_base.AddGrowableCol(0)        
+        grid_sizer_base.AddGrowableCol(0)
         self.Layout()
-    
+
     def OnBoutonModifier(self, event=None):
         from Dlg import DLG_Saisie_rfid
         if DLG_Saisie_rfid.CheckLecteurs() == False :
                 dlg = wx.MessageDialog(self, _(u"Aucun lecteur RFID connecté."), "Erreur", wx.OK | wx.ICON_ERROR)
                 dlg.ShowModal()
                 dlg.Destroy()
-                return 
+                return
         # DLG Saisie Badge RFID
         dlg = DLG_Saisie_rfid.Dialog(self)
         if dlg.ShowModal() == wx.ID_OK:
@@ -833,15 +833,15 @@ class CTRL_rfid(wx.Panel):
     def SetValeur(self, valeur=None):
         if valeur == None : valeur = u""
         self.ctrl_code.SetValue(valeur)
-    
+
     def SetValeurStr(self, valeur=None):
         self.SetValeur(valeur)
-    
+
     def ValidationValeur(self):
         return True
 
     def GetValeur(self):
-        valeur = self.ctrl_code.GetValue() 
+        valeur = self.ctrl_code.GetValue()
         if valeur == "" : valeur = None
         return valeur
 
@@ -862,7 +862,7 @@ class Track(object):
         self.controle = donnees[5]
         self.defaut = donnees[6]
         self.options = donnees[7]
-        
+
         # Formatage des options
         self.dictOptions = {}
         if self.options != None and self.options != "" :
@@ -870,38 +870,38 @@ class Track(object):
             for option in listeOptions :
                 codeOption, valeurOption = option.split("=")
                 self.dictOptions[codeOption] = valeurOption
-        
+
         # Liste de choix
         if self.IDquestion in dictChoix:
             self.listeChoix = dictChoix[self.IDquestion]
         else:
             self.listeChoix = []
-            
+
         # Items HyperTreeList
         self.item = None
         self.itemParent = None
         self.ctrl = None
-    
+
     def SetValeur(self, valeur=None):
-        self.ctrl.SetValeur(valeur) 
-        
+        self.ctrl.SetValeur(valeur)
+
     def SetValeurStr(self, valeur=None):
-        self.ctrl.SetValeurStr(valeur) 
-        
+        self.ctrl.SetValeurStr(valeur)
+
     def GetValeur(self):
-        return self.ctrl.GetValeur() 
+        return self.ctrl.GetValeur()
 
     def GetValeurStr(self):
-        return self.ctrl.GetValeurStr() 
-    
-            
+        return self.ctrl.GetValeurStr()
+
+
 # --------------------------------------------------------------------------------------------------------------------------------
 
 class CTRL(HTL.HyperTreeList):
     def __init__(self, parent, type="individu", IDdonnee=None, mode="normal",
-                                        menuActif=False, afficherInvisibles=False, 
+                                        menuActif=False, afficherInvisibles=False,
                                         largeurQuestion=290, largeurReponse=300,
-                                        ): 
+                                        ):
         HTL.HyperTreeList.__init__(self, parent, -1)
         self.parent = parent
         self.type = type
@@ -917,9 +917,9 @@ class CTRL(HTL.HyperTreeList):
         self.listeIDcategorie = []
         self.dictValeursInitiales = {}
         self.dictReponses = {}
-        
+
         self.SetBackgroundColour(wx.WHITE)
-        
+
         # Création des colonnes
         listeColonnes = [
             ( _(u"Question"), self.largeurQuestion, wx.ALIGN_LEFT),
@@ -931,11 +931,11 @@ class CTRL(HTL.HyperTreeList):
             self.SetColumnWidth(numColonne, largeur)
             self.SetColumnAlignment(numColonne, alignement)
             numColonne += 1
-        
+
         if mode == "normal" : self.SetAGWWindowStyleFlag(wx.TR_HIDE_ROOT | wx.TR_HAS_BUTTONS | wx.TR_HAS_VARIABLE_ROW_HEIGHT | wx.TR_FULL_ROW_HIGHLIGHT | HTL.TR_NO_HEADER)
         if mode == "apercu" : self.SetAGWWindowStyleFlag(wx.TR_HIDE_ROOT | wx.TR_HAS_VARIABLE_ROW_HEIGHT | wx.TR_FULL_ROW_HIGHLIGHT | HTL.TR_NO_HEADER)
         self.EnableSelectionVista(True)
-        
+
         # Création de l'ImageList
         il = wx.ImageList(16, 16)
         self.img_invisible = il.Add(wx.Bitmap(Chemins.GetStaticPath('Images/16x16/Interdit2.png'), wx.BITMAP_TYPE_PNG))
@@ -943,27 +943,27 @@ class CTRL(HTL.HyperTreeList):
 
         # Binds
         if self.menuActif == True :
-            self.Bind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.OnContextMenu) 
-            self.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.Modifier) 
+            self.Bind(wx.EVT_TREE_ITEM_RIGHT_CLICK, self.OnContextMenu)
+            self.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.Modifier)
 
         # Importation
 ##        if mode == "normal" :
-##            self.Importation() 
-        
+##            self.Importation()
+
         # Blocage Utilisateurs
         if type == "individu" and UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("individus_questionnaires", "modifier", afficheMessage=False) == False : self.Enable(False)
         if type == "famille" and UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("familles_questionnaires", "modifier", afficheMessage=False) == False : self.Enable(False)
-    
+
     def SetType(self, type="individu"):
         self.type = type
-        self.Importation() 
-        self.MAJ() 
+        self.Importation()
+        self.MAJ()
 
     def RAZ(self):
         self.DeleteAllItems()
         for indexColonne in range(self.GetColumnCount()-1, -1, -1) :
             self.RemoveColumn(indexColonne)
-        self.DeleteRoot() 
+        self.DeleteRoot()
         self.Initialisation()
 
     def MAJ(self, importation=True, selection=None):
@@ -973,14 +973,14 @@ class CTRL(HTL.HyperTreeList):
         # Création de la racine
         self.root = self.AddRoot(_(u"Racine"))
         if importation == True :
-            self.Importation() 
+            self.Importation()
         # Création des contrôles
         self.Remplissage(selection=selection)
         # Mémorisation des valeurs initiales
         if importation == True :
-            self.dictValeursInitiales = self.GetValeurs() 
-        self.Thaw() 
-        
+            self.dictValeursInitiales = self.GetValeurs()
+        self.Thaw()
+
     def Importation(self):
         self.dictCategories = {}
         self.listeIDcategorie = []
@@ -995,11 +995,11 @@ class CTRL(HTL.HyperTreeList):
         ORDER BY ordre
         ;""" % self.type
         DB.ExecuterReq(req)
-        listeCategories = DB.ResultatReq()     
+        listeCategories = DB.ResultatReq()
         self.listeIDcategorie = []
         self.dictCategories = {}
         for IDcategorie, ordre, visible, type, couleur, label in listeCategories :
-            self.listeIDcategorie.append(IDcategorie) 
+            self.listeIDcategorie.append(IDcategorie)
             couleur = ConvertCouleur(couleur)
             self.dictCategories[IDcategorie] = {"ordre":ordre, "visible":visible, "couleur":couleur, "label":label, "questions":[]}
 
@@ -1008,7 +1008,7 @@ class CTRL(HTL.HyperTreeList):
         FROM questionnaire_choix
         ORDER BY IDquestion, ordre;"""
         DB.ExecuterReq(req)
-        listeChoix = DB.ResultatReq()     
+        listeChoix = DB.ResultatReq()
         dictChoix = {}
         for IDchoix, IDquestion, ordre, visible, label in listeChoix :
             if (IDquestion in dictChoix) == False :
@@ -1017,8 +1017,8 @@ class CTRL(HTL.HyperTreeList):
             dictChoix[IDquestion].append(dictTemp)
 
         # Importation des questions
-        if len(self.listeIDcategorie) == 0 : 
-            DB.Close() 
+        if len(self.listeIDcategorie) == 0 :
+            DB.Close()
             return None
         elif len(self.listeIDcategorie) == 1 : conditionCategories = "IDcategorie=%d" % self.listeIDcategorie[0]
         else : conditionCategories = "IDcategorie IN %s" % str(tuple(self.listeIDcategorie))
@@ -1028,7 +1028,7 @@ class CTRL(HTL.HyperTreeList):
         ORDER BY ordre
         ;""" % conditionCategories
         DB.ExecuterReq(req)
-        listeQuestions = DB.ResultatReq()     
+        listeQuestions = DB.ResultatReq()
         for item in listeQuestions :
             track = Track(item, dictChoix)
             self.dictCategories[track.IDcategorie]["questions"].append(track)
@@ -1046,58 +1046,58 @@ class CTRL(HTL.HyperTreeList):
             WHERE %s
             ;""" % conditionReponses
             DB.ExecuterReq(req)
-            listeReponses = DB.ResultatReq()     
+            listeReponses = DB.ResultatReq()
             for IDreponse, IDquestion, IDindividu, IDfamille, reponse, typeDonnee, IDdonnee in listeReponses :
-                self.dictReponses[IDquestion] = {"IDreponse":IDreponse, "reponse":reponse} 
+                self.dictReponses[IDquestion] = {"IDreponse":IDreponse, "reponse":reponse}
 
-        DB.Close() 
-        
-            
+        DB.Close()
+
+
     def Remplissage(self, selection=None):
         # Création des branches
         self.dictBranches = {}
         indexCategorie = 0
         for IDcategorie in self.listeIDcategorie :
-            
+
             label = self.dictCategories[IDcategorie]["label"]
             couleur = self.dictCategories[IDcategorie]["couleur"]
             categorieVisible = self.dictCategories[IDcategorie]["visible"]
             listeQuestions = self.dictCategories[IDcategorie]["questions"]
-            
+
             if categorieVisible == 1 or self.afficherInvisibles == True :
-            
+
                 # Niveau Catégorie
                 brancheCategorie = self.AppendItem(self.root, label)
                 self.SetPyData(brancheCategorie, IDcategorie)
                 self.SetItemBold(brancheCategorie, True)
                 self.SetItemBackgroundColour(brancheCategorie, wx.Colour(*couleur))
-                self.dictBranches[brancheCategorie] = {"type":"categorie", "ID":IDcategorie, "index":indexCategorie} 
-                
+                self.dictBranches[brancheCategorie] = {"type":"categorie", "ID":IDcategorie, "index":indexCategorie}
+
                 if categorieVisible == 0 :
                     self.SetItemImage(brancheCategorie, self.img_invisible, which=wx.TreeItemIcon_Normal)
 
                 if selection != None :
                     if selection[0] == "categorie" and selection[1] == IDcategorie :
                         self.SelectItem(brancheCategorie)
-                        
+
                 if self.mode == "apercu" :
                     self.SetItemText(brancheCategorie, label, 1)
-                
+
                 # Niveau Question
                 indexQuestion = 0
                 for track in listeQuestions :
                     IDquestion = track.IDquestion
-                    questionVisible = track.visible 
-                    
+                    questionVisible = track.visible
+
                     if questionVisible == 1 or self.afficherInvisibles == True :
 
                         brancheQuestion = self.AppendItem(brancheCategorie, track.label)
                         self.SetPyData(brancheQuestion, track.IDquestion)
-                        self.dictBranches[brancheQuestion] = {"type":"question", "ID":IDquestion, "IDcategorie":IDcategorie, "index":indexQuestion} 
-                        
+                        self.dictBranches[brancheQuestion] = {"type":"question", "ID":IDquestion, "IDcategorie":IDcategorie, "index":indexQuestion}
+
                         if questionVisible == 0 :
                             self.SetItemImage(brancheQuestion, self.img_invisible, which=wx.TreeItemIcon_Normal)
-                            
+
                         if selection != None :
                             if selection[0] == "question" and selection[1] == IDquestion :
                                 self.SelectItem(brancheQuestion)
@@ -1105,7 +1105,7 @@ class CTRL(HTL.HyperTreeList):
                         # Mémorisation des items dans le track
                         track.item = brancheQuestion
                         track.itemParent = brancheCategorie
-                        track.largeur = self.largeurReponse - 7                
+                        track.largeur = self.largeurReponse - 7
 
                         # CTRL du type de calcul
                         if track.controle == "ligne_texte" : ctrl = CTRL_ligne_texte(self.GetMainWindow(), item=brancheQuestion, track=track) # size=(largeurControle, -1) )
@@ -1123,39 +1123,39 @@ class CTRL(HTL.HyperTreeList):
                         if track.controle == "documents" : ctrl = CTRL_documents(self.GetMainWindow(), item=brancheQuestion, track=track) # size=(largeurControle, 20) )
                         if track.controle == "codebarres" : ctrl = CTRL_codebarres(self.GetMainWindow(), item=brancheQuestion, track=track) # size=(largeurControle, 20) )
                         if track.controle == "rfid" : ctrl = CTRL_rfid(self.GetMainWindow(), item=brancheQuestion, track=track) # size=(largeurControle, 20) )
-                        
+
                         if track.controle != None :
-                            self.SetItemWindow(brancheQuestion, ctrl, 1)        
-                            track.ctrl = ctrl      
-                        
+                            self.SetItemWindow(brancheQuestion, ctrl, 1)
+                            track.ctrl = ctrl
+
                         # Insère la valeur
                         if IDquestion in self.dictReponses :
                             valeur = self.dictReponses[IDquestion]["reponse"]
                         else:
                             valeur = track.defaut
                         track.SetValeurStr(valeur)
-                        
+
                         indexQuestion += 1
-                        
+
                 indexCategorie += 1
-                                    
+
         self.ExpandAllChildren(self.root)
-        
+
         # Pour éviter le bus de positionnement des contrôles
-        self.GetMainWindow().CalculatePositions() 
-    
+        self.GetMainWindow().CalculatePositions()
+
     def IdentificationBranche(self, branche):
         if branche in self.dictBranches :
             return self.dictBranches[branche]
         else:
             return None
-    
+
     def GetDictReponses(self):
         return self.dictReponses
-    
+
     def GetDictValeursInitiales(self):
         return self.dictValeursInitiales
-    
+
     def GetValeurs(self):
         # Récupère les valeurs du contrôle """
         dictValeurs = {}
@@ -1170,16 +1170,16 @@ class CTRL(HTL.HyperTreeList):
         for track in self.dictCategories[IDcategorie]["questions"] :
             if track.IDquestion in dictValeurs :
                 track.SetValeurStr(dictValeurs[track.IDquestion])
-        
+
     def OnContextMenu(self, event):
-        """Ouverture du menu contextuel """      
-        item = self.GetSelection() 
-        resultat = self.IdentificationBranche(item) 
+        """Ouverture du menu contextuel """
+        item = self.GetSelection()
+        resultat = self.IdentificationBranche(item)
         if resultat == None :
             noSelection = True
         else:
             noSelection = False
-          
+
         # Création du menu contextuel
         menuPop = UTILS_Adaptations.Menu()
 
@@ -1189,7 +1189,7 @@ class CTRL(HTL.HyperTreeList):
         item.SetBitmap(bmp)
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.Ajouter, id=10)
-        
+
         menuPop.AppendSeparator()
 
         # Item Ajouter
@@ -1199,7 +1199,7 @@ class CTRL(HTL.HyperTreeList):
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.Modifier, id=20)
         if noSelection == True : item.Enable(False)
-        
+
         # Item Supprimer
         item = wx.MenuItem(menuPop, 30, _(u"Supprimer"))
         bmp = wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Supprimer.png"), wx.BITMAP_TYPE_PNG)
@@ -1207,9 +1207,9 @@ class CTRL(HTL.HyperTreeList):
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.Supprimer, id=30)
         if noSelection == True : item.Enable(False)
-                
+
         menuPop.AppendSeparator()
-    
+
         # Item Monter
         item = wx.MenuItem(menuPop, 40, _(u"Monter"))
         bmp = wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Fleche_haut.png"), wx.BITMAP_TYPE_PNG)
@@ -1217,7 +1217,7 @@ class CTRL(HTL.HyperTreeList):
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.Monter, id=40)
         if noSelection == True : item.Enable(False)
-        
+
         # Item Descendre
         item = wx.MenuItem(menuPop, 50, _(u"Descendre"))
         bmp = wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Fleche_bas.png"), wx.BITMAP_TYPE_PNG)
@@ -1225,7 +1225,7 @@ class CTRL(HTL.HyperTreeList):
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.Descendre, id=50)
         if noSelection == True : item.Enable(False)
-        
+
         self.PopupMenu(menuPop)
         menuPop.Destroy()
 
@@ -1234,17 +1234,17 @@ class CTRL(HTL.HyperTreeList):
         dlg = DLG_Choix_creation(self)
         if len(self.dictCategories) == 0 :
             dlg.bouton_question.Enable(False)
-        reponse = dlg.ShowModal() 
+        reponse = dlg.ShowModal()
         dlg.Destroy()
         # Création d'un catégorie
-        if reponse == 100 : 
+        if reponse == 100 :
             dlg = DLG_Saisie_categorie_question.Dialog(self, type=self.type, IDcategorie=None)
             if dlg.ShowModal() == wx.ID_OK :
-                IDcategorie = dlg.GetIDcategorie() 
+                IDcategorie = dlg.GetIDcategorie()
                 self.MAJ(selection=("categorie", IDcategorie))
             dlg.Destroy()
         # Création d'une question
-        if reponse == 200 : 
+        if reponse == 200 :
             # Vérifie avant qu'une catégorie existe bien
             if len(self.dictCategories) == 0 :
                 dlg = wx.MessageDialog(self, _(u"Vous devez d'abord créer au moins une catégorie !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
@@ -1254,14 +1254,14 @@ class CTRL(HTL.HyperTreeList):
             from Dlg import DLG_Saisie_question
             dlg = DLG_Saisie_question.Dialog(self, type=self.type, IDquestion=None)
             if dlg.ShowModal() == wx.ID_OK :
-                IDquestion = dlg.GetIDquestion() 
+                IDquestion = dlg.GetIDquestion()
                 self.MAJ(selection=("question", IDquestion))
             dlg.Destroy()
-    
+
     def Modifier(self, event=None):
         if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("parametrage_questionnaires", "modifier") == False : return
-        item = self.GetSelection() 
-        resultat = self.IdentificationBranche(item) 
+        item = self.GetSelection()
+        resultat = self.IdentificationBranche(item)
         if resultat == None :
             dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucune ligne !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
@@ -1280,11 +1280,11 @@ class CTRL(HTL.HyperTreeList):
             if dlg.ShowModal() == wx.ID_OK :
                 self.MAJ(selection=("question", resultat["ID"]))
             dlg.Destroy()
-        
+
     def Supprimer(self, event=None):
         if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("parametrage_questionnaires", "supprimer") == False : return
-        item = self.GetSelection() 
-        resultat = self.IdentificationBranche(item) 
+        item = self.GetSelection()
+        resultat = self.IdentificationBranche(item)
         if resultat == None :
             dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucune ligne !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
@@ -1304,11 +1304,11 @@ class CTRL(HTL.HyperTreeList):
             reponse = dlg.ShowModal()
             dlg.Destroy()
             if reponse != wx.ID_YES :
-                return 
+                return
             # Supprime la catégorie
             DB = GestionDB.DB()
             DB.ReqDEL("questionnaire_categories", "IDcategorie", IDcategorie)
-            DB.Close() 
+            DB.Close()
             self.MAJ()
         # Question
         if resultat["type"] == "question" :
@@ -1323,46 +1323,46 @@ class CTRL(HTL.HyperTreeList):
             WHERE IDquestion=%d
             ;""" % IDquestion
             DB.ExecuterReq(req)
-            listeReponses = DB.ResultatReq()     
+            listeReponses = DB.ResultatReq()
             if len(listeReponses) > 0 :
                 dlg = wx.MessageDialog(self, _(u"%d filtres sont déjà associés à cette question.\n\nVous devez déjà les supprimer avant de supprimer la question.") % len(listeReponses), _(u"Suppression impossible"), wx.OK | wx.ICON_EXCLAMATION)
                 dlg.ShowModal()
                 dlg.Destroy()
                 return
-                
+
             # Vérifie si cette question a des réponses
             req = """SELECT IDindividu, IDfamille
             FROM questionnaire_reponses
             WHERE IDquestion=%d
             ;""" % IDquestion
             DB.ExecuterReq(req)
-            listeReponses = DB.ResultatReq()     
-            DB.Close() 
+            listeReponses = DB.ResultatReq()
+            DB.Close()
             if len(listeReponses) > 0 :
                 dlg = wx.MessageDialog(self, _(u"%d fiches comportent une réponse à cette question.\nSi vous supprimez cette question, les réponses le seront également.\n\nSouhaitez-vous vraiment supprimer cette question ?") % len(listeReponses), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
                 reponse = dlg.ShowModal()
                 dlg.Destroy()
                 if reponse != wx.ID_YES :
-                    return 
+                    return
 
             # Confirmation
             dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment supprimer cette question ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_QUESTION)
             reponse = dlg.ShowModal()
             dlg.Destroy()
             if reponse != wx.ID_YES :
-                return 
+                return
             # Suppression
             DB = GestionDB.DB()
             DB.ReqDEL("questionnaire_questions", "IDquestion", IDquestion)
             DB.ReqDEL("questionnaire_reponses", "IDquestion", IDquestion)
             DB.ReqDEL("questionnaire_choix", "IDquestion", IDquestion)
-            DB.Close() 
+            DB.Close()
             self.MAJ()
-        
+
     def Monter(self, event=None):
         if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("parametrage_questionnaires", "modifier") == False : return
-        item = self.GetSelection() 
-        resultat = self.IdentificationBranche(item) 
+        item = self.GetSelection()
+        resultat = self.IdentificationBranche(item)
         if resultat == None :
             dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucune ligne !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
@@ -1383,11 +1383,11 @@ class CTRL(HTL.HyperTreeList):
             if index == 0 : return
             self.BougerQuestion(IDquestion, IDcategorie, index, sens=-1)
             self.MAJ(selection=("question", IDquestion))
-            
+
     def Descendre(self, event=None):
         if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("parametrage_questionnaires", "modifier") == False : return
-        item = self.GetSelection() 
-        resultat = self.IdentificationBranche(item) 
+        item = self.GetSelection()
+        resultat = self.IdentificationBranche(item)
         if resultat == None :
             dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucune ligne !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
@@ -1408,7 +1408,7 @@ class CTRL(HTL.HyperTreeList):
             if index == len(self.dictCategories[IDcategorie]["questions"]) - 1 : return
             self.BougerQuestion(IDquestion, IDcategorie, index, sens=+1)
             self.MAJ(selection=("question", IDquestion))
-    
+
     def BougerCategorie(self, IDcategorie=None, index=None, sens=-1):
         DB = GestionDB.DB()
         DB.ReqMAJ("questionnaire_categories", [("ordre", index + sens),], "IDcategorie", IDcategorie)
@@ -1436,7 +1436,7 @@ class CTRL(HTL.HyperTreeList):
         for IDcategorie in self.listeIDcategorie :
             for track in self.dictCategories[IDcategorie]["questions"] :
                 if track.controle == "documents" and track.IDquestion == IDquestion :
-                    nbreDocuments = track.ctrl.GetNbreDocuments() 
+                    nbreDocuments = track.ctrl.GetNbreDocuments()
         return nbreDocuments
 
     def Sauvegarde(self, DB=None, IDdonnee=None):
@@ -1448,10 +1448,12 @@ class CTRL(HTL.HyperTreeList):
         dictValeursInitiales = self.GetDictValeursInitiales()
         dirty = False
 
+        DBexterne = DB is not None
         if DB == None :
             DBT = GestionDB.DB()
         else :
             DBT = DB
+        ok = True
 
         # Sauvegarde du questionnaire
         for IDquestion, reponse in valeurs.items():
@@ -1491,18 +1493,29 @@ class CTRL(HTL.HyperTreeList):
                         ("IDdonnee", self.IDdonnee),
                     ]
                     if IDreponse == None:
-                        IDreponse = DBT.ReqInsert("questionnaire_reponses", listeDonnees)
+                        IDreponse = DBT.ReqInsert("questionnaire_reponses", listeDonnees, commit=not DBexterne)
+                        if IDreponse is None:
+                            ok = False
+                            break
                     else:
-                        DBT.ReqMAJ("questionnaire_reponses", listeDonnees, "IDreponse", IDreponse)
+                        if not DBT.ReqMAJ("questionnaire_reponses", listeDonnees, "IDreponse", IDreponse, commit=not DBexterne):
+                            ok = False
+                            break
 
                 # Sauvegarde du contrôle Porte-documents
                 if reponse == "##DOCUMENTS##":
                     nbreDocuments = self.SauvegardeDocuments(IDquestion, IDreponse)
                     if nbreDocuments == 0 and IDreponse != None:
-                        DBT.ReqDEL("questionnaire_reponses", "IDreponse", IDreponse)
+                        if not DBT.ReqDEL("questionnaire_reponses", "IDreponse", IDreponse, commit=not DBexterne):
+                            ok = False
+                            break
 
         if DB == None :
             DBT.Close()
+
+        if not ok:
+            return False
+        return True
 
         # Sauvegarde les données si nouveautés
         # if dirty == True:
@@ -1519,7 +1532,7 @@ class MyFrame(wx.Frame):
         sizer_1.Add(panel, 1, wx.ALL|wx.EXPAND)
         self.SetSizer(sizer_1)
         self.ctrl = CTRL(panel, type="individu", menuActif=True, afficherInvisibles=True)
-        self.ctrl.MAJ() 
+        self.ctrl.MAJ()
         self.boutonTest = wx.Button(panel, -1, _(u"Test"))
         sizer_2 = wx.BoxSizer(wx.VERTICAL)
         sizer_2.Add(self.ctrl, 1, wx.ALL|wx.EXPAND, 4)
@@ -1529,17 +1542,17 @@ class MyFrame(wx.Frame):
         self.Layout()
         self.CenterOnScreen()
         self.Bind(wx.EVT_BUTTON, self.OnBoutonTest, self.boutonTest)
-    
+
     def OnBoutonTest(self, event):
         dictCategories = self.ctrl.dictCategories
         listeIDcategorie = self.ctrl.listeIDcategorie
-        
+
         for IDcategorie in listeIDcategorie :
             print(">>>", dictCategories[IDcategorie]["label"])
             for track in dictCategories[IDcategorie]["questions"] :
                 print((track.label, track.GetValeur(), track.GetValeurStr()))
-            
-        
+
+
 
 if __name__ == '__main__':
     app = wx.App(0)
