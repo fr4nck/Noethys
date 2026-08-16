@@ -34,28 +34,13 @@ new = '''                IDprestation = DB.ReqInsert("prestations", listeDonnees
 assert old in text
 text = text.replace(old, new, 1)
 
-old = '''        index = 1
-        for track in liste_tracks :
-
-            dlgprogress.Update(index, _(u"Génération de la cotisation %d sur %d") % (index, len(liste_tracks)))
-'''
-new = '''        index = 1
-        try:
-            for track in liste_tracks :
-
-                dlgprogress.Update(index, _(u"Génération de la cotisation %d sur %d") % (index, len(liste_tracks)))
-'''
-assert old in text
-text = text.replace(old, new, 1)
-
-# Indent the loop body until DB.Close(), preserving the newly inserted try.
-start = text.index('            for track in liste_tracks :')
-end = text.index('        DB.Close()', start)
+start_marker = '        for track in liste_tracks :\n'
+end_marker = '        DB.Close()\n'
+start = text.index(start_marker)
+end = text.index(end_marker, start)
 block = text[start:end]
-lines = block.splitlines(True)
-# first line already correctly indented inside try; everything after it needs +4 spaces
-block2 = lines[0] + ''.join(('    ' + line if line.strip() else line) for line in lines[1:])
-text = text[:start] + block2 + text[end:]
+indented_block = ''.join(('    ' + line if line.strip() else line) for line in block.splitlines(True))
+text = text[:start] + '        try:\n' + indented_block + text[end:]
 
 old = '''        DB.Close()
         dlgprogress.Destroy()
