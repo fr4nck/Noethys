@@ -1,0 +1,75 @@
+name: Atomic locations
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_locations.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch locations
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # Saisie location
+          p=Path('noethys/Dlg/DLG_Saisie_location.py')
+          s=p.read_text(encoding='utf-8')
+          a=s.index('        DB = GestionDB.DB()\n\n        for dict_location in liste_valides:')
+          b=s.index('        # Mémorise l\'IDlocation\n', a)
+          block=s[a:b]
+          block=block.replace('IDlocation = DB.ReqInsert("locations", listeDonnees)', 'IDlocation = DB.ReqInsert("locations", listeDonnees, commit=False)\n                if IDlocation is None:\n                    ok = False\n                    break')
+          block=block.replace('UTILS_Historique.InsertActions([{"IDfamille": IDfamille, "IDcategorie": 37, "action": texte_historique, "IDdonnee": IDlocation}], DB=DB)', 'if not UTILS_Historique.InsertActions([{"IDfamille": IDfamille, "IDcategorie": 37, "action": texte_historique, "IDdonnee": IDlocation}], DB=DB, commit=False):\n                    ok = False\n                    break')
+          block=block.replace('DB.ReqMAJ("locations", listeDonnees, "IDlocation", IDlocation)', 'if not DB.ReqMAJ("locations", listeDonnees, "IDlocation", IDlocation, commit=False):\n                    ok = False\n                    break')
+          block=block.replace('UTILS_Historique.InsertActions([{"IDfamille": IDfamille, "IDcategorie": 38, "action": texte_historique, "IDdonnee": IDlocation}], DB=DB)', 'if not UTILS_Historique.InsertActions([{"IDfamille": IDfamille, "IDcategorie": 38, "action": texte_historique, "IDdonnee": IDlocation}], DB=DB, commit=False):\n                    ok = False\n                    break')
+          block=block.replace('IDprestation = DB.ReqInsert("prestations", listeDonnees)', 'IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)\n                    if IDprestation is None:\n                        ok = False\n                        break')
+          block=block.replace('DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation)', 'if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):\n                            ok = False\n                            break')
+          block=block.replace('DB.ReqDEL("prestations", "IDprestation", IDprestation)\n                    DB.ReqDEL("ventilation", "IDprestation", IDprestation)', 'if not DB.ReqDEL("ventilation", "IDprestation", IDprestation, commit=False):\n                        ok = False\n                        break\n                    if not DB.ReqDEL("prestations", "IDprestation", IDprestation, commit=False):\n                        ok = False\n                        break')
+          block=block.replace('self.ctrl_parametres.GetPageAvecCode("questionnaire").ctrl_questionnaire.Sauvegarde(DB=DB, IDdonnee=IDlocation)', 'if self.ctrl_parametres.GetPageAvecCode("questionnaire").ctrl_questionnaire.Sauvegarde(DB=DB, IDdonnee=IDlocation) == False:\n                ok = False\n                break')
+          block=block.replace('        DB = GestionDB.DB()\n\n        for dict_location in liste_valides:', '        DB = GestionDB.DB()\n        ok = True\n        dernier_IDlocation = self.IDlocation\n\n        for dict_location in liste_valides:')
+          block=block.replace('            IDlocation = self.IDlocation\n', '            IDlocation = self.IDlocation\n')
+          block += '''\n        if ok:\n            DB.Commit()\n            dernier_IDlocation = IDlocation\n        else:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n        DB.Close()\n\n        if not ok:\n            dlg = wx.MessageDialog(self, _(u"La location n'a pas pu être enregistrée complètement. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return False\n\n'''
+          s=s[:a]+block+s[b:]
+          s=s.replace('        self.IDlocation = IDlocation\n\n        DB.Close()\n', '        self.IDlocation = dernier_IDlocation\n', 1)
+          p.write_text(s,encoding='utf-8')
+
+          # Suppression locations
+          p=Path('noethys/Ol/OL_Locations.py')
+          s=p.read_text(encoding='utf-8')
+          a=s.index('    DB = GestionDB.DB()\n    for dict_location in liste_valides:')
+          b=s.index('\n    return True\n', a)
+          new='''    DB = GestionDB.DB()\n    ok = True\n    for dict_location in liste_valides:\n        IDlocation = dict_location["IDlocation"]\n        # Dépendances avant la location principale\n        for IDprestation in dict_location["prestations"]:\n            if not DB.ReqDEL("ventilation", "IDprestation", IDprestation, commit=False):\n                ok = False\n                break\n        if not ok:\n            break\n        if DB.ExecuterReq("DELETE FROM prestations WHERE categorie='location' AND IDdonnee=%d;" % IDlocation) != 1:\n            ok = False\n            break\n        if DB.ExecuterReq("DELETE FROM questionnaire_reponses WHERE type='location' AND IDdonnee=%d;" % IDlocation) != 1:\n            ok = False\n            break\n        if not DB.ReqMAJ("locations_demandes", [("statut", "attente"), ("IDlocation", None)], "IDlocation", IDlocation, commit=False):\n            ok = False\n            break\n        if not DB.ReqDEL("locations", "IDlocation", IDlocation, commit=False):\n            ok = False\n            break\n        texte_historique = _(u"Suppression de la location ID%d : %s %s") % (IDlocation, dict_location["label_produit"], dict_location["periode"])\n        if not UTILS_Historique.InsertActions([{"IDfamille": dict_location["IDfamille"], "IDcategorie": 39, "action": texte_historique, "IDdonnee": IDlocation}], DB=DB, commit=False):\n            ok = False\n            break\n    if ok:\n        DB.Commit()\n    else:\n        try:\n            DB.connexion.rollback()\n        except Exception:\n            pass\n    DB.Close()\n    if not ok:\n        dlg = wx.MessageDialog(parent, _(u"La suppression des locations a échoué. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n        dlg.ShowModal()\n        dlg.Destroy()\n        return False\n'''
+          s=s[:a]+new+s[b:]
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Dlg/DLG_Saisie_location.py noethys/Ol/OL_Locations.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          a=Path('noethys/Dlg/DLG_Saisie_location.py').read_text(encoding='utf-8')
+          b=a[a.index('        DB = GestionDB.DB()\n        ok = True'):a.index('    def GetIDlocation')]
+          assert 'commit=False' in b and 'DB.Commit()' in b and 'rollback()' in b
+          assert 'self.IDlocation = dernier_IDlocation' in b
+          o=Path('noethys/Ol/OL_Locations.py').read_text(encoding='utf-8')
+          b=o[o.index('    DB = GestionDB.DB()\n    ok = True'):o.index('    return True', o.index('    DB = GestionDB.DB()\n    ok = True'))]
+          assert 'DELETE FROM prestations' in b and 'questionnaire_reponses' in b
+          assert 'InsertActions' in b and 'commit=False' in b and 'rollback()' in b
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Dlg/DLG_Saisie_location.py noethys/Ol/OL_Locations.py
+          git commit -m "fix: atomiser saisie et suppression des locations"
+          git push origin HEAD:master
