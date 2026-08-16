@@ -252,7 +252,7 @@ class ClsParametres():
         return True
 
     def Sauvegarde(self):
-        """ Sauvegarde des paramètres """
+        """Sauvegarde les paramètres PSU et retourne True en cas de succès."""
         listeDonnees = [
             ("psu_activation", self.GetValeur("psu_activation", 0)),
             ("psu_unite_prevision", self.GetValeur("psu_unite_prevision", None)),
@@ -261,8 +261,9 @@ class ClsParametres():
             ("psu_etiquette_rtt", self.GetValeur("psu_etiquette_rtt", None)),
             ]
         DB = GestionDB.DB()
-        DB.ReqMAJ("activites", listeDonnees, "IDactivite", self.IDactivite)
+        resultat = DB.ReqMAJ("activites", listeDonnees, "IDactivite", self.IDactivite)
         DB.Close()
+        return bool(resultat)
 
 
 class ClsCommune():
@@ -490,7 +491,11 @@ class Assistant(wx.Dialog, ClsCommune):
         for codePage, labelPage, ctrlPage, imgPage in self.listePages :
             ctrlPage.Sauvegarde()
         # Sauvegardes des autres paramètres
-        self.clsParametres.Sauvegarde()
+        if self.clsParametres.Sauvegarde() == False:
+            dlg = wx.MessageDialog(self, _(u"Les paramètres P.S.U. n'ont pas pu être enregistrés. La fenêtre reste ouverte."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
         # Fermeture
         self.EndModal(wx.ID_OK)
         
@@ -553,7 +558,8 @@ class Notebook(wx.Notebook, ClsCommune):
         for codePageTemp, labelPage, ctrlPage, imgPage in self.listePages :
             ctrlPage.Sauvegarde()
         # Sauvegardes des autres paramètres
-        self.clsParametres.Sauvegarde()
+        if self.clsParametres.Sauvegarde() == False:
+            return False
         return True
 
 
@@ -653,7 +659,11 @@ class Dialog(wx.Dialog):
         if validation == False :
             return False
         # Sauvegarde
-        self.ctrl_notebook.Sauvegarde()
+        if self.ctrl_notebook.Sauvegarde() == False:
+            dlg = wx.MessageDialog(self, _(u"Les paramètres P.S.U. n'ont pas pu être enregistrés. La fenêtre reste ouverte."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
         # Fermeture
         self.EndModal(wx.ID_OK) 
         
