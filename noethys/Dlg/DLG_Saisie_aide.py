@@ -656,12 +656,25 @@ class Dialog(wx.Dialog):
             dlg.Destroy()
             return
 
-        # Sauvegarde de l'aide
+        # Sauvegarde atomique de l'aide et de toutes ses dépendances.
         DB = GestionDB.DB()
+        ancien_IDaide = self.IDaide
+
+        def echec_sauvegarde():
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            dlg = wx.MessageDialog(self, _(u"L'aide n'a pas pu être enregistrée complètement. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
         listeDonnees = [
-            ("IDfamille", self.IDfamille ),
-            ("IDactivite", IDactivite ),
-            ("nom", nom ),
+            ("IDfamille", self.IDfamille),
+            ("IDactivite", IDactivite),
+            ("nom", nom),
             ("date_debut", date_debut),
             ("date_fin", date_fin),
             ("IDcaisse", IDcaisse),
@@ -670,112 +683,83 @@ class Dialog(wx.Dialog):
             ("jours_scolaires", jours_scolaires),
             ("jours_vacances", jours_vacances),
         ]
-        
-        if self.IDaide == None :
-            self.IDaide = DB.ReqInsert("aides", listeDonnees)
+        if ancien_IDaide == None:
+            IDaide = DB.ReqInsert("aides", listeDonnees, commit=False)
+            if IDaide is None:
+                return echec_sauvegarde()
         else:
-            DB.ReqMAJ("aides", listeDonnees, "IDaide", self.IDaide)
-        
-        # Sauvegarde des utilisateurs
-        for IDindividu in listeBeneficiaires :
-            if IDindividu not in self.listeInitialeBeneficiaires :
-                listeDonnees = [("IDaide", self.IDaide ), ("IDindividu", IDindividu ),]
-                DB.ReqInsert("aides_beneficiaires", listeDonnees)
-        for IDindividu in self.listeInitialeBeneficiaires :
-            if IDindividu not in listeBeneficiaires :
-                req = """DELETE FROM aides_beneficiaires 
-                WHERE IDaide=%d AND IDindividu=%d;""" % (self.IDaide, IDindividu)
-                DB.ExecuterReq(req)
-                DB.Commit()
-        
-        # Sauvegarde des montants
-        
-##    DONNEES_TEST = {
-##    "IDaide_montant" : None,
-##    "montant" : 20.0,
-##    "combinaisons" : [
-##            { "IDaide_combi" : None, "listeUnites" : 
-##                [
-##                {"IDaide_combi_unite" : None, "IDunite" : 35}, # Après-midi
-##                {"IDaide_combi_unite" : None, "IDunite" : 33}, # Repas
-##                ],
-##            },
-##            { "IDaide_combi" : None, "listeUnites" : 
-##                [
-##                {"IDaide_combi_unite" : None, "IDunite" : 34}, # Matinée
-##                {"IDaide_combi_unite" : None, "IDunite" : 33}, # Repas
-##                ],
-##            },
-##        ],
-##    }
-        
+            IDaide = ancien_IDaide
+            if not DB.ReqMAJ("aides", listeDonnees, "IDaide", IDaide, commit=False):
+                return echec_sauvegarde()
+
+        # Bénéficiaires.
+        for IDindividu in listeBeneficiaires:
+            if IDindividu not in self.listeInitialeBeneficiaires:
+                if DB.ReqInsert("aides_beneficiaires", [("IDaide", IDaide), ("IDindividu", IDindividu)], commit=False) is None:
+                    return echec_sauvegarde()
+        for IDindividu in self.listeInitialeBeneficiaires:
+            if IDindividu not in listeBeneficiaires:
+                req = "DELETE FROM aides_beneficiaires WHERE IDaide=%d AND IDindividu=%d;" % (IDaide, IDindividu)
+                if DB.ExecuterReq(req) != 1:
+                    return echec_sauvegarde()
+
+        # Montants, combinaisons et unités.
         listeIDmontant = []
         listeIDcombi = []
         listeIDunites = []
-        
-        for dictMontant in listeMontants :
+        for dictMontant in listeMontants:
             IDaide_montant = dictMontant["IDaide_montant"]
             montant = dictMontant["montant"]
-            listeCombinaisons = dictMontant["combinaisons"]
-            
-            # Sauvegarde des nouveau montants
-            if IDaide_montant == None :
-                listeDonnees = [ ("IDaide", self.IDaide), ("montant", montant), ]
-                IDaide_montant = DB.ReqInsert("aides_montants", listeDonnees)
+            if IDaide_montant == None:
+                IDaide_montant = DB.ReqInsert("aides_montants", [("IDaide", IDaide), ("montant", montant)], commit=False)
+                if IDaide_montant is None:
+                    return echec_sauvegarde()
             else:
-                # Enregistrement d'un montant modifié
-                for dictMontantInitial in self.listeInitialeMontants :
-                    if dictMontantInitial["IDaide_montant"] == IDaide_montant :
-                        if dictMontantInitial["montant"] != montant :
-                            DB.ReqMAJ("aides_montants", [("montant", montant),], "IDaide_montant", IDaide_montant)
-                listeIDmontant.append(IDaide_montant)
-            
-            # Sauvegarde des unités de combi
-            for dictCombi in listeCombinaisons :
+                for dictMontantInitial in self.listeInitialeMontants:
+                    if dictMontantInitial["IDaide_montant"] == IDaide_montant and dictMontantInitial["montant"] != montant:
+                        if not DB.ReqMAJ("aides_montants", [("montant", montant)], "IDaide_montant", IDaide_montant, commit=False):
+                            return echec_sauvegarde()
+            listeIDmontant.append(IDaide_montant)
+
+            for dictCombi in dictMontant["combinaisons"]:
                 IDaide_combi = dictCombi["IDaide_combi"]
-                listeUnites = dictCombi["listeUnites"]
-                
-                # Nouvelles combinaisons
-                if IDaide_combi == None :
-                    listeDonnees = [ ("IDaide_montant", IDaide_montant), ("IDaide", self.IDaide), ]
-                    IDaide_combi = DB.ReqInsert("aides_combinaisons", listeDonnees)
-                else:
-                    listeIDcombi.append(IDaide_combi)
-                    
-                # Nouvelles unités
-                for dictUnite in listeUnites :
+                if IDaide_combi == None:
+                    IDaide_combi = DB.ReqInsert("aides_combinaisons", [("IDaide_montant", IDaide_montant), ("IDaide", IDaide)], commit=False)
+                    if IDaide_combi is None:
+                        return echec_sauvegarde()
+                listeIDcombi.append(IDaide_combi)
+
+                for dictUnite in dictCombi["listeUnites"]:
                     IDaide_combi_unite = dictUnite["IDaide_combi_unite"]
-                    IDunite = dictUnite["IDunite"]
-                    
-                    # Nouvelles combinaisons
-                    if IDaide_combi_unite == None :
-                        listeDonnees = [ ("IDunite", IDunite), ("IDaide_combi", IDaide_combi), ("IDaide", self.IDaide), ]
-                        IDaide_combi_unite = DB.ReqInsert("aides_combi_unites", listeDonnees)
-                    else:
-                        listeIDunites.append(IDaide_combi_unite)
-        
-        # Suppression des montants supprimés
-        for dictMontantInitial in self.listeInitialeMontants :
-            if dictMontantInitial["IDaide_montant"] not in listeIDmontant and dictMontantInitial["IDaide_montant"] != None :
-                DB.ReqDEL("aides_montants", "IDaide_montant", dictMontantInitial["IDaide_montant"])
-        
-        
-        # Suppression des combinaisons supprimées :
-        for IDaide_combi in self.listeInitialeCombi :
-            if IDaide_combi not in listeIDcombi and IDaide_combi != None :
-                DB.ReqDEL("aides_combinaisons", "IDaide_combi", IDaide_combi)
-                
-        # Suppression des unités de combi supprimées
-        for IDaide_combi_unite in self.listeInitialeUnites :
-            if IDaide_combi_unite not in listeIDunites and IDaide_combi_unite != None :
-                DB.ReqDEL("aides_combi_unites", "IDaide_combi_unite", IDaide_combi_unite)
-                
+                    if IDaide_combi_unite == None:
+                        IDaide_combi_unite = DB.ReqInsert("aides_combi_unites", [("IDunite", dictUnite["IDunite"]), ("IDaide_combi", IDaide_combi), ("IDaide", IDaide)], commit=False)
+                        if IDaide_combi_unite is None:
+                            return echec_sauvegarde()
+                    listeIDunites.append(IDaide_combi_unite)
+
+        # Suppressions dans l'ordre des dépendances.
+        for IDaide_combi_unite in self.listeInitialeUnites:
+            if IDaide_combi_unite not in listeIDunites and IDaide_combi_unite != None:
+                if not DB.ReqDEL("aides_combi_unites", "IDaide_combi_unite", IDaide_combi_unite, commit=False):
+                    return echec_sauvegarde()
+        for IDaide_combi in self.listeInitialeCombi:
+            if IDaide_combi not in listeIDcombi and IDaide_combi != None:
+                if not DB.ReqDEL("aides_combinaisons", "IDaide_combi", IDaide_combi, commit=False):
+                    return echec_sauvegarde()
+        for dictMontantInitial in self.listeInitialeMontants:
+            IDaide_montant = dictMontantInitial["IDaide_montant"]
+            if IDaide_montant not in listeIDmontant and IDaide_montant != None:
+                if not DB.ReqDEL("aides_montants", "IDaide_montant", IDaide_montant, commit=False):
+                    return echec_sauvegarde()
+
+        DB.Commit()
         DB.Close()
-        
-        # Fermeture de la fenêtre
+        self.IDaide = IDaide
         self.EndModal(wx.ID_OK)
+        return True
         
         
+
 
 if __name__ == u"__main__":
     app = wx.App(0)
