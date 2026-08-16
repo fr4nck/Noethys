@@ -1,0 +1,70 @@
+name: Atomic detail aides
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_detail_aides.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch OL_Detail_aides
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Ol/OL_Detail_aides.py')
+          s=p.read_text(encoding='utf-8')
+
+          # Remplace Modifier
+          a=s.index('    def Modifier(self, event):')
+          b=s.index('    def Supprimer(self, event):', a)
+          old=s[a:b]
+          new='''    def Modifier(self, event):\n        if len(self.Selection()) == 0 :\n            dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucune déduction à modifier dans la liste !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return\n        IDdeduction = self.Selection()[0].IDdeduction\n        label = self.Selection()[0].label\n        montant = self.Selection()[0].montant\n        IDprestation = self.Selection()[0].IDprestation\n        from Dlg import DLG_Saisie_deduction\n        dlg = DLG_Saisie_deduction.Dialog(self, IDdeduction=IDdeduction)\n        dlg.SetLabel(label)\n        dlg.SetMontant(montant)\n        if dlg.ShowModal() == wx.ID_OK:\n            newLabel = dlg.GetLabel()\n            newMontant = dlg.GetMontant()\n            if self.modificationsVirtuelles == False:\n                DB = GestionDB.DB()\n                ok = DB.ReqMAJ("deductions", [("label", newLabel), ("montant", newMontant)], "IDdeduction", IDdeduction, commit=False)\n                if ok and IDprestation != None:\n                    req = "SELECT montant FROM prestations WHERE IDprestation=%d" % IDprestation\n                    if DB.ExecuterReq(req) != 1:\n                        ok = False\n                    else:\n                        donnees = DB.ResultatReq()\n                        if len(donnees) == 0:\n                            ok = False\n                        else:\n                            montantPrestation = donnees[0][0] + (montant-newMontant)\n                            ok = DB.ReqMAJ("prestations", [("montant", montantPrestation)], "IDprestation", IDprestation, commit=False)\n                if ok:\n                    DB.Commit()\n                else:\n                    try:\n                        DB.connexion.rollback()\n                    except Exception:\n                        pass\n                DB.Close()\n                if not ok:\n                    erreur = wx.MessageDialog(self, _(u"La déduction n'a pas pu être modifiée complètement. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n                    erreur.ShowModal()\n                    erreur.Destroy()\n                    dlg.Destroy()\n                    return\n            else:\n                self.dictDeductions[IDdeduction]["label"] = newLabel\n                self.dictDeductions[IDdeduction]["montant"] = newMontant\n                self.dictDeductions[IDdeduction]["etat"] = "MODIF"\n                self.MAJ_montant_prestation(montant-newMontant, IDprestation)\n        dlg.Destroy()\n        self.MAJ(IDdeduction)\n\n'''
+          s=s[:a]+new+s[b:]
+
+          # Remplace Supprimer
+          a=s.index('    def Supprimer(self, event):')
+          b=s.index('    def MAJ_montant_prestation', a)
+          new='''    def Supprimer(self, event):\n        if len(self.Selection()) == 0 :\n            dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucune déduction à supprimer dans la liste"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return\n        IDdeduction = self.Selection()[0].IDdeduction\n        montant = self.Selection()[0].montant\n        IDprestation = self.Selection()[0].IDprestation\n        dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment supprimer cette déduction ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)\n        if dlg.ShowModal() == wx.ID_YES :\n            if self.modificationsVirtuelles == False:\n                DB = GestionDB.DB()\n                ok = DB.ReqDEL("deductions", "IDdeduction", IDdeduction, commit=False)\n                if ok and IDprestation != None:\n                    req = "SELECT montant FROM prestations WHERE IDprestation=%d" % IDprestation\n                    if DB.ExecuterReq(req) != 1:\n                        ok = False\n                    else:\n                        donnees = DB.ResultatReq()\n                        if len(donnees) == 0:\n                            ok = False\n                        else:\n                            ok = DB.ReqMAJ("prestations", [("montant", donnees[0][0] + montant)], "IDprestation", IDprestation, commit=False)\n                if ok:\n                    DB.Commit()\n                else:\n                    try:\n                        DB.connexion.rollback()\n                    except Exception:\n                        pass\n                DB.Close()\n                if not ok:\n                    erreur = wx.MessageDialog(self, _(u"La déduction n'a pas pu être supprimée complètement. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n                    erreur.ShowModal()\n                    erreur.Destroy()\n                    dlg.Destroy()\n                    return\n            else:\n                self.dictDeductions[IDdeduction]["etat"] = "SUPPR"\n                self.MAJ_montant_prestation(montant, IDprestation)\n            self.MAJ()\n        dlg.Destroy()\n\n'''
+          s=s[:a]+new+s[b:]
+
+          # Remplace Sauvegarde virtuelle
+          a=s.index('    def Sauvegarde(self, IDprestation=None):')
+          b=s.index('\n\n# -------------------------------------------------------------------------------------------------------------------------------------------', a)
+          old=s[a:b]
+          new=old.replace('DB.ReqInsert("deductions", listeDonnees)', 'DB.ReqInsert("deductions", listeDonnees, commit=False)').replace('DB.ReqMAJ("deductions", listeDonnees, "IDdeduction", IDdeduction)', 'DB.ReqMAJ("deductions", listeDonnees, "IDdeduction", IDdeduction, commit=False)').replace('DB.ReqDEL("deductions", "IDdeduction", IDdeduction)', 'DB.ReqDEL("deductions", "IDdeduction", IDdeduction, commit=False)')
+          # injecte contrôles simples + commit final
+          new=new.replace('                IDdeduction = DB.ReqInsert("deductions", listeDonnees, commit=False)', '                IDdeduction = DB.ReqInsert("deductions", listeDonnees, commit=False)\n                if IDdeduction is None:\n                    DB.Close()\n                    return False')
+          new=new.replace('                DB.ReqMAJ("deductions", listeDonnees, "IDdeduction", IDdeduction, commit=False)', '                if not DB.ReqMAJ("deductions", listeDonnees, "IDdeduction", IDdeduction, commit=False):\n                    DB.Close()\n                    return False')
+          new=new.replace('                DB.ReqDEL("deductions", "IDdeduction", IDdeduction, commit=False)', '                if not DB.ReqDEL("deductions", "IDdeduction", IDdeduction, commit=False):\n                    DB.Close()\n                    return False')
+          new=new.replace('        DB.Close()\n', '        DB.Commit()\n        DB.Close()\n        return True\n', 1)
+          s=s[:a]+new+s[b:]
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Ol/OL_Detail_aides.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('noethys/Ol/OL_Detail_aides.py').read_text(encoding='utf-8')
+          assert 'ReqMAJ("deductions", [("label", newLabel), ("montant", newMontant)], "IDdeduction", IDdeduction, commit=False)' in s
+          assert 'ReqDEL("deductions", "IDdeduction", IDdeduction, commit=False)' in s
+          b=s[s.index('    def Sauvegarde(self, IDprestation=None):'):s.index('# -------------------------------------------------------------------------------------------------------------------------------------------', s.index('    def Sauvegarde(self, IDprestation=None):'))]
+          assert 'commit=False' in b and 'DB.Commit()' in b and 'return True' in b
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Ol/OL_Detail_aides.py
+          git commit -m "fix: atomiser les deductions detaillees"
+          git push origin HEAD:master
