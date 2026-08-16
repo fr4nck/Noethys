@@ -1,0 +1,57 @@
+name: Atomic liste deductions
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_liste_deductions.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch OL_Liste_deductions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Ol/OL_Liste_deductions.py')
+          s=p.read_text(encoding='utf-8')
+
+          old='''            DB = GestionDB.DB()\n            listeDonnees = [    \n                ("label", newLabel),\n                ("montant", newMontant),\n                ]\n            DB.ReqMAJ("deductions", listeDonnees, "IDdeduction", IDdeduction)\n            DB.Close()\n            self.MAJ(date_debut=self.date_debut, date_fin=self.date_fin, listeActivites=self.listeActivites, filtres=self.filtres, ID=IDdeduction)\n'''
+          new='''            DB = GestionDB.DB()\n            listeDonnees = [\n                ("label", newLabel),\n                ("montant", newMontant),\n                ]\n            ok = DB.ReqMAJ("deductions", listeDonnees, "IDdeduction", IDdeduction, commit=False)\n            if ok:\n                DB.Commit()\n            else:\n                try:\n                    DB.connexion.rollback()\n                except Exception:\n                    pass\n            DB.Close()\n            if not ok:\n                erreur = wx.MessageDialog(self, _(u"La déduction n'a pas pu être modifiée. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n                erreur.ShowModal()\n                erreur.Destroy()\n                dlg.Destroy()\n                return\n            self.MAJ(date_debut=self.date_debut, date_fin=self.date_fin, listeActivites=self.listeActivites, filtres=self.filtres, ID=IDdeduction)\n'''
+          if s.count(old)!=1:
+              raise SystemExit('bloc modification inattendu')
+          s=s.replace(old,new,1)
+
+          old='''        DB = GestionDB.DB()\n        if len(listeSupprDeductions) > 0 :\n            if len(listeSupprDeductions) == 1 : conditionSuppressions = "(%d)" % listeSupprDeductions[0]\n            else : conditionSuppressions = str(tuple(listeSupprDeductions))\n            DB.ExecuterReq("DELETE FROM deductions WHERE IDdeduction IN %s" % conditionSuppressions)\n        if len(listeSupprVentilations) > 0 :\n            if len(listeSupprVentilations) == 1 : conditionSuppressions = "(%d)" % listeSupprVentilations[0]\n            else : conditionSuppressions = str(tuple(listeSupprVentilations))\n            DB.ExecuterReq("DELETE FROM ventilation WHERE IDprestation IN %s" % conditionSuppressions)\n        if len(listeModifications) > 0 :\n            DB.Executermany(_(u"UPDATE prestations SET montant=? WHERE IDprestation=?"), listeModifications, commit=False)\n        DB.Commit()\n        DB.Close() \n\n        # MAJ affichage\n        self.MAJ(date_debut=self.date_debut, date_fin=self.date_fin, listeActivites=self.listeActivites, filtres=self.filtres)\n'''
+          new='''        DB = GestionDB.DB()\n        ok = True\n        if len(listeSupprDeductions) > 0 :\n            if len(listeSupprDeductions) == 1 : conditionSuppressions = "(%d)" % listeSupprDeductions[0]\n            else : conditionSuppressions = str(tuple(listeSupprDeductions))\n            if DB.ExecuterReq("DELETE FROM deductions WHERE IDdeduction IN %s" % conditionSuppressions) != 1:\n                ok = False\n        if ok and len(listeSupprVentilations) > 0 :\n            if len(listeSupprVentilations) == 1 : conditionSuppressions = "(%d)" % listeSupprVentilations[0]\n            else : conditionSuppressions = str(tuple(listeSupprVentilations))\n            if DB.ExecuterReq("DELETE FROM ventilation WHERE IDprestation IN %s" % conditionSuppressions) != 1:\n                ok = False\n        if ok and len(listeModifications) > 0 :\n            if not DB.Executermany(_(u"UPDATE prestations SET montant=? WHERE IDprestation=?"), listeModifications, commit=False):\n                ok = False\n        if ok:\n            DB.Commit()\n        else:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n        DB.Close()\n\n        if not ok:\n            erreur = wx.MessageDialog(self, _(u"La suppression des déductions a échoué. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n            erreur.ShowModal()\n            erreur.Destroy()\n            return False\n\n        # MAJ affichage\n        self.MAJ(date_debut=self.date_debut, date_fin=self.date_fin, listeActivites=self.listeActivites, filtres=self.filtres)\n        return True\n'''
+          if s.count(old)!=1:
+              raise SystemExit('bloc suppression inattendu')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Ol/OL_Liste_deductions.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('noethys/Ol/OL_Liste_deductions.py').read_text(encoding='utf-8')
+          assert 'ReqMAJ("deductions", listeDonnees, "IDdeduction", IDdeduction, commit=False)' in s
+          b=s[s.index('        DB = GestionDB.DB()', s.index('    def Supprimer')):s.index('    def GetTracksCoches', s.index('    def Supprimer'))]
+          assert 'DELETE FROM deductions' in b and 'DELETE FROM ventilation' in b
+          assert 'Executermany' in b and 'rollback()' in b and 'DB.Commit()' in b
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Ol/OL_Liste_deductions.py
+          git commit -m "fix: atomiser la liste des deductions"
+          git push origin HEAD:master
