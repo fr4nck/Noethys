@@ -546,34 +546,49 @@ class Dialog(wx.Dialog):
         
         # --------------------------------------------------------------------------------------------------------------------------------
         else :
-            # Sauvegarde du contrat
+            # Sauvegarde atomique du contrat, de ses prestations et consommations.
             DB = GestionDB.DB()
-            
-            # Sauvegarde des contrats
+            ancien_IDcontrat = self.IDcontrat
+            nouveaux_IDprestations = []
+
+            def echec_sauvegarde():
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+                DB.Close()
+                dlg = wx.MessageDialog(self, _(u"Le contrat n'a pas pu être enregistré complètement. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return False
+
+            # Contrat
             listeDonnees = [
-                ("IDinscription", self.IDinscription ),
-                ("IDindividu", self.IDindividu ),
-                ("date_debut", date_debut ),
-                ("date_fin", date_fin ),
+                ("IDinscription", self.IDinscription),
+                ("IDindividu", self.IDindividu),
+                ("date_debut", date_debut),
+                ("date_fin", date_fin),
                 ("observations", observations),
                 ("IDtarif", IDtarif),
                 ]
-            if self.IDcontrat == None :
-                self.IDcontrat = DB.ReqInsert("contrats", listeDonnees)
-            else :
-                DB.ReqMAJ("contrats", listeDonnees, "IDcontrat", self.IDcontrat)
-                
-            # Sauvegarde des périodes du contrat
+            if ancien_IDcontrat == None:
+                IDcontrat = DB.ReqInsert("contrats", listeDonnees, commit=False)
+                if IDcontrat is None:
+                    return echec_sauvegarde()
+            else:
+                IDcontrat = ancien_IDcontrat
+                if not DB.ReqMAJ("contrats", listeDonnees, "IDcontrat", IDcontrat, commit=False):
+                    return echec_sauvegarde()
+
+            # Prestations des périodes.
             listeID = []
-            index = 0
-            for dictPeriode in listePeriodes :
+            IDs_par_periode = []
+            for dictPeriode in listePeriodes:
                 IDprestation = dictPeriode["IDprestation"]
-                
-                # Sauvegarde de la prestation
                 listeDonnees = [
-                    ("IDcompte_payeur", self.IDcompte_payeur ),
-                    ("date", dictPeriode["date_prestation"] ),
-                    ("categorie", "consommation" ),
+                    ("IDcompte_payeur", self.IDcompte_payeur),
+                    ("date", dictPeriode["date_prestation"]),
+                    ("categorie", "consommation"),
                     ("label", dictPeriode["label_prestation"]),
                     ("montant_initial", dictPeriode["montant_prestation"]),
                     ("montant", dictPeriode["montant_prestation"]),
@@ -584,71 +599,75 @@ class Dialog(wx.Dialog):
                     ("IDcategorie_tarif", self.IDcategorie_tarif),
                     ("forfait_date_debut", dictPeriode["date_debut"]),
                     ("forfait_date_fin", dictPeriode["date_fin"]),
-                    ("IDcontrat", self.IDcontrat),
+                    ("IDcontrat", IDcontrat),
                     ]
-                if IDprestation == None :
+                if IDprestation == None:
                     listeDonnees.append(("date_valeur", str(datetime.date.today())))
-                    IDprestation = DB.ReqInsert("prestations", listeDonnees)
-                else :
-                    DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation)
+                    IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)
+                    if IDprestation is None:
+                        return echec_sauvegarde()
+                    nouveaux_IDprestations.append((dictPeriode, IDprestation))
+                else:
+                    if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):
+                        return echec_sauvegarde()
                 listeID.append(IDprestation)
-                listePeriodes[index]["IDprestation"] = IDprestation
-                index += 1
-            
-            # Suppression des périodes supprimées
-            for dictPeriode in self.listePeriodesInitiale :
-                if dictPeriode["IDprestation"] not in listeID and dictPeriode["IDprestation"] != None :
-                    DB.ReqDEL("prestations", "IDprestation", dictPeriode["IDprestation"])
-                    DB.ReqMAJ("consommations", [("IDprestation", None),], "IDprestation", dictPeriode["IDprestation"])
+                IDs_par_periode.append(IDprestation)
 
-            # Suppression des conso supprimées
-            for IDconso in self.listeSuppressionConso :
-                if IDconso != None :
-                    DB.ReqDEL("consommations", "IDconso", IDconso)
+            # Périodes supprimées et consommations détachées.
+            for dictPeriode in self.listePeriodesInitiale:
+                ancien_IDprestation = dictPeriode["IDprestation"]
+                if ancien_IDprestation not in listeID and ancien_IDprestation != None:
+                    if not DB.ReqDEL("prestations", "IDprestation", ancien_IDprestation, commit=False):
+                        return echec_sauvegarde()
+                    if not DB.ReqMAJ("consommations", [("IDprestation", None)], "IDprestation", ancien_IDprestation, commit=False):
+                        return echec_sauvegarde()
 
-            # Saisie des consommations générées
+            # Consommations explicitement supprimées.
+            for IDconso in self.listeSuppressionConso:
+                if IDconso != None and not DB.ReqDEL("consommations", "IDconso", IDconso, commit=False):
+                    return echec_sauvegarde()
+
+            # Consommations générées.
             listeAjouts = []
-            for dictPeriode in listePeriodes :
-                listeConso = dictPeriode["listeConso"]
-                for dictConso in listeConso :
-                    if dictConso["IDconso"] == None :
-                        dictConsoTemp = {
-                            "IDindividu" : self.IDindividu,
-                            "IDinscription" : self.IDinscription,
-                            "IDactivite" : self.IDactivite,
-                            "date" : dictConso["date"],
-                            "IDunite" : dictConso["IDunite"],
-                            "IDgroupe" : self.IDgroupe,
-                            "heure_debut" : dictConso["heure_debut"],
-                            "heure_fin" : dictConso["heure_fin"],
-                            "etat" : dictConso["etat"],
-                            "verrouillage" : 0,
-                            "date_saisie" : datetime.date.today(),
-                            "IDutilisateur" : UTILS_Identification.GetIDutilisateur(),
-                            "IDcategorie_tarif" : self.IDcategorie_tarif,
-                            "IDcompte_payeur" : self.IDcompte_payeur,
-                            "IDprestation" : dictPeriode["IDprestation"],
-                            "forfait" : None,
-                            "quantite" : dictConso["quantite"],
-                            }
-                        listeAjouts.append(dictConsoTemp)
+            for index, dictPeriode in enumerate(listePeriodes):
+                for dictConso in dictPeriode["listeConso"]:
+                    if dictConso["IDconso"] == None:
+                        listeAjouts.append({
+                            "IDindividu": self.IDindividu,
+                            "IDinscription": self.IDinscription,
+                            "IDactivite": self.IDactivite,
+                            "date": dictConso["date"],
+                            "IDunite": dictConso["IDunite"],
+                            "IDgroupe": self.IDgroupe,
+                            "heure_debut": dictConso["heure_debut"],
+                            "heure_fin": dictConso["heure_fin"],
+                            "etat": dictConso["etat"],
+                            "verrouillage": 0,
+                            "date_saisie": datetime.date.today(),
+                            "IDutilisateur": UTILS_Identification.GetIDutilisateur(),
+                            "IDcategorie_tarif": self.IDcategorie_tarif,
+                            "IDcompte_payeur": self.IDcompte_payeur,
+                            "IDprestation": IDs_par_periode[index],
+                            "forfait": None,
+                            "quantite": dictConso["quantite"],
+                            })
 
-            if len(listeAjouts) > 0 :
-                listeChamps = list(listeAjouts[0].keys()) 
-                listeDonnees = []
-                listeInterrogations = []
-                for champ in listeChamps :
-                    listeInterrogations.append("?")
-                for dictConso in listeAjouts :
-                    listeTemp = []
-                    for champ in listeChamps :
-                        listeTemp.append(dictConso[champ])
-                    listeDonnees.append(listeTemp)
-                    
-                DB.Executermany("INSERT INTO consommations (%s) VALUES (%s)" % (", ".join(listeChamps), ", ".join(listeInterrogations)), listeDonnees, commit=True)
-                
+            if listeAjouts:
+                listeChamps = list(listeAjouts[0].keys())
+                listeDonnees = [[dictConso[champ] for champ in listeChamps] for dictConso in listeAjouts]
+                listeInterrogations = ["?" for champ in listeChamps]
+                if not DB.Executermany("INSERT INTO consommations (%s) VALUES (%s)" % (", ".join(listeChamps), ", ".join(listeInterrogations)), listeDonnees, commit=False):
+                    return echec_sauvegarde()
+
+            DB.Commit()
             DB.Close()
-    
+            self.IDcontrat = IDcontrat
+            for dictPeriode, IDprestation in nouveaux_IDprestations:
+                dictPeriode["IDprestation"] = IDprestation
+            self.listeSuppressionConso = []
+            self.listePeriodesInitiale = copy.deepcopy(listePeriodes)
+            return True
+
     def VerifieCompatibilitesUnites(self, dictUnites={}, IDunite1=None, IDunite2=None):
         listeIncompatibilites = dictUnites[IDunite1]["unites_incompatibles"]
         if IDunite2 in listeIncompatibilites :
