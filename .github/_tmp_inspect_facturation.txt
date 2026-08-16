@@ -1,0 +1,140 @@
+=== fichiers multi-tables facturation/prestations/ventilation ===
+3	42	noethys/Utils/UTILS_Procedures.py	factures,prestations,ventilation
+3	21	noethys/Utils/UTILS_Depannage.py	factures,prestations,ventilation
+3	12	noethys/Ctrl/CTRL_Grille.py	factures,prestations,ventilation
+3	11	noethys/Ol/OL_Prelevements_sepa.py	factures,prestations,ventilation
+3	11	noethys/Ol/OL_Prelevements_national.py	factures,prestations,ventilation
+3	11	noethys/Ol/OL_PES_pieces.py	factures,prestations,ventilation
+3	10	noethys/Dlg/DLG_Saisie_contratpsu.py	factures,prestations,ventilation
+3	6	noethys/Utils/UTILS_Portail_synchro.py	factures,prestations,ventilation
+3	5	noethys/Ol/OL_Prestations.py	factures,prestations,ventilation
+3	5	noethys/Dlg/DLG_Famille.py	factures,prestations,ventilation
+3	4	noethys/Utils/UTILS_Facturation.py	factures,prestations,ventilation
+3	4	noethys/Dlg/DLG_Saisie_prestation.py	factures,prestations,ventilation
+3	4	noethys/Ctrl/CTRL_Ventilation.py	factures,prestations,ventilation
+3	3	noethys/Ol/OL_Prestations_repartition.py	factures,prestations,ventilation
+3	3	noethys/Dlg/DLG_Saisie_portail_demande.py	factures,prestations,ventilation
+3	3	noethys/Ctrl/CTRL_Droits.py	factures,prestations,ventilation
+3	2	noethys/Ol/OL_Liste_deductions.py	factures,prestations,ventilation
+3	2	noethys/Ol/OL_Liste_cotisations.py	factures,prestations,ventilation
+3	2	noethys/Dlg/DLG_Factures_generation_selection.py	factures,prestations,ventilation
+2	10	noethys/Dlg/DLG_Saisie_reglement.py	prestations,ventilation
+2	10	noethys/Dlg/DLG_Saisie_contrat.py	factures,prestations
+2	9	noethys/Dlg/DLG_Saisie_cotisation.py	prestations,ventilation
+2	6	noethys/Dlg/DLG_Saisie_location.py	prestations,ventilation
+2	5	noethys/Dlg/DLG_Saisie_remboursement.py	prestations,ventilation
+2	4	noethys/Utils/UTILS_Archivage.py	factures,prestations
+2	4	noethys/Ol/OL_Contrats.py	prestations,ventilation
+2	3	noethys/Ol/OL_Locations.py	prestations,ventilation
+2	3	noethys/Dlg/DLG_Solder_impayes.py	prestations,ventilation
+2	3	noethys/Ctrl/CTRL_Factures_options.py	factures,prestations
+2	2	noethys/Ol/OL_Verification_ventilation.py	prestations,ventilation
+2	2	noethys/Ol/OL_Inscriptions.py	prestations,ventilation
+2	2	noethys/Ol/OL_Contratspsu_validation.py	prestations,ventilation
+2	2	noethys/Dlg/DLG_Saisie_periode_gestion.py	factures,prestations
+2	2	noethys/Dlg/DLG_Saisie_lot_deductions.py	prestations,ventilation
+
+=== ecritures ciblees ===
+noethys/Dlg/DLG_Saisie_reglement.py:1534:IDprestationFrais = DB.ReqInsert("prestations", listeDonnees, commit=False)
+noethys/Dlg/DLG_Saisie_reglement.py:1539:if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestationFrais, commit=False):
+noethys/Dlg/DLG_Saisie_reglement.py:1542:if not DB.ReqDEL("ventilation", "IDprestation", IDprestationFrais, commit=False):
+noethys/Dlg/DLG_Saisie_reglement.py:1548:if not DB.ReqDEL("prestations", "IDprestation", IDprestationFrais, commit=False):
+noethys/Dlg/DLG_Saisie_reglement.py:1551:if not DB.ReqDEL("ventilation", "IDprestation", IDprestationFrais, commit=False):
+noethys/Dlg/DLG_Saisie_contratpsu.py:494:#         IDprestation = DB.ReqInsert("prestations", listeDonnees)
+noethys/Dlg/DLG_Saisie_contratpsu.py:497:#         DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation)
+noethys/Dlg/DLG_Saisie_operation_tresorerie.py:528:IDventilation = DB.ReqInsert("compta_ventilation", listeDonnees, commit=False)
+noethys/Dlg/DLG_Saisie_operation_tresorerie.py:536:if not DB.ReqMAJ("compta_ventilation", listeDonnees, "IDventilation", track.IDventilation, commit=False):
+noethys/Dlg/DLG_Saisie_operation_tresorerie.py:545:if not DB.ReqDEL("compta_ventilation", "IDventilation", track.IDventilation, commit=False):
+noethys/Dlg/DLG_Saisie_regie_facture.py:206:IDregie = DB.ReqInsert("factures_regies", listeDonnees)
+noethys/Dlg/DLG_Saisie_regie_facture.py:212:if not DB.ReqMAJ("factures_regies", listeDonnees, "IDregie", ancien_IDregie):
+noethys/Dlg/DLG_Saisie_modele_prestation.py:556:nouvelIDmodele = DB.ReqInsert("modeles_prestations", listeDonnees, commit=False)
+noethys/Dlg/DLG_Saisie_modele_prestation.py:560:if not DB.ReqMAJ("modeles_prestations", listeDonnees, "IDmodele", nouvelIDmodele, commit=False) :
+noethys/Dlg/DLG_Saisie_location.py:906:IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)
+noethys/Dlg/DLG_Saisie_location.py:912:if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):
+noethys/Dlg/DLG_Saisie_location.py:920:if not DB.ReqDEL("ventilation", "IDprestation", IDprestation, commit=False):
+noethys/Dlg/DLG_Saisie_location.py:923:if not DB.ReqDEL("prestations", "IDprestation", IDprestation, commit=False):
+noethys/Dlg/DLG_Saisie_prefixe_facture.py:133:IDprefixe = DB.ReqInsert("factures_prefixes", listeDonnees)
+noethys/Dlg/DLG_Saisie_prefixe_facture.py:139:if not DB.ReqMAJ("factures_prefixes", listeDonnees, "IDprefixe", ancien_IDprefixe):
+noethys/Dlg/DLG_Factures_generation_selection.py:287:IDfacture = DB.ReqInsert("factures", listeDonnees, commit=False)
+noethys/Dlg/DLG_Factures_generation_selection.py:295:if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):
+noethys/Dlg/DLG_Saisie_lot_deductions.py:342:if not DB.Executermany(_(u"UPDATE prestations SET montant=? WHERE IDprestation=?"), listeModifications, commit=False):
+noethys/Dlg/DLG_Saisie_cotisation.py:975:IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)
+noethys/Dlg/DLG_Saisie_cotisation.py:981:if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):
+noethys/Dlg/DLG_Saisie_cotisation.py:1008:if not DB.ReqMAJ("ventilation", [("montant", nouveauMontant), ], "IDventilation", IDventilation, commit=False):
+noethys/Dlg/DLG_Saisie_cotisation.py:1014:if not DB.ReqDEL("ventilation", "IDventilation", IDventilation, commit=False):
+noethys/Dlg/DLG_Saisie_cotisation.py:1024:if not DB.ReqDEL("prestations", "IDprestation", IDprestation, commit=False):
+noethys/Dlg/DLG_Saisie_cotisation.py:1028:if not DB.ReqDEL("ventilation", "IDprestation", IDprestation, commit=False):
+noethys/Dlg/DLG_Appliquer_forfait.py:593:IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)
+noethys/Dlg/DLG_Saisie_lot_cotisations.py:282:IDprestation = DB.ReqInsert("prestations", listeDonnees)
+noethys/Dlg/DLG_Saisie_contrat.py:623:IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)
+noethys/Dlg/DLG_Saisie_contrat.py:628:if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):
+noethys/Dlg/DLG_Saisie_contrat.py:637:if not DB.ReqDEL("prestations", "IDprestation", ancien_IDprestation, commit=False):
+noethys/Dlg/DLG_Saisie_remboursement.py:426:IDprestation_positive = DB.ReqInsert("prestations", listeDonnees, commit=False)
+noethys/Dlg/DLG_Saisie_remboursement.py:445:IDprestation_negative = DB.ReqInsert("prestations", listeDonnees, commit=False)
+noethys/Dlg/DLG_Saisie_remboursement.py:488:IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
+noethys/Dlg/DLG_Appliquer_modele_prestation.py:395:self.IDprestation = DB.ReqInsert("prestations", listeDonnees)
+noethys/Dlg/DLG_Solder_impayes.py:489:IDventilation = DB.ReqInsert("ventilation", listeDonnees)
+noethys/Dlg/DLG_Inscription.py:668:if DB.ReqInsert("prestations", listeDonnees, commit=False) is None:
+noethys/Dlg/DLG_Saisie_prestation.py:875:if not DB.ReqMAJ("ventilation", [("montant", nouveauMontant),], "IDventilation", IDventilation, commit=False):
+noethys/Dlg/DLG_Saisie_prestation.py:880:if not DB.ReqDEL("ventilation", "IDventilation", IDventilation, commit=False):
+noethys/Dlg/DLG_Saisie_prestation.py:905:IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)
+noethys/Dlg/DLG_Saisie_prestation.py:914:if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):
+noethys/Ol/OL_Reglements_depots.py:461:DB.ReqDEL("ventilation", "IDreglement", IDreglement)
+noethys/Ol/OL_Contrats.py:368:if ok and not DB.ReqDEL("prestations", "IDcontrat", track.IDcontrat, commit=False):
+noethys/Ol/OL_Detail_aides.py:291:ok = DB.ReqMAJ("prestations", [("montant", donnees[0][0] + (montant-newMontant))], "IDprestation", IDprestation, commit=False)
+noethys/Ol/OL_Detail_aides.py:329:ok = DB.ReqMAJ("prestations", [("montant", donnees[0][0] + montant)], "IDprestation", IDprestation, commit=False)
+noethys/Ol/OL_Detail_aides.py:364:DB.ReqMAJ("prestations", [("montant", montantPrestation),], "IDprestation", IDprestation)
+noethys/Ol/OL_Prelevements_sepa.py:810:if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
+noethys/Ol/OL_Prelevements_sepa.py:959:IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
+noethys/Ol/OL_Prelevements_sepa.py:968:if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
+noethys/Ol/OL_Prelevements_national.py:712:if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
+noethys/Ol/OL_Prelevements_national.py:858:IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
+noethys/Ol/OL_Prelevements_national.py:867:if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
+noethys/Ol/OL_Regies_factures.py:239:DB.ReqDEL("factures_regies", "IDregie", IDregie)
+noethys/Ol/OL_Liste_deductions.py:409:if not DB.Executermany(_(u"UPDATE prestations SET montant=? WHERE IDprestation=?"), listeModifications, commit=False):
+noethys/Ol/OL_Lots_factures.py:196:IDlot = DB.ReqInsert("lots_factures", listeDonnees)
+noethys/Ol/OL_Lots_factures.py:222:DB.ReqMAJ("lots_factures", listeDonnees, "IDlot", IDlot)
+noethys/Ol/OL_Lots_factures.py:244:DB.ReqDEL("lots_factures", "IDlot", IDlot)
+noethys/Ol/OL_Contratspsu_validation.py:672:IDprestation = DB.ReqInsert("prestations", listeDonnees, commit=False)
+noethys/Ol/OL_Contratspsu_validation.py:678:if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False):
+noethys/Ol/OL_Modeles_prestations.py:215:DB.ReqDEL("modeles_prestations", "IDmodele", IDmodele)
+noethys/Ol/OL_Prefixes_factures.py:239:DB.ReqDEL("factures_prefixes", "IDprefixe", IDprefixe)
+noethys/Ol/OL_PES_pieces.py:982:DB.ReqDEL("ventilation", "IDreglement", track.IDreglement)
+noethys/Ol/OL_PES_pieces.py:1119:IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
+noethys/Ol/OL_PES_pieces.py:1128:if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
+noethys/Ol/OL_Locations.py:278:if not DB.ReqDEL("ventilation", "IDprestation", IDprestation, commit=False):
+noethys/Ol/OL_Verification_ventilation.py:269:DB.ReqMAJ("ventilation", [("montant", float(nouveauMontant)),], "IDventilation", IDventilation)
+noethys/Ol/OL_Verification_ventilation.py:286:IDventilation = DB.ReqInsert("ventilation", listeDonnees)
+noethys/Ol/OL_Operations_tresorerie.py:374:DB.ReqDEL("compta_ventilation", "IDoperation", track.IDoperation)
+noethys/Ol/OL_Prestations.py:675:DB.ReqDEL("prestations", "IDprestation", track.IDprestation, commit=False),
+noethys/Ol/OL_Prestations.py:676:DB.ReqDEL("ventilation", "IDprestation", track.IDprestation, commit=False),
+noethys/Ctrl/CTRL_Factures_options.py:502:IDmessage = DB.ReqInsert("factures_messages", listeDonnees)
+noethys/Ctrl/CTRL_Factures_options.py:526:DB.ReqMAJ("factures_messages", listeDonnees, "IDmessage", IDmessage)
+noethys/Ctrl/CTRL_Factures_options.py:542:DB.ReqDEL("factures_messages", "IDmessage", IDmessage)
+noethys/Ctrl/CTRL_Ventilation.py:794:IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
+noethys/Ctrl/CTRL_Ventilation.py:800:if not DB.ReqMAJ("ventilation", listeDonnees, "IDventilation", IDventilation, commit=False):
+noethys/Ctrl/CTRL_Ventilation.py:805:if not DB.ReqDEL("ventilation", "IDventilation", IDventilation, commit=False):
+noethys/Ctrl/CTRL_Ventilation.py:1008:##            DB.ReqDEL("ventilation", "IDreglement", IDreglement)
+noethys/Ctrl/CTRL_Grille.py:5353:if not DB.Executermany("INSERT INTO prestations (%s) VALUES (%s)" % (texteChampsTemp, texteInterrogations), listeAjoutsPrestations, commit=False):
+noethys/Ctrl/CTRL_Grille.py:5382:if not DB.Executermany("UPDATE prestations SET label=?, montant_initial=?, montant=?, forfait_date_debut=?, forfait_date_fin=?, code_compta=?, code_produit_local=?, tva=? WHERE IDprestation=?", listeModifications, commit=False):
+noethys/Utils/UTILS_Appliquer_tva.py:99:DB.ReqMAJ("prestations", [("tva", tva),], "IDprestation", IDprestation)
+noethys/Utils/UTILS_Depannage.py:120:DB.ReqDEL("ventilation", "IDventilation", IDventilation)
+noethys/Utils/UTILS_Depannage.py:129:DB.ReqDEL("ventilation", "IDventilation", IDventilation)
+noethys/Utils/UTILS_Depannage.py:166:DB.ReqDEL("factures", "IDfacture", IDfacture)
+noethys/Utils/UTILS_Depannage.py:182:DB.ReqMAJ("factures", [("total", float(totalFacture)), ("regle", float(regleFacture)), ("solde", float(soldeFacture))], "IDfacture", IDfacture)
+noethys/Utils/UTILS_Depannage.py:241:DB.ReqDEL("ventilation", "IDventilation", IDventilation)
+noethys/Utils/UTILS_Depannage.py:247:DB.ReqDEL("prestations", "IDprestation", IDprestation)
+noethys/Utils/UTILS_Procedures.py:204:DB.ReqMAJ("prestations", [
+noethys/Utils/UTILS_Procedures.py:426:DB.ReqMAJ("prestations", [("montant", FloatToDecimal(
+noethys/Utils/UTILS_Procedures.py:433:DB.ReqMAJ("ventilation", [("montant", FloatToDecimal(
+noethys/Utils/UTILS_Procedures.py:538:DB.ReqMAJ("prestations", [
+noethys/Utils/UTILS_Procedures.py:706:DB.ReqMAJ("compta_ventilation", [
+noethys/Utils/UTILS_Procedures.py:868:DB.ReqMAJ("prestations", [
+noethys/Utils/UTILS_Procedures.py:899:DB.Executermany(_(u"UPDATE factures SET numerostr=? WHERE IDfacture=?"),
+noethys/Utils/UTILS_Appliquer_code_produit_local.py:88:DB.ReqMAJ("prestations", [("code_produit_local", code_produit_local),], "IDprestation", IDprestation)
+noethys/Utils/UTILS_Facturation.py:1246:ok = DB.ReqMAJ("prestations", [("IDfacture", None),], "IDfacture", IDfacture, commit=False)
+noethys/Utils/UTILS_Facturation.py:1249:ok = DB.ReqDEL("factures", "IDfacture", IDfacture, commit=False)
+noethys/Utils/UTILS_Facturation.py:1251:ok = DB.ReqMAJ("factures", [("etat", "annulation"),], "IDfacture", IDfacture, commit=False)
+noethys/Utils/UTILS_Facturation.py:1288:if not DB.ReqMAJ("factures", [(champ, dict_valeurs[cle]),], "IDfacture", IDfacture, commit=False):
+noethys/Utils/UTILS_Appliquer_code_compta.py:91:DB.ReqMAJ("prestations", [("code_compta", code_compta),], "IDprestation", IDprestation)
+noethys/Utils/UTILS_Portail_synchro.py:1707:DB.Executermany("INSERT INTO portail_actions (IDaction, horodatage, IDfamille, IDindividu, IDutilisateur, categorie, action, description, commentaire, parametres, etat, traitement_date, IDperiode, ref_unique, reponse, IDpaiement, ventilation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", listeActions, commit=False)
