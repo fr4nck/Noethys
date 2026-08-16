@@ -201,11 +201,19 @@ class Dialog(wx.Dialog):
             ("email_regisseur", emailregisseur),
             ("IDcompte_bancaire", IDcompte_bancaire),
             ]
-        if self.IDregie == None :
-            self.IDregie = DB.ReqInsert("factures_regies", listeDonnees)
+        ancien_IDregie = self.IDregie
+        if ancien_IDregie == None :
+            IDregie = DB.ReqInsert("factures_regies", listeDonnees)
+            if IDregie is None:
+                DB.Close()
+                return False
+            self.IDregie = IDregie
         else :
-            DB.ReqMAJ("factures_regies", listeDonnees, "IDregie", self.IDregie)
+            if not DB.ReqMAJ("factures_regies", listeDonnees, "IDregie", ancien_IDregie):
+                DB.Close()
+                return False
         DB.Close()
+        return True
 
     def Importation(self):
         """ Importation des valeurs """

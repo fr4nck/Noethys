@@ -128,11 +128,19 @@ class Dialog(wx.Dialog):
             ("nom", nom),
             ("prefixe", prefixe),
             ]
-        if self.IDprefixe == None :
-            self.IDprefixe = DB.ReqInsert("factures_prefixes", listeDonnees)
+        ancien_IDprefixe = self.IDprefixe
+        if ancien_IDprefixe == None :
+            IDprefixe = DB.ReqInsert("factures_prefixes", listeDonnees)
+            if IDprefixe is None:
+                DB.Close()
+                return False
+            self.IDprefixe = IDprefixe
         else :
-            DB.ReqMAJ("factures_prefixes", listeDonnees, "IDprefixe", self.IDprefixe)
+            if not DB.ReqMAJ("factures_prefixes", listeDonnees, "IDprefixe", ancien_IDprefixe):
+                DB.Close()
+                return False
         DB.Close()
+        return True
 
     def Importation(self):
         """ Importation des valeurs """

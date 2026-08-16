@@ -358,7 +358,7 @@ class Dialog(wx.Dialog):
             frais_pourcentage = self.ctrl_frais_prorata.GetValue()
             try :
                 frais_pourcentage = float(frais_pourcentage) 
-            except :
+            except (TypeError, ValueError):
                 dlg = wx.MessageDialog(self, _(u"Le pourcentage que vous avez saisi pour les frais de gestion n'est pas valide !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
                 dlg.ShowModal()
                 dlg.Destroy()
@@ -402,10 +402,23 @@ class Dialog(wx.Dialog):
                 ("type_comptable", type_comptable),
                 ("code_compta", code_comptable),
             ]
-        if self.IDmode == None :
-            self.IDmode = DB.ReqInsert("modes_reglements", listeDonnees)
+        ancien_IDmode = self.IDmode
+        if ancien_IDmode == None :
+            IDmode = DB.ReqInsert("modes_reglements", listeDonnees)
+            if IDmode is None:
+                DB.Close()
+                dlg = wx.MessageDialog(self, _(u"Le mode de règlement n'a pas pu être enregistré."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
+            self.IDmode = IDmode
         else:
-            DB.ReqMAJ("modes_reglements", listeDonnees, "IDmode", self.IDmode)
+            if not DB.ReqMAJ("modes_reglements", listeDonnees, "IDmode", ancien_IDmode):
+                DB.Close()
+                dlg = wx.MessageDialog(self, _(u"Le mode de règlement n'a pas pu être modifié."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
         DB.Close()
         
         # Sauvegarde de l'image
