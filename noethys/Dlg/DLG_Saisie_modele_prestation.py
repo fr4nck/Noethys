@@ -34,9 +34,9 @@ from Ctrl.CTRL_Tarification_calcul import CHAMPS_TABLE_LIGNES
 
 class Choix_categorie(wx.Choice):
     def __init__(self, parent):
-        wx.Choice.__init__(self, parent, -1) 
+        wx.Choice.__init__(self, parent, -1)
         self.parent = parent
-        
+
         self.listeCategories = [
             ("consommation", _(u"Consommation")),
             ("cotisation", _(u"Cotisation")),
@@ -49,7 +49,7 @@ class Choix_categorie(wx.Choice):
             self.listeNoms.append(label)
         self.SetItems(self.listeNoms)
         self.SetCategorie("autre")
-    
+
     def SetCategorie(self, categorie=""):
         index = 0
         for code, label in self.listeCategories :
@@ -66,11 +66,11 @@ class Choix_categorie(wx.Choice):
 
 class Choix_activite(wx.Choice):
     def __init__(self, parent):
-        wx.Choice.__init__(self, parent, -1) 
+        wx.Choice.__init__(self, parent, -1)
         self.parent = parent
         self.listeNoms = []
         self.listeActivites = []
-    
+
     def SetListeDonnees(self, listeActivites=[]):
         self.listeNoms = []
         self.listeActivites = listeActivites
@@ -80,7 +80,7 @@ class Choix_activite(wx.Choice):
             if nom == None : nom = "?"
             self.listeNoms.append(nom)
         self.SetItems(self.listeNoms)
-    
+
     def SetID(self, ID=None):
         index = 0
         for dictActivite in self.listeActivites :
@@ -98,11 +98,11 @@ class Choix_activite(wx.Choice):
 
 class Choix_categorie_tarif(wx.Choice):
     def __init__(self, parent):
-        wx.Choice.__init__(self, parent, -1) 
+        wx.Choice.__init__(self, parent, -1)
         self.parent = parent
         self.listeNoms = []
         self.listeCategoriesTarifs= []
-    
+
     def SetListeDonnees(self, listeCategoriesTarifs=[]):
         self.listeNoms = []
         self.listeCategoriesTarifs = listeCategoriesTarifs
@@ -111,7 +111,7 @@ class Choix_categorie_tarif(wx.Choice):
             nom = dictCategorieTarif["nom"]
             self.listeNoms.append(nom)
         self.SetItems(self.listeNoms)
-    
+
     def SetID(self, ID=None):
         index = 0
         for dictCategorieTarif in self.listeCategoriesTarifs :
@@ -129,11 +129,11 @@ class Choix_categorie_tarif(wx.Choice):
 
 class Choix_tarif(wx.Choice):
     def __init__(self, parent):
-        wx.Choice.__init__(self, parent, -1) 
+        wx.Choice.__init__(self, parent, -1)
         self.parent = parent
         self.listeNoms = []
         self.listeTarifs= []
-    
+
     def SetListeDonnees(self, listeTarifs=[]):
         self.listeNoms = []
         self.listeTarifs = listeTarifs
@@ -150,7 +150,7 @@ class Choix_tarif(wx.Choice):
             if date_debut != None and date_fin != None : label = _(u"%s (Du %s au %s)") % (nom, UTILS_Dates.DateDDEnFr(date_debut), UTILS_Dates.DateDDEnFr(date_fin))
             self.listeNoms.append(label)
         self.SetItems(self.listeNoms)
-    
+
     def SetID(self, ID=None):
         index = 0
         for dictTarif in self.listeTarifs :
@@ -182,7 +182,7 @@ class Dialog(wx.Dialog):
         self.SetTitle(titre)
         intro = _(u"Vous pouvez saisir ou modifier ici les caractéristiques d'un modèle de prestation. Un modèle permet une saisie rapide de plusieurs prestations aux caractéristiques identiques.")
         self.ctrl_bandeau = CTRL_Bandeau.Bandeau(self, titre=titre, texte=intro, hauteurHtml=30, nomImage="Images/32x32/Euro.png")
-        
+
         # Généralités
         self.staticbox_generalites_staticbox = wx.StaticBox(self, -1, _(u"Généralites"))
         self.label_categorie = wx.StaticText(self, -1, _(u"Catégorie :"))
@@ -208,7 +208,7 @@ class Dialog(wx.Dialog):
         self.ctrl_tva = FS.FloatSpin(self, -1, min_val=0, max_val=100, increment=0.1, agwStyle=FS.FS_RIGHT)
         self.ctrl_tva.SetFormat("%f")
         self.ctrl_tva.SetDigits(2)
-        
+
         # Code comptable
         self.label_code_comptable = wx.StaticText(self, -1, _(u"Code compta :"))
         self.ctrl_code_comptable = wx.TextCtrl(self, -1, u"")
@@ -234,23 +234,23 @@ class Dialog(wx.Dialog):
         self.Bind(wx.EVT_CHOICE, self.OnChoixTarif, self.ctrl_tarif)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonAide, self.bouton_aide)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonOk, self.bouton_ok)
-        
+
         self.ctrl_categorie_tarif.Enable(False)
         self.ctrl_tarif.Enable(False)
-        
+
         # Remplissage des contrôles
-        self.listeActivites = self.Importation_activites() 
+        self.listeActivites = self.Importation_activites()
         self.ctrl_activite.SetListeDonnees(self.listeActivites)
-        
-        self.listeCategoriesTarifs = self.Importation_categories_tarifs(IDactivite=0) 
+
+        self.listeCategoriesTarifs = self.Importation_categories_tarifs(IDactivite=0)
         self.ctrl_categorie_tarif.SetListeDonnees(self.listeCategoriesTarifs)
-        
+
         self.listeTarifs = self.Importation_tarifs(IDcategorie_tarif=0)
         self.ctrl_tarif.SetListeDonnees(self.listeTarifs)
-        
+
         # Importation lors d'une modification
         if self.IDmodele != None :
-            self.Importation() 
+            self.Importation()
 
     def __set_properties(self):
         self.ctrl_categorie.SetToolTip(wx.ToolTip(_(u"Sélectionnez ici la catégorie de la prestation")))
@@ -269,7 +269,7 @@ class Dialog(wx.Dialog):
 
     def __do_layout(self):
         grid_sizer_base = wx.FlexGridSizer(rows=5, cols=1, vgap=10, hgap=10)
-        
+
         grid_sizer_contenu = wx.FlexGridSizer(rows=1, cols=2, vgap=10, hgap=10)
         staticbox_options = wx.StaticBoxSizer(self.staticbox_options_staticbox, wx.VERTICAL)
         grid_sizer_options = wx.FlexGridSizer(rows=6, cols=2, vgap=10, hgap=10)
@@ -313,7 +313,7 @@ class Dialog(wx.Dialog):
         grid_sizer_contenu.AddGrowableCol(0)
         grid_sizer_contenu.AddGrowableCol(1)
         grid_sizer_base.Add(grid_sizer_contenu, 1, wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
-        
+
         # Déductions
         staticbox_tarification = wx.StaticBoxSizer(self.staticbox_tarification_staticbox, wx.VERTICAL)
         grid_sizer_tarification = wx.FlexGridSizer(rows=1, cols=2, vgap=5, hgap=5)
@@ -331,7 +331,7 @@ class Dialog(wx.Dialog):
         grid_sizer_boutons.Add(self.bouton_annuler, 0, 0, 0)
         grid_sizer_boutons.AddGrowableCol(1)
         grid_sizer_base.Add(grid_sizer_boutons, 1, wx.LEFT|wx.RIGHT|wx.BOTTOM|wx.EXPAND, 10)
-        
+
         self.SetSizer(grid_sizer_base)
         grid_sizer_base.Fit(self)
         grid_sizer_base.AddGrowableRow(2)
@@ -340,13 +340,13 @@ class Dialog(wx.Dialog):
         self.SetMinSize(self.GetSize())
         self.CenterOnScreen()
 
-    def OnChoixCategorie(self, event): 
+    def OnChoixCategorie(self, event):
         pass
 
-    def OnChoixActivite(self, event): 
+    def OnChoixActivite(self, event):
         # MAJ du contrôle des catégories de tarifs
         IDactivite = self.ctrl_activite.GetID()
-        self.listeCategoriesTarifs = self.Importation_categories_tarifs(IDactivite) 
+        self.listeCategoriesTarifs = self.Importation_categories_tarifs(IDactivite)
         if len(self.listeCategoriesTarifs) > 0 :
             self.ctrl_categorie_tarif.Enable(True)
         else:
@@ -354,7 +354,7 @@ class Dialog(wx.Dialog):
         self.ctrl_categorie_tarif.SetListeDonnees(self.listeCategoriesTarifs)
         self.OnChoixCategorieTarif(None)
 
-    def OnChoixCategorieTarif(self, event): 
+    def OnChoixCategorieTarif(self, event):
         # MAJ du contrôle des tarifs
         IDcategorie_tarif = self.ctrl_categorie_tarif.GetID()
         self.listeTarifs = self.Importation_tarifs(IDcategorie_tarif)
@@ -364,7 +364,7 @@ class Dialog(wx.Dialog):
             self.ctrl_tarif.Enable(False)
         self.ctrl_tarif.SetListeDonnees(self.listeTarifs)
 
-    def OnChoixTarif(self, event): 
+    def OnChoixTarif(self, event):
         event.Skip()
 
     def Importation_activites(self):
@@ -406,27 +406,27 @@ class Dialog(wx.Dialog):
         DB = GestionDB.DB()
         # Recherche les tarifs
         dictIndividus = {}
-        req = """SELECT IDtarif, tarifs.IDactivite, 
-        tarifs.IDnom_tarif, noms_tarifs.nom, 
+        req = """SELECT IDtarif, tarifs.IDactivite,
+        tarifs.IDnom_tarif, noms_tarifs.nom,
         date_debut, date_fin, methode, categories_tarifs, groupes
         FROM tarifs
         LEFT JOIN noms_tarifs ON tarifs.IDnom_tarif = noms_tarifs.IDnom_tarif
         ORDER BY noms_tarifs.nom, date_debut;"""
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
-        DB.Close() 
+        DB.Close()
         listeTarifs = []
         for IDtarif, IDactivite, IDnom_tarif, nomTarif, date_debut, date_fin, methode, categories_tarifs, groupes in listeDonnees :
             date_debut = UTILS_Dates.DateEngEnDateDD(date_debut)
             date_fin = UTILS_Dates.DateEngEnDateDD(date_fin)
             listeCategoriesTarifs = UTILS_Texte.ConvertStrToListe(categories_tarifs)
-            
+
             dictTemp = {
-                    "IDtarif" : IDtarif, "IDactivite" : IDactivite, 
+                    "IDtarif" : IDtarif, "IDactivite" : IDactivite,
                     "IDnom_tarif" : IDnom_tarif, "nomTarif" : nomTarif, "date_debut" : date_debut,
                     "date_fin" : date_fin, "methode" : methode, "categories_tarifs":categories_tarifs, "groupes":groupes,
                     }
-            
+
             if listeCategoriesTarifs != None :
                 if IDcategorie_tarif in listeCategoriesTarifs :
                     listeTarifs.append(dictTemp)
@@ -434,7 +434,7 @@ class Dialog(wx.Dialog):
         return listeTarifs
 
 
-    def OnBoutonAide(self, event): 
+    def OnBoutonAide(self, event):
         from Utils import UTILS_Aide
         UTILS_Aide.Aide("Prestations")
 
@@ -464,7 +464,7 @@ class Dialog(wx.Dialog):
         """ Importation des données """
         DB = GestionDB.DB()
         req = """SELECT categorie, label, IDactivite, IDtarif, IDcategorie_tarif, code_compta, tva, public, IDtype_quotient
-        FROM modeles_prestations 
+        FROM modeles_prestations
         WHERE IDmodele=%d;""" % self.IDmodele
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
@@ -504,7 +504,7 @@ class Dialog(wx.Dialog):
     def OnBoutonOk(self, event):
         # Récupération et vérification des données saisies
         categorie = self.ctrl_categorie.GetCategorie()
-        
+
         label = self.ctrl_label.GetValue()
         if label == "" :
             dlg = wx.MessageDialog(self, _(u"Vous devez obligatoirement saisir un intitulé !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
@@ -512,12 +512,12 @@ class Dialog(wx.Dialog):
             dlg.Destroy()
             self.ctrl_label.SetFocus()
             return
-        
+
         IDactivite = self.ctrl_activite.GetID()
-        IDcategorie_tarif = self.ctrl_categorie_tarif.GetID() 
+        IDcategorie_tarif = self.ctrl_categorie_tarif.GetID()
         IDtarif = self.ctrl_tarif.GetID()
 
-        code_comptable = self.ctrl_code_comptable.GetValue() 
+        code_comptable = self.ctrl_code_comptable.GetValue()
         if code_comptable == "" :
             code_comptable = None
         tva = self.ctrl_tva.GetValue()
@@ -536,8 +536,8 @@ class Dialog(wx.Dialog):
         if self.ctrl_tarification.Validation() == False :
             return False
 
-        # Sauvegarde de la prestation
-        listeDonnees = [    
+        # Sauvegarde transactionnelle du modèle et de ses lignes de tarifs
+        listeDonnees = [
                 ("categorie", categorie),
                 ("label", label),
                 ("IDactivite", IDactivite),
@@ -549,49 +549,79 @@ class Dialog(wx.Dialog):
                 ("IDtype_quotient", IDtype_quotient),
                 ]
         DB = GestionDB.DB()
-        if self.IDmodele == None :
-            self.IDmodele = DB.ReqInsert("modeles_prestations", listeDonnees)
-        else:
-            DB.ReqMAJ("modeles_prestations", listeDonnees, "IDmodele", self.IDmodele)
+        ok = True
+        nouvelIDmodele = self.IDmodele
 
-        # Sauvegarde des lignes de tarifs
-        self.ctrl_tarification.Sauvegarde()
+        if nouvelIDmodele == None :
+            nouvelIDmodele = DB.ReqInsert("modeles_prestations", listeDonnees, commit=False)
+            if nouvelIDmodele is None :
+                ok = False
+        else:
+            if not DB.ReqMAJ("modeles_prestations", listeDonnees, "IDmodele", nouvelIDmodele, commit=False) :
+                ok = False
+
+        # Cette sauvegarde ne touche pas la DB lorsque track_tarif est fourni.
+        if ok and self.ctrl_tarification.Sauvegarde() is False :
+            ok = False
 
         listeFinaleID = []
-        for track_ligne in self.track_tarif.lignes:
-            track_ligne.IDmodele = self.IDmodele
-            listeDonnees = track_ligne.Get_listedonnees_pour_db()
+        if ok :
+            for track_ligne in self.track_tarif.lignes:
+                track_ligne.IDmodele = nouvelIDmodele
+                listeDonnees = track_ligne.Get_listedonnees_pour_db()
 
-            if track_ligne.IDligne == None:
-                # Ci-dessous pour parer bug de Last_row_id de Sqlite
-                if DB.isNetwork == False:
-                    req = """SELECT max(IDligne) FROM tarifs_lignes;"""
-                    DB.ExecuterReq(req)
-                    listeTemp = DB.ResultatReq()
-                    if listeTemp[0][0] == None:
-                        newID = 1
+                if track_ligne.IDligne == None:
+                    if DB.isNetwork == False:
+                        req = """SELECT max(IDligne) FROM tarifs_lignes;"""
+                        if DB.ExecuterReq(req) != "ok" :
+                            ok = False
+                            break
+                        listeTemp = DB.ResultatReq()
+                        if listeTemp[0][0] == None:
+                            newID = 1
+                        else:
+                            newID = listeTemp[0][0] + 1
+                        listeDonnees.append(("IDligne", newID))
+                        IDligne = DB.ReqInsert("tarifs_lignes", listeDonnees, commit=False)
                     else:
-                        newID = listeTemp[0][0] + 1
-                    listeDonnees.append(("IDligne", newID))
-                    DB.ReqInsert("tarifs_lignes", listeDonnees)
+                        IDligne = DB.ReqInsert("tarifs_lignes", listeDonnees, commit=False)
+                    if IDligne is None :
+                        ok = False
+                        break
                 else:
-                    # Version MySQL
-                    DB.ReqInsert("tarifs_lignes", listeDonnees)
-            else:
-                # Modification
-                DB.ReqMAJ("tarifs_lignes", listeDonnees, "IDligne", track_ligne.IDligne)
-                listeFinaleID.append(track_ligne.IDligne)
+                    IDligne = track_ligne.IDligne
+                    if not DB.ReqMAJ("tarifs_lignes", listeDonnees, "IDligne", IDligne, commit=False) :
+                        ok = False
+                        break
+                    listeFinaleID.append(IDligne)
 
-        # Suppression des lignes supprimées
-        for IDligne in self.listeInitialeIDlignes:
-            if IDligne not in listeFinaleID:
-                DB.ReqDEL("tarifs_lignes", "IDligne", IDligne)
+        if ok :
+            for IDligne in self.listeInitialeIDlignes:
+                if IDligne not in listeFinaleID:
+                    if not DB.ReqDEL("tarifs_lignes", "IDligne", IDligne, commit=False) :
+                        ok = False
+                        break
 
+        if ok :
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
         DB.Close()
+
+        if not ok :
+            dlg = wx.MessageDialog(self, _(u"Une erreur est survenue pendant l'enregistrement du modèle de prestation. Aucune modification n'a été conservée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
+        self.IDmodele = nouvelIDmodele
 
         # Fermeture de la fenêtre
         self.EndModal(wx.ID_OK)
-    
+
     def GetIDmodele(self):
         return self.IDmodele
 
