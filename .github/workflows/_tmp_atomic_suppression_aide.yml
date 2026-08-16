@@ -1,0 +1,51 @@
+name: Atomic suppression aide
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_suppression_aide.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch suppression aide
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Ol/OL_Aides.py')
+          s=p.read_text(encoding='utf-8')
+          old='''        if dlg.ShowModal() == wx.ID_YES :\n            DB = GestionDB.DB()\n            DB.ReqDEL("aides", "IDaide", IDaide)\n            DB.ReqDEL("aides_beneficiaires", "IDaide", IDaide)\n            DB.ReqDEL("aides_montants", "IDaide", IDaide)\n            DB.ReqDEL("aides_combinaisons", "IDaide", IDaide)\n            DB.ReqDEL("aides_combi_unites", "IDaide", IDaide)\n            DB.Close() \n            self.MAJ()\n'''
+          new='''        if dlg.ShowModal() == wx.ID_YES :\n            DB = GestionDB.DB()\n            suppressions = (\n                ("aides_combi_unites", "IDaide"),\n                ("aides_combinaisons", "IDaide"),\n                ("aides_montants", "IDaide"),\n                ("aides_beneficiaires", "IDaide"),\n                ("aides", "IDaide"),\n            )\n            ok = True\n            for table, champ in suppressions:\n                if not DB.ReqDEL(table, champ, IDaide, commit=False):\n                    ok = False\n                    break\n            if ok:\n                DB.Commit()\n            else:\n                try:\n                    DB.connexion.rollback()\n                except Exception:\n                    pass\n            DB.Close()\n            if ok:\n                self.MAJ()\n            else:\n                erreur = wx.MessageDialog(self, _(u"La suppression de l'aide a échoué. Aucune donnée n'a été supprimée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n                erreur.ShowModal()\n                erreur.Destroy()\n'''
+          if s.count(old)!=1:
+              raise SystemExit('bloc suppression aide inattendu')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Ol/OL_Aides.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('noethys/Ol/OL_Aides.py').read_text(encoding='utf-8')
+          b=s[s.index('suppressions = ('):s.index('dlg.Destroy()', s.index('suppressions = ('))]
+          assert 'aides_combi_unites' in b and 'aides_combinaisons' in b and 'aides_montants' in b and 'aides_beneficiaires' in b
+          assert 'commit=False' in b
+          assert 'DB.Commit()' in b
+          assert 'rollback()' in b
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Ol/OL_Aides.py
+          git commit -m "fix: atomiser la suppression des aides"
+          git push origin HEAD:master
