@@ -361,70 +361,110 @@ class Dialog(wx.Dialog):
         from Utils import UTILS_Aide
         UTILS_Aide.Aide("Gestiondesdptsdecotisations")
 
-    def OnBoutonOk(self, event): 
-        # Sauvegarde des paramètres
-        etat = self.Sauvegarde_depot() 
+    def OnBoutonOk(self, event):
+        # Sauvegarde atomique du dépôt et des cotisations
+        etat = self.Sauvegarde_depot()
         if etat == False :
             return
-        # Sauvegarde des règlements
-        self.Sauvegarde_cotisations()
         # Fermeture
         self.EndModal(wx.ID_OK)
     
     def Sauvegarde_depot(self):
         # Nom
-        nom = self.ctrl_nom.GetValue() 
+        nom = self.ctrl_nom.GetValue()
         if nom == "" :
             dlg = wx.MessageDialog(self, _(u"Vous devez obligatoirement saisir un nom. Exemple : 'Cotisations de Juillet 2010'... !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
             self.ctrl_nom.SetFocus()
             return False
-        
+
         # Date
         date = self.ctrl_date.GetDate()
         if date == None :
             dlg = wx.MessageDialog(self, _(u"Etes-vous sûr de ne pas vouloir saisir de date de dépôt ?"), _(u"Confirmation"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
             reponse = dlg.ShowModal()
             dlg.Destroy()
-            if reponse !=  wx.ID_YES :
+            if reponse != wx.ID_YES :
                 return False
-        
-        # Verrouillage
-        verrouillage = self.ctrl_verrouillage.GetValue()
-        if verrouillage == True :
-            verrouillage = 1
-        else:
-            verrouillage = 0
-                
-        # Observations
+
+        verrouillage = 1 if self.ctrl_verrouillage.GetValue() else 0
         observations = self.ctrl_observations.GetValue()
-        
+
         DB = GestionDB.DB()
-        listeDonnees = [    
-                ("nom", nom),
-                ("date", date),
-                ("verrouillage", verrouillage),
-                ("observations", observations),
+        ok = True
+        nouvelIDdepot = self.IDdepot_cotisation
+        listeDonnees = [
+            ("nom", nom),
+            ("date", date),
+            ("verrouillage", verrouillage),
+            ("observations", observations),
             ]
-        if self.IDdepot_cotisation == None :
-            self.IDdepot_cotisation = DB.ReqInsert("depots_cotisations", listeDonnees)
-        else:
-            DB.ReqMAJ("depots_cotisations", listeDonnees, "IDdepot_cotisation", self.IDdepot_cotisation)
+
+        if nouvelIDdepot == None :
+            nouvelIDdepot = DB.ReqInsert("depots_cotisations", listeDonnees, commit=False)
+            if nouvelIDdepot is None :
+                ok = False
+        else :
+            if not DB.ReqMAJ("depots_cotisations", listeDonnees, "IDdepot_cotisation", nouvelIDdepot, commit=False) :
+                ok = False
+
+        if ok :
+            ok = self.Sauvegarde_cotisations(DB=DB, IDdepot_cotisation=nouvelIDdepot, commit=False)
+
+        if ok :
+            DB.Commit()
+        else :
+            try :
+                DB.connexion.rollback()
+            except Exception :
+                pass
         DB.Close()
-        
+
+        if not ok :
+            dlg = wx.MessageDialog(self, _(u"Une erreur est survenue pendant l'enregistrement du dépôt et de ses cotisations. Aucune modification n'a été conservée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
+        self.IDdepot_cotisation = nouvelIDdepot
         return True
-        
-    def Sauvegarde_cotisations(self):
-        DB = GestionDB.DB()
+
+    def Sauvegarde_cotisations(self, DB=None, IDdepot_cotisation=None, commit=True):
+        """Rattache/détache les cotisations dans la transaction fournie si nécessaire."""
+        DBexterne = DB is not None
+        if DB is None :
+            DB = GestionDB.DB()
+        if IDdepot_cotisation is None :
+            IDdepot_cotisation = self.IDdepot_cotisation
+
+        ok = True
         for track in self.tracks :
-            # Ajout
+            nouvelleValeur = None
+            modifier = False
             if track.IDdepot_cotisation == None and track.inclus == True :
-                DB.ReqMAJ("cotisations", [("IDdepot_cotisation", self.IDdepot_cotisation),], "IDcotisation", track.IDcotisation)
-            # Retrait
-            if track.IDdepot_cotisation != None and track.inclus == False :
-                DB.ReqMAJ("cotisations", [("IDdepot_cotisation", None),], "IDcotisation", track.IDcotisation)
-        DB.Close() 
+                nouvelleValeur = IDdepot_cotisation
+                modifier = True
+            elif track.IDdepot_cotisation != None and track.inclus == False :
+                nouvelleValeur = None
+                modifier = True
+
+            if modifier :
+                if not DB.ReqMAJ("cotisations", [("IDdepot_cotisation", nouvelleValeur),], "IDcotisation", track.IDcotisation, commit=False) :
+                    ok = False
+                    break
+
+        if not DBexterne :
+            if ok and commit :
+                DB.Commit()
+            elif not ok :
+                try :
+                    DB.connexion.rollback()
+                except Exception :
+                    pass
+            DB.Close()
+
+        return ok
 
     def GetIDdepotCotisation(self):
         return self.IDdepot_cotisation

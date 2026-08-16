@@ -365,10 +365,15 @@ class ListView(FastObjectListView):
         dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment supprimer ce dépôt ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
         if dlg.ShowModal() == wx.ID_YES :
             DB = GestionDB.DB()
-            DB.ReqDEL("depots", "IDdepot", IDdepot)
-            DB.Close() 
-            self.MAJ()
-            self.GetGrandParent().MAJreglements()
+            resultat = DB.ReqDEL("depots", "IDdepot", IDdepot)
+            DB.Close()
+            if resultat :
+                self.MAJ()
+                self.GetGrandParent().MAJreglements()
+            else :
+                dlgErreur = wx.MessageDialog(self, _(u"La suppression du dépôt a échoué. Aucune modification n'a été effectuée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlgErreur.ShowModal()
+                dlgErreur.Destroy()
         dlg.Destroy()
 
 

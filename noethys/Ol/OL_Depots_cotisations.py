@@ -355,10 +355,15 @@ class ListView(FastObjectListView):
         dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment supprimer ce dépôt de cotisations ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
         if dlg.ShowModal() == wx.ID_YES :
             DB = GestionDB.DB()
-            DB.ReqDEL("depots_cotisations", "IDdepot_cotisation", IDdepot_cotisation)
-            DB.Close() 
-            self.MAJ()
-            self.GetGrandParent().MAJcotisations()
+            resultat = DB.ReqDEL("depots_cotisations", "IDdepot_cotisation", IDdepot_cotisation)
+            DB.Close()
+            if resultat :
+                self.MAJ()
+                self.GetGrandParent().MAJcotisations()
+            else :
+                dlgErreur = wx.MessageDialog(self, _(u"La suppression du dépôt de cotisations a échoué. Aucune modification n'a été effectuée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlgErreur.ShowModal()
+                dlgErreur.Destroy()
         dlg.Destroy()
 
 
