@@ -1,0 +1,40 @@
+name: Scan multi écritures restantes
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_scan_multiecritures_restantes.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan write-heavy methods
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          roots=(Path('noethys/Dlg'),Path('noethys/Ol'),Path('noethys/Ctrl'),Path('noethys/Utils'))
+          for root in roots:
+              if not root.exists(): continue
+              for p in root.rglob('*.py'):
+                  s=p.read_text(encoding='utf-8',errors='ignore')
+                  lines=s.splitlines()
+                  current=None; start=0; buf=[]
+                  for i,line in enumerate(lines+["def __sentinel__():"],1):
+                      stripped=line.lstrip()
+                      if stripped.startswith('def ') or stripped.startswith('    def '):
+                          if current is not None:
+                              text='\n'.join(buf)
+                              writes=sum(text.count(x) for x in ('ReqInsert(', 'ReqMAJ(', 'ReqDEL(', 'Executermany(', 'DELETE FROM ', 'INSERT INTO ', 'UPDATE '))
+                              explicit=text.count('commit=False')
+                              commits=text.count('Commit()')
+                              if writes>=4 and explicit < max(1,writes//3):
+                                  print(f'{p}:{start}: {current} writes={writes} commitFalse={explicit} commits={commits}')
+                          current=stripped.strip(); start=i; buf=[line]
+                      elif current is not None:
+                          buf.append(line)
+          PY
