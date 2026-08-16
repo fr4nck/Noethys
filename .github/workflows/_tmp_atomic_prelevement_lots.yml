@@ -1,0 +1,81 @@
+name: Atomic prelevement lots
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_prelevement_lots.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch lots prelevements
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          files = (
+              'noethys/Ol/OL_Prelevements_sepa.py',
+              'noethys/Ol/OL_Prelevements_national.py',
+          )
+
+          def patch(path):
+              p=Path(path)
+              s=p.read_text(encoding='utf-8')
+              a=s.index('    def Sauvegarde(self, IDlot=None, datePrelevement=None, IDcompte=None, IDmode=None):')
+              b=s.index('    def SauvegardeReglements(self, date=None, IDcompte=None, IDmode=None):', a)
+              x=s[a:b]
+              if 'listeMAJPrelevements = []' in x:
+                  raise SystemExit('déjà patché '+path)
+              x=x.replace('        DB = GestionDB.DB()\n', '        DB = GestionDB.DB()\n        ok = True\n        listeMAJPrelevements = []\n', 1)
+              x=x.replace('track.IDprelevement = DB.ReqInsert("prelevements", listeDonnees)\n                self.RefreshObject(track)', 'IDprelevement = DB.ReqInsert("prelevements", listeDonnees, commit=False)\n                if IDprelevement is None:\n                    ok = False\n                    break\n                listeMAJPrelevements.append((track, IDprelevement))')
+              x=x.replace('DB.ReqMAJ("prelevements", listeDonnees, "IDprelevement", track.IDprelevement)', 'if not DB.ReqMAJ("prelevements", listeDonnees, "IDprelevement", track.IDprelevement, commit=False):\n                    ok = False\n                    break')
+              x=x.replace('DB.ReqDEL("prelevements", "IDprelevement", track.IDprelevement)', 'if not DB.ReqDEL("prelevements", "IDprelevement", track.IDprelevement, commit=False):\n                    ok = False\n                    break')
+              old='''                DB.ReqDEL("reglements", "IDreglement", track.IDreglement)\n                DB.ReqDEL("ventilation", "IDreglement", track.IDreglement)'''
+              new='''                if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):\n                    ok = False\n                    break\n                if not DB.ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False):\n                    ok = False\n                    break'''
+              x=x.replace(old,new)
+              oldtail='''        DB.Close()\n\n        # Sauvegarde des règlements\n        self.SauvegardeReglements(date=datePrelevement, IDcompte=IDcompte, IDmode=IDmode)\n\n\n'''
+              newtail='''        if ok:\n            DB.Commit()\n        else:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n        DB.Close()\n\n        if not ok:\n            return False\n\n        for track, IDprelevement in listeMAJPrelevements:\n            track.IDprelevement = IDprelevement\n            self.RefreshObject(track)\n\n        # Sauvegarde des règlements uniquement si le lot est cohérent\n        if self.SauvegardeReglements(date=datePrelevement, IDcompte=IDcompte, IDmode=IDmode) is False:\n            return False\n        return True\n\n\n'''
+              if oldtail not in x:
+                  raise SystemExit('tail inattendu '+path)
+              x=x.replace(oldtail,newtail,1)
+              s=s[:a]+x+s[b:]
+              s='\n'.join(line.rstrip() for line in s.splitlines())+'\n'
+              p.write_text(s,encoding='utf-8')
+
+          for path in files:
+              patch(path)
+          PY
+          python -m py_compile noethys/Ol/OL_Prelevements_sepa.py noethys/Ol/OL_Prelevements_national.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          for path in ('noethys/Ol/OL_Prelevements_sepa.py','noethys/Ol/OL_Prelevements_national.py'):
+              s=Path(path).read_text(encoding='utf-8')
+              a=s.index('    def Sauvegarde(self, IDlot=None, datePrelevement=None, IDcompte=None, IDmode=None):')
+              b=s.index('    def SauvegardeReglements(', a)
+              x=s[a:b]
+              assert 'ReqInsert("prelevements", listeDonnees, commit=False)' in x
+              assert 'ReqMAJ("prelevements", listeDonnees, "IDprelevement", track.IDprelevement, commit=False)' in x
+              assert 'ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False)' in x
+              assert 'ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False)' in x
+              assert 'DB.Commit()' in x and 'rollback()' in x
+              assert 'if self.SauvegardeReglements' in x and 'return True' in x
+              assert x.index('track.IDprelevement = IDprelevement') > x.index('DB.Close()')
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Ol/OL_Prelevements_sepa.py noethys/Ol/OL_Prelevements_national.py
+          git commit -m "fix: atomiser les lots de prélèvements"
+          git push origin HEAD:master
