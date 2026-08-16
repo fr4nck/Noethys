@@ -354,23 +354,41 @@ class ListView(FastObjectListView):
         dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment supprimer ce contrat ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_QUESTION)
         if dlg.ShowModal() == wx.ID_YES :
             DB = GestionDB.DB()
-            DB.ReqDEL("contrats", "IDcontrat", track.IDcontrat)
-            DB.ReqDEL("contrats_tarifs", "IDcontrat", track.IDcontrat)
-            DB.ReqDEL("prestations", "IDcontrat", track.IDcontrat)
-            # Suppression des consommations associées
+            ok = True
+
+            # Supprime d'abord les dépendances des prestations
             for IDprestation in listeIDprestations :
-                DB.ReqDEL("consommations", "IDprestation", IDprestation)
-            DB.Close() 
-            
-##            # Mémorise l'action dans l'historique
-##            UTILS_Historique.InsertActions([{
-##                "IDindividu" : self.IDindividu,
-##                "IDfamille" : IDfamille,
-##                "IDcategorie" : 19, 
-##                "action" : _(u"Suppression de l'inscription à l'activité '%s'") % nomActivite
-##                },])
-                
-            # Actualise l'affichage
+                for table in ("consommations", "ventilation", "deductions"):
+                    if not DB.ReqDEL(table, "IDprestation", IDprestation, commit=False):
+                        ok = False
+                        break
+                if not ok:
+                    break
+
+            if ok and not DB.ReqDEL("prestations", "IDcontrat", track.IDcontrat, commit=False):
+                ok = False
+            if ok and not DB.ReqDEL("contrats_tarifs", "IDcontrat", track.IDcontrat, commit=False):
+                ok = False
+            if ok and not DB.ReqDEL("contrats", "IDcontrat", track.IDcontrat, commit=False):
+                ok = False
+
+            if ok:
+                DB.Commit()
+            else:
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+            DB.Close()
+
+            if not ok:
+                dlgErreur = wx.MessageDialog(self, _(u"La suppression du contrat a échoué. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlgErreur.ShowModal()
+                dlgErreur.Destroy()
+                dlg.Destroy()
+                return False
+
+            # Actualise l'affichage uniquement après succès complet
             self.MAJ()
         dlg.Destroy()
 
