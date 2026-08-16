@@ -1,0 +1,93 @@
+name: Atomic tarification
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_tarification.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch tarification
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # GestionDB.Dupliquer : ajout d'un commit optionnel rétrocompatible.
+          p = Path('noethys/GestionDB.py')
+          s = p.read_text(encoding='utf-8')
+          old = 'def Dupliquer(self, nomTable="", nomChampCle="", conditions="", dictModifications={}, renvoieCorrespondances=False, IDmanuel=False):'
+          new = 'def Dupliquer(self, nomTable="", nomChampCle="", conditions="", dictModifications={}, renvoieCorrespondances=False, IDmanuel=False, commit=True):'
+          if s.count(old) != 1:
+              raise SystemExit('signature Dupliquer inattendue')
+          s = s.replace(old, new, 1)
+          old = '            newID = self.ReqInsert(nomTable, listeTemp)\n'
+          new = '''            newID = self.ReqInsert(nomTable, listeTemp, commit=False)\n            if newID is None:\n                try:\n                    self.connexion.rollback()\n                except Exception:\n                    pass\n                return False\n'''
+          if s.count(old) != 1:
+              raise SystemExit('ReqInsert Dupliquer inattendu')
+          s = s.replace(old, new, 1)
+          marker = '        # Renvoie les correspondances\n'
+          if marker not in s:
+              raise SystemExit('fin Dupliquer introuvable')
+          s = s.replace(marker, '        if commit == True:\n            self.Commit()\n\n' + marker, 1)
+          p.write_text(s, encoding='utf-8')
+
+          # CTRL_Tarification : suppression + duplication atomiques.
+          p = Path('noethys/Ctrl/CTRL_Tarification.py')
+          s = p.read_text(encoding='utf-8')
+
+          # Suppression tarif.
+          old = '''        if dlg.ShowModal() == wx.ID_YES :\n            DB = GestionDB.DB()\n            DB.ReqDEL("tarifs", "IDtarif", IDtarif)\n            DB.ReqDEL("combi_tarifs", "IDtarif", IDtarif)\n            DB.ReqDEL("combi_tarifs_unites", "IDtarif", IDtarif)\n            DB.ReqDEL("tarifs_lignes", "IDtarif", IDtarif)\n            DB.Close() \n            self.MAJ()\n'''
+          new = '''        if dlg.ShowModal() == wx.ID_YES :\n            DB = GestionDB.DB()\n            ok = True\n            for table in ("combi_tarifs_unites", "combi_tarifs", "tarifs_lignes", "questionnaire_filtres", "tarifs"):\n                if not DB.ReqDEL(table, "IDtarif", IDtarif, commit=False):\n                    ok = False\n                    break\n            if not ok:\n                try:\n                    DB.connexion.rollback()\n                except Exception:\n                    pass\n                DB.Close()\n                dlg2 = wx.MessageDialog(self, _(u"Le tarif n'a pas pu être supprimé complètement. Aucune suppression n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n                dlg2.ShowModal()\n                dlg2.Destroy()\n                dlg.Destroy()\n                return\n            DB.Commit()\n            DB.Close()\n            self.MAJ()\n'''
+          if s.count(old) != 1:
+              raise SystemExit('Suppression tarif inattendue')
+          s = s.replace(old, new, 1)
+
+          # DupliquerNom : une seule DB et une seule transaction.
+          start = s.index('    def DupliquerNom(self, IDnom_tarif, nomTarif):')
+          end = s.index('    def DupliquerTarif(', start)
+          old_block = s[start:end]
+          new_block = '''    def DupliquerNom(self, IDnom_tarif, nomTarif):\n        \"\"\"Duplication atomique d'un nom de tarif et, si demandé, de ses tarifs.\"\"\"\n        dlg = wx.MessageDialog(self, _(u"Souhaitez-vous dupliquer également les tarifs ?"), _(u"Duplication"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_QUESTION)\n        reponse = dlg.ShowModal()\n        dlg.Destroy()\n        if reponse == wx.ID_YES:\n            dupliqueEnfants = True\n        elif reponse == wx.ID_NO:\n            dupliqueEnfants = False\n        else:\n            return False\n\n        DB = GestionDB.DB()\n        newIDnom_tarif = DB.Dupliquer(nomTable="noms_tarifs", nomChampCle="IDnom_tarif", conditions="IDnom_tarif=%d" % IDnom_tarif, dictModifications={"nom": _(u"Copie de %s") % nomTarif}, commit=False)\n        if newIDnom_tarif in (None, False):\n            DB.Close()\n            return False\n\n        if dupliqueEnfants:\n            req = \"SELECT IDtarif, IDactivite FROM tarifs WHERE IDnom_tarif=%d;\" % IDnom_tarif\n            if DB.ExecuterReq(req) != 1:\n                DB.connexion.rollback()\n                DB.Close()\n                return False\n            listeDonnees = DB.ResultatReq()\n            for IDtarif, IDactivite in listeDonnees:\n                if not self.DupliquerTarif(IDtarif, nouveauIDnom_tarif=newIDnom_tarif, DB=DB, commit=False):\n                    DB.connexion.rollback()\n                    DB.Close()\n                    return False\n\n        DB.Commit()\n        DB.Close()\n        return newIDnom_tarif\n\n'''
+          s = s[:start] + new_block + s[end:]
+
+          # DupliquerTarif : DB externe possible + rollback par appelant.
+          start = s.index('    def DupliquerTarif(', s.index('    def DupliquerNom('))
+          end = s.index('\n\n# -------------------------------------------------------------------------------------------------------------------------------------------', start)
+          new_block = '''    def DupliquerTarif(self, IDtarif=None, nouveauIDnom_tarif=None, DB=None, commit=True):\n        DBexterne = DB is not None\n        if not DBexterne:\n            DB = GestionDB.DB()\n\n        dictModifications = {"IDnom_tarif": nouveauIDnom_tarif} if nouveauIDnom_tarif != None else {}\n        newIDtarif = DB.Dupliquer(nomTable="tarifs", nomChampCle="IDtarif", conditions="IDtarif=%d" % IDtarif, dictModifications=dictModifications, commit=False)\n        if newIDtarif in (None, False):\n            if not DBexterne:\n                DB.Close()\n            return False\n\n        dictCorrespondances = DB.Dupliquer(nomTable="combi_tarifs", nomChampCle="IDcombi_tarif", conditions="IDtarif=%d" % IDtarif, dictModifications={"IDtarif": newIDtarif}, renvoieCorrespondances=True, commit=False)\n        if dictCorrespondances is False:\n            if not DBexterne:\n                DB.connexion.rollback(); DB.Close()\n            return False\n\n        if isinstance(dictCorrespondances, dict):\n            for ancienIDcombi, newIDcombi in dictCorrespondances.items():\n                resultat = DB.Dupliquer(nomTable="combi_tarifs_unites", nomChampCle="IDcombi_tarif_unite", conditions="IDcombi_tarif=%d" % ancienIDcombi, dictModifications={"IDcombi_tarif": newIDcombi, "IDtarif": newIDtarif}, commit=False)\n                if resultat is False:\n                    if not DBexterne:\n                        DB.connexion.rollback(); DB.Close()\n                    return False\n\n        for nomTable, nomChampCle, conditions, modifications, IDmanuel in (\n            ("tarifs_lignes", "IDligne", "IDtarif=%d" % IDtarif, {"IDtarif": newIDtarif}, True),\n            ("questionnaire_filtres", "IDfiltre", "IDtarif=%d" % IDtarif, {"IDtarif": newIDtarif}, False),\n        ):\n            resultat = DB.Dupliquer(nomTable=nomTable, nomChampCle=nomChampCle, conditions=conditions, dictModifications=modifications, IDmanuel=IDmanuel, commit=False)\n            if resultat is False:\n                if not DBexterne:\n                    DB.connexion.rollback(); DB.Close()\n                return False\n\n        if commit:\n            DB.Commit()\n        if not DBexterne:\n            DB.Close()\n        return newIDtarif\n'''
+          s = s[:start] + new_block + s[end:]
+
+          # Appel UI : ne pas ouvrir la fiche si duplication échoue.
+          s = s.replace('''            newIDtarif = self.DupliquerTarif(IDtarif)\n            self.ModifierTarif(IDtarif=newIDtarif, IDnom_tarif=IDnom_tarif)\n            self.MAJ(selection=("tarifs", newIDtarif))\n''','''            newIDtarif = self.DupliquerTarif(IDtarif)\n            if newIDtarif == False:\n                dlg = wx.MessageDialog(self, _(u"Le tarif n'a pas pu être dupliqué complètement."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n                dlg.ShowModal()\n                dlg.Destroy()\n                return\n            self.ModifierTarif(IDtarif=newIDtarif, IDnom_tarif=IDnom_tarif)\n            self.MAJ(selection=("tarifs", newIDtarif))\n''',1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+          python -m py_compile noethys/GestionDB.py noethys/Ctrl/CTRL_Tarification.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          g=Path('noethys/GestionDB.py').read_text(encoding='utf-8')
+          t=Path('noethys/Ctrl/CTRL_Tarification.py').read_text(encoding='utf-8')
+          assert 'IDmanuel=False, commit=True' in g
+          assert 'ReqInsert(nomTable, listeTemp, commit=False)' in g
+          assert 'def DupliquerTarif(self, IDtarif=None, nouveauIDnom_tarif=None, DB=None, commit=True):' in t
+          assert 'DB.Commit()' in t
+          assert t.count('commit=False') >= 10
+          assert 'questionnaire_filtres' in t[t.index('    def SupprimerTarif'):t.index('    def DupliquerNom')]
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/GestionDB.py noethys/Ctrl/CTRL_Tarification.py
+          git commit -m "fix: atomiser suppressions et duplications de tarifs"
+          git push origin HEAD:master
