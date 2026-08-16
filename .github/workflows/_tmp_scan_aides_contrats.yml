@@ -1,0 +1,40 @@
+name: Scan aides contrats
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_scan_aides_contrats.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Scan candidates
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import ast
+          roots=[Path('noethys/Dlg'),Path('noethys/Ctrl'),Path('noethys/Utils'),Path('noethys/Ol')]
+          keys=('aide','caf','contrat','prestation','deduction')
+          out=[]
+          for root in roots:
+              if not root.exists(): continue
+              for p in root.rglob('*.py'):
+                  low=p.name.lower()
+                  if not any(k in low for k in keys):
+                      continue
+                  s=p.read_text(encoding='utf-8',errors='ignore')
+                  writes=sum(s.count(x) for x in ('ReqInsert(','ReqMAJ(','ReqDEL(','Executermany('))
+                  commits=s.count('Commit()')+s.count('.commit()')
+                  if writes:
+                      out.append((writes,commits,str(p)))
+          for row in sorted(out, reverse=True):
+              print('%3d writes | %2d commits | %s' % row)
+          PY
