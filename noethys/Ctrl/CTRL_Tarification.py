@@ -380,6 +380,11 @@ class CTRL(HTL.HyperTreeList):
             IDtarif = dictItem["ID"]
             IDnom_tarif = dictItem["IDnom_tarif"]
             newIDtarif = self.DupliquerTarif(IDtarif)
+            if newIDtarif == False:
+                dlg = wx.MessageDialog(self, _(u"Le tarif n'a pas pu être dupliqué complètement."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
             self.ModifierTarif(IDtarif=newIDtarif, IDnom_tarif=IDnom_tarif)
             self.MAJ(selection=("tarifs", newIDtarif))
             
@@ -579,70 +584,84 @@ class CTRL(HTL.HyperTreeList):
         dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment supprimer ce tarif ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
         if dlg.ShowModal() == wx.ID_YES :
             DB = GestionDB.DB()
-            DB.ReqDEL("tarifs", "IDtarif", IDtarif)
-            DB.ReqDEL("combi_tarifs", "IDtarif", IDtarif)
-            DB.ReqDEL("combi_tarifs_unites", "IDtarif", IDtarif)
-            DB.ReqDEL("tarifs_lignes", "IDtarif", IDtarif)
-            DB.Close() 
+            ok = True
+            for table in ("combi_tarifs_unites", "combi_tarifs", "tarifs_lignes", "questionnaire_filtres", "tarifs"):
+                if not DB.ReqDEL(table, "IDtarif", IDtarif, commit=False):
+                    ok = False
+                    break
+            if not ok:
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+                DB.Close()
+                dlg2 = wx.MessageDialog(self, _(u"Le tarif n'a pas pu être supprimé complètement. Aucune suppression n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlg2.ShowModal()
+                dlg2.Destroy()
+                dlg.Destroy()
+                return
+            DB.Commit()
+            DB.Close()
             self.MAJ()
         dlg.Destroy()
     
     def DupliquerNom(self, IDnom_tarif, nomTarif):
-        """ Duplication d'un nom de tarif """
-        IDnom_tarif_modele = IDnom_tarif
+        """Duplication atomique d'un nom de tarif et, si demandé, de ses tarifs."""
         dlg = wx.MessageDialog(self, _(u"Souhaitez-vous dupliquer également les tarifs ?"), _(u"Duplication"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_QUESTION)
-        reponse = dlg.ShowModal() 
+        reponse = dlg.ShowModal()
         dlg.Destroy()
-        if reponse == wx.ID_YES :
+        if reponse == wx.ID_YES:
             dupliqueEnfants = True
-        elif reponse == wx.ID_NO :
+        elif reponse == wx.ID_NO:
             dupliqueEnfants = False
-        else :
+        else:
             return False
-        
         DB = GestionDB.DB()
-
-        # Duplication des noms de tarifs
-        newIDnom_tarif = DB.Dupliquer(nomTable="noms_tarifs", nomChampCle="IDnom_tarif", conditions="IDnom_tarif=%d" % IDnom_tarif, dictModifications={"nom":_(u"Copie de %s") % nomTarif})
-        
-        # Duplication des tarif
-        if dupliqueEnfants == True :
-            req = """SELECT IDtarif, IDactivite FROM tarifs WHERE IDnom_tarif=%d;""" % IDnom_tarif
-            DB.ExecuterReq(req)
-            listeDonnees = DB.ResultatReq()
-            for IDtarif, IDactivite in listeDonnees :
-                self.DupliquerTarif(IDtarif, nouveauIDnom_tarif=newIDnom_tarif)
-        
-        DB.Close() 
-        return newIDnom_tarif
-            
-    def DupliquerTarif(self, IDtarif=None, nouveauIDnom_tarif=None):
-        DB = GestionDB.DB()
-        
-        # Duplication du tarif 
-        if nouveauIDnom_tarif != None :
-            dictModifications = {"IDnom_tarif":nouveauIDnom_tarif}
-        else :
-            dictModifications = {}
-        newIDtarif = DB.Dupliquer(nomTable="tarifs", nomChampCle="IDtarif", conditions="IDtarif=%d" % IDtarif, dictModifications=dictModifications)
-
-        # Duplication des combinaisons de tarifs
-        dictCorrespondances = DB.Dupliquer(nomTable="combi_tarifs", nomChampCle="IDcombi_tarif", conditions="IDtarif=%d" % IDtarif, dictModifications={"IDtarif":newIDtarif}, renvoieCorrespondances=True)
-        
-        # Duplication des unités de combinaisons de tarifs
-        if type(dictCorrespondances) == dict :
-            for ancienIDcombi, newIDcombi in dictCorrespondances.items() :
-                DB.Dupliquer(nomTable="combi_tarifs_unites", nomChampCle="IDcombi_tarif_unite", conditions="IDcombi_tarif=%d" % ancienIDcombi, dictModifications={"IDcombi_tarif":newIDcombi, "IDtarif":newIDtarif})
-        
-        # Duplication des lignes de tarifs
-        DB.Dupliquer(nomTable="tarifs_lignes", nomChampCle="IDligne", conditions="IDtarif=%d" % IDtarif, dictModifications={"IDtarif":newIDtarif}, IDmanuel=True)
-
-        # Duplication des filtres de questionnaire
-        DB.Dupliquer(nomTable="questionnaire_filtres", nomChampCle="IDfiltre", conditions="IDtarif=%d" % IDtarif, dictModifications={"IDtarif":newIDtarif})
-
+        newIDnom_tarif = DB.Dupliquer(nomTable="noms_tarifs", nomChampCle="IDnom_tarif", conditions="IDnom_tarif=%d" % IDnom_tarif, dictModifications={"nom": _(u"Copie de %s") % nomTarif}, commit=False)
+        if newIDnom_tarif in (None, False):
+            DB.Close()
+            return False
+        if dupliqueEnfants:
+            req = "SELECT IDtarif, IDactivite FROM tarifs WHERE IDnom_tarif=%d;" % IDnom_tarif
+            if DB.ExecuterReq(req) != 1:
+                DB.connexion.rollback(); DB.Close(); return False
+            for IDtarif, IDactivite in DB.ResultatReq():
+                if not self.DupliquerTarif(IDtarif, nouveauIDnom_tarif=newIDnom_tarif, DB=DB, commit=False):
+                    DB.connexion.rollback(); DB.Close(); return False
+        DB.Commit()
         DB.Close()
+        return newIDnom_tarif
+
+    def DupliquerTarif(self, IDtarif=None, nouveauIDnom_tarif=None, DB=None, commit=True):
+        DBexterne = DB is not None
+        if not DBexterne:
+            DB = GestionDB.DB()
+        dictModifications = {"IDnom_tarif": nouveauIDnom_tarif} if nouveauIDnom_tarif != None else {}
+        newIDtarif = DB.Dupliquer(nomTable="tarifs", nomChampCle="IDtarif", conditions="IDtarif=%d" % IDtarif, dictModifications=dictModifications, commit=False)
+        if newIDtarif in (None, False):
+            if not DBexterne: DB.Close()
+            return False
+        dictCorrespondances = DB.Dupliquer(nomTable="combi_tarifs", nomChampCle="IDcombi_tarif", conditions="IDtarif=%d" % IDtarif, dictModifications={"IDtarif": newIDtarif}, renvoieCorrespondances=True, commit=False)
+        if dictCorrespondances is False:
+            if not DBexterne: DB.connexion.rollback(); DB.Close()
+            return False
+        if isinstance(dictCorrespondances, dict):
+            for ancienIDcombi, newIDcombi in dictCorrespondances.items():
+                resultat = DB.Dupliquer(nomTable="combi_tarifs_unites", nomChampCle="IDcombi_tarif_unite", conditions="IDcombi_tarif=%d" % ancienIDcombi, dictModifications={"IDcombi_tarif": newIDcombi, "IDtarif": newIDtarif}, commit=False)
+                if resultat is False:
+                    if not DBexterne: DB.connexion.rollback(); DB.Close()
+                    return False
+        for nomTable, nomChampCle, conditions, modifications, IDmanuel in (("tarifs_lignes", "IDligne", "IDtarif=%d" % IDtarif, {"IDtarif": newIDtarif}, True), ("questionnaire_filtres", "IDfiltre", "IDtarif=%d" % IDtarif, {"IDtarif": newIDtarif}, False)):
+            resultat = DB.Dupliquer(nomTable=nomTable, nomChampCle=nomChampCle, conditions=conditions, dictModifications=modifications, IDmanuel=IDmanuel, commit=False)
+            if resultat is False:
+                if not DBexterne: DB.connexion.rollback(); DB.Close()
+                return False
+        if commit:
+            DB.Commit()
+        if not DBexterne:
+            DB.Close()
         return newIDtarif
-        
+
 
 # -------------------------------------------------------------------------------------------------------------------------------------------
 

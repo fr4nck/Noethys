@@ -526,7 +526,7 @@ class DB:
         if commit == True :
             self.connexion.commit()
 
-    def Dupliquer(self, nomTable="", nomChampCle="", conditions="", dictModifications={}, renvoieCorrespondances=False, IDmanuel=False):
+    def Dupliquer(self, nomTable="", nomChampCle="", conditions="", dictModifications={}, renvoieCorrespondances=False, IDmanuel=False, commit=True):
         """ Dulpliquer un enregistrement d'une table :
              Ex : nomTable="modeles", nomChampCle="IDmodele", ID=22,
              conditions = "IDmodele=12 AND IDtruc>34",
@@ -577,12 +577,21 @@ class DB:
                         listeTemp.append((nomChampCle, newIDmanuel))
                         
                 index += 1
-            newID = self.ReqInsert(nomTable, listeTemp)
+            newID = self.ReqInsert(nomTable, listeTemp, commit=False)
+            if newID is None:
+                try:
+                    self.connexion.rollback()
+                except Exception:
+                    pass
+                return False
             if IDmanuel == True :
                 newID = newIDmanuel
             listeNewID.append(newID)
             dictCorrespondances[ID] = newID
             
+        if commit == True:
+            self.Commit()
+
         # Renvoie les correspondances
         if renvoieCorrespondances == True :
             return dictCorrespondances
