@@ -8,9 +8,10 @@ from noethys.Utils.UTILS_PMSL_NoethysBridge import PMSLNoethysBridgeClient
 
 
 class FakeClient(PMSLNoethysBridgeClient):
-    def __init__(self):
+    def __init__(self, ack_failure=False):
         self.source_instance = "noethys-sport"
         self.acks = []
+        self.ack_failure = ack_failure
 
     def pull(self, limit=20):
         return {
@@ -23,6 +24,8 @@ class FakeClient(PMSLNoethysBridgeClient):
         }
 
     def ack(self, batch_uuid, items):
+        if self.ack_failure:
+            raise RuntimeError("réseau indisponible après commit")
         self.acks.append((batch_uuid, items))
         return {"accepted": True, "batch_uuid": batch_uuid}
 
@@ -65,9 +68,11 @@ class PMSLSyncServiceTests(unittest.TestCase):
         result = service.run(apply=True)
         self.assertEqual("apply", result["mode"])
         self.assertFalse(result["aucune_ecriture_effectuee"])
+        self.assertTrue(result["synchronisation_complete"])
         self.assertEqual(1, openings.apply_calls)
         self.assertEqual(1, len(client.acks))
         self.assertTrue(result["results"][0]["ack_sent"])
+        self.assertTrue(result["results"][0]["sync_complete"])
 
     def test_blocked_batch_is_not_applied_or_acked(self):
         client = FakeClient()
@@ -76,8 +81,24 @@ class PMSLSyncServiceTests(unittest.TestCase):
         result = service.run(apply=True)
         self.assertEqual(0, openings.apply_calls)
         self.assertEqual([], client.acks)
+        self.assertTrue(result["aucune_ecriture_effectuee"])
         self.assertFalse(result["results"][0]["applied"])
         self.assertFalse(result["results"][0]["ack_sent"])
+        self.assertFalse(result["synchronisation_complete"])
+
+    def test_ack_failure_after_commit_keeps_local_application_visible(self):
+        client = FakeClient(ack_failure=True)
+        openings = FakeOpeningService(valid=True)
+        service = PMSLSyncService(client, opening_service=openings)
+        result = service.run(apply=True)
+        item = result["results"][0]
+        self.assertEqual(1, openings.apply_calls)
+        self.assertTrue(item["applied"])
+        self.assertFalse(item["ack_sent"])
+        self.assertFalse(item["sync_complete"])
+        self.assertIn("réseau indisponible", item["ack_error"])
+        self.assertFalse(result["aucune_ecriture_effectuee"])
+        self.assertFalse(result["synchronisation_complete"])
 
 
 if __name__ == "__main__":
