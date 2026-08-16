@@ -1,0 +1,50 @@
+name: Atomic lot deductions
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_lot_deductions.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch lot deductions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Dlg/DLG_Saisie_lot_deductions.py')
+          s=p.read_text(encoding='utf-8')
+          old='''        # Sauvegarde\n        DB = GestionDB.DB()\n        if len(listeAjouts) > 0 :\n            DB.Executermany(u"INSERT INTO deductions (IDprestation, IDcompte_payeur, date, montant, label) VALUES (?, ?, ?, ?, ?)", listeAjouts, commit=False)\n        if len(listeModifications) > 0 :\n            DB.Executermany(_(u"UPDATE prestations SET montant=? WHERE IDprestation=?"), listeModifications, commit=False)\n        if len(listeSupprVentilations) > 0 :\n            if len(listeSupprVentilations) == 1 : conditionSuppressions = "(%d)" % listeSupprVentilations[0]\n            else : conditionSuppressions = str(tuple(listeSupprVentilations))\n            DB.ExecuterReq("DELETE FROM ventilation WHERE IDprestation IN %s" % conditionSuppressions)\n        DB.Commit()\n        DB.Close() \n        \n        # Confirmation\n        dlg = wx.MessageDialog(self, _(u"%d déductions ont été créées avec succès.") % len(listeAjouts), _(u"Confirmation"), wx.OK | wx.ICON_INFORMATION)\n'''
+          new='''        # Sauvegarde atomique\n        DB = GestionDB.DB()\n        ok = True\n        if len(listeAjouts) > 0 :\n            if not DB.Executermany(u"INSERT INTO deductions (IDprestation, IDcompte_payeur, date, montant, label) VALUES (?, ?, ?, ?, ?)", listeAjouts, commit=False):\n                ok = False\n        if ok and len(listeModifications) > 0 :\n            if not DB.Executermany(_(u"UPDATE prestations SET montant=? WHERE IDprestation=?"), listeModifications, commit=False):\n                ok = False\n        if ok and len(listeSupprVentilations) > 0 :\n            if len(listeSupprVentilations) == 1 : conditionSuppressions = "(%d)" % listeSupprVentilations[0]\n            else : conditionSuppressions = str(tuple(listeSupprVentilations))\n            if DB.ExecuterReq("DELETE FROM ventilation WHERE IDprestation IN %s" % conditionSuppressions) != 1:\n                ok = False\n        if ok:\n            DB.Commit()\n        else:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n        DB.Close()\n\n        if not ok:\n            dlg = wx.MessageDialog(self, _(u"La création du lot de déductions a échoué. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return False\n        \n        # Confirmation\n        dlg = wx.MessageDialog(self, _(u"%d déductions ont été créées avec succès.") % len(listeAjouts), _(u"Confirmation"), wx.OK | wx.ICON_INFORMATION)\n'''
+          if s.count(old)!=1:
+              raise SystemExit('bloc lot deductions inattendu')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Dlg/DLG_Saisie_lot_deductions.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('noethys/Dlg/DLG_Saisie_lot_deductions.py').read_text(encoding='utf-8')
+          b=s[s.index('# Sauvegarde atomique'):s.index('# Confirmation', s.index('# Sauvegarde atomique'))]
+          assert b.count('Executermany') == 2
+          assert 'DB.ExecuterReq' in b and '!= 1' in b
+          assert 'rollback()' in b and 'DB.Commit()' in b and 'return False' in b
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Dlg/DLG_Saisie_lot_deductions.py
+          git commit -m "fix: atomiser les lots de deductions"
+          git push origin HEAD:master
