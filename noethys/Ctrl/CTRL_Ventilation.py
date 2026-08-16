@@ -774,44 +774,44 @@ class CTRL_Ventilation(gridlib.Grid):
         return total
     
     def Sauvegarde(self, IDreglement=None, DBtemp=None):
-        """ Sauvegarde des données """
-        if DBtemp == None :
-            DB = GestionDB.DB()
-        else :
-            DB = DBtemp
+        """ Sauvegarde des données. Retourne False si une écriture échoue. """
+        DB = GestionDB.DB() if DBtemp is None else DBtemp
+        commit_local = DBtemp is None
 
         for ligne in self.listeLignesPrestations :
             IDprestation = ligne.IDprestation
             montant = float(ligne.ventilationActuelle)
-            
-            if IDprestation in self.dictVentilationInitiale :
-                IDventilation = self.dictVentilationInitiale[IDprestation]
-            else:
-                IDventilation = None
-            
+            IDventilation = self.dictVentilationInitiale.get(IDprestation)
+
             if ligne.GetEtat() == True :
-                # Ajout ou modification
-                listeDonnees = [    
+                listeDonnees = [
                         ("IDreglement", IDreglement),
                         ("IDcompte_payeur", self.IDcompte_payeur),
                         ("IDprestation", IDprestation),
                         ("montant", montant),
                     ]
-                if IDventilation == None :
-                    IDventilation = DB.ReqInsert("ventilation", listeDonnees)
+                if IDventilation is None :
+                    IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
+                    if IDventilation is None:
+                        if commit_local:
+                            DB.Close()
+                        return False
                 else:
-                    DB.ReqMAJ("ventilation", listeDonnees, "IDventilation", IDventilation)
-            else :
-                # Suppression
-                if IDventilation != None :
-                    DB.ReqDEL("ventilation", "IDventilation", IDventilation)
+                    if not DB.ReqMAJ("ventilation", listeDonnees, "IDventilation", IDventilation, commit=False):
+                        if commit_local:
+                            DB.Close()
+                        return False
+            elif IDventilation is not None:
+                if not DB.ReqDEL("ventilation", "IDventilation", IDventilation, commit=False):
+                    if commit_local:
+                        DB.Close()
+                    return False
 
-        if DBtemp == None :
+        if commit_local:
+            DB.Commit()
             DB.Close()
-        
         return True
 
-    
 
 # -----------------------------------------------------------------------------------------------------------------------
 

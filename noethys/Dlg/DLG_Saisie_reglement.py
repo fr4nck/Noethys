@@ -1491,15 +1491,28 @@ class Dialog(wx.Dialog):
                 ("date_saisie", date_saisie),
                 ("IDutilisateur", IDutilisateur),
             ]
-        if self.IDreglement == None :
+        ancien_IDreglement = self.IDreglement
+        if ancien_IDreglement is None :
             self.nouveauReglement = True
-            self.IDreglement = DB.ReqInsert("reglements", listeDonnees)
+            IDreglement = DB.ReqInsert("reglements", listeDonnees, commit=False)
+            if IDreglement is None:
+                DB.Close()
+                return False
         else:
             self.nouveauReglement = False
-            DB.ReqMAJ("reglements", listeDonnees, "IDreglement", self.IDreglement)
-        
+            IDreglement = ancien_IDreglement
+            if not DB.ReqMAJ("reglements", listeDonnees, "IDreglement", IDreglement, commit=False):
+                DB.Close()
+                return False
+
         # --- Sauvegarde de la ventilation ---
-        self.ctrl_ventilation.Sauvegarde(self.IDreglement, DB)
+        if self.ctrl_ventilation.Sauvegarde(IDreglement, DB) == False:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            return False
         
         # --- Sauvegarde les frais de gestion ---
         montantFrais, labelFrais, IDprestationFrais = donneesFrais
@@ -1514,21 +1527,34 @@ class Dialog(wx.Dialog):
                     ("montant_initial", montantFrais),
                     ("montant", montantFrais),
                     ("IDfamille", IDfamille),
-                    ("reglement_frais", self.IDreglement),
+                    ("reglement_frais", IDreglement),
                 ]
             if IDprestationFrais == None :
                 listeDonnees.append(("date_valeur", str(datetime.date.today())))
-                IDprestationFrais = DB.ReqInsert("prestations", listeDonnees)
+                IDprestationFrais = DB.ReqInsert("prestations", listeDonnees, commit=False)
+                if IDprestationFrais is None:
+                    DB.Close()
+                    return False
             else:
-                DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestationFrais)
-                DB.ReqDEL("ventilation", "IDprestation", IDprestationFrais)
+                if not DB.ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestationFrais, commit=False):
+                    DB.Close()
+                    return False
+                if not DB.ReqDEL("ventilation", "IDprestation", IDprestationFrais, commit=False):
+                    DB.Close()
+                    return False
         
         # Si suppression d'un frais
         if montantFrais == None and IDprestationFrais != None :
-            DB.ReqDEL("prestations", "IDprestation", IDprestationFrais)
-            DB.ReqDEL("ventilation", "IDprestation", IDprestationFrais)
-        
-        DB.Close() 
+            if not DB.ReqDEL("prestations", "IDprestation", IDprestationFrais, commit=False):
+                DB.Close()
+                return False
+            if not DB.ReqDEL("ventilation", "IDprestation", IDprestationFrais, commit=False):
+                DB.Close()
+                return False
+
+        DB.Commit()
+        DB.Close()
+        self.IDreglement = IDreglement
         
         # --- Mémorise l'action dans l'historique ---
         if self.nouveauReglement == True :
