@@ -456,11 +456,20 @@ class Dialog(wx.Dialog):
             ("prefacturation", int(prefacturation)),
             ]
         if self.IDperiode == None :
-            self.IDperiode = DB.ReqInsert("portail_periodes", listeDonnees)
+            nouvel_IDperiode = DB.ReqInsert("portail_periodes", listeDonnees)
+            succes = nouvel_IDperiode is not None
         else :
-            DB.ReqMAJ("portail_periodes", listeDonnees, "IDperiode", self.IDperiode)
+            succes = DB.ReqMAJ("portail_periodes", listeDonnees, "IDperiode", self.IDperiode)
+            nouvel_IDperiode = self.IDperiode
         DB.Close()
 
+        if not succes:
+            dlg = wx.MessageDialog(self, _(u"L'enregistrement de la période a échoué. Aucune validation n'a été effectuée."), _(u"Erreur d'enregistrement"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
+
+        self.IDperiode = nouvel_IDperiode
         # Fermeture
         self.EndModal(wx.ID_OK)
 

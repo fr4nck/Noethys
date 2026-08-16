@@ -272,9 +272,14 @@ class ListView(FastObjectListView):
         dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment supprimer cette période ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_QUESTION)
         if dlg.ShowModal() == wx.ID_YES :
             DB = GestionDB.DB()
-            DB.ReqDEL("portail_periodes", "IDperiode", track.IDperiode)
-            DB.Close() 
-            self.MAJ()
+            succes = DB.ReqDEL("portail_periodes", "IDperiode", track.IDperiode)
+            DB.Close()
+            if succes:
+                self.MAJ()
+            else:
+                dlgErreur = wx.MessageDialog(self, _(u"La suppression de la période a échoué. La période a été conservée."), _(u"Erreur de suppression"), wx.OK | wx.ICON_ERROR)
+                dlgErreur.ShowModal()
+                dlgErreur.Destroy()
         dlg.Destroy()
 
 

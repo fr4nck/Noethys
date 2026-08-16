@@ -270,10 +270,28 @@ class ListView(FastObjectListView):
         dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment supprimer cette unité de réservation ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
         if dlg.ShowModal() == wx.ID_YES :
             DB = GestionDB.DB()
-            DB.ReqDEL("portail_unites", "IDunite", track.IDunite)
+            succes = DB.ReqDEL("portail_unites", "IDunite", track.IDunite, commit=False)
+            ordre = 1
+            for index in range(0, len(self.donnees)) :
+                objet = self.GetObjectAt(index)
+                if objet.IDunite != track.IDunite :
+                    if succes:
+                        succes = DB.ReqMAJ("portail_unites", [("ordre", ordre),], "IDunite", objet.IDunite, commit=False)
+                    ordre += 1
+            if succes:
+                DB.Commit()
+            else:
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
             DB.Close()
-            self.MAJordre(track.IDunite)
-            self.MAJ()
+            if succes:
+                self.MAJ()
+            else:
+                dlgErreur = wx.MessageDialog(self, _(u"La suppression de l'unité a échoué. Aucune modification n'a été conservée."), _(u"Erreur de suppression"), wx.OK | wx.ICON_ERROR)
+                dlgErreur.ShowModal()
+                dlgErreur.Destroy()
         dlg.Destroy()
 
 
@@ -297,16 +315,26 @@ class ListView(FastObjectListView):
         ordre = self.Selection()[0].ordre
         if ordre == 1 : return
         DB = GestionDB.DB()
-        # Modifie groupe actuel
-        DB.ReqMAJ("portail_unites", [("ordre", ordre-1),], "IDunite", IDunite)
-        self.Selection()[0].ordre = ordre-1
-        # Modifie unité a remplacer
         index = self.GetIndexOf(self.Selection()[0])
         unite2 = self.GetObjectAt(index-1)
         IDunite2 = unite2.IDunite
-        DB.ReqMAJ("portail_unites", [("ordre", ordre),], "IDunite", IDunite2)
+        succes = DB.ReqMAJ("portail_unites", [("ordre", ordre-1),], "IDunite", IDunite, commit=False)
+        if succes:
+            succes = DB.ReqMAJ("portail_unites", [("ordre", ordre),], "IDunite", IDunite2, commit=False)
+        if succes:
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
         DB.Close()
-        self.MAJ(IDunite)
+        if succes:
+            self.MAJ(IDunite)
+        else:
+            dlgErreur = wx.MessageDialog(self, _(u"Le déplacement de l'unité a échoué. L'ordre précédent a été conservé."), _(u"Erreur de déplacement"), wx.OK | wx.ICON_ERROR)
+            dlgErreur.ShowModal()
+            dlgErreur.Destroy()
     
     def Descendre(self, event):
         if len(self.Selection()) == 0 :
@@ -318,16 +346,26 @@ class ListView(FastObjectListView):
         ordre = self.Selection()[0].ordre
         if ordre == len(self.donnees) : return
         DB = GestionDB.DB()
-        # Modifie groupe actuel
-        DB.ReqMAJ("portail_unites", [("ordre", ordre+1),], "IDunite", IDunite)
-        self.Selection()[0].ordre = ordre+1
-        # Modifie unité a remplacer
         index = self.GetIndexOf(self.Selection()[0])
         unite2 = self.GetObjectAt(index+1)
         IDunite2 = unite2.IDunite
-        DB.ReqMAJ("portail_unites", [("ordre", ordre),], "IDunite", IDunite2)
+        succes = DB.ReqMAJ("portail_unites", [("ordre", ordre+1),], "IDunite", IDunite, commit=False)
+        if succes:
+            succes = DB.ReqMAJ("portail_unites", [("ordre", ordre),], "IDunite", IDunite2, commit=False)
+        if succes:
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
         DB.Close()
-        self.MAJ(IDunite)
+        if succes:
+            self.MAJ(IDunite)
+        else:
+            dlgErreur = wx.MessageDialog(self, _(u"Le déplacement de l'unité a échoué. L'ordre précédent a été conservé."), _(u"Erreur de déplacement"), wx.OK | wx.ICON_ERROR)
+            dlgErreur.ShowModal()
+            dlgErreur.Destroy()
 
 
 

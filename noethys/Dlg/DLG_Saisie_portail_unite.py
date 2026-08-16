@@ -234,11 +234,20 @@ class Dialog(wx.Dialog):
             ]
 
         if self.IDunite == None :
-            self.IDunite = DB.ReqInsert("portail_unites", listeDonnees)
+            nouvel_IDunite = DB.ReqInsert("portail_unites", listeDonnees)
+            succes = nouvel_IDunite is not None
         else:
-            DB.ReqMAJ("portail_unites", listeDonnees, "IDunite", self.IDunite)
+            succes = DB.ReqMAJ("portail_unites", listeDonnees, "IDunite", self.IDunite)
+            nouvel_IDunite = self.IDunite
         DB.Close()
 
+        if not succes:
+            dlg = wx.MessageDialog(self, _(u"L'enregistrement de l'unité a échoué. Aucune validation n'a été effectuée."), _(u"Erreur d'enregistrement"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
+        self.IDunite = nouvel_IDunite
         # Fermeture de la fenêtre
         self.EndModal(wx.ID_OK)
 
