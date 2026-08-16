@@ -1,0 +1,44 @@
+name: Atomic factures lot
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_factures_lot.yml'
+      - '.github/_tmp_patch_factures_lot.py'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch
+        run: python .github/_tmp_patch_factures_lot.py
+      - name: Verify
+        run: |
+          python -m py_compile noethys/Dlg/DLG_Factures_generation_selection.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('noethys/Dlg/DLG_Factures_generation_selection.py').read_text(encoding='utf-8')
+          a=s.index('    def SauvegardeFactures(self):')
+          b=s.index('\n\n\n\n\n\n\nclass MyFrame', a)
+          x=s[a:b]
+          assert 'ReqInsert("factures", listeDonnees, commit=False)' in x
+          assert 'ReqMAJ("prestations", listeDonnees, "IDprestation", IDprestation, commit=False)' in x
+          assert x.count('DB.Commit()') == 1
+          assert x.index('DB.Commit()') > x.index('index += 1')
+          assert 'DB.connexion.rollback()' in x
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Dlg/DLG_Factures_generation_selection.py
+          git commit -m "fix: atomiser la génération des lots de factures"
+          git pull --rebase origin master
+          git push origin HEAD:master
