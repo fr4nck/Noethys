@@ -1,0 +1,20 @@
+name: Scan depannage
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_scan_depannage.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Grep corrections
+        run: |
+          grep -R -n "\.Correction(" noethys | head -100 || true
+          echo '--- Procedures prestation deletes ---'
+          grep -n "ReqDEL(\"prestations\"" noethys/Utils/UTILS_Procedures.py noethys/Utils/UTILS_Depannage.py || true
