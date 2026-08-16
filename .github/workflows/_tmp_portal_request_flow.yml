@@ -1,0 +1,63 @@
+name: Safe portal request flow
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_portal_request_flow.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Sécuriser navigation fermeture traitement
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Dlg/DLG_Saisie_portail_demande.py')
+          s=p.read_text(encoding='utf-8')
+
+          old='''    def OnClose(self, event):\n        UTILS_Dialogs.SaveSizePerso(self, __file__)\n        self.Sauvegarde()\n        event.Skip()\n'''
+          new='''    def OnClose(self, event):\n        UTILS_Dialogs.SaveSizePerso(self, __file__)\n        if self.Sauvegarde() == False:\n            return\n        event.Skip()\n'''
+          if s.count(old)!=1: raise SystemExit('OnClose motif inattendu')
+          s=s.replace(old,new,1)
+
+          old='''    def OnBoutonFermer(self, event):\n        UTILS_Dialogs.SaveSizePerso(self, __file__)\n        self.Sauvegarde()\n        self.EndModal(wx.ID_CANCEL)\n'''
+          new='''    def OnBoutonFermer(self, event):\n        UTILS_Dialogs.SaveSizePerso(self, __file__)\n        if self.Sauvegarde() == False:\n            return\n        self.EndModal(wx.ID_CANCEL)\n'''
+          if s.count(old)!=1: raise SystemExit('Fermer motif inattendu')
+          s=s.replace(old,new,1)
+
+          old='''    def OnNavigation(self, event):\n        self.Sauvegarde()\n\n        ID = event.GetId()\n'''
+          new='''    def OnNavigation(self, event):\n        if self.Sauvegarde() == False:\n            return\n\n        ID = event.GetId()\n'''
+          if s.count(old)!=1: raise SystemExit('Navigation motif inattendu')
+          s=s.replace(old,new,1)
+
+          old='''                # Enregistrement de la demande\n                self.Sauvegarde()\n\n        # Réactualise le solde\n'''
+          new='''                # Enregistrement de la demande\n                if self.Sauvegarde() == False:\n                    return False\n\n        # Réactualise le solde\n'''
+          if s.count(old)!=1: raise SystemExit('Traitement motif inattendu')
+          s=s.replace(old,new,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Dlg/DLG_Saisie_portail_demande.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('noethys/Dlg/DLG_Saisie_portail_demande.py').read_text(encoding='utf-8')
+          assert s.count('if self.Sauvegarde() == False:') >= 4
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Dlg/DLG_Saisie_portail_demande.py
+          git commit -m "fix: bloquer le flux portail si la sauvegarde échoue"
+          git push origin HEAD:master
