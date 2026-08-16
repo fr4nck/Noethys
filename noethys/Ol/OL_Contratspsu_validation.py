@@ -543,35 +543,58 @@ class ListView(FastObjectListView):
             if track.IDprestation != None :
                 listeSuppressions.append(track.IDprestation)
 
-        # Suppression dans la base
+        # Suppression atomique dans la base
         DB = GestionDB.DB()
+        ok = True
 
-        if len(listeSuppressions) > 0 :
-            if len(listeSuppressions) == 1 :
-                conditionSuppression = "(%d)" % listeSuppressions[0]
-            else :
-                conditionSuppression = str(tuple(listeSuppressions))
-            DB.ExecuterReq("DELETE FROM prestations WHERE IDprestation IN %s" % conditionSuppression)
-            DB.ExecuterReq("DELETE FROM ventilation WHERE IDprestation IN %s" % conditionSuppression)
-            DB.ExecuterReq("DELETE FROM deductions WHERE IDprestation IN %s" % conditionSuppression)
-
-            # MAJ des consommations
+        # Détache d'abord les consommations pour chaque mensualité sélectionnée.
+        for track in listeSelections:
+            if not ok or track.IDprestation is None:
+                continue
             listeUnites = []
-            for IDunite in (track.IDunite_prevision, track.IDunite_presence) :
-                if IDunite != None :
+            for IDunite in (track.IDunite_prevision, track.IDunite_presence):
+                if IDunite is not None and IDunite not in listeUnites:
                     listeUnites.append(IDunite)
-
-            if len(listeUnites) == 0 : conditionUnites = "()"
-            elif len(listeUnites) == 1 : conditionUnites = "(%d)" % listeUnites[0]
-            else : conditionUnites = str(tuple(listeUnites))
-
+            if len(listeUnites) == 0:
+                conditionUnites = "()"
+            elif len(listeUnites) == 1:
+                conditionUnites = "(%d)" % listeUnites[0]
+            else:
+                conditionUnites = str(tuple(listeUnites))
             req = """UPDATE consommations SET IDprestation=NULL
             WHERE IDinscription=%d AND date>='%s' AND date<='%s' AND IDunite IN %s
-            ;"""% (track.IDinscription, track.forfait_date_debut, track.forfait_date_fin, conditionUnites)
-            DB.ExecuterReq(req)
+            ;""" % (track.IDinscription, track.forfait_date_debut, track.forfait_date_fin, conditionUnites)
+            if DB.ExecuterReq(req) != 1:
+                ok = False
 
-        DB.Commit()
+        if ok and len(listeSuppressions) > 0:
+            if len(listeSuppressions) == 1:
+                conditionSuppression = "(%d)" % listeSuppressions[0]
+            else:
+                conditionSuppression = str(tuple(listeSuppressions))
+            for req in (
+                "DELETE FROM ventilation WHERE IDprestation IN %s" % conditionSuppression,
+                "DELETE FROM deductions WHERE IDprestation IN %s" % conditionSuppression,
+                "DELETE FROM prestations WHERE IDprestation IN %s" % conditionSuppression,
+            ):
+                if DB.ExecuterReq(req) != 1:
+                    ok = False
+                    break
+
+        if ok:
+            DB.Commit()
+        else:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
         DB.Close()
+
+        if not ok:
+            dlg = wx.MessageDialog(self, _(u"La suppression des prestations PSU a échoué. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
 
         # MAJ de la liste
         self.MAJ_donnees()

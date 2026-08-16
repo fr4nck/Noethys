@@ -494,23 +494,38 @@ class ListView(FastObjectListView):
         if dlg.ShowModal() == wx.ID_YES :
             IDinscription = self.Selection()[0].IDinscription
             DB = GestionDB.DB()
-            DB.ReqDEL("inscriptions", "IDinscription", IDinscription)
-            # Suppression des forfaits associés déjà saisis
+            ok = True
+            # Suppression des forfaits associés déjà saisis et de leurs dépendances.
             for IDprestation in listePrestationsForfait :
-                DB.ReqDEL("prestations", "IDprestation", IDprestation)
-                DB.ReqDEL("consommations", "IDprestation", IDprestation)
-                DB.ReqDEL("deductions", "IDprestation", IDprestation)
-                DB.ReqDEL("ventilation", "IDprestation", IDprestation)
-            DB.Close() 
-            
-            # Mémorise l'action dans l'historique
-            UTILS_Historique.InsertActions([{
-                "IDindividu" : self.IDindividu,
-                "IDfamille" : IDfamille,
-                "IDcategorie" : 19, 
-                "action" : _(u"Suppression de l'inscription à l'activité '%s'") % nomActivite
-                },])
-                
+                for table in ("consommations", "deductions", "ventilation", "prestations"):
+                    if not DB.ReqDEL(table, "IDprestation", IDprestation, commit=False):
+                        ok = False
+                        break
+                if not ok:
+                    break
+            if ok:
+                ok = DB.ReqDEL("inscriptions", "IDinscription", IDinscription, commit=False)
+            if ok:
+                ok = UTILS_Historique.InsertActions([{
+                    "IDindividu" : self.IDindividu,
+                    "IDfamille" : IDfamille,
+                    "IDcategorie" : 19,
+                    "action" : _(u"Suppression de l'inscription à l'activité '%s'") % nomActivite
+                    },], DB=DB, commit=False)
+            if ok:
+                DB.Commit()
+            else:
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+            DB.Close()
+            if not ok:
+                erreur = wx.MessageDialog(self, _(u"La suppression de l'inscription a échoué. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                erreur.ShowModal()
+                erreur.Destroy()
+                dlg.Destroy()
+                return False
             # Actualise l'affichage
             self.MAJ()
         dlg.Destroy()
