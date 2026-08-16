@@ -369,6 +369,7 @@ class Dialog(wx.Dialog):
             dlg.ShowModal()
             dlg.Destroy()
             self.ctrl_compte.SetFocus()
+            return
 
         IDpayeur = self.ctrl_payeur.GetID()
         if IDpayeur == None :
@@ -376,6 +377,7 @@ class Dialog(wx.Dialog):
             dlg.ShowModal()
             dlg.Destroy()
             self.ctrl_payeur.SetFocus()
+            return
 
         IDmode = self.ctrl_mode.GetID()
         if IDmode == None :
@@ -395,8 +397,20 @@ class Dialog(wx.Dialog):
         FROM comptes_payeurs
         WHERE IDcompte_payeur=%d
         """ % self.IDcompte_payeur
-        DB.ExecuterReq(req)
-        IDfamille = DB.ResultatReq()[0][0]
+        if DB.ExecuterReq(req) != 1:
+            DB.Close()
+            dlg = wx.MessageDialog(self, _(u"Impossible de retrouver la famille associée au compte payeur."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
+        listeFamilles = DB.ResultatReq()
+        if not listeFamilles:
+            DB.Close()
+            dlg = wx.MessageDialog(self, _(u"Aucune famille n'est associée à ce compte payeur."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
+        IDfamille = listeFamilles[0][0]
 
         # Enregistrement de la prestation positive
         listeDonnees = [
@@ -409,11 +423,13 @@ class Dialog(wx.Dialog):
             ("IDfamille", IDfamille),
             ("date_valeur", str(datetime.date.today())),
             ]
-        IDprestation_positive = DB.ReqInsert("prestations", listeDonnees)
-
-        # Ventiler la prestation positive avec l'avoir
-        VentilationAuto(self.IDcompte_payeur)
-
+        IDprestation_positive = DB.ReqInsert("prestations", listeDonnees, commit=False)
+        if IDprestation_positive is None:
+            DB.Close()
+            dlg = wx.MessageDialog(self, _(u"Le remboursement n'a pas pu être enregistré. Aucune écriture n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
 
         # Enregistrement de la prestation négative
         listeDonnees = [
@@ -426,7 +442,17 @@ class Dialog(wx.Dialog):
             ("IDfamille", IDfamille),
             ("date_valeur", str(datetime.date.today())),
             ]
-        IDprestation_negative = DB.ReqInsert("prestations", listeDonnees)
+        IDprestation_negative = DB.ReqInsert("prestations", listeDonnees, commit=False)
+        if IDprestation_negative is None:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            dlg = wx.MessageDialog(self, _(u"Le remboursement n'a pas pu être enregistré. Aucune écriture n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
 
         # Enregistrement du règlement négatif
         listeDonnees = [
@@ -440,7 +466,17 @@ class Dialog(wx.Dialog):
             ("date_saisie", str(datetime.date.today())),
             ("IDutilisateur", UTILS_Identification.GetIDutilisateur()),
             ]
-        IDreglement = DB.ReqInsert("reglements", listeDonnees)
+        IDreglement = DB.ReqInsert("reglements", listeDonnees, commit=False)
+        if IDreglement is None:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            dlg = wx.MessageDialog(self, _(u"Le remboursement n'a pas pu être enregistré. Aucune écriture n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
 
         # Ventilation de la prestation négative sur le règlement
         listeDonnees = [
@@ -449,9 +485,23 @@ class Dialog(wx.Dialog):
             ("IDprestation", IDprestation_negative),
             ("montant", -montant),
             ]
-        IDventilation = DB.ReqInsert("ventilation", listeDonnees)
+        IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
+        if IDventilation is None:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            dlg = wx.MessageDialog(self, _(u"Le remboursement n'a pas pu être enregistré. Aucune écriture n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
 
+        DB.Commit()
         DB.Close()
+
+        # La ventilation automatique intervient seulement après validation du remboursement.
+        VentilationAuto(self.IDcompte_payeur)
 
         # Fermeture
         self.EndModal(wx.ID_OK)
