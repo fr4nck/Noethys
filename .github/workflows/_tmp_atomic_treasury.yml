@@ -1,0 +1,58 @@
+name: Atomic treasury operation
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_atomic_treasury.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch tresorerie
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Dlg/DLG_Saisie_operation_tresorerie.py')
+          s=p.read_text(encoding='utf-8')
+          start=s.index('    def Sauvegarde(self):')
+          end=s.index('    def GetIDoperation(self):', start)
+          b=s[start:end]
+
+          b=b.replace('''        if self.IDoperation == None :\n            self.IDoperation = DB.ReqInsert("compta_operations", listeDonnees)\n        else :\n            DB.ReqMAJ("compta_operations", listeDonnees, "IDoperation", self.IDoperation)\n''','''        ancien_IDoperation = self.IDoperation\n        if ancien_IDoperation == None :\n            IDoperation = DB.ReqInsert("compta_operations", listeDonnees, commit=False)\n            if IDoperation is None:\n                DB.Close()\n                return False\n        else :\n            IDoperation = ancien_IDoperation\n            if not DB.ReqMAJ("compta_operations", listeDonnees, "IDoperation", IDoperation, commit=False):\n                DB.Close()\n                return False\n''',1)
+
+          old='''        # Sauvegarde des ventilations\n        listeIDventilation = []\n        for track in tracksVentilation :\n            listeDonnees = [ \n                ("IDoperation", self.IDoperation),\n                ("date_budget", track.date_budget),\n                ("IDcategorie", track.IDcategorie),\n                ("IDanalytique", track.IDanalytique),\n                ("libelle", track.libelle),\n                ("montant", track.montant),\n                ]\n            if track.IDventilation == None :\n                IDventilation = DB.ReqInsert("compta_ventilation", listeDonnees)\n            else :\n                DB.ReqMAJ("compta_ventilation", listeDonnees, "IDventilation", track.IDventilation)\n            listeIDventilation.append(track.IDventilation) \n            \n        # Supprime les ventilations supprimées\n        for track in self.tracksInitial :\n            if track.IDventilation not in listeIDventilation :\n                DB.ReqDEL("compta_ventilation", "IDventilation", track.IDventilation)\n        \n        DB.Close()\n\n        return True\n'''
+          new='''        # Sauvegarde des ventilations dans la même transaction.\n        listeIDventilation = []\n        nouvellesVentilations = []\n        for track in tracksVentilation :\n            listeDonnees = [\n                ("IDoperation", IDoperation),\n                ("date_budget", track.date_budget),\n                ("IDcategorie", track.IDcategorie),\n                ("IDanalytique", track.IDanalytique),\n                ("libelle", track.libelle),\n                ("montant", track.montant),\n                ]\n            if track.IDventilation == None :\n                IDventilation = DB.ReqInsert("compta_ventilation", listeDonnees, commit=False)\n                if IDventilation is None:\n                    DB.connexion.rollback()\n                    DB.Close()\n                    return False\n                nouvellesVentilations.append((track, IDventilation))\n                listeIDventilation.append(IDventilation)\n            else :\n                if not DB.ReqMAJ("compta_ventilation", listeDonnees, "IDventilation", track.IDventilation, commit=False):\n                    DB.connexion.rollback()\n                    DB.Close()\n                    return False\n                listeIDventilation.append(track.IDventilation)\n\n        # Supprime les ventilations supprimées.\n        for track in self.tracksInitial :\n            if track.IDventilation not in listeIDventilation :\n                if not DB.ReqDEL("compta_ventilation", "IDventilation", track.IDventilation, commit=False):\n                    DB.connexion.rollback()\n                    DB.Close()\n                    return False\n\n        DB.Commit()\n        DB.Close()\n        self.IDoperation = IDoperation\n        for track, IDventilation in nouvellesVentilations:\n            track.IDventilation = IDventilation\n\n        return True\n'''
+          if old not in b: raise SystemExit('bloc ventilation inattendu')
+          b=b.replace(old,new,1)
+          s=s[:start]+b+s[end:]
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Dlg/DLG_Saisie_operation_tresorerie.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('noethys/Dlg/DLG_Saisie_operation_tresorerie.py').read_text(encoding='utf-8')
+          b=s[s.index('    def Sauvegarde(self):'):s.index('    def GetIDoperation(self):')]
+          assert b.count('commit=False') >= 4
+          assert 'ancien_IDoperation = self.IDoperation' in b
+          assert 'DB.Commit()' in b
+          assert 'self.IDoperation = IDoperation' in b
+          assert 'track.IDventilation = IDventilation' in b
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Dlg/DLG_Saisie_operation_tresorerie.py
+          git commit -m "fix: atomiser les opérations de trésorerie"
+          git push origin HEAD:master
