@@ -1,0 +1,30 @@
+name: Inspect depots reglements
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_inspect_depots.yml'
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Inspect
+        run: |
+          {
+            echo '=== IDdepot / depots ==='
+            grep -R -n -E 'IDdepot|depots|d[eé]p[oô]t' noethys/Dlg noethys/Ol noethys/Ctrl 2>/dev/null || true
+            echo '=== ecritures reglements/ventilation/depots ==='
+            grep -R -n -E 'Req(Insert|MAJ|DEL)\("(reglements|ventilation|depots|depots_reglements)' noethys/Dlg noethys/Ol noethys/Ctrl 2>/dev/null || true
+          } > .github/_tmp_inspect_depots.txt
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/_tmp_inspect_depots.txt
+          git commit -m "ci: publier inspection depots reglements"
+          git pull --rebase origin master
+          git push origin HEAD:master
