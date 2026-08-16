@@ -1,0 +1,28 @@
+name: Inspect grid save
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_inspect_grid_save.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspecter les méthodes Sauvegarde
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Ctrl/CTRL_Grille.py')
+          lines=p.read_text(encoding='utf-8').splitlines()
+          for i,line in enumerate(lines):
+              if 'def Sauvegarde(' in line or 'def SauvegardeTransports(' in line:
+                  print(f'### {i+1}: {line}')
+                  for x in lines[i:i+180]:
+                      print(x)
+                  print('### END')
+          PY
