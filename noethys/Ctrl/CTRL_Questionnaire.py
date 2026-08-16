@@ -1505,6 +1505,9 @@ class CTRL(HTL.HyperTreeList):
                 # Sauvegarde du contrôle Porte-documents
                 if reponse == "##DOCUMENTS##":
                     nbreDocuments = self.SauvegardeDocuments(IDquestion, IDreponse)
+                    if nbreDocuments is False:
+                        ok = False
+                        break
                     if nbreDocuments == 0 and IDreponse != None:
                         if not DBT.ReqDEL("questionnaire_reponses", "IDreponse", IDreponse, commit=not DBexterne):
                             ok = False

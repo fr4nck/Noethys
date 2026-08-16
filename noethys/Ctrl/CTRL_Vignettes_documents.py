@@ -36,8 +36,8 @@ DICT_TYPES = {
     "zip" : "Images/128x128/zip.png",
     "txt" : "Images/128x128/txt.png",
     }
-    
-    
+
+
 def ChargeImage(fichier):
     """Read a file into PIL Image object. Return the image and file size"""
     buf = six.BytesIO()
@@ -63,17 +63,17 @@ def ChargeImage(fichier):
 ##    imagewx = wx.EmptyImage(largeur, hauteur)
 ##    imagewx.SetData(image.tobytes('raw', 'RGB'))
 ##    imagewx.SetAlphaData(image.convert("RGBA").tobytes()[3::4])
-##    return imagewx        
+##    return imagewx
 
-def wxtopil(wxImage, wantAlpha=True):  
+def wxtopil(wxImage, wantAlpha=True):
     pilImage = Image.new( 'RGB', (wxImage.GetWidth(), wxImage.GetHeight()), color=(255, 255, 255) )
     pilImage.frombytes(wxImage.GetData())
-    if wxImage.HasAlpha() and wantAlpha :  
-        pilImage.convert( 'RGBA' )            
-        wxAlphaStr = wxImage.GetAlphaData()    
+    if wxImage.HasAlpha() and wantAlpha :
+        pilImage.convert( 'RGBA' )
+        wxAlphaStr = wxImage.GetAlphaData()
         pilAlphaImage = Image.new( 'L', (wxImage.GetWidth(), wxImage.GetHeight()) )
         pilAlphaImage = Image.frombytes( 'L', (wxImage.GetWidth(), wxImage.GetHeight()), wxAlphaStr )
-        pilImage.putalpha(pilAlphaImage) 
+        pilImage.putalpha(pilAlphaImage)
     return pilImage
 
 
@@ -88,12 +88,12 @@ class Track(object):
         self.isImage = None
         self.image = image
         self.label = label
-        
+
         if self.label == None :
             self.label = u""
-        
+
         if image == None :
-            self.image =self.GetImage() 
+            self.image =self.GetImage()
 
     def GetImage(self):
         # Si c'est une image :
@@ -108,7 +108,7 @@ class Track(object):
             self.isImage = True
             return img
         # Si c'est un document :
-        if self.type in DICT_TYPES :        
+        if self.type in DICT_TYPES :
             cheminImage = DICT_TYPES[self.type]
             img = Image.open(Chemins.GetStaticPath(cheminImage))
             self.isImage = False
@@ -143,32 +143,32 @@ class CTRL(TC.ThumbnailCtrl):
         self.IDreponse = IDreponse
         self.IDtype_piece = IDtype_piece
         self.afficheLabels = afficheLabels
-        
+
         self.listePages = []
         self.listePagesInitiale = []
-        
+
         # Paramètres du Ctrl
         self.ShowFileNames(afficheLabels)
         self.EnableToolTips(True)
         contextMenu = self.ContextMenu()
         self.SetPopupMenu(contextMenu)
         self.SetThumbSize(tailleVignette, tailleVignette, 6)
-        
+
         # Importation initiale des images
         self.ImportationImages()
-        self.MAJ() 
-        
+        self.MAJ()
+
         # Binds
         self.Bind(TC.EVT_THUMBNAILS_DCLICK, self.OnDoubleClick)
 
     def SetIDreponse(self, IDreponse=None):
         self.IDreponse = IDreponse
         self.ImportationImages()
-        self.MAJ() 
-        
+        self.MAJ()
+
     def OnDoubleClick(self, event):
-        self.VisualiserPage(None)        
-        
+        self.VisualiserPage(None)
+
     def ImportationImages(self):
         self.listePages = []
         listeDonnees = []
@@ -189,25 +189,25 @@ class CTRL(TC.ThumbnailCtrl):
             track = Track(IDdocument=IDdocument, IDpiece=IDpiece, IDreponse=IDreponse, IDtype_piece=IDtype_piece, buffer=buffer, type=type, label=label)
             self.listePages.append(track)
             self.listePagesInitiale.append(track)
-    
+
     def MAJ(self):
         self.AfficheImages(self.listePages)
-        
+
     def AjouterPage(self, event=None):
         """ Ajouter une page """
         from Dlg import DLG_Importation_page
-        dlg = DLG_Importation_page.Dialog(self) 
-        reponse = dlg.ShowModal() 
+        dlg = DLG_Importation_page.Dialog(self)
+        reponse = dlg.ShowModal()
         dlg.Destroy()
         if reponse == 100 :
             # Importer depuis un dossier
-            self.ImportationDossier() 
+            self.ImportationDossier()
         elif reponse == 200 :
             # Importer depuis un scanner
             self.ImportationScanner()
         else:
             pass
-    
+
     def SaisirLabel(self, label=u"", nomFichier=None):
         if nomFichier == None :
             message = _(u"Vous pouvez saisir un titre pour ce document (optionnel) :")
@@ -237,12 +237,12 @@ Tous les fichiers (*.*)|*.*"
         # Récupération du chemin des documents
         sp = wx.StandardPaths.Get()
         cheminDefaut = sp.GetDocumentsDir()
-        
+
         # Ouverture de la fenêtre de dialogue
         dlg = wx.FileDialog(
             self, message=_(u"Sélectionnez un ou plusieurs documents"),
-            defaultDir=cheminDefaut, 
-            defaultFile="", 
+            defaultDir=cheminDefaut,
+            defaultFile="",
             wildcard=wildcard,
             style=wx.FD_OPEN | wx.FD_MULTIPLE
             )
@@ -252,20 +252,20 @@ Tous les fichiers (*.*)|*.*"
         else:
             dlg.Destroy()
             return
-        
+
         # Recadre l'image
         for fichier in listeFichiers :
             blob, extension = self.ChargeBlob(fichier)
 
             # Demande le titre du document
             label = self.SaisirLabel(nomFichier=os.path.basename(fichier))
-            
+
             # Conserve l'image en mémoire
             track = Track(IDdocument=0, IDpiece=self.IDpiece, IDreponse=self.IDreponse, IDtype_piece=self.IDtype_piece, buffer=blob, type=extension, label=label)
             self.listePages.append(track)
-        
+
         # MAJ de l'affichage
-        self.MAJ() 
+        self.MAJ()
 
     def ChargeBlob(self, fichier=None):
         extension = os.path.splitext(fichier)[1].replace(".", "")
@@ -315,62 +315,85 @@ Tous les fichiers (*.*)|*.*"
         buffer.seek(0)
         blob = buffer.read()
         return blob
-    
+
     def GetNbreDocuments(self):
         return len(self.listePages)
-    
+
     def Sauvegarde(self, ID=None):
         nbreDocuments = len(self.listePages)
-        if len(self.listePages) == 0 and len(self.listePagesInitiale) == 0 : 
+        if len(self.listePages) == 0 and len(self.listePagesInitiale) == 0 :
             return nbreDocuments
-        
-        # Insère les nouvelles images dans la base de données
+
         DB = GestionDB.DB(suffixe="DOCUMENTS")
+        ok = True
+
+        # Insère les nouveaux documents sans commit intermédiaire.
         for track in self.listePages :
             if track.IDdocument == 0 :
-                # Crée un document
                 if self.type_donnee == "piece" :
                     listeDonnees = [("IDpiece", ID), ("type", track.type), ("label", track.label), ("last_update", datetime.datetime.now())]
                 elif self.type_donnee == "reponse" :
                     listeDonnees = [("IDreponse", ID), ("type", track.type), ("label", track.label), ("last_update", datetime.datetime.now())]
                 elif self.type_donnee == "type_piece" :
                     listeDonnees = [("IDtype_piece", ID), ("type", track.type), ("label", track.label), ("last_update", datetime.datetime.now())]
-                IDdocument = DB.ReqInsert("documents", listeDonnees)
-                DB.MAJimage(table="documents", key="IDdocument", IDkey=IDdocument, blobImage=track.buffer, nomChampBlob="document")
-        
-        # Suppression dans la base de données
-        for track in self.listePagesInitiale :
-            if track not in self.listePages :
-                DB.ReqDEL("documents", "IDdocument", track.IDdocument)
-        
+                else :
+                    ok = False
+                    break
+
+                IDdocument = DB.ReqInsert("documents", listeDonnees, commit=False)
+                if IDdocument is None :
+                    ok = False
+                    break
+                if DB.MAJimage(table="documents", key="IDdocument", IDkey=IDdocument, blobImage=track.buffer, nomChampBlob="document", commit=False) is False :
+                    ok = False
+                    break
+
+        # Suppression des documents retirés.
+        if ok :
+            for track in self.listePagesInitiale :
+                if track not in self.listePages :
+                    if not DB.ReqDEL("documents", "IDdocument", track.IDdocument, commit=False) :
+                        ok = False
+                        break
+
+        if ok :
+            DB.Commit()
+        else :
+            try :
+                DB.connexion.rollback()
+            except Exception :
+                pass
         DB.Close()
+
+        if not ok :
+            return False
         return nbreDocuments
-    
+
     def ImportationScanner(self):
         dlg = wx.MessageDialog(self, _(u"Désolé, cette fonction n'est pas encore disponible !"), _(u"Fonction indisponible"), wx.OK | wx.ICON_EXCLAMATION)
         dlg.ShowModal()
         dlg.Destroy()
-    
+
     def SupprimerPage(self, event):
         index = self.GetSelection()
-        if index == -1 : 
+        if index == -1 :
             dlg = wx.MessageDialog(self, _(u"Vous devez d'abord sélectionner un document !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
             return
         thumb = self.GetItem(index)
         track = thumb.track
-        
+
         # Confirmation
         dlg = wx.MessageDialog(self, _(u"Confirmez-vous la suppression de ce document ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
         reponse = dlg.ShowModal()
         dlg.Destroy()
         if reponse != wx.ID_YES :
                 return
-        
+
         self.listePages.remove(track)
-        self.MAJ() 
-        
+        self.MAJ()
+
     def ContextMenu(self):
         menu = UTILS_Adaptations.Menu()
 
@@ -385,26 +408,26 @@ Tous les fichiers (*.*)|*.*"
         item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Ajouter.png"), wx.BITMAP_TYPE_PNG))
         menu.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.AjouterPage, id=ID_AJOUTER)
-        
+
         menu.AppendSeparator()
-        
+
         item = wx.MenuItem(menu, ID_ROTATION_GAUCHE, _(u"Pivoter à gauche"))
         item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/Teamword/annuler.png"), wx.BITMAP_TYPE_PNG))
         menu.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.RotationGauche, id=ID_ROTATION_GAUCHE)
-        
+
         item = wx.MenuItem(menu, ID_ROTATION_DROITE, _(u"Pivoter à droite"))
         item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/Teamword/repeter.png"), wx.BITMAP_TYPE_PNG))
         menu.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.RotationDroite, id=ID_ROTATION_DROITE)
-        
+
         menu.AppendSeparator()
-        
+
         item = wx.MenuItem(menu, ID_VISUALISER, _(u"Visualiser"))
         item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Loupe.png"), wx.BITMAP_TYPE_PNG))
         menu.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.VisualiserPage, id=ID_VISUALISER)
-        
+
         menu.AppendSeparator()
 
         item = wx.MenuItem(menu, ID_MODIFIER_LABEL, _(u"Modifier le titre"))
@@ -418,47 +441,47 @@ Tous les fichiers (*.*)|*.*"
         self.Bind(wx.EVT_MENU, self.SupprimerPage, id=ID_SUPPRIMER)
 
         return menu
-    
+
     def OnContextMenu(self):
-        menu = self.ContextMenu() 
+        menu = self.ContextMenu()
         self.PopupMenu(menu)
         menu.Destroy()
-        
+
     def RotationGauche(self, event=None):
         index = self.GetSelection()
-        if index == -1 : 
+        if index == -1 :
             dlg = wx.MessageDialog(self, _(u"Vous devez d'abord sélectionner une image !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
             return
         thumb = self.GetItem(index)
         track = thumb.track
-        if track.isImage == False : 
+        if track.isImage == False :
             dlg = wx.MessageDialog(self, _(u"Ce document n'est pas une image !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
             return
         self._scrolled.Rotate(90)
-    
+
     def RotationDroite(self, event=None):
         index = self.GetSelection()
-        if index == -1 : 
+        if index == -1 :
             dlg = wx.MessageDialog(self, _(u"Vous devez d'abord sélectionner une image !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
             return
         thumb = self.GetItem(index)
         track = thumb.track
-        if track.isImage == False : 
+        if track.isImage == False :
             dlg = wx.MessageDialog(self, _(u"Ce document n'est pas une image !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
             return
         self._scrolled.Rotate(-90)
-    
+
     def ModifierLabel(self, event=None):
         index = self.GetSelection()
-        if index == -1 : 
+        if index == -1 :
             dlg = wx.MessageDialog(self, _(u"Vous devez d'abord sélectionner un document !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
@@ -467,11 +490,11 @@ Tous les fichiers (*.*)|*.*"
         track = thumb.track
         # Demande le nouveau titre du document
         label = self.SaisirLabel(label=track.label)
-        if label == None : 
+        if label == None :
             return
         track.label = label
-        self.MAJ() 
-        
+        self.MAJ()
+
     def VisualiserPage(self, event=None):
         index = self.GetSelection()
         if index == -1 :
@@ -481,7 +504,7 @@ Tous les fichiers (*.*)|*.*"
             return
         thumb = self.GetItem(index)
         track = thumb.track
-        
+
         if track.isImage == True :
             # Ouvrir Editeur Photo
             from Dlg import DLG_Visualiseur_image
@@ -502,22 +525,22 @@ Tous les fichiers (*.*)|*.*"
                 dlg.Destroy()
                 return
             FonctionsPerso.LanceFichierExterne(nomFichier)
-    
+
     def ZoomPlus(self, event=None):
         self.ZoomIn()
-        
+
     def ZoomMoins(self, event=None):
         self.ZoomOut()
-        
+
     def Test1(self):
-        self.AjouterPage() 
-        
+        self.AjouterPage()
+
     def Test2(self):
         index = self.GetSelection()
         thumb = self.GetItem(index)
         track = thumb.track
         imgPIL = track.image
-        
+
         buffer = track.buffer
         file = open(UTILS_Fichiers.GetRepTemp(fichier="test.%s" % track.type),"wb")
         file.write(buffer.getvalue())
@@ -545,11 +568,11 @@ class MyFrame(wx.Frame):
         panel.SetSizer(sizer_2)
         self.SetSize((550, 550))
         self.Layout()
-        self.CenterOnScreen() 
-        
+        self.CenterOnScreen()
+
         self.Bind(wx.EVT_BUTTON, self.OnBouton1, self.bouton_1)
         self.Bind(wx.EVT_BUTTON, self.OnBouton2, self.bouton_2)
-        
+
     def OnBouton1(self, event):
         self.ctrl.Test1()
 
