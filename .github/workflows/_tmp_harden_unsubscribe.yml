@@ -1,0 +1,54 @@
+name: Harden unsubscribe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/_tmp_harden_unsubscribe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Patch désinscription
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('noethys/Dlg/DLG_Desinscriptions.py')
+          s=p.read_text(encoding='utf-8')
+          old='''        DB.ExecuterReq(req)\n        liste_consommations = DB.ResultatReq()\n        DB.Close()\n'''
+          new='''        if DB.ExecuterReq(req) != 1:\n            DB.Close()\n            dlg = wx.MessageDialog(self, _(u"Impossible de vérifier les consommations associées. La désinscription est annulée par sécurité."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return\n        liste_consommations = DB.ResultatReq()\n        DB.Close()\n'''
+          if s.count(old)!=1:
+              raise SystemExit('contrôle consommations motif inattendu')
+          s=s.replace(old,new,1)
+          old='''        DB = GestionDB.DB()\n        if date_desinscription:\n            DB.ExecuterReq("UPDATE inscriptions SET date_desinscription='%s' WHERE %s;" % (date_desinscription, condition_inscriptions))\n        else:\n            DB.ExecuterReq("UPDATE inscriptions SET date_desinscription=NULL WHERE %s;" % condition_inscriptions)\n        DB.Commit()\n        DB.Close()\n\n        self.ctrl_liste_inscriptions.MAJ()\n'''
+          new='''        DB = GestionDB.DB()\n        if date_desinscription:\n            ok = DB.ExecuterReq("UPDATE inscriptions SET date_desinscription='%s' WHERE %s;" % (date_desinscription, condition_inscriptions)) == 1\n        else:\n            ok = DB.ExecuterReq("UPDATE inscriptions SET date_desinscription=NULL WHERE %s;" % condition_inscriptions) == 1\n        if not ok:\n            try:\n                DB.connexion.rollback()\n            except Exception:\n                pass\n            DB.Close()\n            dlg = wx.MessageDialog(self, _(u"La désinscription n'a pas pu être enregistrée. Aucune modification n'a été validée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)\n            dlg.ShowModal()\n            dlg.Destroy()\n            return\n        DB.Commit()\n        DB.Close()\n\n        self.ctrl_liste_inscriptions.MAJ()\n'''
+          if s.count(old)!=1:
+              raise SystemExit('mise à jour désinscription motif inattendu')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          python -m py_compile noethys/Dlg/DLG_Desinscriptions.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('noethys/Dlg/DLG_Desinscriptions.py').read_text(encoding='utf-8')
+          assert 'Impossible de vérifier les consommations associées' in s
+          assert 'ok = DB.ExecuterReq' in s
+          assert 'DB.connexion.rollback()' in s
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Dlg/DLG_Desinscriptions.py
+          git commit -m "fix: sécuriser la désinscription par lot"
+          git push origin HEAD:master
