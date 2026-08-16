@@ -532,7 +532,8 @@ class Dialog(wx.Dialog):
 
     def OnClose(self, event):
         UTILS_Dialogs.SaveSizePerso(self, __file__)
-        self.Sauvegarde()
+        if self.Sauvegarde() == False:
+            return
         event.Skip()
 
     def OnBoutonAide(self, event):
@@ -541,7 +542,8 @@ class Dialog(wx.Dialog):
 
     def OnBoutonFermer(self, event):
         UTILS_Dialogs.SaveSizePerso(self, __file__)
-        self.Sauvegarde()
+        if self.Sauvegarde() == False:
+            return
         self.EndModal(wx.ID_CANCEL)
 
     def OnRadioEtat(self, event=None):
@@ -918,7 +920,8 @@ class Dialog(wx.Dialog):
         self.ctrl_informations.SetTexte(texte)
 
     def OnNavigation(self, event):
-        self.Sauvegarde()
+        if self.Sauvegarde() == False:
+            return
 
         ID = event.GetId()
         index = self.tracks.index(self.track)
@@ -967,7 +970,8 @@ class Dialog(wx.Dialog):
                     self.ctrl_reponse.SetValue(resultat["reponse"])
 
                 # Enregistrement de la demande
-                self.Sauvegarde()
+                if self.Sauvegarde() == False:
+                    return False
 
         # Réactualise le solde
         self.ctrl_solde.MAJ(IDfamille=self.track.IDfamille)
