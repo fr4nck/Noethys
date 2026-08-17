@@ -1,0 +1,56 @@
+name: tmp scan classify runtime
+on:
+  push:
+    paths:
+      - '.github/workflows/tmp-scan-classify-runtime.yml'
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess
+          roots=[Path('noethys/Dlg'),Path('noethys/Ol'),Path('noethys/Ctrl')]
+          hits=[]
+          for root in roots:
+              for p in root.rglob('*.py'):
+                  try: s=p.read_text(encoding='utf-8')
+                  except: continue
+                  lines=s.splitlines()
+                  for i,line in enumerate(lines,1):
+                      if 'ResultatReq()[0]' in line or re.search(r'ResultatReq\(\)\s*\[[^]]+\]',line):
+                          hits.append((str(p),i,'sql-index',line.strip()))
+                      if ('ReqInsert(' in line or 'ReqMAJ(' in line or 'ReqDEL(' in line) and 'commit=False' not in line:
+                          # only retain methods with >=2 DB writes nearby
+                          start=max(0,i-20); end=min(len(lines),i+40)
+                          block='\n'.join(lines[start:end])
+                          if sum(block.count(x) for x in ('ReqInsert(','ReqMAJ(','ReqDEL(')) >= 2:
+                              hits.append((str(p),i,'multiwrite-direct',line.strip()))
+          # de-duplicate and limit useful candidates
+          seen=set(); out=[]
+          for h in hits:
+              key=(h[0],h[2])
+              if key in seen: continue
+              seen.add(key); out.append(h)
+          with open('runtime-classification-report.txt','w',encoding='utf-8') as f:
+              for path,line,kind,text in out[:120]:
+                  # age signal: oldest commit touching file
+                  try:
+                      log=subprocess.check_output(['git','log','--follow','--format=%H|%ad','--date=short','--',path],text=True).strip().splitlines()
+                      oldest=log[-1] if log else 'unknown'
+                  except Exception: oldest='unknown'
+                  f.write(f'{kind}\t{path}:{line}\toldest={oldest}\t{text}\n')
+          PY
+          git add runtime-classification-report.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'ci: rapport temporaire classification runtime'
+          git pull --rebase origin master
+          git push origin HEAD:master
