@@ -14,24 +14,25 @@ from __future__ import unicode_literals
 DEPENDANCES_COEUR = {
     "familles": [],
     "individus": [],
-    "comptes_payeurs": ["familles"],
-    "rattachements": ["familles", "individus"],
     "activites": [],
-    "groupes": ["activites"],
     "categories_tarifs": ["activites"],
-    "noms_tarifs": ["activites"],
-    "tarifs": ["activites"],
-    "tarifs_lignes": ["tarifs"],
-    "inscriptions": ["familles", "individus", "activites", "groupes"],
-    "consommations": ["familles", "individus", "activites", "groupes", "inscriptions"],
-    "prestations": ["comptes_payeurs", "factures"],
-    "factures": ["familles"],
+    "noms_tarifs": ["activites", "categories_tarifs"],
+    "tarifs": ["activites", "categories_tarifs", "noms_tarifs"],
+    "groupes": ["activites"],
+    "unites": ["activites"],
+    "evenements": ["activites", "unites", "groupes"],
+    "comptes_payeurs": ["familles", "individus"],
+    "rattachements": ["familles", "individus"],
+    "inscriptions": ["familles", "individus", "activites", "groupes", "categories_tarifs", "comptes_payeurs"],
+    "factures": ["comptes_payeurs"],
+    "contrats": ["individus", "inscriptions", "tarifs", "activites"],
+    "contrats_tarifs": ["contrats"],
+    "prestations": ["comptes_payeurs", "activites", "tarifs", "factures", "familles", "individus", "categories_tarifs", "contrats"],
     "reglements": ["comptes_payeurs"],
+    "consommations": ["individus", "inscriptions", "activites", "unites", "groupes", "categories_tarifs", "comptes_payeurs", "evenements"],
     "ventilation": ["reglements", "prestations", "comptes_payeurs"],
     "cotisations": ["familles", "individus"],
     "questionnaire_reponses": ["familles", "individus"],
-    "contrats": ["familles", "individus"],
-    "contrats_tarifs": ["contrats"],
 }
 
 CLES_PRIMAIRES_COEUR = {
@@ -41,6 +42,8 @@ CLES_PRIMAIRES_COEUR = {
     "rattachements": "IDrattachement",
     "activites": "IDactivite",
     "groupes": "IDgroupe",
+    "unites": "IDunite",
+    "evenements": "IDevenement",
     "categories_tarifs": "IDcategorie_tarif",
     "noms_tarifs": "IDnom_tarif",
     "tarifs": "IDtarif",
@@ -62,8 +65,10 @@ CLES_PRIMAIRES_COEUR = {
 PERIMETRES_MIGRATION = {
     "dossiers": [
         "familles", "individus", "comptes_payeurs", "rattachements",
-        "activites", "groupes", "inscriptions", "consommations",
-        "contrats", "contrats_tarifs", "questionnaire_reponses", "cotisations",
+        "activites", "groupes", "unites", "evenements",
+        "categories_tarifs", "noms_tarifs", "tarifs",
+        "inscriptions", "consommations", "contrats", "contrats_tarifs",
+        "questionnaire_reponses", "cotisations",
     ],
     "facturation": [
         "familles", "comptes_payeurs", "factures", "prestations",
@@ -76,24 +81,34 @@ PERIMETRES_MIGRATION = {
 
 
 REFERENCES_COEUR = {
-    "comptes_payeurs": {"IDfamille": "familles"},
+    "comptes_payeurs": {"IDfamille": "familles", "IDindividu": "individus"},
     "rattachements": {"IDfamille": "familles", "IDindividu": "individus"},
     "groupes": {"IDactivite": "activites"},
+    "unites": {"IDactivite": "activites", "IDrestaurateur": "restaurateurs"},
+    "evenements": {"IDactivite": "activites", "IDunite": "unites", "IDgroupe": "groupes"},
     "categories_tarifs": {"IDactivite": "activites"},
-    "noms_tarifs": {"IDactivite": "activites"},
-    "tarifs": {"IDactivite": "activites"},
+    "noms_tarifs": {"IDactivite": "activites", "IDcategorie_tarif": "categories_tarifs"},
+    "tarifs": {"IDactivite": "activites", "IDcategorie_tarif": "categories_tarifs", "IDnom_tarif": "noms_tarifs"},
     "tarifs_lignes": {"IDtarif": "tarifs"},
     "inscriptions": {
         "IDfamille": "familles", "IDindividu": "individus",
         "IDactivite": "activites", "IDgroupe": "groupes",
+        "IDcategorie_tarif": "categories_tarifs", "IDcompte_payeur": "comptes_payeurs",
     },
     "consommations": {
-        "IDfamille": "familles", "IDindividu": "individus",
-        "IDactivite": "activites", "IDgroupe": "groupes",
-        "IDinscription": "inscriptions",
+        "IDfamille": "familles", "IDindividu": "individus", "IDinscription": "inscriptions",
+        "IDactivite": "activites", "IDunite": "unites", "IDgroupe": "groupes",
+        "IDutilisateur": "utilisateurs", "IDcategorie_tarif": "categories_tarifs",
+        "IDcompte_payeur": "comptes_payeurs", "IDprestation": "prestations",
+        "IDevenement": "evenements",
     },
-    "prestations": {"IDcompte_payeur": "comptes_payeurs", "IDfacture": "factures"},
-    "factures": {"IDfamille": "familles"},
+    "prestations": {
+        "IDcompte_payeur": "comptes_payeurs", "IDactivite": "activites", "IDtarif": "tarifs",
+        "IDfacture": "factures", "IDfamille": "familles", "IDindividu": "individus",
+        "IDcategorie_tarif": "categories_tarifs", "reglement_frais": "reglements",
+        "IDcontrat": "contrats",
+    },
+    "factures": {"IDcompte_payeur": "comptes_payeurs"},
     "reglements": {"IDcompte_payeur": "comptes_payeurs"},
     "ventilation": {
         "IDreglement": "reglements", "IDprestation": "prestations",
@@ -101,8 +116,18 @@ REFERENCES_COEUR = {
     },
     "cotisations": {"IDfamille": "familles", "IDindividu": "individus"},
     "questionnaire_reponses": {"IDfamille": "familles", "IDindividu": "individus"},
-    "contrats": {"IDfamille": "familles", "IDindividu": "individus"},
+    "contrats": {
+        "IDindividu": "individus", "IDinscription": "inscriptions",
+        "IDtarif": "tarifs", "IDactivite": "activites",
+    },
     "contrats_tarifs": {"IDcontrat": "contrats"},
+}
+
+# Références qui peuvent pointer vers une table migrée plus tard. Elles sont
+# insérées à NULL puis réparées dans la même transaction avant le commit final.
+REFERENCES_DIFFEREES = {
+    "consommations": {"IDprestation": "prestations"},
+    "prestations": {"reglement_frais": "reglements"},
 }
 
 
@@ -241,6 +266,13 @@ class PlanMigration(object):
             if details.get("source_uniquement", []):
                 revue.append({"table": table, "raison": "champs_source_sans_cible",
                               "champs": details["source_uniquement"], "nbre": item["nbre"]}); continue
+            pk = self.cles_primaires[table]
+            refs_connues = set(self.references.get(table, {}))
+            ids_non_decrits = [champ for champ in details.get("communs", [])
+                               if champ != pk and champ.startswith("ID") and champ not in refs_connues]
+            if ids_non_decrits:
+                revue.append({"table": table, "raison": "references_non_decrites",
+                              "champs": ids_non_decrits, "nbre": item["nbre"]}); continue
             migrables.append(table)
         ordre, cycles = self._ordre_topologique(migrables)
         for table in cycles:
@@ -263,13 +295,14 @@ class PlanMigration(object):
 class MoteurMigration(object):
     """Exécute une migration source -> cible avec rollback global sur la cible."""
 
-    def __init__(self, DBsource, DBcible, plan=None, mapping=None, references=None, tables=None):
+    def __init__(self, DBsource, DBcible, plan=None, mapping=None, references=None, tables=None, references_differees=None):
         self.DBsource = DBsource
         self.DBcible = DBcible
         self.analyse = AnalyseMigration(DBsource, DBcible)
         self.planificateur = plan or PlanMigration(self.analyse, references=references, tables=tables)
         self.mapping = mapping or MappingIDs()
         self.references = references or REFERENCES_COEUR
+        self.references_differees = references_differees or REFERENCES_DIFFEREES
         self.rapport = []
 
     def _rollback(self):
@@ -287,14 +320,20 @@ class MoteurMigration(object):
     def _remapper_ligne(self, table, champs, valeurs, cle_primaire):
         donnees = dict(zip(champs, valeurs))
         ancien_id = donnees.pop(cle_primaire, None)
+        differes = []
         for champ, table_ref in self.references.get(table, {}).items():
             if champ not in donnees or donnees[champ] is None:
                 continue
             ancien_ref = donnees[champ]
-            if not self.mapping.Existe(table_ref, ancien_ref):
-                raise ValueError("Référence non migrée %s.%s=%r vers %s" % (table, champ, ancien_ref, table_ref))
-            donnees[champ] = self.mapping.Get(table_ref, ancien_ref)
-        return ancien_id, donnees
+            if self.mapping.Existe(table_ref, ancien_ref):
+                donnees[champ] = self.mapping.Get(table_ref, ancien_ref)
+                continue
+            if self.references_differees.get(table, {}).get(champ) == table_ref:
+                donnees[champ] = None
+                differes.append((champ, table_ref, ancien_ref))
+                continue
+            raise ValueError("Référence non migrée %s.%s=%r vers %s" % (table, champ, ancien_ref, table_ref))
+        return ancien_id, donnees, differes
 
     def Simuler(self):
         """Valide lecture et remapping sans aucune écriture cible."""
@@ -313,6 +352,19 @@ class MoteurMigration(object):
             lignes = self._lire_table(table, champs)
             if lignes is None:
                 erreurs.append({"table": table, "erreur": "lecture_source"}); continue
+            tables_plan = set(simulation["plan"]["ordre"])
+            refs = self.references.get(table, {})
+            indexes = {champ: index for index, champ in enumerate(champs)}
+            for champ, table_ref in refs.items():
+                if champ not in indexes or table_ref in tables_plan:
+                    continue
+                index = indexes[champ]
+                for valeurs in lignes:
+                    ancien_ref = valeurs[index]
+                    if ancien_ref is not None and not self.mapping.Existe(table_ref, ancien_ref):
+                        erreurs.append({"table": table, "champ": champ, "erreur": "reference_hors_perimetre",
+                                        "cible": table_ref, "valeur": ancien_ref})
+                        break
             compte += len(lignes)
         simulation["lignes_lues"] = compte
         simulation["perimetre"] = [item["table"] for item in simulation["plan"]["tables_migrables"]]
@@ -328,6 +380,7 @@ class MoteurMigration(object):
 
         schema = self.analyse.ComparerSchemas()
         self.rapport = []
+        references_a_reparer = []
         try:
             for item in simulation["plan"]["tables_migrables"]:
                 table, pk = item["table"], item["cle_primaire"]
@@ -337,15 +390,30 @@ class MoteurMigration(object):
                     raise RuntimeError("Lecture impossible de %s" % table)
                 nb = 0
                 for valeurs in lignes:
-                    ancien_id, donnees = self._remapper_ligne(table, champs, valeurs, pk)
+                    ancien_id, donnees, differes = self._remapper_ligne(table, champs, valeurs, pk)
                     liste_donnees = [(champ, donnees[champ]) for champ in champs if champ != pk and champ in donnees]
                     nouvel_id = self.DBcible.ReqInsert(table, liste_donnees, commit=False)
                     if nouvel_id is None:
                         raise RuntimeError("Insertion impossible dans %s (ID source %r)" % (table, ancien_id))
                     if ancien_id is not None:
                         self.mapping.Ajouter(table, ancien_id, nouvel_id)
+                    for champ, table_ref, ancien_ref in differes:
+                        references_a_reparer.append((table, pk, nouvel_id, champ, table_ref, ancien_ref))
                     nb += 1
                 self.rapport.append({"table": table, "lignes": nb, "statut": "preparee"})
+
+            # Répare les références avant tout commit : aucune FK différée ne peut
+            # rester orpheline dans la base cible.
+            for table, pk, nouvel_id, champ, table_ref, ancien_ref in references_a_reparer:
+                if not self.mapping.Existe(table_ref, ancien_ref):
+                    raise ValueError("Référence différée non migrée %s.%s=%r vers %s" %
+                                     (table, champ, ancien_ref, table_ref))
+                nouvel_ref = self.mapping.Get(table_ref, ancien_ref)
+                if not self.DBcible.ReqMAJ(table, [(champ, nouvel_ref)], pk, nouvel_id, commit=False):
+                    raise RuntimeError("Réparation impossible de %s.%s pour ID %r" % (table, champ, nouvel_id))
+            if references_a_reparer:
+                self.rapport.append({"table": None, "references_differees": len(references_a_reparer),
+                                     "statut": "preparee"})
             self.DBcible.Commit()
         except Exception as err:
             self._rollback()
