@@ -845,16 +845,29 @@ class Dialog(wx.Dialog):
             ]
 
         DB = GestionDB.DB()
-        if self.IDlot == None :
-            # Ajout
-            self.IDlot = DB.ReqInsert("pes_lots", listeDonnees)
-        else :
-            # Modification
-            DB.ReqMAJ("pes_lots", listeDonnees, "IDlot", self.IDlot)
-        DB.Close() 
-        
-        # Sauvegarde des prélèvements du lot
-        self.ctrl_pieces.Sauvegarde(IDlot=self.IDlot, datePrelevement=date_prelevement, IDcompte=IDcompte, IDmode=IDmode) 
+        ancien_IDlot = self.IDlot
+        if ancien_IDlot is None:
+            IDlot = DB.ReqInsert("pes_lots", listeDonnees, commit=False)
+            if IDlot is None:
+                DB.Close()
+                return False
+        else:
+            IDlot = ancien_IDlot
+            if not DB.ReqMAJ("pes_lots", listeDonnees, "IDlot", IDlot, commit=False):
+                DB.Close()
+                return False
+
+        # Sauvegarde pièces + règlements dans la même transaction que le lot
+        if not self.ctrl_pieces.Sauvegarde(IDlot=IDlot, datePrelevement=date_prelevement, IDcompte=IDcompte, IDmode=IDmode, DB=DB, commit=False):
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            DB.Close()
+            return False
+        DB.Commit()
+        DB.Close()
+        self.IDlot = IDlot
 
         # Mémorisation des préférences
         self.Memorisation_parametres()

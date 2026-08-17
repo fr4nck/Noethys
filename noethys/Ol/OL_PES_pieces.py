@@ -936,15 +936,19 @@ class ListView(FastObjectListView):
             texte = texte[:-7] + u"</B>"
         return texte
 
-    def Sauvegarde(self, IDlot=None, datePrelevement=None, IDcompte=None, IDmode=None):
-        """ Sauvegarde des données """
-        DB = GestionDB.DB()
+    def Sauvegarde(self, IDlot=None, datePrelevement=None, IDcompte=None, IDmode=None, DB=None, commit=True):
+        """ Sauvegarde des données. Une DB externe permet d'englober lot, pièces et règlements dans une même transaction. """
+        DB_externe = DB is not None
+        if DB is None:
+            DB = GestionDB.DB()
 
-        # Ajouts et suppressions
-        for track in self.GetObjects() :
+        ok = True
+        listeMAJPieces = []
 
+        # Ajouts et modifications
+        for track in self.GetObjects():
             listeDonnees = [
-                ("IDlot", IDlot ),
+                ("IDlot", IDlot),
                 ("IDfamille", track.IDfamille),
                 ("prelevement", track.prelevement),
                 ("prelevement_iban", track.prelevement_iban),
@@ -962,58 +966,84 @@ class ListView(FastObjectListView):
                 ("numero", track.numero),
                 ("libelle", track.libelle),
                 ("montant", track.montant),
-                ]
+            ]
 
-            # Ajout
-            if track.etat == "ajout" :
-                track.IDpiece = DB.ReqInsert("pes_pieces", listeDonnees)
-                self.RefreshObject(track)
+            if track.etat == "ajout":
+                IDpiece = DB.ReqInsert("pes_pieces", listeDonnees, commit=False)
+                if IDpiece is None:
+                    ok = False
+                    break
+                listeMAJPieces.append((track, IDpiece))
+            elif track.etat == "modif":
+                if not DB.ReqMAJ("pes_pieces", listeDonnees, "IDpiece", track.IDpiece, commit=False):
+                    ok = False
+                    break
 
-            # Modification
-            if track.etat == "modif" :
-                DB.ReqMAJ("pes_pieces", listeDonnees, "IDpiece", track.IDpiece)
+        # Suppressions : dépendances avant la pièce
+        if ok:
+            for track in self.listeSuppressions:
+                if track.IDreglement is not None:
+                    if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
+                        ok = False
+                        break
+                    if not DB.ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False):
+                        ok = False
+                        break
+                if track.IDpiece is not None:
+                    if not DB.ReqDEL("pes_pieces", "IDpiece", track.IDpiece, commit=False):
+                        ok = False
+                        break
 
-        # Suppressions
-        for track in self.listeSuppressions :
-            if track.IDpiece != None :
-                DB.ReqDEL("pes_pieces", "IDpiece", track.IDpiece)
-            if track.IDreglement != None :
-                DB.ReqDEL("reglements", "IDreglement", track.IDreglement)
-                DB.ReqDEL("ventilation", "IDreglement", track.IDreglement)
+        # Les règlements partagent la même transaction
+        if ok:
+            ok = self.SauvegardeReglements(date=datePrelevement, IDcompte=IDcompte, IDmode=IDmode, DB=DB, commit=False)
 
-        DB.Close()
+        if not ok:
+            try:
+                DB.connexion.rollback()
+            except Exception:
+                pass
+            if not DB_externe:
+                DB.Close()
+            return False
 
-        # Sauvegarde des règlements
-        self.SauvegardeReglements(date=datePrelevement, IDcompte=IDcompte, IDmode=IDmode)
+        if commit:
+            DB.Commit()
+        if not DB_externe:
+            DB.Close()
 
+        for track, IDpiece in listeMAJPieces:
+            track.IDpiece = IDpiece
+            self.RefreshObject(track)
+        return True
 
-    def SauvegardeReglements(self, date=None, IDcompte=None, IDmode=None):
-        """ A effectuer après la sauvegarde des prélèvements """
-        DB = GestionDB.DB()
+    def SauvegardeReglements(self, date=None, IDcompte=None, IDmode=None, DB=None, commit=True):
+        """ Sauvegarde règlements et ventilations, éventuellement dans une transaction externe. """
+        DB_externe = DB is not None
+        if DB is None:
+            DB = GestionDB.DB()
         ok = True
         listeMAJTracks = []
 
         # Recherche des payeurs
         req = """SELECT IDpayeur, IDcompte_payeur, nom
         FROM payeurs;"""
-        DB.ExecuterReq(req)
-        listeDonnees = DB.ResultatReq()
+        if not DB.ExecuterReq(req):
+            ok = False
+        listeDonnees = DB.ResultatReq() if ok else []
         dictPayeurs = {}
-        for IDpayeur, IDcompte_payeur, nom in listeDonnees :
-            if (IDcompte_payeur in dictPayeurs) == False :
+        for IDpayeur, IDcompte_payeur, nom in listeDonnees:
+            if IDcompte_payeur not in dictPayeurs:
                 dictPayeurs[IDcompte_payeur] = []
-            dictPayeurs[IDcompte_payeur].append({"nom" : nom, "IDpayeur" : IDpayeur})
+            dictPayeurs[IDcompte_payeur].append({"nom": nom, "IDpayeur": IDpayeur})
 
-
-        # Récupération des prestations à ventiler pour chaque facture
-        listeIDfactures = []
-        for track in self.GetObjects() :
-            if track.IDfacture != None :
-                listeIDfactures.append(track.IDfacture)
-
-        if len(listeIDfactures) == 0 : conditionFactures = "()"
-        elif len(listeIDfactures) == 1 : conditionFactures = "(%d)" % listeIDfactures[0]
-        else : conditionFactures = str(tuple(listeIDfactures))
+        listeIDfactures = [track.IDfacture for track in self.GetObjects() if track.IDfacture is not None]
+        if len(listeIDfactures) == 0:
+            conditionFactures = "()"
+        elif len(listeIDfactures) == 1:
+            conditionFactures = "(%d)" % listeIDfactures[0]
+        else:
+            conditionFactures = str(tuple(listeIDfactures))
 
         req = """SELECT
         prestations.IDprestation, prestations.IDcompte_payeur, prestations.montant,
@@ -1023,83 +1053,52 @@ class ListView(FastObjectListView):
         WHERE prestations.IDfacture IN %s
         GROUP BY prestations.IDprestation
         ;""" % conditionFactures
-        DB.ExecuterReq(req)
-        listeDonnees = DB.ResultatReq()
+        if ok and not DB.ExecuterReq(req):
+            ok = False
+        listeDonnees = DB.ResultatReq() if ok else []
 
         dictFactures = {}
         dictAventiler = {}
-        for IDprestation, IDcompte_payeur, montant, IDfacture, ventilation in listeDonnees :
-            if ventilation == None :
+        for IDprestation, IDcompte_payeur, montant, IDfacture, ventilation in listeDonnees:
+            if ventilation is None:
                 ventilation = 0.0
             montant = decimal.Decimal(montant)
             ventilation = decimal.Decimal(ventilation)
             aventiler = montant - ventilation
+            if aventiler != decimal.Decimal(0.0):
+                dictFactures.setdefault(IDfacture, []).append({"IDprestation": IDprestation, "IDcompte_payeur": IDcompte_payeur, "montant": montant, "ventilation": ventilation, "aventiler": aventiler})
+                dictAventiler[IDfacture] = dictAventiler.get(IDfacture, decimal.Decimal(0.0)) + aventiler
 
-            if aventiler != decimal.Decimal(0.0) :
-
-                # Mémorisation des prestations à ventiler
-                if (IDfacture in dictFactures) == False :
-                    dictFactures[IDfacture] = []
-                dictFactures[IDfacture].append({"IDprestation" : IDprestation, "IDcompte_payeur" : IDcompte_payeur, "montant" : montant, "ventilation" : ventilation, "aventiler" : aventiler})
-
-                # Mémorisation des montants à ventiler pour chaque facture
-                if (IDfacture in dictAventiler) == False :
-                    dictAventiler[IDfacture] = decimal.Decimal(0.0)
-                dictAventiler[IDfacture] += aventiler
-
-        # Sauvegarde des règlements + ventilation
-        listeSuppressionReglements = []
-        for track in self.GetObjects() :
-
-            # Ajouts et modifications
-            if track.reglement == True :
-
-                if track.IDfacture in dictAventiler :
-
-                    # Recherche du payeur
+        for track in self.GetObjects():
+            if not ok:
+                break
+            if track.reglement is True:
+                if track.IDfacture in dictAventiler:
                     IDpayeur = None
-                    if track.IDcompte_payeur in dictPayeurs :
-                        for dictPayeur in dictPayeurs[track.IDcompte_payeur] :
-                            if dictPayeur["nom"] == track.prelevement_titulaire :
+                    if track.IDcompte_payeur in dictPayeurs:
+                        for dictPayeur in dictPayeurs[track.IDcompte_payeur]:
+                            if dictPayeur["nom"] == track.prelevement_titulaire:
                                 IDpayeur = dictPayeur["IDpayeur"]
-
-                    # Si pas de payeur correspond au titulaire du compte trouvé :
-                    if IDpayeur == None :
+                    if IDpayeur is None:
                         IDpayeur = DB.ReqInsert("payeurs", [("IDcompte_payeur", track.IDcompte_payeur), ("nom", track.prelevement_titulaire)], commit=False)
                         if IDpayeur is None:
                             ok = False
                             break
 
-                    # Recherche du montant du règlement
-                    montant = dictAventiler[track.IDfacture] # track.montant
-
-                    # Création des données à sauvegarder
+                    montant = dictAventiler[track.IDfacture]
                     listeDonnees = [
-                        ("IDcompte_payeur", track.IDcompte_payeur),
-                        ("date", date),
-                        ("IDmode", IDmode),
-                        ("IDemetteur", None),
-                        ("numero_piece", None),
-                        ("montant", float(montant)),
-                        ("IDpayeur", IDpayeur),
-                        ("observations", None),
-                        ("numero_quittancier", None),
-                        ("IDcompte", IDcompte),
-                        ("date_differe", None),
-                        ("encaissement_attente", 0),
-                        ("date_saisie", datetime.date.today()),
-                        ("IDutilisateur", UTILS_Identification.GetIDutilisateur() ),
+                        ("IDcompte_payeur", track.IDcompte_payeur), ("date", date), ("IDmode", IDmode),
+                        ("IDemetteur", None), ("numero_piece", None), ("montant", float(montant)),
+                        ("IDpayeur", IDpayeur), ("observations", None), ("numero_quittancier", None),
+                        ("IDcompte", IDcompte), ("date_differe", None), ("encaissement_attente", 0),
+                        ("date_saisie", datetime.date.today()), ("IDutilisateur", UTILS_Identification.GetIDutilisateur()),
                         ("IDpiece", track.IDpiece),
-                        ]
-
-                    # Ajout
-                    if track.IDreglement == None :
+                    ]
+                    if track.IDreglement is None:
                         IDreglement = DB.ReqInsert("reglements", listeDonnees, commit=False)
                         if IDreglement is None:
                             ok = False
                             break
-
-                    # Modification
                     else:
                         IDreglement = track.IDreglement
                         if not DB.ReqMAJ("reglements", listeDonnees, "IDreglement", IDreglement, commit=False):
@@ -1107,43 +1106,35 @@ class ListView(FastObjectListView):
                             break
                     listeMAJTracks.append((track, IDreglement, date))
 
-                    # ----------- Sauvegarde de la ventilation ---------
-                    if track.IDfacture in dictFactures :
-                        for dictFacture in dictFactures[track.IDfacture] :
-                            listeDonnees = [
-                                    ("IDreglement", IDreglement),
-                                    ("IDcompte_payeur", track.IDcompte_payeur),
-                                    ("IDprestation", dictFacture["IDprestation"]),
-                                    ("montant", float(dictFacture["aventiler"])),
-                                ]
-                            IDventilation = DB.ReqInsert("ventilation", listeDonnees, commit=False)
-                            if IDventilation is None:
-                                ok = False
-                                break
+                    for dictFacture in dictFactures.get(track.IDfacture, []):
+                        listeVentilation = [
+                            ("IDreglement", IDreglement), ("IDcompte_payeur", track.IDcompte_payeur),
+                            ("IDprestation", dictFacture["IDprestation"]), ("montant", float(dictFacture["aventiler"])),
+                        ]
+                        if DB.ReqInsert("ventilation", listeVentilation, commit=False) is None:
+                            ok = False
+                            break
+            elif track.IDreglement is not None:
+                if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
+                    ok = False
+                    break
+                if not DB.ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False):
+                    ok = False
+                    break
 
-            # Suppression de règlements et ventilation
-            else :
-
-                if track.IDreglement != None :
-                    if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
-                        ok = False
-                        break
-                    if not DB.ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False):
-                        ok = False
-                        break
-
-            # MAJ du track
-
-        if ok:
-            DB.Commit()
-        else:
+        if not ok:
             try:
                 DB.connexion.rollback()
             except Exception:
                 pass
-        DB.Close()
-        if not ok:
+            if not DB_externe:
+                DB.Close()
             return False
+
+        if commit:
+            DB.Commit()
+        if not DB_externe:
+            DB.Close()
         for track, IDreglement, dateReglement in listeMAJTracks:
             track.IDreglement = IDreglement
             track.dateReglement = dateReglement
