@@ -555,23 +555,47 @@ class Dialog(wx.Dialog):
             # Demande de confirmation
             dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment annuler la création de cette nouvelle fiche ?"), _(u"Annulation"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_EXCLAMATION)
             if dlg.ShowModal() == wx.ID_YES :
-                # Efface de la base la fiche individu 
+                # Efface de la base la fiche individu et ses dépendances
                 DB = GestionDB.DB()
-                DB.ReqDEL("individus", "IDindividu", self.IDindividu)
-                DB.ReqDEL("rattachements", "IDindividu", self.IDindividu)
-                DB.ReqDEL("liens", "IDindividu_sujet", self.IDindividu)
-                DB.ReqDEL("liens", "IDindividu_objet", self.IDindividu)
-                DB.ReqDEL("vaccins", "IDindividu", self.IDindividu)
-                DB.ReqDEL("problemes_sante", "IDindividu", self.IDindividu)
-                DB.ReqDEL("questionnaire_reponses", "IDindividu", self.IDindividu)
-                DB.ReqDEL("messages", "IDindividu", self.IDindividu)
-                DB.ReqDEL("scolarite", "IDindividu", self.IDindividu)
-                DB.ReqDEL("transports", "IDindividu", self.IDindividu)
-                DB.Close() 
-                # Suppression de la photo 
-                DB = GestionDB.DB(suffixe="PHOTOS")
-                DB.ReqDEL("photos", "IDindividu", self.IDindividu)
+                suppressions = [
+                    ("rattachements", "IDindividu"),
+                    ("liens", "IDindividu_sujet"),
+                    ("liens", "IDindividu_objet"),
+                    ("vaccins", "IDindividu"),
+                    ("problemes_sante", "IDindividu"),
+                    ("questionnaire_reponses", "IDindividu"),
+                    ("messages", "IDindividu"),
+                    ("scolarite", "IDindividu"),
+                    ("transports", "IDindividu"),
+                    ("individus", "IDindividu"),
+                ]
+                suppression_ok = True
+                for table, champ in suppressions:
+                    if not DB.ReqDEL(table, champ, self.IDindividu, commit=False):
+                        suppression_ok = False
+                        break
+                if not suppression_ok:
+                    try:
+                        DB.connexion.rollback()
+                    except Exception:
+                        pass
+                    DB.Close()
+                    dlg.Destroy()
+                    dlg_erreur = wx.MessageDialog(self, _(u"La suppression de la nouvelle fiche a échoué. Aucune donnée principale n'a été supprimée."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                    dlg_erreur.ShowModal()
+                    dlg_erreur.Destroy()
+                    return False
+                DB.Commit()
                 DB.Close()
+
+                # Suppression de la photo dans la base PHOTOS distincte
+                DBphotos = GestionDB.DB(suffixe="PHOTOS")
+                photo_ok = DBphotos.ReqDEL("photos", "IDindividu", self.IDindividu)
+                DBphotos.Close()
+                if not photo_ok:
+                    dlg_photo = wx.MessageDialog(self, _(u"La fiche a été supprimée, mais la suppression de sa photo a échoué."), _(u"Avertissement"), wx.OK | wx.ICON_WARNING)
+                    dlg_photo.ShowModal()
+                    dlg_photo.Destroy()
                 dlg.Destroy()
                 # Ferme la fenêtre
                 self.Destroy()
