@@ -1,0 +1,21 @@
+name: tmp inspect schema dossiers
+on:
+  push:
+    paths:
+      - '.github/workflows/tmp-inspect-schema-dossiers.yml'
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect schema usages
+        shell: bash
+        run: |
+          echo '=== inscriptions ==='
+          git grep -n -E 'IDinscription|"inscriptions"|FROM inscriptions|INTO inscriptions|UPDATE inscriptions' -- 'noethys/**.py' | head -n 120 || true
+          echo '=== consommations ==='
+          git grep -n -E 'IDconso|"consommations"|FROM consommations|INTO consommations|UPDATE consommations' -- 'noethys/**.py' | head -n 160 || true
+          echo '=== contrats ==='
+          git grep -n -E 'IDcontrat|"contrats"|FROM contrats|INTO contrats|UPDATE contrats' -- 'noethys/**.py' | head -n 180 || true
+          echo '=== contrats_tarifs ==='
+          git grep -n -E 'IDcontrat_tarif|contrats_tarifs' -- 'noethys/**.py' | head -n 120 || true
