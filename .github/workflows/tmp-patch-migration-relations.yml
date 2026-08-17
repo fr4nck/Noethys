@@ -1,0 +1,145 @@
+name: tmp patch migration relations
+on:
+  push:
+    paths:
+      - 'tools/tmp_patch_migration_relations.py'
+      - '.github/workflows/tmp-patch-migration-relations.yml'
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Patch
+        run: python tools/tmp_patch_migration_relations.py
+      - name: Checks
+        run: |
+          python -m py_compile noethys/Utils/UTILS_Migration_base.py
+          git diff --check
+          python - <<'PY'
+          import importlib.util, re
+          spec=importlib.util.spec_from_file_location('m','noethys/Utils/UTILS_Migration_base.py')
+          m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+
+          assert m.REFERENCES_COEUR['inscriptions']['IDcategorie_tarif']=='categories_tarifs'
+          assert m.REFERENCES_COEUR['inscriptions']['IDcompte_payeur']=='comptes_payeurs'
+          assert m.REFERENCES_COEUR['contrats']['IDinscription']=='inscriptions'
+          assert m.REFERENCES_COEUR['contrats']['IDtarif']=='tarifs'
+          assert m.REFERENCES_COEUR['consommations']['IDunite']=='unites'
+          assert m.REFERENCES_DIFFEREES['consommations']['IDprestation']=='prestations'
+          assert 'unites' in m.CLES_PRIMAIRES_COEUR and 'evenements' in m.CLES_PRIMAIRES_COEUR
+
+          class Conn:
+              def __init__(self): self.rolled=False
+              def rollback(self): self.rolled=True
+
+          class FakeDB:
+              def __init__(self, tables, rows=None, fail_table=None, fail_update=False):
+                  self.tables=tables; self.rows=rows or {}; self.fail_table=fail_table; self.fail_update=fail_update
+                  self.current=[]; self.inserted=[]; self.updated=[]; self.commits=0; self.connexion=Conn(); self.next_id=100
+              def GetListeTables(self): return [(t,) for t in self.tables]
+              def GetListeChamps2(self,t): return [(c,'x') for c in self.tables[t]]
+              def ExecuterReq(self,q):
+                  mt=re.search(r'FROM ([A-Za-z0-9_]+)',q); t=mt.group(1) if mt else None
+                  if q.startswith('SELECT COUNT(*)'):
+                      self.current=[(len(self.rows.get(t,[])),)]; return True
+                  if q.startswith('SELECT '):
+                      cols=q.split(' FROM ')[0][7:].split(', ')
+                      self.current=[tuple(r.get(c) for c in cols) for r in self.rows.get(t,[])]; return True
+                  return True
+              def ResultatReq(self): return self.current
+              def ReqInsert(self,t,data,commit=False):
+                  if t==self.fail_table: return None
+                  self.next_id+=1; self.inserted.append((t,dict(data),commit,self.next_id)); return self.next_id
+              def ReqMAJ(self,t,data,champ,idv,commit=False):
+                  if self.fail_update: return False
+                  self.updated.append((t,dict(data),champ,idv,commit)); return True
+              def Commit(self): self.commits+=1
+
+          schema={
+            'familles':['IDfamille','nom'],
+            'individus':['IDindividu','nom'],
+            'activites':['IDactivite','nom'],
+            'categories_tarifs':['IDcategorie_tarif','IDactivite','nom'],
+            'noms_tarifs':['IDnom_tarif','IDactivite','IDcategorie_tarif','nom'],
+            'tarifs':['IDtarif','IDactivite','IDcategorie_tarif','IDnom_tarif','type'],
+            'groupes':['IDgroupe','IDactivite','nom'],
+            'unites':['IDunite','IDactivite','IDrestaurateur','nom'],
+            'evenements':['IDevenement','IDactivite','IDunite','IDgroupe','nom'],
+            'comptes_payeurs':['IDcompte_payeur','IDfamille','IDindividu'],
+            'rattachements':['IDrattachement','IDfamille','IDindividu'],
+            'inscriptions':['IDinscription','IDindividu','IDfamille','IDactivite','IDgroupe','IDcategorie_tarif','IDcompte_payeur'],
+            'consommations':['IDconso','IDindividu','IDinscription','IDactivite','IDunite','IDgroupe','IDcategorie_tarif','IDcompte_payeur','IDprestation','IDevenement'],
+            'contrats':['IDcontrat','IDindividu','IDinscription','IDtarif','IDactivite'],
+            'contrats_tarifs':['IDcontrat_tarif','IDcontrat','taux'],
+          }
+          rows={
+            'familles':[{'IDfamille':1,'nom':'Famille A'}],
+            'individus':[{'IDindividu':10,'nom':'Alice'}],
+            'activites':[{'IDactivite':20,'nom':'ALSH'}],
+            'categories_tarifs':[{'IDcategorie_tarif':30,'IDactivite':20,'nom':'A'}],
+            'noms_tarifs':[{'IDnom_tarif':40,'IDactivite':20,'IDcategorie_tarif':30,'nom':'Base'}],
+            'tarifs':[{'IDtarif':50,'IDactivite':20,'IDcategorie_tarif':30,'IDnom_tarif':40,'type':'QF'}],
+            'groupes':[{'IDgroupe':60,'IDactivite':20,'nom':'6+'}],
+            'unites':[{'IDunite':70,'IDactivite':20,'IDrestaurateur':None,'nom':'Journée'}],
+            'evenements':[{'IDevenement':80,'IDactivite':20,'IDunite':70,'IDgroupe':60,'nom':'Sortie'}],
+            'comptes_payeurs':[{'IDcompte_payeur':90,'IDfamille':1,'IDindividu':10}],
+            'rattachements':[{'IDrattachement':100,'IDfamille':1,'IDindividu':10}],
+            'inscriptions':[{'IDinscription':110,'IDindividu':10,'IDfamille':1,'IDactivite':20,'IDgroupe':60,'IDcategorie_tarif':30,'IDcompte_payeur':90}],
+            'consommations':[{'IDconso':120,'IDindividu':10,'IDinscription':110,'IDactivite':20,'IDunite':70,'IDgroupe':60,'IDcategorie_tarif':30,'IDcompte_payeur':90,'IDprestation':None,'IDevenement':80}],
+            'contrats':[{'IDcontrat':130,'IDindividu':10,'IDinscription':110,'IDtarif':50,'IDactivite':20}],
+            'contrats_tarifs':[{'IDcontrat_tarif':140,'IDcontrat':130,'taux':0.0619}],
+          }
+          src=FakeDB(schema,rows); dst=FakeDB(schema)
+          mot=m.MoteurMigration(src,dst,tables='dossiers')
+          sim=mot.Simuler(); assert sim['pret'], sim
+          res=mot.Executer(); assert res['succes'] and res['commit'] and dst.commits==1, res
+          ins=[x for x in dst.inserted if x[0]=='inscriptions'][0][1]
+          con=[x for x in dst.inserted if x[0]=='consommations'][0][1]
+          ctr=[x for x in dst.inserted if x[0]=='contrats'][0][1]
+          assert ins['IDfamille'] != 1 and ins['IDcompte_payeur'] != 90 and ins['IDcategorie_tarif'] != 30
+          assert con['IDunite'] != 70 and con['IDevenement'] != 80 and con['IDinscription'] != 110
+          assert ctr['IDinscription'] != 110 and ctr['IDtarif'] != 50 and ctr['IDactivite'] != 20
+          assert all(not x[2] for x in dst.inserted)
+
+          # Une référence hors périmètre est détectée AVANT toute écriture.
+          rows_bad={k:[dict(x) for x in v] for k,v in rows.items()}
+          rows_bad['consommations'][0]['IDprestation']=999
+          src_bad=FakeDB(schema,rows_bad); dst_bad=FakeDB(schema)
+          sim_bad=m.MoteurMigration(src_bad,dst_bad,tables='dossiers').Simuler()
+          assert not sim_bad['pret'] and any(e.get('erreur')=='reference_hors_perimetre' for e in sim_bad['erreurs'])
+          assert not dst_bad.inserted and dst_bad.commits==0
+
+          # Test générique d'une vraie référence différée A -> B migrée plus tard.
+          schema2={'a':['IDa','IDb','nom'],'b':['IDb','nom']}
+          rows2={'a':[{'IDa':1,'IDb':2,'nom':'a'}],'b':[{'IDb':2,'nom':'b'}]}
+          refs={'a':{'IDb':'b'},'b':{}}
+          deps={'a':[],'b':[]}; pks={'a':'IDa','b':'IDb'}
+          src2=FakeDB(schema2,rows2); dst2=FakeDB(schema2)
+          ana=m.AnalyseMigration(src2,dst2)
+          plan=m.PlanMigration(ana,dependances=deps,cles_primaires=pks,references=refs,tables=['a','b'])
+          res2=m.MoteurMigration(src2,dst2,plan=plan,references=refs,references_differees={'a':{'IDb':'b'}}).Executer()
+          assert res2['succes'] and dst2.commits==1 and len(dst2.updated)==1
+          assert dst2.updated[0][0]=='a' and dst2.updated[0][1]['IDb'] != 2 and dst2.updated[0][4] is False
+
+          src3=FakeDB(schema2,rows2); dst3=FakeDB(schema2,fail_update=True)
+          ana3=m.AnalyseMigration(src3,dst3)
+          plan3=m.PlanMigration(ana3,dependances=deps,cles_primaires=pks,references=refs,tables=['a','b'])
+          res3=m.MoteurMigration(src3,dst3,plan=plan3,references=refs,references_differees={'a':{'IDb':'b'}}).Executer()
+          assert not res3['succes'] and dst3.connexion.rolled and dst3.commits==0
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys/Utils/UTILS_Migration_base.py
+          git diff --cached --quiet && exit 0
+          git commit -m 'feat: sécuriser les relations du migrateur de dossiers'
+          git pull --rebase origin master
+          git push origin HEAD:master
