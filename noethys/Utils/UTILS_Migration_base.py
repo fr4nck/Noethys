@@ -24,7 +24,7 @@ DEPENDANCES_COEUR = {
     "tarifs_lignes": ["tarifs"],
     "inscriptions": ["familles", "individus", "activites", "groupes"],
     "consommations": ["familles", "individus", "activites", "groupes", "inscriptions"],
-    "prestations": ["comptes_payeurs"],
+    "prestations": ["comptes_payeurs", "factures"],
     "factures": ["familles"],
     "reglements": ["comptes_payeurs"],
     "ventilation": ["reglements", "prestations", "comptes_payeurs"],
@@ -59,6 +59,22 @@ CLES_PRIMAIRES_COEUR = {
 
 # Clés étrangères dont le remapping est suffisamment explicite pour autoriser
 # une migration automatique. Toute autre référence potentielle reste en revue.
+PERIMETRES_MIGRATION = {
+    "dossiers": [
+        "familles", "individus", "comptes_payeurs", "rattachements",
+        "activites", "groupes", "inscriptions", "consommations",
+        "contrats", "contrats_tarifs", "questionnaire_reponses", "cotisations",
+    ],
+    "facturation": [
+        "familles", "comptes_payeurs", "factures", "prestations",
+        "reglements", "ventilation",
+    ],
+    "tarification": [
+        "activites", "categories_tarifs", "noms_tarifs", "tarifs", "tarifs_lignes",
+    ],
+}
+
+
 REFERENCES_COEUR = {
     "comptes_payeurs": {"IDfamille": "familles"},
     "rattachements": {"IDfamille": "familles", "IDindividu": "individus"},
@@ -169,11 +185,28 @@ class AnalyseMigration(object):
 
 
 class PlanMigration(object):
-    def __init__(self, analyse, dependances=None, cles_primaires=None, references=None):
+    def __init__(self, analyse, dependances=None, cles_primaires=None, references=None, tables=None):
         self.analyse = analyse
         self.dependances = dependances or DEPENDANCES_COEUR
         self.cles_primaires = cles_primaires or CLES_PRIMAIRES_COEUR
         self.references = references or REFERENCES_COEUR
+        self.tables = self._resoudre_tables(tables)
+
+    def _resoudre_tables(self, tables):
+        if tables is None:
+            return None
+        if isinstance(tables, str):
+            tables = PERIMETRES_MIGRATION.get(tables, [tables])
+        selection = set(tables)
+        # Ferme automatiquement le périmètre sur toutes ses dépendances connues.
+        a_traiter = list(selection)
+        while a_traiter:
+            table = a_traiter.pop()
+            for dep in self.dependances.get(table, []):
+                if dep not in selection:
+                    selection.add(dep)
+                    a_traiter.append(dep)
+        return selection
 
     def _ordre_topologique(self, tables):
         tables = set(tables)
@@ -195,6 +228,8 @@ class PlanMigration(object):
         inventaire = {item["table"]: item for item in self.analyse.Inventaire(inclure_vides=False)}
         schema = self.analyse.ComparerSchemas()
         tables_source, tables_cible = set(inventaire), set(schema["tables_cible"])
+        if self.tables is not None:
+            tables_source &= self.tables
         migrables, revue, ignorees = [], [], []
         for table in sorted(tables_source):
             item = inventaire[table]
@@ -228,11 +263,11 @@ class PlanMigration(object):
 class MoteurMigration(object):
     """Exécute une migration source -> cible avec rollback global sur la cible."""
 
-    def __init__(self, DBsource, DBcible, plan=None, mapping=None, references=None):
+    def __init__(self, DBsource, DBcible, plan=None, mapping=None, references=None, tables=None):
         self.DBsource = DBsource
         self.DBcible = DBcible
         self.analyse = AnalyseMigration(DBsource, DBcible)
-        self.planificateur = plan or PlanMigration(self.analyse)
+        self.planificateur = plan or PlanMigration(self.analyse, references=references, tables=tables)
         self.mapping = mapping or MappingIDs()
         self.references = references or REFERENCES_COEUR
         self.rapport = []
@@ -280,6 +315,7 @@ class MoteurMigration(object):
                 erreurs.append({"table": table, "erreur": "lecture_source"}); continue
             compte += len(lignes)
         simulation["lignes_lues"] = compte
+        simulation["perimetre"] = [item["table"] for item in simulation["plan"]["tables_migrables"]]
         simulation["erreurs"] = erreurs
         simulation["pret"] = simulation["pret"] and not erreurs
         return simulation
