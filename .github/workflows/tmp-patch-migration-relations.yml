@@ -103,9 +103,15 @@ jobs:
           ins=[x for x in dst.inserted if x[0]=='inscriptions'][0][1]
           con=[x for x in dst.inserted if x[0]=='consommations'][0][1]
           ctr=[x for x in dst.inserted if x[0]=='contrats'][0][1]
-          assert ins['IDfamille'] != 1 and ins['IDcompte_payeur'] != 90 and ins['IDcategorie_tarif'] != 30
-          assert con['IDunite'] != 70 and con['IDevenement'] != 80 and con['IDinscription'] != 110
-          assert ctr['IDinscription'] != 110 and ctr['IDtarif'] != 50 and ctr['IDactivite'] != 20
+          assert ins['IDfamille'] == mot.mapping.Get('familles',1)
+          assert ins['IDcompte_payeur'] == mot.mapping.Get('comptes_payeurs',90)
+          assert ins['IDcategorie_tarif'] == mot.mapping.Get('categories_tarifs',30)
+          assert con['IDunite'] == mot.mapping.Get('unites',70)
+          assert con['IDevenement'] == mot.mapping.Get('evenements',80)
+          assert con['IDinscription'] == mot.mapping.Get('inscriptions',110)
+          assert ctr['IDinscription'] == mot.mapping.Get('inscriptions',110)
+          assert ctr['IDtarif'] == mot.mapping.Get('tarifs',50)
+          assert ctr['IDactivite'] == mot.mapping.Get('activites',20)
           assert all(not x[2] for x in dst.inserted)
 
           # Une référence hors périmètre est détectée AVANT toute écriture.
@@ -126,7 +132,8 @@ jobs:
           plan=m.PlanMigration(ana,dependances=deps,cles_primaires=pks,references=refs,tables=['a','b'])
           res2=m.MoteurMigration(src2,dst2,plan=plan,references=refs,references_differees={'a':{'IDb':'b'}}).Executer()
           assert res2['succes'] and dst2.commits==1 and len(dst2.updated)==1
-          assert dst2.updated[0][0]=='a' and dst2.updated[0][1]['IDb'] != 2 and dst2.updated[0][4] is False
+          new_b=[x for x in dst2.inserted if x[0]=='b'][0][3]
+          assert dst2.updated[0][0]=='a' and dst2.updated[0][1]['IDb'] == new_b and dst2.updated[0][4] is False
 
           src3=FakeDB(schema2,rows2); dst3=FakeDB(schema2,fail_update=True)
           ana3=m.AnalyseMigration(src3,dst3)
