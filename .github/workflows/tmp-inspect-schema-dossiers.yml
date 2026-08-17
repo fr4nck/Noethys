@@ -8,14 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect schema usages
+      - name: Inspect reference tables
         shell: bash
         run: |
-          echo '=== inscriptions ==='
-          git grep -n -E 'IDinscription|"inscriptions"|FROM inscriptions|INTO inscriptions|UPDATE inscriptions' -- 'noethys/**.py' | head -n 120 || true
-          echo '=== consommations ==='
-          git grep -n -E 'IDconso|"consommations"|FROM consommations|INTO consommations|UPDATE consommations' -- 'noethys/**.py' | head -n 160 || true
-          echo '=== contrats ==='
-          git grep -n -E 'IDcontrat|"contrats"|FROM contrats|INTO contrats|UPDATE contrats' -- 'noethys/**.py' | head -n 180 || true
-          echo '=== contrats_tarifs ==='
-          git grep -n -E 'IDcontrat_tarif|contrats_tarifs' -- 'noethys/**.py' | head -n 120 || true
+          echo '=== table definitions ==='
+          grep -n -E '^    "(unites|evenements|categories_tarifs|tarifs|comptes_payeurs|factures|reglements|ventilation)"' noethys/Data/DATA_Tables.py || true
+          echo '=== upgrade additions consommations / inscriptions / contrats ==='
+          git grep -n -E 'AjoutChamp\("(consommations|inscriptions|contrats|prestations|reglements)"' -- noethys/UpgradeDB.py || true
