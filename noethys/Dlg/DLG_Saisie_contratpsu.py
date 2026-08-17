@@ -341,10 +341,17 @@ class Base(object) :
             ("arrondi_delta", self.GetValeur("arrondi_delta", 30)),
             ("planning", self.GetValeur("planning", None)),
         )
-        if self.IDcontrat == None :
-            self.IDcontrat = DB.ReqInsert("contrats", listeDonnees)
+        ancien_IDcontrat = self.IDcontrat
+        if ancien_IDcontrat == None :
+            IDcontrat = DB.ReqInsert("contrats", listeDonnees, commit=False)
+            if IDcontrat is None:
+                DB.Close()
+                return False
         else :
-            DB.ReqMAJ("contrats", listeDonnees, "IDcontrat", self.IDcontrat)
+            IDcontrat = ancien_IDcontrat
+            if not DB.ReqMAJ("contrats", listeDonnees, "IDcontrat", IDcontrat, commit=False):
+                DB.Close()
+                return False
 
         # Enregistrement des consommations
         # liste_IDconso = []
@@ -414,14 +421,18 @@ class Base(object) :
             for champ in listeChamps :
                 listeInterrogations.append("?")
             texteInterrogations = ", ".join(listeInterrogations)
-            DB.Executermany("INSERT INTO consommations (%s) VALUES (%s)" % (texteChampsTemp, texteInterrogations), listeAjouts, commit=True)
+            if not DB.Executermany("INSERT INTO consommations (%s) VALUES (%s)" % (texteChampsTemp, texteInterrogations), listeAjouts, commit=False):
+                DB.Close()
+                return False
 
         # Modification optimisée des conso
         if len(listeModifications) > 0 :
             listeChampsTemp = []
             for champ in listeChamps :
                 listeChampsTemp.append(("%s=?" % champ))
-            DB.Executermany("UPDATE consommations SET %s WHERE IDconso=?" % ", ".join(listeChampsTemp), listeModifications, commit=True)
+            if not DB.Executermany("UPDATE consommations SET %s WHERE IDconso=?" % ", ".join(listeChampsTemp), listeModifications, commit=False):
+                DB.Close()
+                return False
 
         # Suppression des consommations supprimées
         listeSuppressions = []
@@ -434,13 +445,19 @@ class Base(object) :
                 conditionSuppression = "(%d)" % listeSuppressions[0]
             else :
                 conditionSuppression = str(tuple(listeSuppressions))
-            DB.ExecuterReq("DELETE FROM consommations WHERE IDconso IN %s" % conditionSuppression)
+            if not DB.ExecuterReq("DELETE FROM consommations WHERE IDconso IN %s" % conditionSuppression):
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+                DB.Close()
+                return False
 
         # Enregistrement des tarifs
         liste_IDtarif = []
         for track in self.GetValeur("tracks_tarifs", []):
             listeDonnees = (
-                ("IDcontrat", self.IDcontrat),
+                ("IDcontrat", IDcontrat),
                 ("date_debut", track.date_debut),
                 ("revenu", track.revenu),
                 ("quotient", track.quotient),
@@ -449,10 +466,15 @@ class Base(object) :
                 ("tarif_depassement", track.tarif_depassement),
             )
             if track.IDcontrat_tarif == None :
-                IDcontrat_tarif = DB.ReqInsert("contrats_tarifs", listeDonnees)
+                IDcontrat_tarif = DB.ReqInsert("contrats_tarifs", listeDonnees, commit=False)
+                if IDcontrat_tarif is None:
+                    DB.Close()
+                    return False
             else :
                 IDcontrat_tarif = track.IDcontrat_tarif
-                DB.ReqMAJ("contrats_tarifs", listeDonnees, "IDcontrat_tarif", IDcontrat_tarif)
+                if not DB.ReqMAJ("contrats_tarifs", listeDonnees, "IDcontrat_tarif", IDcontrat_tarif, commit=False):
+                    DB.Close()
+                    return False
             liste_IDtarif.append(IDcontrat_tarif)
 
         # Suppression des tarifs supprimés
@@ -466,7 +488,13 @@ class Base(object) :
                 conditionSuppression = "(%d)" % listeSuppressions[0]
             else :
                 conditionSuppression = str(tuple(listeSuppressions))
-            DB.ExecuterReq("DELETE FROM contrats_tarifs WHERE IDcontrat_tarif IN %s" % conditionSuppression)
+            if not DB.ExecuterReq("DELETE FROM contrats_tarifs WHERE IDcontrat_tarif IN %s" % conditionSuppression):
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+                DB.Close()
+                return False
 
         # Enregistrement des mensualités
         # liste_IDprestation = []
@@ -514,6 +542,8 @@ class Base(object) :
 
         DB.Commit()
         DB.Close()
+        self.IDcontrat = IDcontrat
+        return True
 
 
     def Importation(self, DBtemp=None):
