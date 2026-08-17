@@ -92,6 +92,9 @@ jobs:
       - name: Vérifier les imports des modules métier critiques
         run: python scripts/audit_critical_business_modules.py
 
+      - name: Tester le migrateur DB vers DB
+        run: python tests/test_migration_base.py
+
       - name: Surveiller les imports dynamiques PyInstaller
         run: python scripts/audit_dynamic_import_risks.py --max-import-risks 0
 

@@ -12,14 +12,23 @@ from __future__ import unicode_literals
 
 
 DEPENDANCES_COEUR = {
-    "familles": [],
-    "individus": [],
+    "regimes": [],
+    "caisses": ["regimes"],
+    "banques": [],
+    "secteurs": [],
+    "categories_travail": [],
+    "medecins": [],
+    "types_sieste": [],
+    "utilisateurs": [],
+    "restaurateurs": [],
+    "individus": ["secteurs", "categories_travail", "medecins", "types_sieste"],
+    "familles": ["individus", "caisses", "banques"],
     "activites": [],
     "categories_tarifs": ["activites"],
     "noms_tarifs": ["activites", "categories_tarifs"],
     "tarifs": ["activites", "categories_tarifs", "noms_tarifs"],
     "groupes": ["activites"],
-    "unites": ["activites"],
+    "unites": ["activites", "restaurateurs"],
     "evenements": ["activites", "unites", "groupes"],
     "comptes_payeurs": ["familles", "individus"],
     "rattachements": ["familles", "individus"],
@@ -29,13 +38,22 @@ DEPENDANCES_COEUR = {
     "contrats_tarifs": ["contrats"],
     "prestations": ["comptes_payeurs", "activites", "tarifs", "factures", "familles", "individus", "categories_tarifs", "contrats"],
     "reglements": ["comptes_payeurs"],
-    "consommations": ["individus", "inscriptions", "activites", "unites", "groupes", "categories_tarifs", "comptes_payeurs", "evenements"],
+    "consommations": ["individus", "inscriptions", "activites", "unites", "groupes", "utilisateurs", "categories_tarifs", "comptes_payeurs", "evenements"],
     "ventilation": ["reglements", "prestations", "comptes_payeurs"],
     "cotisations": ["familles", "individus"],
     "questionnaire_reponses": ["familles", "individus"],
 }
 
 CLES_PRIMAIRES_COEUR = {
+    "regimes": "IDregime",
+    "caisses": "IDcaisse",
+    "banques": "IDbanque",
+    "secteurs": "IDsecteur",
+    "categories_travail": "IDcategorie",
+    "medecins": "IDmedecin",
+    "types_sieste": "IDtype_sieste",
+    "utilisateurs": "IDutilisateur",
+    "restaurateurs": "IDrestaurateur",
     "familles": "IDfamille",
     "individus": "IDindividu",
     "comptes_payeurs": "IDcompte_payeur",
@@ -80,7 +98,31 @@ PERIMETRES_MIGRATION = {
 }
 
 
-REFERENCES_COEUR = {
+# Registre unique des références métier. La stratégie ``remapper`` exige que
+# la cible ait déjà été migrée, ``differer`` répare la FK avant le commit, et
+# ``conserver`` documente une valeur issue d'un catalogue applicatif plutôt que
+# d'une table de la base (civilités, nationalités et pays).
+REGISTRE_REFERENCES_METIER = {
+    "caisses": {"IDregime": ("regimes", "remapper")},
+    "individus": {
+        "IDcivilite": (None, "conserver"),
+        "IDnationalite": (None, "conserver"),
+        "IDpays_naiss": (None, "conserver"),
+        "adresse_auto": ("individus", "differer"),
+        "IDsecteur": ("secteurs", "remapper"),
+        "IDcategorie_travail": ("categories_travail", "remapper"),
+        "IDmedecin": ("medecins", "remapper"),
+        "IDtype_sieste": ("types_sieste", "remapper"),
+    },
+    "familles": {
+        "IDcompte_payeur": ("comptes_payeurs", "differer"),
+        "IDcaisse": ("caisses", "remapper"),
+        "allocataire": ("individus", "remapper"),
+        "prelevement_banque": ("banques", "remapper"),
+        "prelevement_individu": ("individus", "remapper"),
+        "titulaire_helios": ("individus", "remapper"),
+        "tiers_solidaire": ("individus", "remapper"),
+    },
     "comptes_payeurs": {"IDfamille": "familles", "IDindividu": "individus"},
     "rattachements": {"IDfamille": "familles", "IDindividu": "individus"},
     "groupes": {"IDactivite": "activites"},
@@ -99,13 +141,13 @@ REFERENCES_COEUR = {
         "IDfamille": "familles", "IDindividu": "individus", "IDinscription": "inscriptions",
         "IDactivite": "activites", "IDunite": "unites", "IDgroupe": "groupes",
         "IDutilisateur": "utilisateurs", "IDcategorie_tarif": "categories_tarifs",
-        "IDcompte_payeur": "comptes_payeurs", "IDprestation": "prestations",
+        "IDcompte_payeur": "comptes_payeurs", "IDprestation": ("prestations", "differer"),
         "IDevenement": "evenements",
     },
     "prestations": {
         "IDcompte_payeur": "comptes_payeurs", "IDactivite": "activites", "IDtarif": "tarifs",
         "IDfacture": "factures", "IDfamille": "familles", "IDindividu": "individus",
-        "IDcategorie_tarif": "categories_tarifs", "reglement_frais": "reglements",
+        "IDcategorie_tarif": "categories_tarifs", "reglement_frais": ("reglements", "differer"),
         "IDcontrat": "contrats",
     },
     "factures": {"IDcompte_payeur": "comptes_payeurs"},
@@ -123,11 +165,38 @@ REFERENCES_COEUR = {
     "contrats_tarifs": {"IDcontrat": "contrats"},
 }
 
+# Les entrées historiques ci-dessus utilisent des tuples. Les références déjà
+# prises en charge avant l'introduction du registre sont normalisées ici afin
+# de conserver l'API publique REFERENCES_COEUR.
+for _table, _champs in list(REGISTRE_REFERENCES_METIER.items()):
+    for _champ, _description in list(_champs.items()):
+        if not isinstance(_description, tuple):
+            _champs[_champ] = (_description, "remapper")
+
+REFERENCES_COEUR = {
+    table: {champ: description[0] for champ, description in champs.items()
+            if description[1] in ("remapper", "differer")}
+    for table, champs in REGISTRE_REFERENCES_METIER.items()
+}
+
+REFERENCES_PRESERVEES = {
+    table: set(champ for champ, description in champs.items() if description[1] == "conserver")
+    for table, champs in REGISTRE_REFERENCES_METIER.items()
+}
+
+# Les noms non conventionnels doivent rester détectables même si une entrée du
+# registre est retirée par erreur ou oubliée dans une configuration sur mesure.
+NOMS_REFERENCES_HISTORIQUES = frozenset([
+    "adresse_auto", "allocataire", "prelevement_banque", "prelevement_individu",
+    "titulaire_helios", "tiers_solidaire", "reglement_frais",
+])
+
 # Références qui peuvent pointer vers une table migrée plus tard. Elles sont
 # insérées à NULL puis réparées dans la même transaction avant le commit final.
 REFERENCES_DIFFEREES = {
-    "consommations": {"IDprestation": "prestations"},
-    "prestations": {"reglement_frais": "reglements"},
+    table: {champ: description[0] for champ, description in champs.items()
+            if description[1] == "differer"}
+    for table, champs in REGISTRE_REFERENCES_METIER.items()
 }
 
 
@@ -210,11 +279,17 @@ class AnalyseMigration(object):
 
 
 class PlanMigration(object):
-    def __init__(self, analyse, dependances=None, cles_primaires=None, references=None, tables=None):
+    def __init__(self, analyse, dependances=None, cles_primaires=None, references=None, tables=None,
+                 references_preservees=None, noms_references_historiques=None):
         self.analyse = analyse
-        self.dependances = dependances or DEPENDANCES_COEUR
-        self.cles_primaires = cles_primaires or CLES_PRIMAIRES_COEUR
-        self.references = references or REFERENCES_COEUR
+        self.dependances = DEPENDANCES_COEUR if dependances is None else dependances
+        self.cles_primaires = CLES_PRIMAIRES_COEUR if cles_primaires is None else cles_primaires
+        self.references = REFERENCES_COEUR if references is None else references
+        self.references_preservees = (REFERENCES_PRESERVEES if references_preservees is None
+                                      else references_preservees)
+        self.noms_references_historiques = (NOMS_REFERENCES_HISTORIQUES
+                                            if noms_references_historiques is None
+                                            else frozenset(noms_references_historiques))
         self.tables = self._resoudre_tables(tables)
 
     def _resoudre_tables(self, tables):
@@ -268,11 +343,14 @@ class PlanMigration(object):
                               "champs": details["source_uniquement"], "nbre": item["nbre"]}); continue
             pk = self.cles_primaires[table]
             refs_connues = set(self.references.get(table, {}))
-            ids_non_decrits = [champ for champ in details.get("communs", [])
-                               if champ != pk and champ.startswith("ID") and champ not in refs_connues]
-            if ids_non_decrits:
+            refs_preservees = set(self.references_preservees.get(table, set()))
+            refs_non_decrites = [champ for champ in details.get("communs", [])
+                                  if champ != pk
+                                  and (champ.startswith("ID") or champ in self.noms_references_historiques)
+                                  and champ not in refs_connues and champ not in refs_preservees]
+            if refs_non_decrites:
                 revue.append({"table": table, "raison": "references_non_decrites",
-                              "champs": ids_non_decrits, "nbre": item["nbre"]}); continue
+                              "champs": refs_non_decrites, "nbre": item["nbre"]}); continue
             migrables.append(table)
         ordre, cycles = self._ordre_topologique(migrables)
         for table in cycles:
@@ -295,14 +373,22 @@ class PlanMigration(object):
 class MoteurMigration(object):
     """Exécute une migration source -> cible avec rollback global sur la cible."""
 
-    def __init__(self, DBsource, DBcible, plan=None, mapping=None, references=None, tables=None, references_differees=None):
+    def __init__(self, DBsource, DBcible, plan=None, mapping=None, references=None, tables=None,
+                 references_differees=None, references_preservees=None,
+                 noms_references_historiques=None):
         self.DBsource = DBsource
         self.DBcible = DBcible
         self.analyse = AnalyseMigration(DBsource, DBcible)
-        self.planificateur = plan or PlanMigration(self.analyse, references=references, tables=tables)
+        self.references = REFERENCES_COEUR if references is None else references
+        self.references_preservees = (REFERENCES_PRESERVEES if references_preservees is None
+                                      else references_preservees)
+        self.planificateur = plan or PlanMigration(
+            self.analyse, references=self.references, tables=tables,
+            references_preservees=self.references_preservees,
+            noms_references_historiques=noms_references_historiques)
         self.mapping = mapping or MappingIDs()
-        self.references = references or REFERENCES_COEUR
-        self.references_differees = references_differees or REFERENCES_DIFFEREES
+        self.references_differees = (REFERENCES_DIFFEREES if references_differees is None
+                                     else references_differees)
         self.rapport = []
 
     def _rollback(self):
@@ -336,14 +422,31 @@ class MoteurMigration(object):
         return ancien_id, donnees, differes
 
     def Simuler(self):
-        """Valide lecture et remapping sans aucune écriture cible."""
+        """Valide lecture, registre et intégrité des FK sans écriture cible."""
         simulation = self.planificateur.Simuler()
         if not simulation["pret"]:
             return simulation
-        erreurs, compte = [], 0
-        # La simulation structurelle ne peut pas remapper les FK tant que les
-        # nouveaux IDs n'existent pas. Elle vérifie donc lecture, champs et ordre.
+        erreurs, compte, identifiants_source = [], 0, {}
         schema = self.analyse.ComparerSchemas()
+        tables_plan = set(simulation["plan"]["ordre"])
+
+        def get_identifiants_source(table_ref):
+            if table_ref in identifiants_source:
+                return identifiants_source[table_ref]
+            pk_ref = self.planificateur.cles_primaires.get(table_ref)
+            if not pk_ref:
+                identifiants_source[table_ref] = None
+                return None
+            if table_ref not in schema["tables_source"]:
+                identifiants_source[table_ref] = set()
+                return identifiants_source[table_ref]
+            lignes_ref = self._lire_table(table_ref, [pk_ref])
+            if lignes_ref is None:
+                identifiants_source[table_ref] = None
+            else:
+                identifiants_source[table_ref] = set(ligne[0] for ligne in lignes_ref)
+            return identifiants_source[table_ref]
+
         for item in simulation["plan"]["tables_migrables"]:
             table, pk = item["table"], item["cle_primaire"]
             champs = schema["champs"][table]["communs"]
@@ -352,17 +455,30 @@ class MoteurMigration(object):
             lignes = self._lire_table(table, champs)
             if lignes is None:
                 erreurs.append({"table": table, "erreur": "lecture_source"}); continue
-            tables_plan = set(simulation["plan"]["ordre"])
             refs = self.references.get(table, {})
             indexes = {champ: index for index, champ in enumerate(champs)}
             for champ, table_ref in refs.items():
-                if champ not in indexes or table_ref in tables_plan:
+                if champ not in indexes:
                     continue
                 index = indexes[champ]
+                ids_source = get_identifiants_source(table_ref)
                 for valeurs in lignes:
                     ancien_ref = valeurs[index]
-                    if ancien_ref is not None and not self.mapping.Existe(table_ref, ancien_ref):
-                        erreurs.append({"table": table, "champ": champ, "erreur": "reference_hors_perimetre",
+                    if ancien_ref is None or self.mapping.Existe(table_ref, ancien_ref):
+                        continue
+                    if table_ref not in tables_plan:
+                        erreurs.append({"table": table, "champ": champ,
+                                        "erreur": "reference_hors_perimetre",
+                                        "cible": table_ref, "valeur": ancien_ref})
+                        break
+                    if ids_source is None:
+                        erreurs.append({"table": table, "champ": champ,
+                                        "erreur": "reference_cible_non_decrite",
+                                        "cible": table_ref, "valeur": ancien_ref})
+                        break
+                    if ancien_ref not in ids_source:
+                        erreurs.append({"table": table, "champ": champ,
+                                        "erreur": "reference_source_absente",
                                         "cible": table_ref, "valeur": ancien_ref})
                         break
             compte += len(lignes)
