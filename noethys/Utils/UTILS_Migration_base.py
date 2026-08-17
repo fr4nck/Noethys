@@ -21,12 +21,21 @@ DEPENDANCES_COEUR = {
     "types_sieste": [],
     "utilisateurs": [],
     "restaurateurs": [],
+    "types_quotients": [],
+    "produits_categories": [],
+    "produits": ["produits_categories"],
+    "types_cotisations": [],
+    "unites_cotisations": ["types_cotisations"],
+    "depots_cotisations": [],
+    "questionnaire_categories": [],
+    "questionnaire_questions": ["questionnaire_categories"],
+    "questionnaire_choix": ["questionnaire_questions"],
     "individus": ["secteurs", "categories_travail", "medecins", "types_sieste"],
     "familles": ["individus", "caisses", "banques"],
     "activites": [],
     "categories_tarifs": ["activites"],
     "noms_tarifs": ["activites", "categories_tarifs"],
-    "tarifs": ["activites", "categories_tarifs", "noms_tarifs"],
+    "tarifs": ["activites", "categories_tarifs", "noms_tarifs", "types_quotients", "evenements", "produits"],
     "groupes": ["activites"],
     "unites": ["activites", "restaurateurs"],
     "evenements": ["activites", "unites", "groupes"],
@@ -40,8 +49,8 @@ DEPENDANCES_COEUR = {
     "reglements": ["comptes_payeurs"],
     "consommations": ["individus", "inscriptions", "activites", "unites", "groupes", "utilisateurs", "categories_tarifs", "comptes_payeurs", "evenements"],
     "ventilation": ["reglements", "prestations", "comptes_payeurs"],
-    "cotisations": ["familles", "individus"],
-    "questionnaire_reponses": ["familles", "individus"],
+    "cotisations": ["familles", "individus", "types_cotisations", "unites_cotisations", "utilisateurs", "depots_cotisations"],
+    "questionnaire_reponses": ["familles", "individus", "inscriptions", "questionnaire_questions"],
 }
 
 CLES_PRIMAIRES_COEUR = {
@@ -54,6 +63,17 @@ CLES_PRIMAIRES_COEUR = {
     "types_sieste": "IDtype_sieste",
     "utilisateurs": "IDutilisateur",
     "restaurateurs": "IDrestaurateur",
+    "types_quotients": "IDtype_quotient",
+    "produits_categories": "IDcategorie",
+    "produits": "IDproduit",
+    "types_cotisations": "IDtype_cotisation",
+    "unites_cotisations": "IDunite_cotisation",
+    "depots_cotisations": "IDdepot_cotisation",
+    "questionnaire_categories": "IDcategorie",
+    "questionnaire_questions": "IDquestion",
+    "questionnaire_choix": "IDchoix",
+    "locations": "IDlocation",
+    "locations_demandes": "IDdemande",
     "familles": "IDfamille",
     "individus": "IDindividu",
     "comptes_payeurs": "IDcompte_payeur",
@@ -86,6 +106,7 @@ PERIMETRES_MIGRATION = {
         "activites", "groupes", "unites", "evenements",
         "categories_tarifs", "noms_tarifs", "tarifs",
         "inscriptions", "consommations", "contrats", "contrats_tarifs",
+        "questionnaire_categories", "questionnaire_questions", "questionnaire_choix",
         "questionnaire_reponses", "cotisations",
     ],
     "facturation": [
@@ -101,7 +122,7 @@ PERIMETRES_MIGRATION = {
 # Registre unique des références métier. La stratégie ``remapper`` exige que
 # la cible ait déjà été migrée, ``differer`` répare la FK avant le commit, et
 # ``conserver`` documente une valeur issue d'un catalogue applicatif plutôt que
-# d'une table de la base (civilités, nationalités et pays).
+# d'une table de la base. ``polymorphe`` choisit la cible depuis un discriminateur.
 REGISTRE_REFERENCES_METIER = {
     "caisses": {"IDregime": ("regimes", "remapper")},
     "individus": {
@@ -123,14 +144,25 @@ REGISTRE_REFERENCES_METIER = {
         "titulaire_helios": ("individus", "remapper"),
         "tiers_solidaire": ("individus", "remapper"),
     },
+    "produits": {"IDcategorie": "produits_categories"},
+    "unites_cotisations": {"IDtype_cotisation": "types_cotisations"},
+    "questionnaire_questions": {"IDcategorie": "questionnaire_categories"},
+    "questionnaire_choix": {"IDquestion": "questionnaire_questions"},
     "comptes_payeurs": {"IDfamille": "familles", "IDindividu": "individus"},
-    "rattachements": {"IDfamille": "familles", "IDindividu": "individus"},
+    "rattachements": {
+        "IDfamille": "familles", "IDindividu": "individus",
+        "IDcategorie": (None, "conserver"),
+    },
     "groupes": {"IDactivite": "activites"},
     "unites": {"IDactivite": "activites", "IDrestaurateur": "restaurateurs"},
     "evenements": {"IDactivite": "activites", "IDunite": "unites", "IDgroupe": "groupes"},
     "categories_tarifs": {"IDactivite": "activites"},
     "noms_tarifs": {"IDactivite": "activites", "IDcategorie_tarif": "categories_tarifs"},
-    "tarifs": {"IDactivite": "activites", "IDcategorie_tarif": "categories_tarifs", "IDnom_tarif": "noms_tarifs"},
+    "tarifs": {
+        "IDactivite": "activites", "IDcategorie_tarif": "categories_tarifs",
+        "IDnom_tarif": "noms_tarifs", "IDtype_quotient": "types_quotients",
+        "IDevenement": "evenements", "IDproduit": "produits",
+    },
     "tarifs_lignes": {"IDtarif": "tarifs"},
     "inscriptions": {
         "IDfamille": "familles", "IDindividu": "individus",
@@ -156,8 +188,26 @@ REGISTRE_REFERENCES_METIER = {
         "IDreglement": "reglements", "IDprestation": "prestations",
         "IDcompte_payeur": "comptes_payeurs",
     },
-    "cotisations": {"IDfamille": "familles", "IDindividu": "individus"},
-    "questionnaire_reponses": {"IDfamille": "familles", "IDindividu": "individus"},
+    "cotisations": {
+        "IDfamille": "familles", "IDindividu": "individus",
+        "IDtype_cotisation": "types_cotisations",
+        "IDunite_cotisation": "unites_cotisations",
+        "IDutilisateur": "utilisateurs", "IDdepot_cotisation": "depots_cotisations",
+        "IDprestation": "prestations",
+    },
+    "questionnaire_reponses": {
+        "IDquestion": "questionnaire_questions", "IDfamille": "familles",
+        "IDindividu": "individus",
+        "IDdonnee": ({
+            "discriminateur": "type",
+            "cibles": {
+                "famille": "familles", "individu": "individus",
+                "inscription": "inscriptions", "produit": "produits",
+                "categorie_produit": "produits_categories", "location": "locations",
+                "location_demande": "locations_demandes",
+            },
+        }, "polymorphe"),
+    },
     "contrats": {
         "IDindividu": "individus", "IDinscription": "inscriptions",
         "IDtarif": "tarifs", "IDactivite": "activites",
@@ -181,6 +231,12 @@ REFERENCES_COEUR = {
 
 REFERENCES_PRESERVEES = {
     table: set(champ for champ, description in champs.items() if description[1] == "conserver")
+    for table, champs in REGISTRE_REFERENCES_METIER.items()
+}
+
+REFERENCES_POLYMORPHES = {
+    table: {champ: description[0] for champ, description in champs.items()
+            if description[1] == "polymorphe"}
     for table, champs in REGISTRE_REFERENCES_METIER.items()
 }
 
@@ -280,13 +336,16 @@ class AnalyseMigration(object):
 
 class PlanMigration(object):
     def __init__(self, analyse, dependances=None, cles_primaires=None, references=None, tables=None,
-                 references_preservees=None, noms_references_historiques=None):
+                 references_preservees=None, references_polymorphes=None,
+                 noms_references_historiques=None):
         self.analyse = analyse
         self.dependances = DEPENDANCES_COEUR if dependances is None else dependances
         self.cles_primaires = CLES_PRIMAIRES_COEUR if cles_primaires is None else cles_primaires
         self.references = REFERENCES_COEUR if references is None else references
         self.references_preservees = (REFERENCES_PRESERVEES if references_preservees is None
                                       else references_preservees)
+        self.references_polymorphes = (REFERENCES_POLYMORPHES if references_polymorphes is None
+                                       else references_polymorphes)
         self.noms_references_historiques = (NOMS_REFERENCES_HISTORIQUES
                                             if noms_references_historiques is None
                                             else frozenset(noms_references_historiques))
@@ -344,10 +403,12 @@ class PlanMigration(object):
             pk = self.cles_primaires[table]
             refs_connues = set(self.references.get(table, {}))
             refs_preservees = set(self.references_preservees.get(table, set()))
+            refs_polymorphes = set(self.references_polymorphes.get(table, {}))
             refs_non_decrites = [champ for champ in details.get("communs", [])
                                   if champ != pk
                                   and (champ.startswith("ID") or champ in self.noms_references_historiques)
-                                  and champ not in refs_connues and champ not in refs_preservees]
+                                  and champ not in refs_connues and champ not in refs_preservees
+                                  and champ not in refs_polymorphes]
             if refs_non_decrites:
                 revue.append({"table": table, "raison": "references_non_decrites",
                               "champs": refs_non_decrites, "nbre": item["nbre"]}); continue
@@ -375,16 +436,19 @@ class MoteurMigration(object):
 
     def __init__(self, DBsource, DBcible, plan=None, mapping=None, references=None, tables=None,
                  references_differees=None, references_preservees=None,
-                 noms_references_historiques=None):
+                 references_polymorphes=None, noms_references_historiques=None):
         self.DBsource = DBsource
         self.DBcible = DBcible
         self.analyse = AnalyseMigration(DBsource, DBcible)
         self.references = REFERENCES_COEUR if references is None else references
         self.references_preservees = (REFERENCES_PRESERVEES if references_preservees is None
                                       else references_preservees)
+        self.references_polymorphes = (REFERENCES_POLYMORPHES if references_polymorphes is None
+                                       else references_polymorphes)
         self.planificateur = plan or PlanMigration(
             self.analyse, references=self.references, tables=tables,
             references_preservees=self.references_preservees,
+            references_polymorphes=self.references_polymorphes,
             noms_references_historiques=noms_references_historiques)
         self.mapping = mapping or MappingIDs()
         self.references_differees = (REFERENCES_DIFFEREES if references_differees is None
@@ -419,6 +483,20 @@ class MoteurMigration(object):
                 differes.append((champ, table_ref, ancien_ref))
                 continue
             raise ValueError("Référence non migrée %s.%s=%r vers %s" % (table, champ, ancien_ref, table_ref))
+        for champ, configuration in self.references_polymorphes.get(table, {}).items():
+            if champ not in donnees or donnees[champ] is None:
+                continue
+            discriminateur = configuration["discriminateur"]
+            valeur_discriminante = donnees.get(discriminateur)
+            table_ref = configuration["cibles"].get(valeur_discriminante)
+            if table_ref is None:
+                raise ValueError("Type de référence polymorphe inconnu %s.%s=%r (%s=%r)" %
+                                 (table, champ, donnees[champ], discriminateur, valeur_discriminante))
+            ancien_ref = donnees[champ]
+            if not self.mapping.Existe(table_ref, ancien_ref):
+                raise ValueError("Référence polymorphe non migrée %s.%s=%r vers %s" %
+                                 (table, champ, ancien_ref, table_ref))
+            donnees[champ] = self.mapping.Get(table_ref, ancien_ref)
         return ancien_id, donnees, differes
 
     def Simuler(self):
@@ -481,6 +559,47 @@ class MoteurMigration(object):
                                         "erreur": "reference_source_absente",
                                         "cible": table_ref, "valeur": ancien_ref})
                         break
+            for champ, configuration in self.references_polymorphes.get(table, {}).items():
+                discriminateur = configuration["discriminateur"]
+                if champ not in indexes:
+                    continue
+                if discriminateur not in indexes:
+                    erreurs.append({"table": table, "champ": champ,
+                                    "erreur": "configuration_polymorphe_incomplete",
+                                    "discriminateur": discriminateur})
+                    continue
+                index_ref, index_discriminateur = indexes[champ], indexes[discriminateur]
+                for valeurs in lignes:
+                    ancien_ref = valeurs[index_ref]
+                    if ancien_ref is None:
+                        continue
+                    valeur_discriminante = valeurs[index_discriminateur]
+                    table_ref = configuration["cibles"].get(valeur_discriminante)
+                    if table_ref is None:
+                        erreurs.append({"table": table, "champ": champ,
+                                        "erreur": "type_reference_polymorphe_inconnu",
+                                        "discriminateur": discriminateur,
+                                        "type": valeur_discriminante, "valeur": ancien_ref})
+                        continue
+                    if self.mapping.Existe(table_ref, ancien_ref):
+                        continue
+                    if table_ref not in tables_plan:
+                        erreurs.append({"table": table, "champ": champ,
+                                        "erreur": "reference_hors_perimetre",
+                                        "cible": table_ref, "valeur": ancien_ref,
+                                        "type": valeur_discriminante})
+                        continue
+                    ids_source = get_identifiants_source(table_ref)
+                    if ids_source is None:
+                        erreurs.append({"table": table, "champ": champ,
+                                        "erreur": "reference_cible_non_decrite",
+                                        "cible": table_ref, "valeur": ancien_ref,
+                                        "type": valeur_discriminante})
+                    elif ancien_ref not in ids_source:
+                        erreurs.append({"table": table, "champ": champ,
+                                        "erreur": "reference_source_absente",
+                                        "cible": table_ref, "valeur": ancien_ref,
+                                        "type": valeur_discriminante})
             compte += len(lignes)
         simulation["lignes_lues"] = compte
         simulation["perimetre"] = [item["table"] for item in simulation["plan"]["tables_migrables"]]

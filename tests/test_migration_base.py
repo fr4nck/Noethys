@@ -5,6 +5,7 @@
 
 from __future__ import unicode_literals
 
+import ast
 import importlib.util
 import pathlib
 import re
@@ -69,6 +70,38 @@ class DBFactice(object):
 
 
 class MigrationDossiersTest(unittest.TestCase):
+    def test_toutes_les_references_potentielles_du_perimetre_sont_decrites(self):
+        tables_path = pathlib.Path(__file__).parents[1] / "noethys" / "Data" / "DATA_Tables.py"
+        arbre = ast.parse(tables_path.read_text(encoding="utf-8"))
+        noeud = next(noeud.value for noeud in arbre.body
+                     if isinstance(noeud, ast.Assign)
+                     and any(isinstance(cible, ast.Name) and cible.id == "DB_DATA"
+                             for cible in noeud.targets))
+        schema_declare = ast.literal_eval(noeud)
+        tables = set(migration.PERIMETRES_MIGRATION["dossiers"])
+        a_traiter = list(tables)
+        while a_traiter:
+            table = a_traiter.pop()
+            for dependance in migration.DEPENDANCES_COEUR.get(table, []):
+                if dependance not in tables:
+                    tables.add(dependance)
+                    a_traiter.append(dependance)
+
+        non_decrites = {}
+        for table in tables:
+            if table not in schema_declare:
+                continue
+            pk = migration.CLES_PRIMAIRES_COEUR.get(table)
+            potentielles = set(champ for champ, _type, _description in schema_declare[table]
+                               if champ != pk and (champ.startswith("ID") or
+                                                   champ in migration.NOMS_REFERENCES_HISTORIQUES))
+            connues = set(migration.REFERENCES_COEUR.get(table, {}))
+            connues.update(migration.REFERENCES_PRESERVEES.get(table, set()))
+            connues.update(migration.REFERENCES_POLYMORPHES.get(table, {}))
+            if potentielles - connues:
+                non_decrites[table] = sorted(potentielles - connues)
+        self.assertEqual(non_decrites, {})
+
     def test_registre_metier_couvre_les_references_historiques(self):
         attendues = {
             "adresse_auto": "individus",
@@ -204,6 +237,81 @@ class MigrationDossiersTest(unittest.TestCase):
         self.assertEqual(cible.insertions, [])
         self.assertTrue(any(erreur.get("erreur") == "reference_source_absente"
                             for erreur in resultat["simulation"]["erreurs"]))
+
+    def test_reference_polymorphe_est_remappee_selon_son_type(self):
+        schema = {
+            "questionnaire_categories": ["IDcategorie", "nom"],
+            "questionnaire_questions": ["IDquestion", "IDcategorie", "label"],
+            "individus": ["IDindividu", "nom"],
+            "questionnaire_reponses": ["IDreponse", "IDquestion", "IDindividu",
+                                        "IDfamille", "reponse", "type", "IDdonnee"],
+        }
+        lignes = {
+            "questionnaire_categories": [{"IDcategorie": 1, "nom": "Identite"}],
+            "questionnaire_questions": [{"IDquestion": 2, "IDcategorie": 1,
+                                          "label": "Allergies"}],
+            "individus": [{"IDindividu": 10, "nom": "Alice"}],
+            "questionnaire_reponses": [{"IDreponse": 20, "IDquestion": 2,
+                                         "IDindividu": 10, "IDfamille": None,
+                                         "reponse": "Aucune", "type": "individu",
+                                         "IDdonnee": 10}],
+        }
+        source, cible = DBFactice(schema, lignes), DBFactice(schema)
+        moteur = migration.MoteurMigration(source, cible, tables="dossiers")
+        resultat = moteur.Executer()
+        self.assertTrue(resultat["succes"], resultat)
+        reponse = next(donnees for table, donnees, _commit, _id in cible.insertions
+                       if table == "questionnaire_reponses")
+        nouvel_individu = moteur.mapping.Get("individus", 10)
+        self.assertEqual(reponse["IDindividu"], nouvel_individu)
+        self.assertEqual(reponse["IDdonnee"], nouvel_individu)
+        self.assertEqual(reponse["IDquestion"], moteur.mapping.Get("questionnaire_questions", 2))
+
+    def test_reference_polymorphe_externe_reste_bloquee_hors_perimetre(self):
+        schema = {
+            "questionnaire_categories": ["IDcategorie", "nom"],
+            "questionnaire_questions": ["IDquestion", "IDcategorie", "label"],
+            "questionnaire_reponses": ["IDreponse", "IDquestion", "IDindividu",
+                                        "IDfamille", "reponse", "type", "IDdonnee"],
+        }
+        lignes = {
+            "questionnaire_categories": [{"IDcategorie": 1, "nom": "Location"}],
+            "questionnaire_questions": [{"IDquestion": 2, "IDcategorie": 1,
+                                          "label": "Etat"}],
+            "questionnaire_reponses": [{"IDreponse": 20, "IDquestion": 2,
+                                         "IDindividu": None, "IDfamille": None,
+                                         "reponse": "Bon", "type": "location",
+                                         "IDdonnee": 77}],
+        }
+        source, cible = DBFactice(schema, lignes), DBFactice(schema)
+        simulation = migration.MoteurMigration(source, cible, tables="dossiers").Simuler()
+        self.assertFalse(simulation["pret"])
+        self.assertEqual(cible.insertions, [])
+        self.assertTrue(any(erreur.get("erreur") == "reference_hors_perimetre"
+                            and erreur.get("type") == "location"
+                            for erreur in simulation["erreurs"]))
+
+    def test_ancien_schema_sans_champs_polymorphes_reste_compatible(self):
+        schema = {
+            "questionnaire_categories": ["IDcategorie", "nom"],
+            "questionnaire_questions": ["IDquestion", "IDcategorie", "label"],
+            "individus": ["IDindividu", "nom"],
+            "questionnaire_reponses": ["IDreponse", "IDquestion", "IDindividu",
+                                        "IDfamille", "reponse"],
+        }
+        lignes = {
+            "questionnaire_categories": [{"IDcategorie": 1, "nom": "Identite"}],
+            "questionnaire_questions": [{"IDquestion": 2, "IDcategorie": 1,
+                                          "label": "Allergies"}],
+            "individus": [{"IDindividu": 10, "nom": "Alice"}],
+            "questionnaire_reponses": [{"IDreponse": 20, "IDquestion": 2,
+                                         "IDindividu": 10, "IDfamille": None,
+                                         "reponse": "Aucune"}],
+        }
+        source, cible = DBFactice(schema, lignes), DBFactice(schema)
+        simulation = migration.MoteurMigration(source, cible, tables="dossiers").Simuler()
+        self.assertTrue(simulation["pret"], simulation)
+        self.assertEqual(cible.insertions, [])
 
 
 if __name__ == "__main__":
