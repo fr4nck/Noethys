@@ -1,0 +1,75 @@
+name: tmp check migration engine
+on:
+  push:
+    paths:
+      - 'noethys/Utils/UTILS_Migration_base.py'
+      - '.github/workflows/tmp-check-migration-engine.yml'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Checks
+        run: |
+          python -m py_compile noethys/Utils/UTILS_Migration_base.py
+          python - <<'PY'
+          import importlib.util
+          spec=importlib.util.spec_from_file_location('m','noethys/Utils/UTILS_Migration_base.py')
+          m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+
+          class Conn:
+              def __init__(self): self.rolled=False
+              def rollback(self): self.rolled=True
+
+          class FakeDB:
+              def __init__(self, tables, rows=None, fail_table=None):
+                  self.tables=tables; self.rows=rows or {}; self.fail_table=fail_table
+                  self.current=[]; self.inserted=[]; self.commits=0; self.connexion=Conn(); self.next_id=100
+              def GetListeTables(self): return [(t,) for t in self.tables]
+              def GetListeChamps2(self,t): return [(c,'x') for c in self.tables[t]]
+              def ExecuterReq(self,q):
+                  import re
+                  mt=re.search(r'FROM ([A-Za-z0-9_]+)',q); t=mt.group(1) if mt else None
+                  if q.startswith('SELECT COUNT(*)'):
+                      self.current=[(len(self.rows.get(t,[])),)]; return True
+                  if q.startswith('SELECT '):
+                      cols=q.split(' FROM ')[0][7:].split(', ')
+                      self.current=[tuple(r.get(c) for c in cols) for r in self.rows.get(t,[])]; return True
+                  return True
+              def ResultatReq(self): return self.current
+              def ReqInsert(self,t,data,commit=False):
+                  if t==self.fail_table: return None
+                  self.next_id+=1; self.inserted.append((t,dict(data),commit)); return self.next_id
+              def Commit(self): self.commits+=1
+
+          schema={
+            'familles':['IDfamille','nom'],
+            'individus':['IDindividu','nom'],
+            'comptes_payeurs':['IDcompte_payeur','IDfamille','nom'],
+            'rattachements':['IDrattachement','IDfamille','IDindividu','IDcategorie'],
+          }
+          rows={
+            'familles':[{'IDfamille':1,'nom':'Famille A'}],
+            'individus':[{'IDindividu':10,'nom':'Alice'}],
+            'comptes_payeurs':[{'IDcompte_payeur':20,'IDfamille':1,'nom':'A'}],
+            'rattachements':[{'IDrattachement':30,'IDfamille':1,'IDindividu':10,'IDcategorie':1}],
+          }
+          src=FakeDB(schema,rows); dst=FakeDB(schema)
+          moteur=m.MoteurMigration(src,dst)
+          sim=moteur.Simuler(); assert sim['pret'] and sim['lignes_lues']==4
+          res=moteur.Executer(); assert res['succes'] and res['commit'] and dst.commits==1
+          assert res['mapping']['familles']==1 and res['mapping']['individus']==1
+          cp=[x for x in dst.inserted if x[0]=='comptes_payeurs'][0][1]
+          rat=[x for x in dst.inserted if x[0]=='rattachements'][0][1]
+          assert cp['IDfamille'] != 1
+          assert rat['IDfamille'] != 1 and rat['IDindividu'] != 10
+          assert all(not x[2] for x in dst.inserted)
+
+          src2=FakeDB(schema,rows); dst2=FakeDB(schema,fail_table='rattachements')
+          res2=m.MoteurMigration(src2,dst2).Executer()
+          assert not res2['succes'] and not res2['commit'] and dst2.connexion.rolled and dst2.commits==0
+          PY
+          git diff --check
