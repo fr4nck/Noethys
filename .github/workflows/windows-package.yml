@@ -69,6 +69,12 @@ jobs:
           }
           Get-ChildItem "dist/Noethys" -Recurse | Measure-Object | Format-List
 
+      - name: Activer l'isolation portable
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "dist/Noethys/Portable" -Force | Out-Null
+          Copy-Item "packaging/portable/README.txt" "dist/Noethys/Portable/README.txt"
+
       - name: Écrire les informations de build
         shell: pwsh
         run: |
@@ -78,6 +84,7 @@ jobs:
             "Commit: $env:GITHUB_SHA"
             "Python: $pythonVersion"
             "Workflow run: $env:GITHUB_RUN_ID"
+            "Portable mode: enabled (Portable/)"
             "Build UTC: $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
           ) | Set-Content -Path "dist/Noethys/BUILD-INFO.txt" -Encoding UTF8
 
@@ -99,6 +106,9 @@ jobs:
           $exe = Join-Path $testRoot "Noethys.exe"
           if (-not (Test-Path $exe)) {
             throw "Noethys.exe absent de l'archive extraite"
+          }
+          if (-not (Test-Path (Join-Path $testRoot "Portable/README.txt"))) {
+            throw "Marqueur Portable absent de l'archive extraite"
           }
 
           $savedPath = $env:PATH
