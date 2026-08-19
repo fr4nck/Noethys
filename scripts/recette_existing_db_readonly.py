@@ -8,7 +8,7 @@ seules des requêtes SELECT/SHOW sont autorisées par le garde-fou interne ; un
 compte SQL limité à SELECT reste recommandé pour une garantie côté serveur.
 
 Aucune donnée nominative n'est exportée : le rapport contient uniquement
-structure, volumes, agrégats et plages de dates.
+structure, volumes, agrégats, plages de dates et compteurs d'anomalies métier.
 """
 from __future__ import annotations
 
@@ -37,6 +37,7 @@ RECIPE_TABLES = (
     "ventilation",
     "modes_reglements",
     "activites",
+    "cotisations",
 )
 DATE_METRICS = (
     ("familles", "date_creation"),
@@ -101,7 +102,6 @@ class SQLiteReader(Reader):
         self.path = path.resolve()
         uri_path = quote(self.path.as_posix(), safe="/:")
         self.conn = sqlite3.connect(f"file:{uri_path}?mode=ro", uri=True)
-        # Session-only safeguard, complémentaire à mode=ro.
         self.conn.execute("PRAGMA query_only=ON")
 
     def query(self, sql: str, params=()) -> list[tuple]:
@@ -140,8 +140,6 @@ class MySQLReader(Reader):
         return list(self.cursor.fetchall())
 
     def close(self) -> None:
-        # Même si aucune écriture n'est autorisée par ce script, on termine par
-        # un rollback plutôt que par un commit.
         try:
             self.conn.rollback()
         finally:
@@ -166,9 +164,6 @@ def list_tables(reader: Reader, database: str | None = None) -> list[str]:
 
 def table_columns(reader: Reader, table: str, database: str | None = None) -> list[dict]:
     if reader.backend == "sqlite":
-        # PRAGMA n'est volontairement pas utilisé via Reader.query (qui refuse
-        # tout sauf SELECT/SHOW). La structure SQLite est disponible via la
-        # fonction table-valued pragma_table_info(), donc reste un SELECT pur.
         rows = reader.query(
             'SELECT cid, name, type, "notnull", dflt_value, pk '
             "FROM pragma_table_info(?) ORDER BY cid",
@@ -208,6 +203,35 @@ def scalar(reader: Reader, sql: str, params=()) -> Any:
     return rows[0][0] if rows else None
 
 
+def business_anomalies(reader: Reader, table_set: set[str], columns_by_table: dict[str, set[str]]) -> dict:
+    """Compteurs non nominatifs d'invariants métier utiles à la recette.
+
+    Le modèle de saisie des cotisations crée une prestation propre à chaque
+    cotisation et la suppression d'une cotisation supprime sa prestation. Un
+    ``IDprestation`` partagé par plusieurs cotisations est donc une anomalie de
+    données/historique, même si le schéma ne possède pas de contrainte UNIQUE.
+    """
+    result = {}
+    if (
+        "cotisations" in table_set
+        and "IDprestation" in columns_by_table.get("cotisations", set())
+    ):
+        qtable = ident("cotisations", reader.backend)
+        qprestation = ident("IDprestation", reader.backend)
+        result["cotisations_shared_prestation_count"] = int(
+            scalar(
+                reader,
+                f"SELECT COUNT(*) FROM ("
+                f"SELECT {qprestation} FROM {qtable} "
+                f"WHERE {qprestation} IS NOT NULL "
+                f"GROUP BY {qprestation} HAVING COUNT(*) > 1"
+                f") shared_cotisation_prestations",
+            )
+            or 0
+        )
+    return result
+
+
 def build_report(reader: Reader, source: dict, database: str | None = None) -> dict:
     start = time.perf_counter()
     tables = list_tables(reader, database)
@@ -244,8 +268,9 @@ def build_report(reader: Reader, source: dict, database: str | None = None) -> d
             qtable = ident(table, reader.backend)
             qcol = ident(column, reader.backend)
             value = scalar(reader, f"SELECT SUM({qcol}) FROM {qtable}")
-            # JSON ne sait pas sérialiser Decimal de certains connecteurs.
             sums[f"{table}.{column}"] = None if value is None else str(value)
+
+    anomalies = business_anomalies(reader, table_set, columns_by_table)
 
     missing_core = [table for table in CORE_TABLES if table not in table_set]
     missing_recipe = [table for table in RECIPE_TABLES if table not in table_set]
@@ -279,6 +304,7 @@ def build_report(reader: Reader, source: dict, database: str | None = None) -> d
         "counts": counts,
         "date_ranges": date_ranges,
         "sums": sums,
+        "business_anomalies": anomalies,
         "elapsed_seconds": round(elapsed, 3),
     }
 
