@@ -28,7 +28,7 @@ permissions:
 
 jobs:
   package:
-    name: Construire Noethys portable
+    name: Construire et exécuter Noethys portable
     runs-on: windows-latest
     timeout-minutes: 45
 
@@ -84,6 +84,60 @@ jobs:
       - name: Créer l'archive portable
         shell: pwsh
         run: Compress-Archive -Path "dist/Noethys/*" -DestinationPath "Noethys-Windows-portable.zip"
+
+      - name: Tester l'archive extraite sans environnement Python
+        shell: pwsh
+        run: |
+          $testRoot = Join-Path $env:RUNNER_TEMP "noethys-frozen-smoke"
+          $profileRoot = Join-Path $env:RUNNER_TEMP "noethys-frozen-profile"
+          Remove-Item $testRoot -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $profileRoot -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $testRoot | Out-Null
+          New-Item -ItemType Directory -Path $profileRoot | Out-Null
+          Expand-Archive -Path "Noethys-Windows-portable.zip" -DestinationPath $testRoot
+
+          $exe = Join-Path $testRoot "Noethys.exe"
+          if (-not (Test-Path $exe)) {
+            throw "Noethys.exe absent de l'archive extraite"
+          }
+
+          $savedPath = $env:PATH
+          $savedPythonHome = $env:PYTHONHOME
+          $savedPythonPath = $env:PYTHONPATH
+          $savedAppData = $env:APPDATA
+          $savedLocalAppData = $env:LOCALAPPDATA
+          try {
+            $env:NOETHYS_FROZEN_SMOKE = "1"
+            $env:PYTHONHOME = ""
+            $env:PYTHONPATH = ""
+            $env:APPDATA = Join-Path $profileRoot "Roaming"
+            $env:LOCALAPPDATA = Join-Path $profileRoot "Local"
+            New-Item -ItemType Directory -Path $env:APPDATA -Force | Out-Null
+            New-Item -ItemType Directory -Path $env:LOCALAPPDATA -Force | Out-Null
+            # Le bundle doit trouver son Python et ses DLL localement. On retire
+            # donc les chemins Python/pip du PATH pour cette exécution.
+            $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+
+            $process = Start-Process -FilePath $exe -Wait -PassThru
+            if ($process.ExitCode -ne 0) {
+              throw "Smoke de l'exécutable figé en échec (code $($process.ExitCode))"
+            }
+
+            if (Test-Path (Join-Path $env:APPDATA "noethys")) {
+              throw "Le smoke figé a écrit dans la configuration utilisateur"
+            }
+            if (Test-Path (Join-Path $env:LOCALAPPDATA "noethys")) {
+              throw "Le smoke figé a écrit dans les données utilisateur"
+            }
+          }
+          finally {
+            Remove-Item Env:NOETHYS_FROZEN_SMOKE -ErrorAction SilentlyContinue
+            $env:PATH = $savedPath
+            $env:PYTHONHOME = $savedPythonHome
+            $env:PYTHONPATH = $savedPythonPath
+            $env:APPDATA = $savedAppData
+            $env:LOCALAPPDATA = $savedLocalAppData
+          }
 
       - uses: actions/upload-artifact@v4
         with:
