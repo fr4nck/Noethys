@@ -2,7 +2,9 @@
 
 ## Position actuelle
 
-La modernisation technique critique est désormais largement qualifiée. Une RC ne doit toutefois **pas** être publiée tant que la recette humaine sur une copie de base réellement utilisée n'a pas été effectuée.
+Les **portes techniques critiques sont franchies**. Le dépôt peut désormais produire un candidat Windows portable techniquement qualifié.
+
+Une RC ne doit toutefois **pas** être publiée comme validée tant que la recette humaine sur une copie de base réellement utilisée n'a pas été effectuée.
 
 ## Portes techniques franchies
 
@@ -15,13 +17,8 @@ La modernisation technique critique est désormais largement qualifiée. Une RC 
 - **sauvegarde/restauration** : contrôle de flux réparé et tests de restauration ajoutés ;
 - **packaging Windows** : PyInstaller `onedir` qualifié par exécution réelle de l'archive extraite sans Python externe ;
 - **layout PyInstaller 6** : disposition `_internal` refusée, layout plat historique restauré afin de rester compatible avec `Chemins.py` ;
-- **traçabilité** : `BUILD-INFO.txt` identifie commit, Python, run et date de fabrication.
-
-## Porte technique encore en cours
-
-- **Noe-041 — mode portable** : activation explicite du dossier historique `Portable/`, isolation de la configuration et des données, tests de chemins et validation du marqueur dans l'archive finale.
-
-Cette porte doit être fusionnée avant de figer le commit candidat RC.
+- **mode portable** : dossier historique `Portable/` livré dans l'archive, isolation config/données testée et marqueur vérifié après extraction ;
+- **traçabilité** : `BUILD-INFO.txt` identifie commit, Python, run, date de fabrication et activation du mode portable.
 
 ## Portes humaines obligatoires avant publication d'une RC
 
@@ -40,6 +37,7 @@ Minimum attendu :
 - règlements et ventilation ;
 - comptabilité / export réellement utilisé ;
 - génération d'un PDF ;
+- sauvegarde et restauration sur la copie si le contexte le permet ;
 - fermeture et réouverture ;
 - second préflight et confirmation que le `schema_digest` n'a pas changé de façon inattendue.
 
@@ -65,14 +63,13 @@ Ces sujets peuvent être traités après stabilisation sans retarder une RC Wind
 
 ## Décision RC
 
-La RC est **prête à être figée** lorsque :
+La partie **technique automatisée est prête**. Pour figer puis publier une RC validée :
 
-1. Noe-041 est fusionné ;
-2. la CI du SHA candidat est verte ;
-3. `Package Windows` est vert sur ce même SHA ;
-4. l'artefact est identifié par `BUILD-INFO.txt` ;
-5. Noe-030 a été exécuté sur une copie de base réelle ;
-6. la recette Windows manuelle ne révèle aucun blocage ;
-7. les anomalies éventuelles sont corrigées puis les contrôles concernés relancés.
+1. sélectionner le SHA candidat sur `master` ;
+2. confirmer CI + `Package Windows` verts sur ce SHA ;
+3. vérifier `BUILD-INFO.txt` dans l'artefact ;
+4. exécuter Noe-030 sur une copie de base réelle ;
+5. effectuer la recette Windows manuelle ;
+6. corriger tout défaut bloquant éventuel et relancer les contrôles concernés.
 
-Tant que les points 5 et 6 ne sont pas réalisés, le projet peut produire un **candidat technique**, mais il ne doit pas être présenté comme une RC validée.
+Tant que les points 4 et 5 ne sont pas réalisés, le projet dispose d'un **candidat technique RC**, mais la validation finale reste volontairement en attente.
