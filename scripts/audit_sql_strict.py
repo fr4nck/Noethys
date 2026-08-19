@@ -18,12 +18,11 @@ PATTERNS = {
     "sql_select": re.compile(r"\bSELECT\b", re.IGNORECASE),
     "group_by": re.compile(r"\bGROUP\s+BY\b", re.IGNORECASE),
     "having": re.compile(r"\bHAVING\b", re.IGNORECASE),
+    "aggregate": re.compile(r"\b(SUM|COUNT|AVG|MIN|MAX)\s*\(", re.IGNORECASE),
     "executer_req": re.compile(r"ExecuterReq\s*\(", re.IGNORECASE),
     "req_select": re.compile(r"ReqSelect\s*\(", re.IGNORECASE),
     "cursor_execute": re.compile(r"\.execute\s*\(", re.IGNORECASE),
 }
-
-SQL_CONTEXT = re.compile(r"(?:SELECT|FROM|JOIN|GROUP\s+BY|HAVING|WHERE).{0,120}", re.IGNORECASE | re.DOTALL)
 
 
 def scan_file(path):
@@ -36,8 +35,12 @@ def scan_file(path):
     for name, pattern in PATTERNS.items():
         for match in pattern.finditer(text):
             line = text.count("\n", 0, match.start()) + 1
-            context = text[match.start():match.start() + 160].replace("\n", " ")
-            findings.append((name, line, context))
+            context = text[max(0, match.start()-60):match.start()+180].replace("\n", " ")
+            findings.append({
+                "type": name,
+                "line": line,
+                "context": context,
+            })
     return findings
 
 
@@ -50,9 +53,9 @@ def main():
         findings = scan_file(path)
         if findings:
             print(path.relative_to(ROOT))
-            for kind, line, context in findings:
-                print(f"  - {kind}: line {line}")
-                print(f"    {context}")
+            for item in findings:
+                print(f"  - {item['type']}: line {item['line']}")
+                print(f"    {item['context']}")
                 total += 1
 
     print(f"\nTotal findings: {total}")
