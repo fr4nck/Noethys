@@ -1,0 +1,97 @@
+name: Python 3.12 study
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/python312-study.yml'
+      - 'requirements.txt'
+      - 'requirements-build.txt'
+      - 'packaging/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'noethys/**'
+
+permissions:
+  contents: read
+
+jobs:
+  core-audit:
+    name: Core audit Python 3.12
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compiler les sources
+        run: python -m compileall -q -x 'C866CA3A' noethys/
+      - name: Rechercher les imports stdlib retirés en 3.12
+        shell: bash
+        run: |
+          if grep -RInE '^[[:space:]]*(from[[:space:]]+imp[[:space:]]+import|import[[:space:]]+imp([[:space:],]|$))' noethys --include='*.py' --exclude-dir=ObjectListView --exclude-dir=Outils; then
+            echo 'Import imp détecté dans le code premier niveau.'
+            exit 1
+          fi
+      - name: Générer la base de recette synthétique
+        run: python scripts/build_synthetic_recette_db.py --output tmp/py312_recette.dat
+      - name: Benchmark lecture seule
+        run: python scripts/benchmark_db_readonly.py --db tmp/py312_recette.dat --repeats 3
+      - name: Auditer les motifs runtime
+        run: python scripts/audit_runtime_patterns.py --fail-on PY2_BUILTINS
+      - name: Vérifier les modules métier critiques
+        run: python scripts/audit_critical_business_modules.py
+      - name: Tester le migrateur DB vers DB
+        run: python tests/test_migration_base.py
+      - name: Vérifier l'absence de migration implicite
+        run: python scripts/check_schema_compatibility.py '${{ github.event.pull_request.base.sha }}' HEAD
+        if: github.event_name == 'pull_request'
+
+  windows-dependencies:
+    name: Windows dependencies Python 3.12
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-build.txt
+      - name: Installer toutes les dépendances runtime et build
+        run: python -m pip install --upgrade pip wheel && python -m pip install -r requirements-build.txt
+      - name: Compiler les sources
+        run: python -m compileall -q noethys/
+      - name: Smoke test imports non-GUI
+        run: python tests/smoke_noethys.py
+      - name: Smoke test configuration UTF-8 et récupération
+        run: python scripts/smoke_config_utf8_recovery.py
+      - name: Smoke test wx.App
+        run: python tests/smoke_wx.py
+      - name: Valider les piles fonctionnelles optionnelles
+        run: python scripts/smoke_optional_feature_stacks.py
+      - name: Vérifier PyInstaller sans construire le portable
+        run: pyinstaller --version
+
+  macos-smoke:
+    name: macOS smoke Python 3.12
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Installer wxPython et les dépendances minimales
+        run: python -m pip install --upgrade pip && python -m pip install six appdirs python-dateutil pytz wxPython pyttsx3
+      - name: Compiler les sources
+        run: python -m compileall -q -x 'C866CA3A' noethys/
+      - name: Smoke test imports non-GUI
+        run: python tests/smoke_noethys.py
+      - name: Smoke test configuration UTF-8 et récupération
+        run: python scripts/smoke_config_utf8_recovery.py
+      - name: Smoke test wx.App
+        run: python tests/smoke_wx.py
