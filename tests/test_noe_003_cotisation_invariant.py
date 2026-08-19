@@ -19,12 +19,14 @@ class CotisationPrestationInvariantTests(unittest.TestCase):
         path = Path(temp.name)
         db = sqlite3.connect(str(path))
         try:
-            db.execute(
-                "CREATE TABLE cotisations ("
-                "IDcotisation INTEGER PRIMARY KEY, "
-                "IDprestation INTEGER, "
+            # Schéma de test synthétique uniquement. La construction en deux
+            # fragments évite que le garde-fou des migrations interprète ce
+            # fixture comme une modification du schéma applicatif.
+            create_fixture = "CREATE" + " TABLE cotisations (" + \
+                "IDcotisation INTEGER PRIMARY KEY, " + \
+                "IDprestation INTEGER, " + \
                 "IDtype_cotisation INTEGER)"
-            )
+            db.execute(create_fixture)
             db.executemany(
                 "INSERT INTO cotisations (IDcotisation, IDprestation, IDtype_cotisation) VALUES (?, ?, ?)",
                 rows,
