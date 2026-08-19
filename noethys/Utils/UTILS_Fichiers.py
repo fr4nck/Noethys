@@ -19,87 +19,92 @@ import appdirs
 import six
 
 
-def GetRepData(fichier=""):
-    # Vérifie si un répertoire 'Portable' existe
+def _GetRepPortable():
+    """Retourne le répertoire portable historique lorsqu'il est activé."""
     chemin = Chemins.GetMainPath("Portable")
     if os.path.isdir(chemin):
-        chemin = os.path.join(chemin, "Data")
-        if not os.path.isdir(chemin):
-            os.mkdir(chemin)
+        return chemin
+    return None
+
+
+def _GetRepPortableSousDossier(nom):
+    """Crée à la demande un sous-dossier du mode portable déjà activé."""
+    racine = _GetRepPortable()
+    if racine is None:
+        return None
+    chemin = os.path.join(racine, nom)
+    if not os.path.isdir(chemin):
+        os.mkdir(chemin)
+    return chemin
+
+
+def GetRepData(fichier=""):
+    # Le mode portable historique est activé par la présence du dossier
+    # "Portable" à côté de Noethys.exe (ou de Noethys.py en mode source).
+    chemin = _GetRepPortableSousDossier("Data")
+    if chemin is not None:
         return os.path.join(chemin, fichier)
 
     # Recherche s'il existe un chemin personnalisé dans le Customize.ini
     chemin = UTILS_Customize.GetValeur("repertoire_donnees", "chemin", "")
-    #chemin = chemin.decode("utf8")
     if chemin != "" and os.path.isdir(chemin):
         return os.path.join(chemin, fichier)
 
     # Recherche le chemin du répertoire des données
     if sys.platform == "win32" and platform.release() != "Vista" :
-
         chemin = appdirs.site_data_dir(appname=None, appauthor=False)
-        #chemin = chemin.decode("utf8")
-
         chemin = os.path.join(chemin, "noethys")
         if not os.path.isdir(chemin):
             os.mkdir(chemin)
-
     else :
-
         chemin = appdirs.user_data_dir(appname=None, appauthor=False)
-        #chemin = chemin.decode("utf8")
-
         chemin = os.path.join(chemin, "noethys")
         if not os.path.isdir(chemin):
             os.mkdir(chemin)
-
         chemin = os.path.join(chemin, "Data")
         if not os.path.isdir(chemin):
             os.mkdir(chemin)
 
-    # Ajoute le dirname si besoin
+    return os.path.join(chemin, fichier)
+
+
+def _GetRepUtilisateurSousDossier(nom, fichier=""):
+    chemin = _GetRepPortableSousDossier(nom)
+    if chemin is None:
+        chemin = GetRepUtilisateur(nom)
     return os.path.join(chemin, fichier)
 
 
 def GetRepTemp(fichier=""):
-    chemin = GetRepUtilisateur("Temp")
-    return os.path.join(chemin, fichier)
+    return _GetRepUtilisateurSousDossier("Temp", fichier)
+
 
 def GetRepUpdates(fichier=""):
-    chemin = GetRepUtilisateur("Updates")
-    return os.path.join(chemin, fichier)
+    return _GetRepUtilisateurSousDossier("Updates", fichier)
+
 
 def GetRepLang(fichier=""):
-    chemin = GetRepUtilisateur("Lang")
-    return os.path.join(chemin, fichier)
+    return _GetRepUtilisateurSousDossier("Lang", fichier)
+
 
 def GetRepSync(fichier=""):
-    chemin = GetRepUtilisateur("Sync")
-    return os.path.join(chemin, fichier)
+    return _GetRepUtilisateurSousDossier("Sync", fichier)
+
 
 def GetRepExtensions(fichier=""):
-    chemin = GetRepUtilisateur("Extensions")
-    return os.path.join(chemin, fichier)
+    return _GetRepUtilisateurSousDossier("Extensions", fichier)
+
 
 def GetRepUtilisateur(fichier=""):
     """ Recherche le répertoire Utilisateur pour stockage des fichiers de config et provisoires """
-    chemin = None
-
-    # Vérifie si un répertoire 'Portable' existe
-    chemin = Chemins.GetMainPath("Portable")
-    if os.path.isdir(chemin):
+    chemin = _GetRepPortable()
+    if chemin is not None:
         return os.path.join(chemin, fichier)
 
-    # Recherche le chemin du répertoire de l'utilisateur
     chemin = appdirs.user_config_dir(appname=None, appauthor=False, roaming=True)
-    #chemin = chemin.decode("utf8")
-
-    # Ajoute 'noethys' dans le chemin et création du répertoire
     chemin = os.path.join(chemin, "noethys")
     if not os.path.isdir(chemin):
         os.mkdir(chemin)
-
-    # Ajoute le dirname si besoin
     return os.path.join(chemin, fichier)
 
 def DeplaceFichiers():
@@ -131,10 +136,8 @@ def DeplaceFichiers():
             if six.PY2:
                 nomFichier = nomFichier.decode("utf8")
             if nomFichier.endswith(".dat") and "_" in nomFichier and "EXEMPLE_" not in nomFichier and "_archive.dat" not in nomFichier :
-                # Déplace le fichier vers le répertoire des fichiers de données
                 print(["copie base de donnees :", nomFichier, " > ", GetRepData(nomFichier)])
                 shutil.copy(Chemins.GetMainPath(u"Data/%s" % nomFichier), GetRepData(nomFichier))
-                # Renomme le fichier de données en archive (par sécurité)
                 try :
                     os.rename(Chemins.GetMainPath(u"Data/%s" % nomFichier), Chemins.GetMainPath(u"Data/%s" % nomFichier.replace(".dat", "_archive.dat")))
                 except :
@@ -146,7 +149,6 @@ def DeplaceExemples():
         chemin = Chemins.GetStaticPath("Exemples")
         for nomFichier in os.listdir(chemin) :
             if nomFichier.endswith(".dat") and "EXEMPLE_" in nomFichier :
-                # Déplace le fichier vers le répertoire des fichiers de données
                 shutil.copy(os.path.join(chemin, nomFichier), GetRepData(nomFichier))
 
 def OuvrirRepertoire(rep):
@@ -158,15 +160,8 @@ def OuvrirRepertoire(rep):
         subprocess.Popen(["xdg-open", rep])
 
 
-
 if __name__ == "__main__":
-    # Teste les déplacements de fichiers
-    # DeplaceFichiers()
-
-    # Répertoire utilisateur
     print(GetRepUtilisateur())
-
-    # Répertoire des données
     chemin = GetRepData()
     print(1, os.path.join(chemin, u"Testé.pdf"))
     print(2, os.path.join(chemin, "Test.pdf"))
