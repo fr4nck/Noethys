@@ -51,6 +51,7 @@ jobs:
           python -m py_compile scripts/benchmark_db_readonly.py
           python -m py_compile scripts/build_synthetic_recette_db.py
           python -m py_compile scripts/recette_existing_db_readonly.py
+          python -m py_compile scripts/rc_db_preflight.py
 
       - name: Générer une base de recette synthétique
         run: python scripts/build_synthetic_recette_db.py --output tmp/ci_recette.dat
@@ -82,6 +83,9 @@ jobs:
         run: |
           python scripts/recette_existing_db_readonly.py --sqlite tmp/ci_recette.dat --json tmp/ci_existing_before.json
           python scripts/recette_existing_db_readonly.py --sqlite tmp/ci_recette.dat --expect-schema-from tmp/ci_existing_before.json --json tmp/ci_existing_after.json
+
+      - name: Préflight RC unifié Noe-002/003/004/030
+        run: python scripts/rc_db_preflight.py --sqlite tmp/ci_recette.dat --output-dir tmp/rc-db-preflight-ci
 
       - name: Benchmark lecture seule sur la base de recette
         run: python scripts/benchmark_db_readonly.py --db tmp/ci_recette.dat --repeats 3
