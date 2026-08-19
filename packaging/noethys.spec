@@ -25,8 +25,6 @@ def collect_runtime_submodules(package):
 
 
 hiddenimports = [
-    # Les backends réellement utilisés par Noethys. Le hook Matplotlib les
-    # détecte également via les appels matplotlib.use('Agg'/'wxagg').
     "matplotlib.backends.backend_agg",
     "matplotlib.backends.backend_wxagg",
 ]
@@ -46,8 +44,7 @@ for package in (
     hiddenimports += collect_runtime_submodules(package)
 
 # Chemins.py recherche ces ressources à côté de Noethys.exe lorsque
-# l'application est figée. Elles doivent donc être placées à la racine
-# du dossier portable, et non dans un sous-répertoire noethys/.
+# l'application est figée. Le bundle onedir conserve donc une racine plate.
 datas = [
     (str(NOETHYS / "Static"), "Static"),
     (str(NOETHYS / "Versions.txt"), "."),
@@ -59,8 +56,6 @@ datas += collect_data_files("pytz")
 datas += collect_data_files("reportlab")
 
 runtime_hooks = [
-    # Le smoke figé doit être premier : en mode de qualification il valide le
-    # bundle puis quitte avant tout accès à la configuration/base utilisateur.
     str(ROOT / "packaging" / "runtime_frozen_smoke.py"),
     str(ROOT / "packaging" / "runtime_wx_compat.py"),
     str(ROOT / "packaging" / "runtime_wx_text_compat.py"),
@@ -91,6 +86,7 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name="Noethys",
+    contents_directory=".",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
