@@ -339,7 +339,7 @@ class CTRL(ULC.UltimateListCtrl):
                 self.SetItemBackgroundColour(index, couleur_fond)
 
                 item = self.GetItem(index, 0)
-                font = wx.SystemSettings_GetFont(wx.SYS_DEFAULT_GUI_FONT)
+                font = wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)
                 font.SetWeight(wx.BOLD)
                 item.SetFont(font)
                 self.SetItem(item)
