@@ -59,6 +59,9 @@ datas += collect_data_files("pytz")
 datas += collect_data_files("reportlab")
 
 runtime_hooks = [
+    # Le smoke figé doit être premier : en mode de qualification il valide le
+    # bundle puis quitte avant tout accès à la configuration/base utilisateur.
+    str(ROOT / "packaging" / "runtime_frozen_smoke.py"),
     str(ROOT / "packaging" / "runtime_wx_compat.py"),
     str(ROOT / "packaging" / "runtime_wx_text_compat.py"),
     str(ROOT / "packaging" / "runtime_wx_list_width_compat.py"),
