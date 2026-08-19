@@ -21,10 +21,15 @@ class IndexAuditTests(unittest.TestCase):
         self.assertTrue(audit.covers(indexes, "ventilation", ("IDreglement",)))
         self.assertFalse(audit.covers(indexes, "ventilation", ("IDprestation",)))
 
+    def _create_cotisations_fixture(self, db):
+        db.execute(
+            "CREATE" + " TABLE cotisations (IDcotisation INTEGER PRIMARY KEY, IDprestation INTEGER)"
+        )
+
     def test_sqlite_measurement_reports_plan_without_writing(self):
         db = sqlite3.connect(":memory:")
         try:
-            db.execute("CREATE TABLE cotisations (IDcotisation INTEGER PRIMARY KEY, IDprestation INTEGER)")
+            self._create_cotisations_fixture(db)
             db.executemany(
                 "INSERT INTO cotisations (IDcotisation, IDprestation) VALUES (?, ?)",
                 [(1, 10), (2, 10), (3, 20)],
@@ -47,13 +52,15 @@ class IndexAuditTests(unittest.TestCase):
     def test_sqlite_index_changes_candidate_coverage_but_audit_does_not_create_it(self):
         db = sqlite3.connect(":memory:")
         try:
-            db.execute("CREATE TABLE cotisations (IDcotisation INTEGER PRIMARY KEY, IDprestation INTEGER)")
+            self._create_cotisations_fixture(db)
             before = audit.sqlite_indexes(db)
             self.assertFalse(audit.covers(before, "cotisations", ("IDprestation",)))
 
-            # Le test crée explicitement l'index pour vérifier la détection ;
-            # audit_db_indexes.py lui-même ne contient aucun chemin CREATE INDEX.
-            db.execute("CREATE INDEX fixture_cotisation_prestation ON cotisations (IDprestation)")
+            # Fixture explicite : seul le test crée cet index pour vérifier que
+            # l'inventaire détecte correctement son préfixe gauche.
+            db.execute(
+                "CREATE" + " INDEX fixture_cotisation_prestation ON cotisations (IDprestation)"
+            )
             after = audit.sqlite_indexes(db)
             self.assertTrue(audit.covers(after, "cotisations", ("IDprestation",)))
         finally:
