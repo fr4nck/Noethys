@@ -66,19 +66,18 @@ ORDER BY depots.date
 
 DEPOTS_STRICT = """
 SELECT depots.IDdepot, depots.date, depots.nom, depots.code_compta,
-       reglements_totaux.IDmode, modes_reglements.label, modes_reglements.type_comptable,
-       reglements_totaux.montant, reglements_totaux.nbre_reglements,
+       reglements.IDmode, modes_reglements.label, modes_reglements.type_comptable,
+       SUM(reglements.montant), COUNT(reglements.IDreglement),
        comptes_bancaires.numero, comptes_bancaires.nom
 FROM depots
-LEFT JOIN (
-    SELECT IDdepot, IDmode, SUM(montant) AS montant, COUNT(IDreglement) AS nbre_reglements
-    FROM reglements
-    GROUP BY IDdepot, IDmode
-) reglements_totaux ON reglements_totaux.IDdepot = depots.IDdepot
-LEFT JOIN modes_reglements ON modes_reglements.IDmode = reglements_totaux.IDmode
+LEFT JOIN reglements ON reglements.IDdepot = depots.IDdepot
+LEFT JOIN modes_reglements ON modes_reglements.IDmode = reglements.IDmode
 LEFT JOIN comptes_bancaires ON comptes_bancaires.IDcompte = depots.IDcompte
 WHERE depots.date >= '2026-08-01' AND depots.date <= '2026-08-31'
   AND modes_reglements.type_comptable = 'banque'
+GROUP BY depots.IDdepot, depots.date, depots.nom, depots.code_compta,
+         reglements.IDmode, modes_reglements.label, modes_reglements.type_comptable,
+         comptes_bancaires.numero, comptes_bancaires.nom
 ORDER BY depots.date
 """
 
@@ -201,7 +200,7 @@ class ExportComptaSQLTests(unittest.TestCase):
         self.assertEqual(legacy, strict)
         self.assertEqual(2, len(strict))
 
-    def test_depots_subquery_preserves_grouped_result(self):
+    def test_depots_expanded_group_by_preserves_grouped_result(self):
         legacy = self.db.execute(DEPOTS_OLD).fetchall()
         strict = self.db.execute(DEPOTS_STRICT).fetchall()
         self.assertEqual(legacy, strict)
