@@ -214,7 +214,6 @@ class Donnees():
         LEFT JOIN noms_tarifs ON tarifs.IDnom_tarif = noms_tarifs.IDnom_tarif
         LEFT JOIN categories_tarifs ON prestations.IDcategorie_tarif = categories_tarifs.IDcategorie_tarif
         WHERE %s
-        GROUP BY prestations.IDprestation
         ORDER BY prestations.date
         ;""" % condition
         DB.ExecuterReq(req)
@@ -368,7 +367,6 @@ class Donnees():
         LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = reglements.IDcompte_payeur
         LEFT JOIN comptes_bancaires ON comptes_bancaires.IDcompte = reglements.IDcompte
         WHERE %s
-        GROUP BY reglements.IDreglement
         ORDER BY modes_reglements.label;
         """ % condition
         DB.ExecuterReq(req)
@@ -471,7 +469,9 @@ class Donnees():
         LEFT JOIN modes_reglements ON modes_reglements.IDmode = reglements.IDmode
         LEFT JOIN comptes_bancaires ON comptes_bancaires.IDcompte = depots.IDcompte
         WHERE %s
-        GROUP BY depots.IDdepot, reglements.IDmode
+        GROUP BY depots.IDdepot, depots.date, depots.nom, depots.code_compta,
+        reglements.IDmode, modes_reglements.label, modes_reglements.type_comptable,
+        comptes_bancaires.numero, comptes_bancaires.nom
         ORDER BY depots.date;""" % condition
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
@@ -1062,7 +1062,6 @@ class CTRL_Parametres_quadracompta(CTRL_Parametres) :
         LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = reglements.IDcompte_payeur
         LEFT JOIN comptes_bancaires ON comptes_bancaires.IDcompte = reglements.IDcompte
         WHERE %s
-        GROUP BY reglements.IDreglement
         ORDER BY modes_reglements.label;
         """ % condition
         DB.ExecuterReq(req)
