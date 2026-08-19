@@ -50,6 +50,7 @@ jobs:
         run: |
           python -m py_compile scripts/benchmark_db_readonly.py
           python -m py_compile scripts/build_synthetic_recette_db.py
+          python -m py_compile scripts/recette_existing_db_readonly.py
 
       - name: Générer une base de recette synthétique
         run: python scripts/build_synthetic_recette_db.py --output tmp/ci_recette.dat
@@ -76,6 +77,11 @@ jobs:
           finally:
               db.close()
           PY
+
+      - name: Préflight lecture seule sur la base de recette
+        run: |
+          python scripts/recette_existing_db_readonly.py --sqlite tmp/ci_recette.dat --json tmp/ci_existing_before.json
+          python scripts/recette_existing_db_readonly.py --sqlite tmp/ci_recette.dat --expect-schema-from tmp/ci_existing_before.json --json tmp/ci_existing_after.json
 
       - name: Benchmark lecture seule sur la base de recette
         run: python scripts/benchmark_db_readonly.py --db tmp/ci_recette.dat --repeats 3
