@@ -5,18 +5,19 @@ Noe-001 - Audit SQL strict
 
 Analyse les chaînes SQL Python contenant un ``GROUP BY`` et distingue :
 
-- SAFE    : requête avec agrégat dont chaque expression SELECT non agrégée
-            apparaît aussi dans le GROUP BY ;
-- REVIEW  : requête avec agrégat qui dépend encore potentiellement d'un
-            GROUP BY permissif, ou dont l'analyse reste volontairement
-            conservatrice ;
-- DEDUPE  : GROUP BY sans agrégat, généralement utilisé comme DISTINCT
-            historique et à examiner séparément.
+- SAFE    : tous les GROUP BY de la chaîne sont compatibles avec une lecture
+            stricte (chaque expression SELECT non agrégée est groupée) ;
+- REVIEW  : au moins un GROUP BY sélectionne une expression non agrégée qui
+            n'est pas groupée, contient un HAVING conservateur, ou n'a pas pu
+            être analysé avec certitude ;
+- DEDUPE  : GROUP BY strict-compatible sans agrégat, utilisé comme mécanisme
+            de dédoublonnage historique et potentiellement simplifiable en
+            DISTINCT, sans constituer à lui seul une incompatibilité stricte.
 
-L'analyse est volontairement prudente. Elle ne tente pas d'inférer les
- dépendances fonctionnelles propres à un moteur SQL (par exemple une colonne
- dépendant d'une clé primaire groupée), afin de rester pertinente pour les
- anciennes installations MySQL/MariaDB.
+Les sous-requêtes sont analysées dans leur propre portée. L'analyse ne tente
+pas d'inférer les dépendances fonctionnelles propres à un moteur SQL (par
+exemple une colonne dépendant d'une clé primaire groupée), afin de rester
+pertinente pour les anciennes installations MySQL/MariaDB.
 
 Le script ne modifie aucun fichier ni aucune base.
 """
@@ -42,8 +43,14 @@ SAFE_CONSTANT_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 
-
-CLAUSE_KEYWORDS = ("HAVING", "ORDER BY", "LIMIT", "UNION", "PROCEDURE", "INTO OUTFILE")
+CLAUSE_KEYWORDS = (
+    "HAVING",
+    "ORDER BY",
+    "LIMIT",
+    "UNION",
+    "PROCEDURE",
+    "INTO OUTFILE",
+)
 
 
 def _is_ident_char(char):
@@ -80,7 +87,6 @@ def _find_top_level_keyword(sql, keyword, start=0):
         char = sql[pos]
         if quote:
             if char == quote:
-                # SQL échappe souvent une quote par doublement ('').
                 if pos + 1 < len(sql) and sql[pos + 1] == quote:
                     pos += 2
                     continue
@@ -161,18 +167,51 @@ def _split_top_level_csv(text):
     return items
 
 
+def _parenthesized_selects(sql):
+    """Retourne les contenus parenthésés contenant SELECT + GROUP BY."""
+    stack = []
+    quote = None
+    results = []
+    seen = set()
+    pos = 0
+    while pos < len(sql):
+        char = sql[pos]
+        if quote:
+            if char == quote:
+                if pos + 1 < len(sql) and sql[pos + 1] == quote:
+                    pos += 2
+                    continue
+                quote = None
+            elif char == "\\" and quote in ("'", '"') and pos + 1 < len(sql):
+                pos += 2
+                continue
+            pos += 1
+            continue
+        if char in ("'", '"', "`"):
+            quote = char
+        elif char == "(":
+            stack.append(pos)
+        elif char == ")" and stack:
+            start = stack.pop()
+            inner = sql[start + 1:pos].strip()
+            if SELECT_RE.search(inner) and GROUP_BY_RE.search(inner):
+                key = " ".join(inner.split())
+                if key not in seen:
+                    seen.add(key)
+                    results.append(inner)
+        pos += 1
+    return results
+
+
 def _strip_alias(expression):
     expr = expression.strip()
     stripped = AS_ALIAS_RE.sub("", expr).strip()
     if stripped != expr:
         return stripped
 
-    # Alias sans AS : uniquement si la partie de gauche contient une syntaxe
-    # rendant l'alias plausible. Pour un simple "table.colonne" on préfère ne
-    # rien retirer et rester conservateur.
     match = SIMPLE_TRAILING_ALIAS_RE.match(expr)
     if match:
-        left, alias = match.groups()
+        left, _alias = match.groups()
         left = left.strip()
         if "(" in left or ")" in left or " " in left:
             return left
@@ -209,10 +248,13 @@ def _normalize_expression(expression):
     expr = _strip_wrapping_parentheses(_strip_alias(expression))
     expr = expr.replace("`", "")
     expr = re.sub(r"\s+", " ", expr).strip().lower()
-    # Espaces autour des opérateurs/points sans portée sémantique.
     expr = re.sub(r"\s*\.\s*", ".", expr)
     expr = re.sub(r"\s*=\s*", "=", expr)
     return expr
+
+
+def _is_safe_constant(expression):
+    return bool(SAFE_CONSTANT_RE.match(expression.strip()))
 
 
 def _extract_select_and_group(sql):
@@ -242,8 +284,69 @@ def _extract_select_and_group(sql):
     return _split_top_level_csv(select_text), _split_top_level_csv(group_text)
 
 
-def _is_safe_constant(expression):
-    return bool(SAFE_CONSTANT_RE.match(expression.strip()))
+def _analyze_scope(sql):
+    """Analyse un SELECT/GROUP BY au niveau supérieur de ``sql``."""
+    parsed = _extract_select_and_group(sql)
+    if parsed is None:
+        return None
+
+    select_items, group_items = parsed
+    normalized_group = {_normalize_expression(item) for item in group_items}
+    ungrouped = []
+    has_aggregate = False
+
+    for item in select_items:
+        if AGGREGATE_RE.search(item):
+            has_aggregate = True
+            continue
+        stripped = _strip_alias(item)
+        if _is_safe_constant(stripped):
+            continue
+        if _normalize_expression(stripped) not in normalized_group:
+            ungrouped.append(stripped.strip())
+
+    having = _find_top_level_keyword(sql, "HAVING") is not None
+    if ungrouped:
+        return {
+            "classification": "REVIEW",
+            "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY",
+            "ungrouped": ungrouped,
+        }
+    if having:
+        return {
+            "classification": "REVIEW",
+            "reason": "SELECT compatible, mais HAVING présent : revue manuelle conservatrice",
+            "ungrouped": [],
+        }
+    if has_aggregate:
+        return {
+            "classification": "SAFE",
+            "reason": "Toutes les expressions SELECT non agrégées sont présentes dans le GROUP BY",
+            "ungrouped": [],
+        }
+    return {
+        "classification": "DEDUPE",
+        "reason": "GROUP BY sans agrégat et strict-compatible : dédoublonnage historique",
+        "ungrouped": [],
+    }
+
+
+def _collect_group_scopes(sql, seen=None):
+    """Analyse la portée principale et les sous-requêtes parenthésées."""
+    if seen is None:
+        seen = set()
+    key = " ".join(sql.split())
+    if key in seen:
+        return []
+    seen.add(key)
+
+    scopes = []
+    scope = _analyze_scope(sql)
+    if scope is not None:
+        scopes.append(scope)
+    for inner in _parenthesized_selects(sql):
+        scopes.extend(_collect_group_scopes(inner, seen))
+    return scopes
 
 
 class SQLCandidate(object):
@@ -251,58 +354,41 @@ class SQLCandidate(object):
         self.path = path
         self.line = line
         self.sql = sql
-        self.has_aggregate = bool(AGGREGATE_RE.search(sql))
-        self.has_having = bool(HAVING_RE.search(sql))
-        self.select_items = []
-        self.group_items = []
-        self.ungrouped_items = []
-        self.parse_ok = False
+        self.scopes = _collect_group_scopes(sql)
         self._classify()
 
     def _classify(self):
-        if not self.has_aggregate:
+        if not self.scopes:
+            self.classification = "REVIEW"
+            self.reason = "GROUP BY détecté mais portée SQL non analysable avec certitude"
+            self.ungrouped_items = []
+            return
+
+        reviews = [scope for scope in self.scopes if scope["classification"] == "REVIEW"]
+        if reviews:
+            self.classification = "REVIEW"
+            first = reviews[0]
+            self.ungrouped_items = first.get("ungrouped", [])
+            if self.ungrouped_items:
+                preview = ", ".join(self.ungrouped_items[:4])
+                if len(self.ungrouped_items) > 4:
+                    preview += ", ..."
+                self.reason = "%s : %s" % (first["reason"], preview)
+            else:
+                self.reason = first["reason"]
+            return
+
+        self.ungrouped_items = []
+        if any(scope["classification"] == "DEDUPE" for scope in self.scopes):
             self.classification = "DEDUPE"
-            self.reason = "GROUP BY sans agrégat : dédoublonnage historique à examiner comme DISTINCT"
+            self.reason = "GROUP BY strict-compatible sans agrégat : dédoublonnage historique à conserver ou simplifier"
             return
 
-        parsed = _extract_select_and_group(self.sql)
-        if parsed is None:
-            self.classification = "REVIEW"
-            self.reason = "Analyse SELECT/GROUP BY incomplète : revue manuelle requise"
-            return
-
-        self.select_items, self.group_items = parsed
-        self.parse_ok = True
-        normalized_group = {_normalize_expression(item) for item in self.group_items}
-
-        for item in self.select_items:
-            if AGGREGATE_RE.search(item):
-                continue
-            stripped = _strip_alias(item)
-            if _is_safe_constant(stripped):
-                continue
-            normalized = _normalize_expression(stripped)
-            if normalized not in normalized_group:
-                self.ungrouped_items.append(stripped.strip())
-
-        if self.ungrouped_items:
-            self.classification = "REVIEW"
-            preview = ", ".join(self.ungrouped_items[:4])
-            if len(self.ungrouped_items) > 4:
-                preview += ", ..."
-            self.reason = "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : %s" % preview
-        elif self.has_having:
-            # Le SELECT est strict-safe, mais un HAVING complexe peut lui aussi
-            # référencer des expressions non groupées. On garde ce cas en revue.
-            self.classification = "REVIEW"
-            self.reason = "SELECT compatible, mais HAVING présent : revue manuelle conservatrice"
-        else:
-            self.classification = "SAFE"
-            self.reason = "Toutes les expressions SELECT non agrégées sont présentes dans le GROUP BY"
+        self.classification = "SAFE"
+        self.reason = "Tous les GROUP BY analysés sont strict-compatibles"
 
     @property
     def risk(self):
-        # Compatibilité avec les anciens usages du script.
         if self.classification == "REVIEW":
             return "HIGH"
         if self.classification == "DEDUPE":
