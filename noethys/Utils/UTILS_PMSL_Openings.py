@@ -10,11 +10,17 @@ from __future__ import unicode_literals
 import datetime
 
 try:
-    from noethys import GestionDB
     from noethys.Utils.UTILS_PMSL_NoethysBridge import build_ack_item
 except ImportError:  # lancement historique depuis le répertoire noethys
-    import GestionDB
     from Utils.UTILS_PMSL_NoethysBridge import build_ack_item
+
+
+def _new_db():
+    try:
+        from noethys import GestionDB
+    except ImportError:  # lancement historique depuis le répertoire noethys
+        import GestionDB
+    return GestionDB.DB()
 
 
 class PMSLOpeningError(Exception):
@@ -23,7 +29,7 @@ class PMSLOpeningError(Exception):
 
 class PMSLOpeningService(object):
     def __init__(self, db=None):
-        self.db = db or GestionDB.DB()
+        self.db = db if db is not None else _new_db()
         self._owns_db = db is None
 
     def close(self):
