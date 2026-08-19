@@ -165,6 +165,9 @@ jobs:
       - name: Smoke test wx.App
         run: python tests/smoke_wx.py
 
+      - name: Smoke test layout wx
+        run: python tests/smoke_wx_layout.py
+
   macos-smoke:
     name: Smoke test macOS
     runs-on: macos-latest
@@ -196,6 +199,9 @@ jobs:
       - name: Smoke test wx.App
         run: python tests/smoke_wx.py
 
+      - name: Smoke test layout wx
+        run: python tests/smoke_wx_layout.py
+
   linux-gtk3-smoke:
     name: Smoke test Linux GTK3
     runs-on: ubuntu-latest
@@ -217,5 +223,5 @@ jobs:
       - name: Smoke test wx.App sous X virtuel
         run: xvfb-run -a /usr/bin/python3 tests/smoke_wx.py
 
-      - name: Smoke test layout GTK3
-        run: xvfb-run -a /usr/bin/python3 tests/smoke_wx_gtk3.py
+      - name: Smoke test layout wx sous X virtuel
+        run: xvfb-run -a /usr/bin/python3 tests/smoke_wx_layout.py
