@@ -1,16 +1,10 @@
 name: Python 3.12 study
 
+# Étude prospective déclenchée à la demande. Python 3.12 n'est pas la baseline
+# de production ; il est requalifié ponctuellement avant les jalons importants
+# sans consommer trois runners à chaque PR courante.
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - '.github/workflows/python312-study.yml'
-      - 'requirements.txt'
-      - 'requirements-build.txt'
-      - 'packaging/**'
-      - 'scripts/**'
-      - 'tests/**'
-      - 'noethys/**'
 
 permissions:
   contents: read
@@ -45,9 +39,6 @@ jobs:
         run: python scripts/audit_critical_business_modules.py
       - name: Tester le migrateur DB vers DB
         run: python tests/test_migration_base.py
-      - name: Vérifier l'absence de migration implicite
-        run: python scripts/check_schema_compatibility.py '${{ github.event.pull_request.base.sha }}' HEAD
-        if: github.event_name == 'pull_request'
 
   windows-dependencies:
     name: Windows dependencies Python 3.12
@@ -66,12 +57,16 @@ jobs:
         run: python -m pip install --upgrade pip wheel && python -m pip install -r requirements-build.txt
       - name: Compiler les sources
         run: python -m compileall -q noethys/
+      - name: Audit compatibilité wxPython Phoenix
+        run: python scripts/audit_wxphoenix_compat.py --runtime --fail-missing
       - name: Smoke test imports non-GUI
         run: python tests/smoke_noethys.py
       - name: Smoke test configuration UTF-8 et récupération
         run: python scripts/smoke_config_utf8_recovery.py
       - name: Smoke test wx.App
         run: python tests/smoke_wx.py
+      - name: Smoke test layout wx
+        run: python tests/smoke_wx_layout.py
       - name: Valider les piles fonctionnelles optionnelles
         run: python scripts/smoke_optional_feature_stacks.py
       - name: Vérifier PyInstaller sans construire le portable
@@ -89,9 +84,13 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install six appdirs python-dateutil pytz wxPython pyttsx3
       - name: Compiler les sources
         run: python -m compileall -q -x 'C866CA3A' noethys/
+      - name: Audit compatibilité wxPython Phoenix
+        run: python scripts/audit_wxphoenix_compat.py --runtime --fail-missing
       - name: Smoke test imports non-GUI
         run: python tests/smoke_noethys.py
       - name: Smoke test configuration UTF-8 et récupération
         run: python scripts/smoke_config_utf8_recovery.py
       - name: Smoke test wx.App
         run: python tests/smoke_wx.py
+      - name: Smoke test layout wx
+        run: python tests/smoke_wx_layout.py
