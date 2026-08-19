@@ -25,7 +25,7 @@ jobs:
           path = Path('scripts/recette_existing_db_readonly.py')
           text = path.read_text(encoding='utf-8')
           old = '"SELECT cid, name, type, notnull, dflt_value, pk "'
-          new = '\'SELECT cid, name, type, "notnull", dflt_value, pk \' '
+          new = "'SELECT cid, name, type, \"notnull\", dflt_value, pk '"
           assert text.count(old) == 1, f'occurrences inattendues: {text.count(old)}'
           path.write_text(text.replace(old, new), encoding='utf-8')
           PY
