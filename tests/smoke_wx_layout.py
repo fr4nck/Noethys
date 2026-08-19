@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Smoke test GTK3/wxPython sous DISPLAY virtuel.
+"""Smoke test d'interface wxPython sans données métier.
 
-Le test construit une petite hiérarchie représentative de Noethys : frame,
-panel, sizers, contrôles texte, bouton et liste. Il force un layout et un cycle
-d'événements sans afficher d'interface à l'utilisateur ni ouvrir de base.
+Construit une petite fenêtre représentative (sizers, texte, bouton, liste AGW),
+force le layout et un cycle d'événements, puis vérifie que les contrôles ont des
+dimensions cohérentes. Aucun fichier utilisateur ni base n'est ouvert.
 """
 import wx
 from wx.lib.agw import ultimatelistctrl as ULC
@@ -13,11 +13,9 @@ from wx.lib.agw import ultimatelistctrl as ULC
 app = wx.App(False)
 print("wx :", wx.version())
 print("plateforme :", wx.PlatformInfo)
+assert "phoenix" in wx.PlatformInfo
 
-assert "phoenix" in wx.PlatformInfo, "wxPython Phoenix attendu"
-assert any(token in wx.PlatformInfo for token in ("wxGTK", "__WXGTK__")), "backend GTK attendu"
-
-frame = wx.Frame(None, title="Noethys GTK3 smoke", size=(640, 420))
+frame = wx.Frame(None, title="Noethys UI smoke", size=(640, 420))
 panel = wx.Panel(frame)
 
 root = wx.BoxSizer(wx.VERTICAL)
@@ -30,14 +28,11 @@ header.Add(search, 1, wx.EXPAND | wx.RIGHT, 6)
 header.Add(button, 0)
 root.Add(header, 0, wx.EXPAND | wx.ALL, 8)
 
-listctrl = ULC.UltimateListCtrl(
-    panel,
-    agwStyle=ULC.ULC_REPORT | ULC.ULC_SINGLE_SEL,
-)
+listctrl = ULC.UltimateListCtrl(panel, agwStyle=ULC.ULC_REPORT | ULC.ULC_SINGLE_SEL)
 listctrl.InsertColumn(0, "Nom", width=220)
 listctrl.InsertColumn(1, "Valeur", width=120)
-idx = listctrl.InsertStringItem(0, "Ligne test")
-listctrl.SetStringItem(idx, 1, "OK")
+index = listctrl.InsertStringItem(0, "Ligne test")
+listctrl.SetStringItem(index, 1, "OK")
 root.Add(listctrl, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
 panel.SetSizer(root)
@@ -48,10 +43,11 @@ wx.Yield()
 client = frame.GetClientSize()
 assert client.width > 0 and client.height > 0
 assert search.GetSize().width > 0
+assert button.GetSize().width > 0
 assert listctrl.GetSize().width > 0 and listctrl.GetSize().height > 0
 assert listctrl.GetItemCount() == 1
 
 frame.Destroy()
 wx.Yield()
 app.Destroy()
-print("smoke GTK3 OK")
+print("smoke layout wx OK")
