@@ -150,6 +150,9 @@ jobs:
       - name: Compiler les sources Windows
         run: python -m compileall -q noethys/
 
+      - name: Audit compatibilité wxPython Phoenix
+        run: python scripts/audit_wxphoenix_compat.py --runtime --fail-missing
+
       - name: Smoke test imports non-GUI
         run: python tests/smoke_noethys.py
 
@@ -177,6 +180,9 @@ jobs:
 
       - name: Compiler les sources macOS
         run: python -m compileall -q -x 'C866CA3A' noethys/
+
+      - name: Audit compatibilité wxPython Phoenix
+        run: python scripts/audit_wxphoenix_compat.py --runtime --fail-missing
 
       - name: Smoke test imports non-GUI
         run: python tests/smoke_noethys.py
