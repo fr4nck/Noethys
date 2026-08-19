@@ -156,7 +156,7 @@ class RestoreFlowTests(unittest.TestCase):
             temp_dir.mkdir()
             archive = root / "backup.nod"
             with zipfile.ZipFile(str(archive), "w") as zf:
-                zf.writestr("demo_data.sql", b"CREATE TABLE demo(id INT);")
+                zf.writestr("demo_data.sql", b"SELECT 1;")
 
             module = _load_module(data_dir, temp_dir)
             module.GetListeFichiersReseau = lambda values: []
