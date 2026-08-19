@@ -1,0 +1,40 @@
+name: Noe-020 wxPython Phoenix audit
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/audit_wxphoenix_compat.py'
+      - '.github/workflows/noe020-wxphoenix-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Installer wxPython
+        run: python -m pip install --upgrade pip wxPython
+
+      - name: Compiler l'auditeur
+        run: python -m py_compile scripts/audit_wxphoenix_compat.py
+
+      - name: Auditer les API Classic et le runtime Phoenix
+        run: python scripts/audit_wxphoenix_compat.py --runtime --json tmp/wxphoenix-${{ runner.os }}.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wxphoenix-audit-${{ runner.os }}
+          path: tmp/wxphoenix-${{ runner.os }}.json
+          if-no-files-found: error
