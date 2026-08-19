@@ -46,8 +46,8 @@ for package in (
     hiddenimports += collect_runtime_submodules(package)
 
 # Chemins.py recherche ces ressources à côté de Noethys.exe lorsque
-# l'application est figée. Elles doivent donc être placées à la racine
-# du dossier portable, et non dans un sous-répertoire noethys/.
+# l'application est figée. Le bundle onedir doit donc conserver une racine
+# plate, comme les distributions historiques de Noethys.
 datas = [
     (str(NOETHYS / "Static"), "Static"),
     (str(NOETHYS / "Versions.txt"), "."),
@@ -91,6 +91,10 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name="Noethys",
+    # PyInstaller 6 place par défaut les fichiers de support dans `_internal`.
+    # Noethys résout historiquement ses ressources depuis le dossier de l'EXE ;
+    # `.` restaure le layout onedir plat attendu par Chemins.py.
+    contents_directory=".",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
