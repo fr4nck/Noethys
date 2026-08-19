@@ -277,8 +277,7 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
             dlg.Destroy()
             if reponse != wx.ID_YES :
                 fichierZip.close()
-                fichierZip.close()
-            return False
+                return False
         
         # Restauration
         nbreEtapes = len(listeFichiersLocaux)
@@ -300,8 +299,7 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
                 dlg.ShowModal()
                 dlg.Destroy()
                 fichierZip.close()
-                fichierZip.close()
-            return False
+                return False
             
             listeFichiersRestaures.append(fichier[:-4])
 
@@ -337,8 +335,7 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
             dlg.Destroy()
             if reponse != wx.ID_YES :
                 fichierZip.close()
-                fichierZip.close()
-            return False
+                return False
 
         # Création du répertoire temporaire
         repTemp = UTILS_Fichiers.GetRepTemp(fichier="restoretemp")
@@ -391,8 +388,7 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
                 dlgErreur.ShowModal() 
                 dlgErreur.Destroy()
                 fichierZip.close()
-                fichierZip.close()
-            return False
+                return False
             
             listeFichiersRestaures.append(fichier)
             
