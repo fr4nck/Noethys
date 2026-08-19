@@ -1,0 +1,37 @@
+name: Noe-021 Linux GTK3 qualification
+
+on:
+  pull_request:
+    paths:
+      - 'noethys/**'
+      - 'tests/smoke_wx_gtk3.py'
+      - 'scripts/audit_wxphoenix_compat.py'
+      - '.github/workflows/noe021-linux-gtk3.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gtk3:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer wxPython GTK3 et un serveur X virtuel
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth python3-wxgtk4.0
+
+      - name: Vérifier le runtime GTK3
+        run: |
+          /usr/bin/python3 -c "import wx; print(wx.version()); print(wx.PlatformInfo); assert 'phoenix' in wx.PlatformInfo; assert any(x in wx.PlatformInfo for x in ('wxGTK', '__WXGTK__'))"
+
+      - name: Auditer les API historiques sous GTK3
+        run: /usr/bin/python3 scripts/audit_wxphoenix_compat.py --runtime --fail-missing
+
+      - name: Smoke test wx.App sous X virtuel
+        run: xvfb-run -a /usr/bin/python3 tests/smoke_wx.py
+
+      - name: Smoke test layout GTK3
+        run: xvfb-run -a /usr/bin/python3 tests/smoke_wx_gtk3.py
