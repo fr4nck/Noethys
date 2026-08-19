@@ -26,6 +26,8 @@ Le chantier porte principalement sur :
 
 L'objectif n'est pas de réécrire Noethys ni d'ajouter des évolutions métier dans ce lot. Les corrections sont progressives et doivent rester portables sauf lorsqu'un comportement est intrinsèquement spécifique à un système d'exploitation.
 
+La trajectoire et l'ordre de priorité du chantier sont figés dans [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
 ## État de la modernisation
 
 Le code modernisé doit rester compatible avec les trois familles de plateformes supportées par Noethys :
@@ -87,6 +89,7 @@ Une CI verte ou un build réussi sur une plateforme ne suffisent pas à déclare
 
 ## Documentation
 
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — feuille de route et priorités de la modernisation ;
 - [`docs/PACKAGING-WINDOWS11.md`](docs/PACKAGING-WINDOWS11.md) — packaging, CI, recette et critères de qualification Windows ;
 - `noethys/Doc/` — documentation historique embarquée dans Noethys.
 
