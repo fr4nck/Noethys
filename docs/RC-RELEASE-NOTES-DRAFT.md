@@ -43,7 +43,9 @@ La priorité est la compatibilité et la fiabilité ; il ne s'agit pas d'une ré
 - archive Windows identifiable par `BUILD-INFO.txt` ;
 - extraction et exécution réelle de `Noethys.exe` en CI sans environnement Python externe ;
 - contrôle des ressources et dépendances embarquées ;
-- isolation portable historique via le dossier `Portable/` dès validation de Noe-041.
+- mode portable historique activé explicitement via `Portable/` ;
+- configuration et bases locales isolées sous le dossier portable ;
+- création à la demande des sous-dossiers `Data`, `Temp`, `Updates`, `Lang`, `Sync` et `Extensions`.
 
 ### Compatibilité multi-plateforme du code source
 
@@ -77,12 +79,12 @@ Ne sont pas inclus comme exigences de cette première RC :
 
 ## Validation encore requise avant publication
 
-Avant de transformer ce brouillon en notes de RC publiables :
+La partie technique automatisée est prête. Avant de transformer ce brouillon en notes de RC publiables :
 
-1. fusionner Noe-041 ;
-2. sélectionner le SHA candidat sur `master` ;
-3. obtenir CI + packaging verts sur ce SHA ;
-4. tester le portable sur Windows ;
+1. sélectionner le SHA candidat sur `master` ;
+2. obtenir CI + packaging verts sur ce SHA ;
+3. vérifier le SHA dans `BUILD-INFO.txt` ;
+4. tester visuellement le portable sur Windows ;
 5. ouvrir une **copie** d'une base Noethys réellement utilisée ;
 6. exécuter la recette métier Noe-030 ;
 7. vérifier l'absence de changement de schéma inattendu ;
