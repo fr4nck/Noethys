@@ -170,7 +170,7 @@ def table_columns(reader: Reader, table: str, database: str | None = None) -> li
         # tout sauf SELECT/SHOW). La structure SQLite est disponible via la
         # fonction table-valued pragma_table_info(), donc reste un SELECT pur.
         rows = reader.query(
-            "SELECT cid, name, type, notnull, dflt_value, pk "
+            'SELECT cid, name, type, "notnull", dflt_value, pk '
             "FROM pragma_table_info(?) ORDER BY cid",
             (table,),
         )
