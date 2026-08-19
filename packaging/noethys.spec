@@ -67,6 +67,9 @@ runtime_hooks = [
     # Le smoke figé doit être premier : en mode de qualification il valide le
     # bundle puis quitte avant tout accès à la configuration/base utilisateur.
     str(ROOT / "packaging" / "runtime_frozen_smoke.py"),
+    # Le build Windows est sans console : journalise stderr et les exceptions wx
+    # avant le chargement du code applicatif pour éviter les crashes silencieux.
+    str(ROOT / "packaging" / "runtime_crashlog.py"),
     str(ROOT / "packaging" / "runtime_wx_compat.py"),
     str(ROOT / "packaging" / "runtime_wx_text_compat.py"),
     str(ROOT / "packaging" / "runtime_wx_list_width_compat.py"),
