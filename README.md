@@ -2,71 +2,116 @@
 
 Noethys est un logiciel libre et gratuit de gestion multi-activités destiné notamment aux accueils de loisirs, crèches, garderies périscolaires, cantines, activités périscolaires, clubs sportifs et structures culturelles.
 
-Le projet d'origine, sa documentation fonctionnelle et les informations destinées aux utilisateurs restent disponibles sur le site officiel de Noethys et dans le dépôt amont `Noethys/Noethys`.
+Le projet d'origine, sa documentation fonctionnelle et les informations historiques restent disponibles sur le site officiel de Noethys et dans le dépôt amont `Noethys/Noethys`.
 
 ## À propos de ce fork
 
-Ce dépôt `fr4nck/Noethys` travaille à la **remise à niveau technique de Noethys** en conservant son fonctionnement métier et, autant que possible, sa compatibilité avec les données existantes et les plateformes historiquement visées.
+`fr4nck/Noethys` poursuit la **remise à niveau technique de Noethys Desktop** en conservant son fonctionnement métier et, autant que possible, sa compatibilité avec les données et configurations existantes.
 
-**Base fonctionnelle : Noethys 1.3.4.2 (1er février 2026), issue du `master` du dépôt amont `Noethys/Noethys`.** Cette base est plus récente que la version 1.3.3.9 encore distribuée sur le site officiel. Le fork conserve donc les évolutions fonctionnelles et correctifs intégrés en amont jusqu'à la 1.3.4.2, auxquels s'ajoute le chantier de modernisation technique décrit ci-dessous.
+**Base fonctionnelle : Noethys 1.3.4.2 (1er février 2026), issue du `master` du dépôt amont `Noethys/Noethys`.** Cette base est plus récente que la version 1.3.3.9 encore distribuée sur le site officiel.
 
-La modernisation concerne donc le **code source multi-plateforme** de Noethys : Windows, Linux et macOS. Windows est actuellement la plateforme la plus avancée dans la qualification du packaging, tandis que la CI valide également le socle technique sous Linux et macOS.
+Le chantier ne vise pas une réécriture de Noethys ni une migration forcée vers NoethysWeb. Il modernise le code desktop par lots ciblés : Python 3, wxPython Phoenix, SQL strict, encodages, fichiers, dépendances, tests, sauvegarde/restauration et packaging.
 
-Le chantier porte principalement sur :
+## État actuel
 
-- la compatibilité avec Python 3 et les API modernes ;
-- wxPython 4 et les écarts de comportement entre plateformes ;
-- les encodages UTF-8 et les frontières texte/binaire ;
-- les chemins de fichiers et les données historiques ;
-- Pillow, ReportLab, SQLite et les dépendances utilisées par Noethys ;
-- les imports dynamiques et anciennes compatibilités runtime ;
-- une CI GitHub Actions ciblée et frugale ;
-- la qualification progressive de Windows, Linux et macOS ;
-- la production d'artefacts adaptés à chaque plateforme lorsque leur chaîne de fabrication est suffisamment stabilisée.
+Les principales portes **techniques automatisées** de la première RC modernisée sont désormais franchies :
 
-L'objectif n'est pas de réécrire Noethys ni d'ajouter des évolutions métier dans ce lot. Les corrections sont progressives et doivent rester portables sauf lorsqu'un comportement est intrinsèquement spécifique à un système d'exploitation.
+- Python 3.10 comme baseline de production ;
+- Python 3.11 et 3.12 qualifiés pour revalidation ponctuelle ;
+- wxPython Phoenix ;
+- SQL strict et non-régressions des règlements/exports comptables ;
+- suite complète `tests/test_*.py` dans la CI ;
+- préflight lecture seule des bases existantes ;
+- sauvegarde/restauration auditée et réparée ;
+- smoke tests Windows, macOS et Linux GTK3 ;
+- build PyInstaller Windows `onedir` ;
+- exécution réelle en CI de l'archive Windows extraite sans Python externe ;
+- vrai mode portable via le dossier historique `Portable/` ;
+- traçabilité du build via `BUILD-INFO.txt`.
 
-La trajectoire et l'ordre de priorité du chantier sont figés dans [`docs/ROADMAP.md`](docs/ROADMAP.md).
-
-## État de la modernisation
-
-Le code modernisé doit rester compatible avec les trois familles de plateformes supportées par Noethys :
-
-- **Linux** : la CI compile et audite le code sous Ubuntu ;
-- **Windows** : la CI valide la compilation, les imports non-GUI et l'initialisation de `wx.App`, et le packaging PyInstaller produit un dossier portable ;
-- **macOS** : la CI valide la compilation, les imports non-GUI et l'initialisation de `wx.App` sur macOS.
-
-Ces validations automatisées confirment la compatibilité technique de base des trois plateformes, mais elles ne remplacent pas une recette fonctionnelle complète avec une base réelle, les principaux écrans, impressions, exports et périphériques.
-
-La modernisation active est désormais intégrée **par lots ciblés directement dans `master`**. La PR #2 reste ouverte uniquement comme réservoir historique de changements à examiner ; elle ne doit pas être fusionnée en bloc.
+Le projet dispose donc d'un **candidat technique RC**. La publication d'une RC validée reste volontairement bloquée jusqu'à une recette humaine sur une **copie d'une base réellement utilisée** et une validation visuelle/métier sous Windows.
 
 ## Windows
 
-Windows est aujourd'hui la plateforme de packaging la plus avancée. La chaîne Python 3.10 + wxPython 4 + PyInstaller produit un dossier `onedir`, un `Noethys.exe` et une archive GitHub Actions `Noethys-Windows-portable`.
+Windows est la plateforme de distribution prioritaire.
 
-Chaque archive contient également un `BUILD-INFO.txt` indiquant le commit exact, la version Python, l'identifiant du workflow et la date du build afin de rendre les essais reproductibles.
+Le workflow `Package Windows` produit l'artefact :
 
-La CI Windows valide également la compilation des sources, plusieurs imports non-GUI et la création/destruction d'un `wx.App`. Ces contrôles constituent une qualification technique reproductible, mais **ne constituent pas encore une version stable destinée à remplacer l'installation historique**.
+```text
+Noethys-Windows-portable
+```
 
-La procédure, les contrôles et les critères de qualification sont documentés dans [`docs/PACKAGING-WINDOWS11.md`](docs/PACKAGING-WINDOWS11.md).
+L'archive contient notamment :
 
-Les artefacts produits pendant la modernisation doivent être testés avec une **copie** d'une base existante, jamais directement avec une base de production.
+```text
+Noethys.exe
+BUILD-INFO.txt
+Static/
+Portable/
+```
+
+La chaîne de qualification :
+
+1. compile le code ;
+2. valide les piles fonctionnelles et PDF ;
+3. construit le bundle PyInstaller ;
+4. vérifie les ressources historiques à côté de l'EXE ;
+5. active le mode `Portable/` ;
+6. crée l'archive ;
+7. la ré-extrait dans un dossier neuf ;
+8. neutralise `PYTHONHOME`, `PYTHONPATH` et le Python externe du `PATH` ;
+9. exécute réellement `Noethys.exe` en mode smoke ;
+10. vérifie les dépendances embarquées ;
+11. publie l'artefact.
+
+Le smoke automatique s'arrête avant l'ouverture de la configuration ou d'une base utilisateur. Une recette réelle reste donc nécessaire avant RC.
+
+## Mode portable
+
+Noethys reconnaît historiquement un dossier `Portable` à côté de l'exécutable. Le fork réutilise ce mécanisme au lieu d'en créer un nouveau.
+
+Dans la distribution portable :
+
+- configuration : `Portable/` ;
+- bases locales : `Portable/Data/` ;
+- temporaires : `Portable/Temp/` ;
+- mises à jour : `Portable/Updates/` ;
+- langues : `Portable/Lang/` ;
+- synchronisation : `Portable/Sync/` ;
+- extensions : `Portable/Extensions/`.
+
+Les installations classiques sans dossier `Portable/` conservent leur comportement habituel.
 
 ## Linux
 
-Linux reste une cible du code source. La CI exécute déjà les contrôles de compilation et plusieurs audits sur `ubuntu-latest`.
+Le code source reste une cible Linux. La CI utilise Ubuntu avec wxPython GTK3 sous Xvfb et vérifie :
 
-Les anciennes instructions d'installation Linux du projet amont restent utiles pour comprendre les dépendances historiques, mais elles devront être réactualisées lorsque la cible Linux moderne aura été qualifiée de bout en bout avec les versions de Python, wxPython et des dépendances retenues pour ce fork.
+- le backend GTK/Phoenix ;
+- la création/destruction de `wx.App` ;
+- un layout wx représentatif avec sizers et `UltimateListCtrl`.
+
+Il n'existe pas encore de paquet Linux utilisateur final équivalent au portable Windows.
 
 ## macOS
 
-macOS reste également une cible du projet. Aucun choix d'architecture ne doit rendre le code Windows-only sans nécessité explicite.
+Le code source reste également une cible macOS. La CI valide compilation, imports, wxPython Phoenix, `wx.App` et layout représentatif.
 
-La CI macOS exécute désormais une validation récente de compilation, des imports non-GUI et un smoke-test `wx.App`. Cela confirme que le socle Python/wxPython démarre correctement dans l'environnement GitHub Actions macOS.
+Cette qualification confirme le socle technique du code source ; elle ne constitue pas encore une distribution macOS signée/notarisée ni une recette métier complète sur machine réelle.
 
-Cette validation ne vaut toutefois pas encore qualification fonctionnelle complète : il reste à tester l'application avec une copie de base réelle, les principaux parcours GUI, impressions, exports et éventuelles intégrations spécifiques à macOS avant d'annoncer une compatibilité utilisateur totalement garantie.
+## Compatibilité des bases
 
-## Développement depuis les sources
+La conservation des données existantes est un invariant du chantier :
+
+- aucune migration implicite de schéma ;
+- SQLite conservé ;
+- stratégie conservatrice pour les anciennes installations MySQL/MariaDB ;
+- recette sur copie de base réelle ;
+- possibilité de retour arrière ;
+- contrôles de non-régression sur les requêtes modernisées.
+
+Une CI verte ou un build réussi ne justifient jamais un premier essai sur l'unique base de production.
+
+## Développement
 
 Le point d'entrée historique reste :
 
@@ -74,32 +119,27 @@ Le point d'entrée historique reste :
 noethys/Noethys.py
 ```
 
-Les évolutions doivent privilégier les API Python et wxPython portables. Le code spécifique à Windows, Linux ou macOS doit rester isolé et explicitement conditionné lorsqu'il est réellement nécessaire.
+La baseline de développement/distribution est Python 3.10. Les changements doivent privilégier les API portables et isoler le code spécifique à une plateforme uniquement lorsque c'est nécessaire.
 
-## Compatibilité des bases
-
-La conservation des données existantes est un invariant du chantier :
-
-- aucune migration implicite de schéma ;
-- recette sur copie de base réelle ;
-- vérification des principaux modules métier ;
-- contrôle de la compatibilité avec la version historique lorsque cela fait partie du scénario de validation.
-
-Une CI verte ou un build réussi sur une plateforme ne suffisent pas à déclarer toutes les plateformes fonctionnellement qualifiées : chaque environnement doit disposer de ses propres contrôles adaptés et d'une recette réelle lorsque nécessaire.
+Voir [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) pour l'environnement, l'architecture du dépôt, les tests, les audits et le build.
 
 ## Documentation
 
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — feuille de route et priorités de la modernisation ;
-- [`docs/PACKAGING-WINDOWS11.md`](docs/PACKAGING-WINDOWS11.md) — packaging, CI, recette et critères de qualification Windows ;
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — feuille de route ;
+- [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — documentation développeur ;
+- [`docs/USER-GUIDE-UPGRADE.md`](docs/USER-GUIDE-UPGRADE.md) — installation, mise à jour, sauvegarde et recette utilisateur ;
+- [`docs/UPGRADE-HISTORY.md`](docs/UPGRADE-HISTORY.md) — historique et décisions du chantier ;
+- [`docs/PACKAGING-WINDOWS11.md`](docs/PACKAGING-WINDOWS11.md) — packaging Windows ;
+- [`docs/RC-CHECKLIST.md`](docs/RC-CHECKLIST.md) — checklist avant RC ;
+- [`docs/NOE-030-RECETTE-BASE-EXISTANTE.md`](docs/NOE-030-RECETTE-BASE-EXISTANTE.md) — recette sur copie de base existante ;
+- [`docs/NOE-042-RC-READINESS.md`](docs/NOE-042-RC-READINESS.md) — état de préparation de la RC ;
 - `noethys/Doc/` — documentation historique embarquée dans Noethys.
-
-La documentation Linux et macOS sera complétée à mesure que leurs chaînes modernes de test et de distribution seront qualifiées.
 
 ## Principes de contribution
 
 Les changements doivent rester ciblés : pas de refactorisation cosmétique massive, pas de nouvelle fonctionnalité métier mêlée à la modernisation, pas de multiplication inutile des workflows et pas de modification globale des données ou encodages sans preuve de compatibilité.
 
-Lorsqu'un défaut apparaît, la priorité est de corriger sa cause racine et d'ajouter un garde-fou reproductible lorsqu'il apporte une réelle valeur. Une correction introduite pour une plateforme ne doit pas dégrader les autres sans justification documentée.
+Lorsqu'un défaut apparaît, la priorité est de corriger sa cause racine et d'ajouter un garde-fou reproductible lorsqu'il apporte une valeur réelle.
 
 ## Projet d'origine
 
