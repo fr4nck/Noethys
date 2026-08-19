@@ -1,0 +1,47 @@
+name: Noe-030 guarded fix
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/noe030-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'noe-030-existing-db-recipe'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Corriger le mot-clé SQLite notnull
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/recette_existing_db_readonly.py')
+          text = path.read_text(encoding='utf-8')
+          old = '"SELECT cid, name, type, notnull, dflt_value, pk "'
+          new = '\'SELECT cid, name, type, "notnull", dflt_value, pk \' '
+          assert text.count(old) == 1, f'occurrences inattendues: {text.count(old)}'
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+          python -m py_compile scripts/recette_existing_db_readonly.py
+          python scripts/build_synthetic_recette_db.py --families 3 --children 1 --consumptions-per-child 2 --prestations-per-child 2 --payments-per-family 1 --output tmp/noe030.dat
+          python scripts/recette_existing_db_readonly.py --sqlite tmp/noe030.dat --json tmp/noe030-before.json
+          python scripts/recette_existing_db_readonly.py --sqlite tmp/noe030.dat --expect-schema-from tmp/noe030-before.json --json tmp/noe030-after.json
+          git diff --check
+
+      - name: Commit
+        run: |
+          if git diff --quiet -- scripts/recette_existing_db_readonly.py; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/recette_existing_db_readonly.py
+          git commit -m "Noe-030: quote SQLite pragma notnull column"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
