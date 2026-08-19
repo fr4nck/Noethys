@@ -1,0 +1,23 @@
+name: Noe-001 strict SQL closeout
+
+on:
+  pull_request:
+    paths:
+      - 'noethys/**'
+      - 'scripts/audit_sql_strict.py'
+      - '.github/workflows/noe001-audit-closeout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Inventaire complet des GROUP BY
+        run: python scripts/audit_sql_strict.py --root noethys --format text
