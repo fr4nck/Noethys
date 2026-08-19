@@ -45,9 +45,12 @@ if os.environ.get("NOETHYS_FROZEN_SMOKE") == "1":
 
     # Imports représentatifs des fonctions critiques et de leurs modules natifs.
     # Aucun de ces imports ne doit ouvrir une base, créer wx.App ou écrire la
-    # configuration utilisateur.
+    # configuration utilisateur. wx.richtext dépend de wx._xml : les deux sont
+    # testés explicitement pour éviter un bundle PyInstaller vert mais inutilisable.
     modules = (
         "wx",
+        "wx._xml",
+        "wx.richtext",
         "PIL.Image",
         "reportlab.pdfgen.canvas",
         "dateutil.parser",
