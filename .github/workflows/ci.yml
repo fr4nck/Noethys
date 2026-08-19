@@ -99,6 +99,8 @@ jobs:
         run: python scripts/audit_critical_business_modules.py
 
       - name: Tests de non-régression métier
+        env:
+          PYTHONPATH: ${{ github.workspace }}/noethys:${{ github.workspace }}
         run: python -m unittest discover -s tests -p 'test_*.py' -v
 
       - name: Surveiller les imports dynamiques PyInstaller
