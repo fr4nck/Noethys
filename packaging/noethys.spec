@@ -25,6 +25,11 @@ def collect_runtime_submodules(package):
 
 
 hiddenimports = [
+    # wx.richtext charge wx._xml au runtime. PyInstaller ne détecte pas toujours
+    # ce module natif via le graphe d'import ; sans lui le portable plante dès
+    # l'import de DLG_Portail_config.
+    "wx._xml",
+    "wx.richtext",
     # Les backends réellement utilisés par Noethys. Le hook Matplotlib les
     # détecte également via les appels matplotlib.use('Agg'/'wxagg').
     "matplotlib.backends.backend_agg",
