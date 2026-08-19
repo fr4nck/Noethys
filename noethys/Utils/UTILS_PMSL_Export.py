@@ -7,15 +7,17 @@ qui crée uniquement un lot entrant en prévisualisation côté PMSL.
 """
 from __future__ import unicode_literals
 
-try:
-    from noethys import GestionDB
-except ImportError:  # lancement historique depuis le répertoire noethys
-    import GestionDB
+def _new_db():
+    try:
+        from noethys import GestionDB
+    except ImportError:  # lancement historique depuis le répertoire noethys
+        import GestionDB
+    return GestionDB.DB()
 
 
 class PMSLExportService(object):
     def __init__(self, db=None):
-        self.db = db or GestionDB.DB()
+        self.db = db if db is not None else _new_db()
         self._owns_db = db is None
 
     def close(self):
