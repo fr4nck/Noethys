@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Helpers explicites pour wxAUI.
+"""Helpers explicites pour wxAUI et les barres de commandes Noethys.
 
 La géométrie AUI est dérivée du design system commun. Aucun contrôle wx/AGW
 n'est monkey-patché : les managers et toolbars sont configurés explicitement
@@ -42,6 +42,33 @@ def VerifierVersionPerspective(manager):
     return False
 
 
+def ChargerBitmapToolBar(image, taille_base=24):
+    """Charge un pictogramme à la taille réellement utilisée par une toolbar.
+
+    Le chemin passe d'abord par le catalogue moderne/adaptatif. Si l'image
+    historique reste la seule ressource disponible, elle est redimensionnée ici
+    au lieu d'être rognée par l'image-list native de wx.ToolBar.
+    """
+    try:
+        import wx
+        import Chemins
+        from Utils import UTILS_Responsive
+
+        taille = UTILS_Responsive.GetTailleIcone(taille_base)
+        chemin = Chemins.GetStaticIconPath(image, taille=taille)
+        bitmap = wx.Bitmap(chemin, wx.BITMAP_TYPE_ANY)
+        if bitmap.IsOk() and (bitmap.GetWidth() != taille or bitmap.GetHeight() != taille):
+            source = bitmap.ConvertToImage()
+            source = source.Scale(taille, taille, wx.IMAGE_QUALITY_HIGH)
+            bitmap = wx.Bitmap(source)
+        return bitmap
+    except Exception:
+        try:
+            return wx.NullBitmap
+        except Exception:
+            return None
+
+
 def _TailleBitmapExistante(toolbar, defaut=16):
     try:
         taille = toolbar.GetToolBitmapSize()
@@ -79,12 +106,7 @@ def _ItererDescendants(window):
 
 
 def _ConfigurerToolbarsDuManager(manager):
-    """Dimensionne toutes les toolbars contenues dans les panes AUI.
-
-    Les toolbars métier historiques sont souvent des ``wx.ToolBar`` imbriquées
-    dans un notebook ou un panel. Se limiter aux seuls ``AuiToolBar`` du manager
-    laissait donc précisément les textes et icônes rognés dans le dashboard.
-    """
+    """Dimensionne toutes les toolbars contenues dans les panes AUI."""
     try:
         import wx
         import wx.lib.agw.aui as aui
@@ -102,11 +124,11 @@ def _ConfigurerToolbarsDuManager(manager):
             if not isinstance(fenetre, (wx.ToolBar, aui.AuiToolBar)):
                 continue
 
-            taille_base = _TailleBitmapExistante(fenetre, defaut=16)
+            taille_base = getattr(fenetre, "_noethys_toolbar_icon_base", None)
+            if taille_base is None:
+                taille_base = _TailleBitmapExistante(fenetre, defaut=16)
             ConfigurerToolBar(fenetre, taille_base=taille_base, fond_uni=True)
 
-            # Pour une toolbar directement gérée par AUI, le pane possède sa
-            # propre géométrie et doit recevoir la même hauteur minimale.
             if fenetre is racine:
                 try:
                     hauteur = int(getattr(fenetre, "_noethys_toolbar_min_height", 0) or 0)
@@ -193,6 +215,10 @@ def ConfigurerManager(manager):
 
     try:
         manager.Update()
+        fenetre = manager.GetManagedWindow()
+        if fenetre is not None:
+            fenetre.Layout()
+            fenetre.SendSizeEvent()
     except Exception:
         pass
     return True
@@ -211,7 +237,13 @@ def ConfigurerToolBar(toolbar, taille_base=16, fond_uni=True):
     except Exception:
         return False
 
+    try:
+        taille_base = int(taille_base)
+    except Exception:
+        taille_base = 16
+    toolbar._noethys_toolbar_icon_base = taille_base
     taille = UTILS_Responsive.GetTailleIcone(taille_base)
+
     try:
         toolbar.SetToolBitmapSize(wx.Size(taille, taille))
     except Exception:
@@ -271,11 +303,16 @@ def ConfigurerToolBar(toolbar, taille_base=16, fond_uni=True):
     try:
         toolbar.SetMinSize((-1, hauteur))
         toolbar._noethys_toolbar_min_height = hauteur
+        toolbar.InvalidateBestSize()
     except Exception:
         pass
 
+    # Le sizer parent doit recalculer sa ligne : sinon wx conserve parfois la
+    # hauteur historique malgré la nouvelle BestSize de la toolbar.
     try:
-        toolbar.InvalidateBestSize()
+        parent = toolbar.GetParent()
+        if parent is not None:
+            parent.Layout()
     except Exception:
         pass
 
@@ -283,11 +320,7 @@ def ConfigurerToolBar(toolbar, taille_base=16, fond_uni=True):
 
 
 def ChargerPerspective(manager, perspective, fallback=None):
-    """Charge une perspective AUI avec repli sûr sur ``fallback``.
-
-    Une perspective d'une génération antérieure n'est jamais restaurée : seul
-    le fallback courant est alors chargé.
-    """
+    """Charge une perspective AUI avec repli sûr sur ``fallback``."""
     ConfigurerManager(manager)
     version_valide = VerifierVersionPerspective(manager)
 
