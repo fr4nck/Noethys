@@ -11,6 +11,7 @@ INTERFACE = ROOT / "noethys" / "Utils" / "UTILS_Interface.py"
 DIALOG = ROOT / "noethys" / "Dlg" / "DLG_Echelle_interface.py"
 BANDEAU = ROOT / "noethys" / "Ctrl" / "CTRL_Bandeau.py"
 BOUTON = ROOT / "noethys" / "Ctrl" / "CTRL_Bouton_image.py"
+FOOTER = ROOT / "noethys" / "Ctrl" / "CTRL_Footer.py"
 
 
 class DesignSystemIntegrationContractTests(unittest.TestCase):
@@ -20,10 +21,12 @@ class DesignSystemIntegrationContractTests(unittest.TestCase):
         cls.dialog_text = DIALOG.read_text(encoding="utf-8")
         cls.bandeau_text = BANDEAU.read_text(encoding="utf-8")
         cls.bouton_text = BOUTON.read_text(encoding="utf-8")
+        cls.footer_text = FOOTER.read_text(encoding="utf-8")
         cls.tree = ast.parse(cls.text)
         ast.parse(cls.dialog_text)
         ast.parse(cls.bandeau_text)
         ast.parse(cls.bouton_text)
+        ast.parse(cls.footer_text)
 
     def test_interface_imports_single_design_system_contract(self):
         self.assertIn("from Utils import UTILS_DesignSystem", self.text)
@@ -134,6 +137,18 @@ class DesignSystemIntegrationContractTests(unittest.TestCase):
         self.assertIn('GetCouleurRole("disabled", sombre=True)', self.bouton_text)
         self.assertIn("if not sombre:", self.bouton_text)
         self.assertIn("self._fond_natif", self.bouton_text)
+
+    def test_common_list_footer_uses_system_font_and_semantic_secondary_text(self):
+        self.assertIn("from Utils import UTILS_Interface", self.footer_text)
+        self.assertIn("def AppliquerTheme", self.footer_text)
+        self.assertIn('GetCouleurRole("surface_container", sombre=sombre)', self.footer_text)
+        self.assertIn('GetCouleurRole("on_surface_variant", sombre=sombre)', self.footer_text)
+        self.assertIn("wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)", self.footer_text)
+        self.assertIn("wx.RendererNative.Get()", self.footer_text)
+        self.assertNotIn("wx.Font(8, wx.SWISS", self.footer_text)
+        self.assertNotIn("wx.Colour(140, 140, 140)", self.footer_text)
+        # Une couleur explicitement fournie par un écran métier garde la priorité.
+        self.assertIn('if "couleur" in infoColonne : couleur = infoColonne["couleur"]', self.footer_text)
 
     def test_existing_public_theme_and_scale_api_is_preserved(self):
         functions = {
