@@ -467,8 +467,14 @@ class Panel(wx.Panel):
                 if adresse not in (None, ""):
                     adresses.append(adresse)
                     break
+
         from Dlg import DLG_Mailer
-        dlg = DLG_Mailer.Dialog(self, categorie="saisie_libre", listeAdresses=adresses)
+        dlg = DLG_Mailer.Dialog(self, categorie="saisie_libre")
+        if adresses:
+            try:
+                dlg.ctrl_destinataires.SetDonneesManuelles(adresses)
+            except Exception:
+                pass
         dlg.ShowModal()
         dlg.Destroy()
 
