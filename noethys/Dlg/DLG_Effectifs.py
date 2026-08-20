@@ -47,11 +47,13 @@ class CTRL(wx.Panel):
         police.SetPointSize(max(police.GetPointSize() + 2, 11))
         self.ctrl_titre.SetFont(police)
 
+        # Onglets en tête de contenu : l'utilisateur choisit d'abord la vue,
+        # puis lit son tableau. L'ancien placement bas obligeait à parcourir
+        # visuellement toute la grille avant de découvrir la navigation.
         self.notebook = aui.AuiNotebook(
             self,
             agwStyle=(
-                aui.AUI_NB_BOTTOM
-                | aui.AUI_NB_TAB_EXTERNAL_MOVE
+                aui.AUI_NB_TAB_EXTERNAL_MOVE
                 | aui.AUI_NB_TAB_SPLIT
                 | aui.AUI_NB_TAB_MOVE
             ),
@@ -89,6 +91,19 @@ class CTRL(wx.Panel):
         UTILS_Aui.ConfigurerNotebook(self.notebook)
         self.notebook.Bind(aui.EVT_AUINOTEBOOK_PAGE_CHANGED, self.OnPageChanged)
         self.__do_layout()
+        wx.CallAfter(self._ActualisePaneAui)
+
+    def _ActualisePaneAui(self):
+        gestionnaire = getattr(self.GetParent(), "_mgr", None)
+        if gestionnaire is None:
+            return
+        try:
+            pane = gestionnaire.GetPane(self)
+            if pane.IsOk():
+                pane.Caption(_(u"Pilotage"))
+                gestionnaire.Update()
+        except Exception:
+            pass
 
     def __do_layout(self):
         marge = UTILS_UIMetrics.spacing(2)
