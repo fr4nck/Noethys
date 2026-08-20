@@ -22,6 +22,7 @@ class BusinessListsModernizationContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Liste_inscriptions.py",
             "noethys/Ctrl/CTRL_Liste_locations.py",
             "noethys/Ctrl/CTRL_Liste_locations_demandes.py",
+            "noethys/Ctrl/CTRL_Liste_rappels.py",
         ):
             text = self._read(relative_path)
             self.assertIn("CTRL_Bouton_image.CTRL", text)
@@ -33,13 +34,17 @@ class BusinessListsModernizationContractTests(unittest.TestCase):
             self.assertNotIn("FlexGridSizer", text)
             self.assertNotIn("GridSizer", text)
 
-    def test_invoice_list_replaces_blue_hyperlinks_with_action_buttons(self):
-        text = self._read("noethys/Ctrl/CTRL_Liste_factures.py")
-        self.assertNotIn("HyperLinkCtrl", text)
-        self.assertIn("def OnBoutonTout", text)
-        self.assertIn("def OnBoutonRien", text)
-        self.assertIn("CocheListeTout()", text)
-        self.assertIn("CocheListeRien()", text)
+    def test_invoice_and_reminder_lists_replace_blue_hyperlinks_with_buttons(self):
+        for relative_path, tout, rien in (
+            ("noethys/Ctrl/CTRL_Liste_factures.py", "CocheListeTout()", "CocheListeRien()"),
+            ("noethys/Ctrl/CTRL_Liste_rappels.py", "CocheTout()", "CocheRien()"),
+        ):
+            text = self._read(relative_path)
+            self.assertNotIn("HyperLinkCtrl", text)
+            self.assertIn("def OnBoutonTout", text)
+            self.assertIn("def OnBoutonRien", text)
+            self.assertIn(tout, text)
+            self.assertIn(rien, text)
 
     def test_location_filters_use_scaled_system_text(self):
         for relative_path in (
@@ -70,6 +75,10 @@ class BusinessListsModernizationContractTests(unittest.TestCase):
                 "Apercu(None)", "Imprimer(None)", "ExportTexte(None)", "ExportExcel(None)",
             ),
             "noethys/Ctrl/CTRL_Liste_locations_demandes.py": (
+                "Reedition(None)", "EnvoyerEmail(None)", "Supprimer(None)",
+                "Apercu(None)", "Imprimer(None)", "ExportTexte(None)", "ExportExcel(None)",
+            ),
+            "noethys/Ctrl/CTRL_Liste_rappels.py": (
                 "Reedition(None)", "EnvoyerEmail(None)", "Supprimer(None)",
                 "Apercu(None)", "Imprimer(None)", "ExportTexte(None)", "ExportExcel(None)",
             ),
