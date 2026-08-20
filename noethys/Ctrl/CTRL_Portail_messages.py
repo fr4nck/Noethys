@@ -8,21 +8,39 @@
 # Licence:         Licence GNU GPL
 #-----------------------------------------------------------
 
-import Chemins
-from Utils import UTILS_Adaptations
-from Utils.UTILS_Traduction import _
 import wx
+
 import GestionDB
 from Ctrl import CTRL_Bouton_image
-
+from Utils import UTILS_Interface
+from Utils import UTILS_UIMetrics
+from Utils.UTILS_Traduction import _
 
 
 class ListBox_Messages(wx.ListBox):
     def __init__(self, parent):
         wx.ListBox.__init__(self, parent, -1)
         self.parent = parent
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+        self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        try:
+            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
+            facteur = UTILS_Interface.GetTailleTexte() / 100.0
+            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
+            self.SetFont(police)
+        except Exception:
+            pass
+        self.SetMinSize((UTILS_UIMetrics.px(260), UTILS_UIMetrics.panel_min_height("secondary")))
+        self.SetToolTip(wx.ToolTip(_(u"Messages affichés sur la page d'accueil du portail. Double-cliquez pour modifier.")))
         self.MAJ()
         self.Bind(wx.EVT_LISTBOX_DCLICK, self.Modifier)
+        self.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
+
+    def OnKeyDown(self, event):
+        if event.GetKeyCode() == wx.WXK_DELETE:
+            self.Supprimer()
+            return
+        event.Skip()
 
     def MAJ(self):
         self.dictDonnees = {}
@@ -35,24 +53,18 @@ class ListBox_Messages(wx.ListBox):
         DB.ExecuterReq(req)
         listeMessages = DB.ResultatReq()
         DB.Close()
-        if len(listeMessages) == 0 : return None
-        listeDonnees = []
-        self.dictDonnees = {}
-        self.listeMessages = []
-        for IDmessage, titre, texte in listeMessages :
+        for IDmessage, titre, texte in listeMessages:
             self.Insert(titre, self.GetCount(), IDmessage)
-            self.dictDonnees[IDmessage] = {"IDmessage" : IDmessage, "titre" : titre, "texte" : texte}
+            self.dictDonnees[IDmessage] = {"IDmessage": IDmessage, "titre": titre, "texte": texte}
             self.listeMessages.append((titre, texte))
-        return listeDonnees
+        return []
 
     def GetSelectionMessage(self):
         index = self.GetSelection()
-        if index == -1 : return None
-        IDmessage = self.GetClientData(index)
-        if IDmessage in self.dictDonnees :
-            return self.dictDonnees[IDmessage]
-        else:
+        if index == -1:
             return None
+        IDmessage = self.GetClientData(index)
+        return self.dictDonnees.get(IDmessage)
 
     def Ajouter(self, event=None):
         from Dlg import DLG_Saisie_portail_message
@@ -63,76 +75,73 @@ class ListBox_Messages(wx.ListBox):
 
     def Modifier(self, event=None):
         message = self.GetSelectionMessage()
-        if message == None :
+        if message is None:
             dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucun message à modifier dans la liste !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
             return
-        IDmessage = message["IDmessage"]
         from Dlg import DLG_Saisie_portail_message
-        dlg = DLG_Saisie_portail_message.Dialog(self, IDmessage=IDmessage)
+        dlg = DLG_Saisie_portail_message.Dialog(self, IDmessage=message["IDmessage"])
         if dlg.ShowModal() == wx.ID_OK:
             self.MAJ()
         dlg.Destroy()
 
     def Supprimer(self, event=None):
         message = self.GetSelectionMessage()
-        if message == None :
-            dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucun message à supprimer dans la liste !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
-            dlg.ShowModal()
-            dlg.Destroy()
+        if message is None:
+            if event is not None:
+                dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucun message à supprimer dans la liste !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
+                dlg.ShowModal()
+                dlg.Destroy()
             return
-        dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment supprimer ce message ?"), _(u"Suppression"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_INFORMATION)
-        if dlg.ShowModal() == wx.ID_YES :
-            IDmessage = message["IDmessage"]
+        dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment supprimer ce message ?"), _(u"Suppression"), wx.YES_NO | wx.NO_DEFAULT | wx.CANCEL | wx.ICON_INFORMATION)
+        if dlg.ShowModal() == wx.ID_YES:
             DB = GestionDB.DB()
-            DB.ReqDEL("portail_messages", "IDmessage", IDmessage)
+            DB.ReqDEL("portail_messages", "IDmessage", message["IDmessage"])
             DB.Close()
             self.MAJ()
         dlg.Destroy()
 
 
-# --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 class CTRL(wx.Panel):
+    """Gestion des messages du portail avec barre d'actions explicite."""
+
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
         self.parent = parent
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
 
         self.ctrl_messages = ListBox_Messages(self)
-        self.ctrl_messages.SetMinSize((50, 50))
+        self.bouton_ajouter_message = self._CreerBouton(_(u"Ajouter"), "Images/16x16/Ajouter.png", _(u"Ajouter un message sur la page d'accueil du portail"))
+        self.bouton_modifier_message = self._CreerBouton(_(u"Modifier"), "Images/16x16/Modifier.png", _(u"Modifier le message sélectionné"))
+        self.bouton_supprimer_message = self._CreerBouton(_(u"Supprimer"), "Images/16x16/Supprimer.png", _(u"Supprimer le message sélectionné"))
 
-        self.bouton_ajouter_message = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Ajouter.png"), wx.BITMAP_TYPE_ANY))
-        self.bouton_modifier_message = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Modifier.png"), wx.BITMAP_TYPE_ANY))
-        self.bouton_supprimer_message = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Supprimer.png"), wx.BITMAP_TYPE_ANY))
-
-        self.__set_properties()
         self.__do_layout()
-
         self.Bind(wx.EVT_BUTTON, self.OnAjouterMessage, self.bouton_ajouter_message)
         self.Bind(wx.EVT_BUTTON, self.OnModifierMessage, self.bouton_modifier_message)
         self.Bind(wx.EVT_BUTTON, self.OnSupprimerMessage, self.bouton_supprimer_message)
 
-    def __set_properties(self):
-        self.ctrl_messages.SetToolTip(wx.ToolTip(_(u"Saisissez ou ou plusieurs messages qui apparaitront sur la page d'accueil du portail")))
-        self.bouton_ajouter_message.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour ajouter un message qui apparaîtra sur la page d'accueil du portail")))
-        self.bouton_modifier_message.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour modifier le message sélectionné dans la liste")))
-        self.bouton_supprimer_message.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour supprimer le message sélectionné dans la liste")))
+    def _CreerBouton(self, texte, image, tooltip):
+        bouton = CTRL_Bouton_image.CTRL(self, texte=texte, cheminImage=image, tailleImage=(20, 20))
+        bouton.SetToolTip(wx.ToolTip(tooltip))
+        return bouton
 
     def __do_layout(self):
-        grid_sizer_base = wx.FlexGridSizer(rows=1, cols=2, vgap=5, hgap=5)
-        grid_sizer_base.Add(self.ctrl_messages, 0, wx.EXPAND, 0)
+        marge = UTILS_UIMetrics.spacing(2)
+        espace = UTILS_UIMetrics.spacing(1)
 
-        grid_sizer_boutons_message = wx.FlexGridSizer(rows=3, cols=1, vgap=1, hgap=2)
-        grid_sizer_boutons_message.Add(self.bouton_ajouter_message, 0, 0, 0)
-        grid_sizer_boutons_message.Add(self.bouton_modifier_message, 0, 0, 0)
-        grid_sizer_boutons_message.Add(self.bouton_supprimer_message, 0, 0, 0)
-        grid_sizer_base.Add(grid_sizer_boutons_message, 0, wx.EXPAND, 0)
-        grid_sizer_base.AddGrowableCol(0)
-        grid_sizer_base.AddGrowableRow(0)
+        actions = wx.BoxSizer(wx.HORIZONTAL)
+        actions.Add(self.bouton_ajouter_message, 0, wx.RIGHT, espace)
+        actions.Add(self.bouton_modifier_message, 0, wx.RIGHT, espace)
+        actions.Add(self.bouton_supprimer_message, 0)
+        actions.AddStretchSpacer(1)
 
-        self.SetSizer(grid_sizer_base)
-        grid_sizer_base.Fit(self)
+        principal = wx.BoxSizer(wx.VERTICAL)
+        principal.Add(actions, 0, wx.EXPAND | wx.BOTTOM, marge)
+        principal.Add(self.ctrl_messages, 1, wx.EXPAND)
+        self.SetSizer(principal)
+        self.SetMinSize((UTILS_UIMetrics.px(320), UTILS_UIMetrics.px(220)))
+        self.Layout()
 
     def OnAjouterMessage(self, event):
         self.ctrl_messages.Ajouter()
@@ -141,34 +150,26 @@ class CTRL(wx.Panel):
         self.ctrl_messages.Modifier()
 
     def OnSupprimerMessage(self, event):
-        self.ctrl_messages.Supprimer()
+        self.ctrl_messages.Supprimer(event)
 
-
-# --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-
-
-# ----------------------------------------------------------------------------------------------------------------------        
 
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
-        sizer_1 = wx.BoxSizer(wx.VERTICAL)
-        sizer_1.Add(panel, 1, wx.ALL|wx.EXPAND)
-        self.SetSizer(sizer_1)
         self.ctrl = CTRL(panel)
-        sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2.Add(self.ctrl, 1, wx.ALL|wx.EXPAND, 4)
-        panel.SetSizer(sizer_2)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        panel.SetSizer(sizer)
+        principal = wx.BoxSizer(wx.VERTICAL)
+        principal.Add(panel, 1, wx.EXPAND)
+        self.SetSizer(principal)
         self.Layout()
         self.CentreOnScreen()
 
+
 if __name__ == '__main__':
     app = wx.App(0)
-    #wx.InitAllImageHandlers()
     frame_1 = MyFrame(None, -1, "TEST", size=(800, 400))
     app.SetTopWindow(frame_1)
     frame_1.Show()
