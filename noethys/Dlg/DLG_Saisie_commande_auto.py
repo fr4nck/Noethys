@@ -8,6 +8,11 @@
 
 from Ctrl import CTRL_Commande_repas
 from Ctrl import CTRL_Commande_repas_auto
+from Dlg import DLG_Saisie_commandes_colonne_layout
+
+# Corrige aussi les grands sélecteurs du paramétrage des colonnes : unités,
+# groupes et colonnes à totaliser doivent occuper la hauteur disponible.
+DLG_Saisie_commandes_colonne_layout.Installer()
 
 # Le dialogue historique importe le module CTRL_Commande_repas puis instancie
 # CTRL_Commande_repas.CTRL. On remplace donc cette classe avant son import.
