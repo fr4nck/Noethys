@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Helpers explicites pour wxAUI.
 
-Aucun contrôle wx/AGW n'est monkey-patché ici. Les écrans modernisés appellent
-ces fonctions sur leurs propres managers/toolbars afin que le comportement
-reste local, testable et prévisible.
+La géométrie AUI est dérivée du design system commun. Aucun contrôle wx/AGW
+n'est monkey-patché : les managers et toolbars sont configurés explicitement
+lorsqu'ils entrent dans le shell Noethys.
 """
 
 PERSPECTIVE_LAYOUT_VERSION = 2
@@ -42,13 +42,30 @@ def VerifierVersionPerspective(manager):
     return False
 
 
-def _ConfigurerToolbarsDuManager(manager):
-    """Configure uniquement les toolbars appartenant au manager fourni.
+def _TailleBitmapExistante(toolbar, defaut=16):
+    try:
+        taille = toolbar.GetToolBitmapSize()
+        largeur = int(taille.GetWidth()) if hasattr(taille, "GetWidth") else int(taille[0])
+        if largeur > 0:
+            return largeur
+    except Exception:
+        pass
+    return defaut
 
-    C'est volontairement différent d'un monkey-patch : aucune classe wx n'est
-    modifiée et une fenêtre qui n'appelle pas ``ConfigurerManager`` n'est pas
-    affectée.
-    """
+
+def _ToolbarAvecLibelle(toolbar):
+    try:
+        import wx
+        import wx.lib.agw.aui as aui
+        if isinstance(toolbar, aui.AuiToolBar):
+            return bool(toolbar.GetAGWWindowStyleFlag() & aui.AUI_TB_TEXT)
+        return bool(toolbar.GetWindowStyleFlag() & wx.TB_TEXT)
+    except Exception:
+        return True
+
+
+def _ConfigurerToolbarsDuManager(manager):
+    """Dimensionne les toolbars du manager à partir de leur contenu réel."""
     try:
         import wx.lib.agw.aui as aui
         panes = manager.GetAllPanes()
@@ -57,8 +74,36 @@ def _ConfigurerToolbarsDuManager(manager):
 
     for pane in panes:
         fenetre = getattr(pane, "window", None)
-        if isinstance(fenetre, aui.AuiToolBar):
-            ConfigurerToolBar(fenetre, taille_base=16, fond_uni=True)
+        if not isinstance(fenetre, aui.AuiToolBar):
+            continue
+
+        taille_base = _TailleBitmapExistante(fenetre, defaut=16)
+        ConfigurerToolBar(fenetre, taille_base=taille_base, fond_uni=True)
+
+        # AUI mémorise sa propre taille de pane : agrandir seulement le widget
+        # ne suffit pas et produisait les libellés rognés observés à 120 %.
+        try:
+            hauteur = int(getattr(fenetre, "_noethys_toolbar_min_height", 0) or 0)
+            if hauteur > 0:
+                pane.MinSize((-1, hauteur)).BestSize((-1, hauteur))
+        except Exception:
+            pass
+
+
+def _ConfigurerPoliceCaptions(art):
+    """Met les titres AUI à la même échelle typographique que le contenu."""
+    try:
+        import wx
+        import wx.lib.agw.aui as aui
+        from Utils import UTILS_Interface
+
+        police = wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)
+        base = max(7, police.GetPointSize())
+        facteur = (UTILS_Interface.GetEchelle() / 100.0) * (UTILS_Interface.GetTailleTexte() / 100.0)
+        police.SetPointSize(max(7, int(round(base * facteur))))
+        art.SetFont(aui.AUI_DOCKART_CAPTION_FONT, police)
+    except Exception:
+        pass
 
 
 def ConfigurerManager(manager):
@@ -78,7 +123,7 @@ def ConfigurerManager(manager):
         return False
 
     try:
-        sash = max(5, min(9, int(round(5 * max(1.0, UTILS_Responsive.GetFacteurEcran())))))
+        sash = max(5, min(10, int(round(5 * max(1.0, UTILS_Responsive.GetFacteurEcran())))))
         art.SetMetric(aui.AUI_DOCKART_SASH_SIZE, sash)
     except Exception:
         pass
@@ -87,6 +132,8 @@ def ConfigurerManager(manager):
         art.SetMetric(aui.AUI_DOCKART_PANE_BORDER_SIZE, 1)
     except Exception:
         pass
+
+    _ConfigurerPoliceCaptions(art)
 
     try:
         art.SetColour(
@@ -126,7 +173,7 @@ def ConfigurerManager(manager):
 
 
 def ConfigurerToolBar(toolbar, taille_base=16, fond_uni=True):
-    """Configure explicitement une toolbar déjà construite."""
+    """Configure une toolbar selon icônes, texte, DPI et échelle utilisateur."""
     if toolbar is None:
         return False
     try:
@@ -134,6 +181,7 @@ def ConfigurerToolBar(toolbar, taille_base=16, fond_uni=True):
         import wx.lib.agw.aui as aui
         from Utils import UTILS_Interface
         from Utils import UTILS_Responsive
+        from Utils import UTILS_UIMetrics
     except Exception:
         return False
 
@@ -159,10 +207,53 @@ def ConfigurerToolBar(toolbar, taille_base=16, fond_uni=True):
     except Exception:
         pass
 
+    # Les marges font partie de la métrique de composant, pas de chaque écran.
+    marge = UTILS_UIMetrics.spacing(1)
+    try:
+        toolbar.SetToolPacking(marge)
+    except Exception:
+        pass
+    try:
+        toolbar.SetToolSeparation(marge)
+    except Exception:
+        pass
+    try:
+        toolbar.SetMargins(marge, marge)
+    except Exception:
+        try:
+            toolbar.SetMargins(marge, marge, marge, marge)
+        except Exception:
+            pass
+
     try:
         toolbar.Realize()
     except Exception:
         pass
+
+    avec_libelle = _ToolbarAvecLibelle(toolbar)
+    hauteur = UTILS_UIMetrics.toolbar_height(avec_libelle=avec_libelle, icon_px=taille)
+    try:
+        hauteur = max(hauteur, int(toolbar.GetBestSize().GetHeight()))
+    except Exception:
+        pass
+
+    try:
+        taille_min = toolbar.GetMinSize()
+        hauteur = max(hauteur, int(taille_min.GetHeight()))
+    except Exception:
+        pass
+
+    try:
+        toolbar.SetMinSize((-1, hauteur))
+        toolbar._noethys_toolbar_min_height = hauteur
+    except Exception:
+        pass
+
+    try:
+        toolbar.InvalidateBestSize()
+    except Exception:
+        pass
+
     return True
 
 
