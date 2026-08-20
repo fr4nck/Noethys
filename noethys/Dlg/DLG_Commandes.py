@@ -18,6 +18,15 @@ from Ctrl import CTRL_Bouton_image
 from Ctrl import CTRL_Bandeau
 from Ol import OL_Commandes
 
+# Le module historique OL_Commandes importe le dialogue de saisie à la volée.
+# Pour ce seul parcours, on lui présente la variante compatible qui conserve
+# l'interface existante et ajoute la découverte des réservations réelles.
+import sys
+import Dlg
+from Dlg import DLG_Saisie_commande_auto
+Dlg.DLG_Saisie_commande = DLG_Saisie_commande_auto
+sys.modules["Dlg.DLG_Saisie_commande"] = DLG_Saisie_commande_auto
+
 
 
 class CTRL_Modele(wx.Choice):
