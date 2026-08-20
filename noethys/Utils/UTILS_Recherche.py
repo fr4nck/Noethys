@@ -106,8 +106,10 @@ def _CorrespondanceExacte(index, recherche):
 
 
 def _TermeApproximatif(terme, mots):
-    # Les termes très courts produisent trop de faux positifs.
-    if len(terme) < 3 or not terme.isalpha():
+    # Sur trois lettres (Léa/Léo, Tom/Tim...), une substitution est trop
+    # ambiguë. Une faute comme ``nhoe`` reste couverte car le terme saisi
+    # comporte quatre lettres et peut matcher ``noe`` à distance 1.
+    if len(terme) < 4 or not terme.isalpha():
         return False
     for mot in mots:
         if not mot.isalpha():
