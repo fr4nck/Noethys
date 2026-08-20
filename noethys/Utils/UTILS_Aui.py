@@ -1,83 +1,125 @@
 # -*- coding: utf-8 -*-
-"""Helpers de compatibilité et de présentation pour wxAUI.
+"""Helpers explicites pour wxAUI.
 
-Les perspectives sont persistées dans Config.json et peuvent provenir d'une
-ancienne version de wxPython. Ce module installe aussi deux adaptations
-transversales très limitées : fond uni des AuiToolBar et taille des pictos par
-paliers DPI/écran.
+Aucun contrôle wx/AGW n'est monkey-patché ici. Les écrans modernisés appellent
+ces fonctions sur leurs propres managers/toolbars afin que le comportement
+reste local, testable et prévisible.
 """
 
 
-def InstallerStyleToolbars():
-    """Modernise les toolbars sans modifier leurs actions ni leur structure."""
+def ConfigurerManager(manager):
+    """Applique une séparation de panes plus lisible au manager fourni."""
+    if manager is None:
+        return False
     try:
-        import wx
         import wx.lib.agw.aui as aui
+        from Utils import UTILS_Interface
         from Utils import UTILS_Responsive
     except Exception:
         return False
 
-    # AGW : supprimer le vieux fond en dégradé/segmenté. Le flag est natif à
-    # AuiToolBar et conserve le comportement de docking/overflow historique.
-    if not getattr(aui.AuiToolBar, "_noethys_plain_toolbar", False):
+    try:
+        art = manager.GetArtProvider()
+    except Exception:
+        return False
+
+    # Un séparateur suffisamment présent structure l'écran bien mieux qu'une
+    # colonne de pictogrammes décoratifs. La valeur reste dense et suit le DPI.
+    try:
+        sash = max(5, min(9, int(round(5 * max(1.0, UTILS_Responsive._facteur_ecran())))))
+        art.SetMetric(aui.AUI_DOCKART_SASH_SIZE, sash)
+    except Exception:
+        pass
+
+    try:
+        art.SetMetric(aui.AUI_DOCKART_PANE_BORDER_SIZE, 1)
+    except Exception:
+        pass
+
+    try:
+        art.SetColour(
+            aui.AUI_DOCKART_SASH_COLOUR,
+            UTILS_Interface.GetCouleurRole("outline_variant"),
+        )
+    except Exception:
         try:
-            original_init = aui.AuiToolBar.__init__
-
-            def _init_noethys(self, *args, **kwargs):
-                flag = getattr(aui, "AUI_TB_PLAIN_BACKGROUND", 0)
-                if flag:
-                    kwargs["agwStyle"] = kwargs.get("agwStyle", getattr(aui, "AUI_TB_DEFAULT_STYLE", 0)) | flag
-                original_init(self, *args, **kwargs)
-                try:
-                    self.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
-                except Exception:
-                    pass
-
-            aui.AuiToolBar.__init__ = _init_noethys
-            aui.AuiToolBar._noethys_plain_toolbar = True
+            art.SetColor(
+                aui.AUI_DOCKART_SASH_COLOUR,
+                UTILS_Interface.GetCouleurRole("outline_variant"),
+            )
         except Exception:
             pass
 
-    # Paliers responsive des toolbars AGW.
-    if not getattr(aui.AuiToolBar, "_noethys_responsive_icons", False):
+    try:
+        art.SetColour(
+            aui.AUI_DOCKART_BORDER_COLOUR,
+            UTILS_Interface.GetCouleurRole("outline"),
+        )
+    except Exception:
         try:
-            original_set_size = aui.AuiToolBar.SetToolBitmapSize
-
-            def _set_size_noethys(self, taille):
-                return original_set_size(self, UTILS_Responsive.AdapterTailleWx(taille))
-
-            aui.AuiToolBar.SetToolBitmapSize = _set_size_noethys
-            aui.AuiToolBar._noethys_responsive_icons = True
+            art.SetColor(
+                aui.AUI_DOCKART_BORDER_COLOUR,
+                UTILS_Interface.GetCouleurRole("outline"),
+            )
         except Exception:
             pass
 
-    # Les barres d'actions classiques (par ex. Individus) utilisent wx.ToolBar.
-    if not getattr(wx.ToolBar, "_noethys_responsive_icons", False):
-        try:
-            original_wx_set_size = wx.ToolBar.SetToolBitmapSize
-
-            def _wx_set_size_noethys(self, taille):
-                return original_wx_set_size(self, UTILS_Responsive.AdapterTailleWx(taille))
-
-            wx.ToolBar.SetToolBitmapSize = _wx_set_size_noethys
-            wx.ToolBar._noethys_responsive_icons = True
-        except Exception:
-            pass
-
+    try:
+        manager.Update()
+    except Exception:
+        pass
     return True
 
 
-# Noethys importe UTILS_Aui avant de construire ses toolbars communes.
-InstallerStyleToolbars()
+def ConfigurerToolBar(toolbar, taille_base=16, fond_uni=True):
+    """Configure explicitement une toolbar déjà construite.
+
+    Cette fonction n'intercepte jamais ``__init__`` ni ``SetToolBitmapSize`` :
+    l'écran propriétaire choisit de l'appeler.
+    """
+    if toolbar is None:
+        return False
+    try:
+        import wx
+        import wx.lib.agw.aui as aui
+        from Utils import UTILS_Interface
+        from Utils import UTILS_Responsive
+    except Exception:
+        return False
+
+    taille = UTILS_Responsive.GetTailleIcone(taille_base)
+    try:
+        toolbar.SetToolBitmapSize(wx.Size(taille, taille))
+    except Exception:
+        try:
+            toolbar.SetToolBitmapSize((taille, taille))
+        except Exception:
+            pass
+
+    if fond_uni and isinstance(toolbar, aui.AuiToolBar):
+        try:
+            style = toolbar.GetAGWWindowStyleFlag()
+            style |= getattr(aui, "AUI_TB_PLAIN_BACKGROUND", 0)
+            toolbar.SetAGWWindowStyleFlag(style)
+        except Exception:
+            pass
+
+    try:
+        toolbar.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container"))
+    except Exception:
+        pass
+
+    try:
+        toolbar.Realize()
+    except Exception:
+        pass
+    return True
 
 
 def ChargerPerspective(manager, perspective, fallback=None):
-    """Charge une perspective AUI avec repli sûr sur ``fallback``.
+    """Charge une perspective AUI avec repli sûr sur ``fallback``."""
+    ConfigurerManager(manager)
 
-    Retourne le résultat de ``LoadPerspective``. Les erreurs de parsing ou
-    assertions liées à une ancienne perspective sont considérées comme un
-    échec de chargement, sans masquer les autres exceptions inattendues.
-    """
     candidates = []
     for candidate in (perspective, fallback):
         if isinstance(candidate, str) and candidate.strip() and candidate not in candidates:
@@ -89,6 +131,8 @@ def ChargerPerspective(manager, perspective, fallback=None):
         except (AssertionError, TypeError, ValueError, RuntimeError):
             result = False
         if result is not False:
+            ConfigurerManager(manager)
             return result
 
+    ConfigurerManager(manager)
     return False
