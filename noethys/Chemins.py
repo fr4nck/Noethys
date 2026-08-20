@@ -25,23 +25,28 @@ for rep in os.listdir(REP_COURANT) :
         sys.path.insert(2, chemin)
 
 
-def _GetIconeModerne(fichier):
-    """Substitution prudente des vieux pictos d'interface 16/32 px.
-
-    Tout fichier non reconnu, toute erreur de génération ou l'activation de
-    NOETHYS_LEGACY_ICONS laisse strictement fonctionner la ressource historique.
-    """
+def _GetIconeModerne(fichier, taille=None):
+    """Retourne un pictogramme moderne connu, sinon None."""
     if not fichier:
         return None
     if os.environ.get("NOETHYS_LEGACY_ICONS", "").strip().lower() in ("1", "true", "yes", "oui"):
         return None
 
     normalise = fichier.replace("\\", "/")
-    if not (
-        normalise.startswith("Images/16x16/")
-        or normalise.startswith("Images/32x32/")
-    ):
+    dossiers = (
+        "Images/16x16/", "Images/20x20/", "Images/24x24/",
+        "Images/32x32/", "Images/40x40/", "Images/48x48/",
+    )
+    if not normalise.startswith(dossiers):
         return None
+
+    try:
+        from Utils import UTILS_Icones_identites
+        resultat = UTILS_Icones_identites.GetLegacyOverridePath(normalise, taille=taille)
+        if resultat:
+            return resultat
+    except Exception:
+        pass
 
     try:
         from Utils import UTILS_Icones_modernes
@@ -50,13 +55,18 @@ def _GetIconeModerne(fichier):
         return None
 
 
-def GetStaticPath(fichier=""):
-    """ Retourne le chemin du répertoire Static """
+def GetStaticIconPath(fichier="", taille=None):
+    """Retourne une ressource d'icône, avec taille de rendu optionnelle."""
     chemin = os.path.join(REP_COURANT, "Static")
-    icone_moderne = _GetIconeModerne(fichier)
+    icone_moderne = _GetIconeModerne(fichier, taille=taille)
     if icone_moderne:
         return icone_moderne
     return os.path.join(chemin, fichier)
+
+
+def GetStaticPath(fichier=""):
+    """ Retourne le chemin du répertoire Static """
+    return GetStaticIconPath(fichier)
 
 
 def GetMainPath(fichier=""):
