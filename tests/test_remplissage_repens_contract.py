@@ -2,8 +2,8 @@
 """Contrat statique du tableau de fréquentation Repens.
 
 Le test ne charge pas wxPython : il garantit que le cockpit utilise le nouveau
-renderer et que son rendu est sémantique, arrondi et indépendant des anciens
-RGB criards.
+panneau, que son rendu est sémantique/arrondi et qu'il ne réintroduit ni les
+anciens RGB criards ni le faux relief 3D.
 """
 
 import ast
@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REPENS = ROOT / "noethys" / "Ctrl" / "CTRL_Remplissage_Repens.py"
+PANEL = ROOT / "noethys" / "Dlg" / "DLG_Remplissage_Repens.py"
 EFFECTIFS = ROOT / "noethys" / "Dlg" / "DLG_Effectifs.py"
 
 
@@ -20,14 +21,17 @@ class RemplissageRepensContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.repens = REPENS.read_text(encoding="utf-8")
+        cls.panel = PANEL.read_text(encoding="utf-8")
         cls.effectifs = EFFECTIFS.read_text(encoding="utf-8")
         ast.parse(cls.repens)
+        ast.parse(cls.panel)
         ast.parse(cls.effectifs)
 
-    def test_dashboard_uses_repens_grid(self):
-        self.assertIn("from Ctrl import CTRL_Remplissage_Repens", self.effectifs)
-        self.assertIn("CTRL_Remplissage_Repens.CreerPanel", self.effectifs)
-        self.assertNotIn("from Dlg import DLG_Remplissage\n", self.effectifs)
+    def test_dashboard_uses_complete_repens_panel(self):
+        self.assertIn("from Dlg import DLG_Remplissage_Repens as DLG_Remplissage", self.effectifs)
+        self.assertIn("DLG_Remplissage.Panel(self.notebook)", self.effectifs)
+        self.assertIn("class Panel(Legacy.Panel)", self.panel)
+        self.assertIn("CTRL_Remplissage_Repens.CTRL", self.panel)
 
     def test_renderer_uses_semantic_repens_states(self):
         for role in (
@@ -55,6 +59,12 @@ class RemplissageRepensContractTests(unittest.TestCase):
         self.assertIn("self.SetCellRenderer(row, col, renderer)", self.repens)
         self.assertNotIn("Legacy.RendererCase =", self.repens)
         self.assertNotIn("CTRL_Remplissage.RendererCase =", self.repens)
+
+    def test_toolbar_uses_explicit_fluent_icons_and_semantic_surface(self):
+        self.assertIn("UTILS_FluentIcons.GetBitmap", self.panel)
+        self.assertIn('GetCouleurRole("surface_container_low")', self.panel)
+        self.assertIn("wx.TB_FLAT", self.panel)
+        self.assertIn("AddStretchableSpace", self.panel)
 
 
 if __name__ == "__main__":
