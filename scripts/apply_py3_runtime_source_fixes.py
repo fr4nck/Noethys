@@ -2,24 +2,29 @@
 # -*- coding: utf-8 -*-
 """Apply the Python 3/wxPhoenix fixes proven by Windows runtime tracebacks."""
 
+from importlib.util import find_spec
 from pathlib import Path
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def replace(path, old, new, minimum=1):
-    target = ROOT / path
+def _replace_target(target, label, old, new, minimum=1):
     text = target.read_text(encoding="utf-8")
     count = text.count(old)
     if count >= minimum:
         text = text.replace(old, new)
         target.write_text(text, encoding="utf-8")
-        print("patched %s (%d replacement(s))" % (path, count))
-        return
+        print("patched %s (%d replacement(s))" % (label, count))
+        return count
     if new in text:
-        print("already fixed %s" % path)
-        return
-    raise RuntimeError("%s: expected source pattern not found: %r" % (path, old))
+        print("already fixed %s" % label)
+        return 0
+    raise RuntimeError("%s: expected source pattern not found: %r" % (label, old))
+
+
+def replace(path, old, new, minimum=1):
+    return _replace_target(ROOT / path, path, old, new, minimum=minimum)
 
 
 def patch_transport():
@@ -121,12 +126,56 @@ def patch_redirect():
     print("patched %s Redirect.flush" % path)
 
 
+def patch_wx_agw_aui():
+    """Fix wxMSW/Phoenix float caption coordinates in AGW AUI dockart.
+
+    wxPython 4.2.5 / wxWidgets 3.2.9 on Windows still computes caption
+    coordinates with ``/ 2`` in ``wx.lib.agw.aui.dockart``. Under Phoenix this
+    yields floats, while ``wx.DC.DrawText`` and ``DrawRotatedText`` require
+    integer pixel coordinates. The resulting paint exception can eventually
+    end in a native Windows access violation.
+
+    Linux distribution packages can live in read-only system paths and did not
+    produce the reported wxMSW failure, so this source patch is intentionally
+    Windows-only.
+    """
+    if not sys.platform.startswith("win"):
+        print("skip wx AGW AUI Windows-only patch on %s" % sys.platform)
+        return
+
+    spec = find_spec("wx")
+    if spec is None or not spec.origin:
+        raise RuntimeError("wxPython package not found: cannot patch AGW AUI")
+
+    target = Path(spec.origin).resolve().parent / "lib" / "agw" / "aui" / "dockart.py"
+    if not target.exists():
+        raise RuntimeError("wxPython AGW AUI dockart.py not found: %s" % target)
+
+    label = "wx.lib.agw.aui.dockart.py"
+    old_rotated = "dc.DrawRotatedText(draw_text, rect.x+(rect.width/2)-(h/2)-diff, rect.y+rect.height-3-caption_offset, 90)"
+    new_rotated = "dc.DrawRotatedText(draw_text, int(round(rect.x+(rect.width/2)-(h/2)-diff)), int(round(rect.y+rect.height-3-caption_offset)), 90)"
+    old_text = "dc.DrawText(draw_text, rect.x+3+caption_offset, rect.y+(rect.height/2)-(h/2)-diff)"
+    new_text = "dc.DrawText(draw_text, int(round(rect.x+3+caption_offset)), int(round(rect.y+(rect.height/2)-(h/2)-diff)))"
+
+    _replace_target(target, label, old_rotated, new_rotated)
+    _replace_target(target, label, old_text, new_text)
+
+    # Contract check: fail bootstrap/build immediately if the unsafe forms
+    # survived because a future wxPython release changed the source layout.
+    patched = target.read_text(encoding="utf-8")
+    if old_rotated in patched or old_text in patched:
+        raise RuntimeError("%s: unsafe float AUI coordinates still present" % label)
+    if new_rotated not in patched or new_text not in patched:
+        raise RuntimeError("%s: expected integer-coordinate patch is absent" % label)
+
+
 def main():
     patch_transport()
     patch_images()
     patch_taskbar()
     patch_network_access()
     patch_redirect()
+    patch_wx_agw_aui()
 
 
 if __name__ == "__main__":
