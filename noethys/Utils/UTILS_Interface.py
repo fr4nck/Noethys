@@ -55,12 +55,55 @@ DONNEES = {
 
 }
 
+# Palette sombre inspirée des rôles de couleur Material Design 3.
+# L'objectif n'est pas de transformer wxPython en Material, mais d'utiliser
+# la même logique : surfaces hiérarchisées, texte non blanc pur, contours
+# modérés et couleurs métier conservées comme des signaux sémantiques.
 PALETTE_SOMBRE = {
-    "fond": wx.Colour(32, 32, 32),
-    "fond_controle": wx.Colour(43, 43, 43),
-    "texte": wx.Colour(238, 238, 238),
-    "texte_secondaire": wx.Colour(190, 190, 190),
-    "bordure": wx.Colour(74, 74, 74),
+    "surface": wx.Colour(20, 18, 24),
+    "surface_container_lowest": wx.Colour(15, 13, 19),
+    "surface_container_low": wx.Colour(29, 27, 32),
+    "surface_container": wx.Colour(33, 31, 38),
+    "surface_container_high": wx.Colour(43, 41, 48),
+    "surface_container_highest": wx.Colour(54, 52, 59),
+    "on_surface": wx.Colour(230, 224, 233),
+    "on_surface_variant": wx.Colour(202, 196, 208),
+    "outline": wx.Colour(147, 143, 153),
+    "outline_variant": wx.Colour(73, 69, 79),
+    "selection": wx.Colour(55, 74, 48),
+    "selection_texte": wx.Colour(232, 247, 225),
+    "metier_vert": wx.Colour(47, 72, 47),
+    "metier_vert_texte": wx.Colour(204, 232, 201),
+    "metier_jaune": wx.Colour(78, 68, 38),
+    "metier_jaune_texte": wx.Colour(240, 224, 174),
+    "metier_rouge": wx.Colour(82, 47, 49),
+    "metier_rouge_texte": wx.Colour(245, 197, 199),
+    "fond": wx.Colour(20, 18, 24),
+    "fond_controle": wx.Colour(33, 31, 38),
+    "texte": wx.Colour(230, 224, 233),
+    "texte_secondaire": wx.Colour(202, 196, 208),
+    "bordure": wx.Colour(73, 69, 79),
+}
+
+ACCENTS_SOMBRES = {
+    "Vert": {
+        "primary": wx.Colour(177, 214, 154),
+        "on_primary": wx.Colour(34, 57, 23),
+        "primary_container": wx.Colour(57, 81, 44),
+        "on_primary_container": wx.Colour(205, 238, 181),
+    },
+    "Bleu": {
+        "primary": wx.Colour(169, 199, 255),
+        "on_primary": wx.Colour(0, 48, 92),
+        "primary_container": wx.Colour(31, 71, 116),
+        "on_primary_container": wx.Colour(213, 227, 255),
+    },
+    "Noir": {
+        "primary": wx.Colour(202, 196, 208),
+        "on_primary": wx.Colour(50, 47, 53),
+        "primary_container": wx.Colour(73, 69, 79),
+        "on_primary_container": wx.Colour(232, 222, 237),
+    },
 }
 
 _GESTIONNAIRE_AFFICHAGE = None
@@ -101,8 +144,6 @@ def SetApparence(valeur="systeme"):
 
 def SystemeEstSombre():
     """Retourne le mode sombre choisi pour les applications par le système."""
-    # Windows : la valeur AppsUseLightTheme correspond au réglage
-    # Paramètres > Personnalisation > Couleurs > mode d'application.
     if sys.platform.startswith("win"):
         try:
             import winreg
@@ -113,7 +154,6 @@ def SystemeEstSombre():
         except Exception:
             pass
 
-    # Fallback wxWidgets, notamment macOS/Linux et versions récentes de wx.
     try:
         apparence = wx.SystemSettings.GetAppearance()
         if hasattr(apparence, "AreAppsDark"):
@@ -148,22 +188,56 @@ def SetTheme(theme="Vert"):
 
 def GetValeur(cle="", defaut="", theme=None):
     InstallerGestionAffichage()
-    # lecture du thème
     if theme == None :
         theme = UTILS_Customize.GetValeur("interface", "theme", "Vert")
 
-    # Lecture de la valeur
     if theme in DONNEES :
         if cle in DONNEES[theme]:
             return DONNEES[theme][cle]
 
-    # Sinon renvoie la valeur par défaut
     return defaut
+
+
+def GetCouleurRole(role="surface", sombre=None, theme=None, defaut=None):
+    """Retourne une couleur sémantique d'interface."""
+    if sombre is None:
+        sombre = EstSombre()
+    if theme is None:
+        theme = UTILS_Customize.GetValeur("interface", "theme", "Vert")
+
+    if sombre:
+        if role in PALETTE_SOMBRE:
+            return PALETTE_SOMBRE[role]
+        if role in ACCENTS_SOMBRES.get(theme, {}):
+            return ACCENTS_SOMBRES[theme][role]
+
+    if role in ("primary", "primary_container"):
+        return GetValeur("couleur_claire", wx.Colour(137, 206, 27), theme=theme)
+    if role in ("on_surface", "on_surface_variant", "selection_texte"):
+        return wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT)
+    if role in ("outline", "outline_variant"):
+        return wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DSHADOW)
+    if role == "surface":
+        return wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNFACE)
+    if role.startswith("surface_container"):
+        return wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
+    if role == "selection":
+        return wx.SystemSettings.GetColour(wx.SYS_COLOUR_HIGHLIGHT)
+    return defaut if defaut is not None else wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
 
 
 def _couleur_identique(couleur1, couleur2):
     try:
         return tuple(couleur1.Get())[:3] == tuple(couleur2.Get())[:3]
+    except Exception:
+        return False
+
+
+def _couleur_proche(couleur, reference, tolerance=8):
+    try:
+        c1 = tuple(couleur.Get())[:3]
+        c2 = tuple(reference.Get())[:3]
+        return all(abs(a - b) <= tolerance for a, b in zip(c1, c2))
     except Exception:
         return False
 
@@ -187,9 +261,6 @@ def _appliquer_police(window, facteur):
         if taille <= 0:
             return
 
-        # Si le contrôle vient d'être créé après son parent déjà agrandi,
-        # il peut avoir hérité de la police agrandie. On réutilise alors la
-        # taille de base mémorisée sur le parent pour éviter un double zoom.
         parent = window.GetParent()
         base = getattr(window, "_noethys_taille_police_base", None)
         if base is None:
@@ -227,7 +298,6 @@ def _appliquer_police(window, facteur):
 
 def _appliquer_dimensions_speciales(window, facteur):
     """Agrandit les métriques verticales utiles sans gonfler toutes les colonnes."""
-    # wx.Grid et contrôles compatibles : hauteur des lignes.
     if hasattr(window, "GetDefaultRowSize") and hasattr(window, "SetDefaultRowSize"):
         try:
             valeur = _memorise_base(window, "_noethys_hauteur_ligne_base", window.GetDefaultRowSize())
@@ -238,6 +308,63 @@ def _appliquer_dimensions_speciales(window, facteur):
                 window.SetDefaultRowSize(cible)
         except Exception:
             pass
+
+
+def _fond_est_legacy_clair(couleur):
+    theme = UTILS_Customize.GetValeur("interface", "theme", "Vert")
+    references = [
+        wx.Colour(255, 255, 255),
+        wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNFACE),
+        wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW),
+    ]
+    if theme in DONNEES:
+        references.extend([
+            DONNEES[theme].get("couleur_tres_claire"),
+            DONNEES[theme].get("couleur_tres_claire_2"),
+        ])
+    for reference in references:
+        if reference is not None and _couleur_proche(couleur, reference):
+            return True
+    return False
+
+
+def _appliquer_palette_liste(window):
+    surface_pair = PALETTE_SOMBRE["surface_container_lowest"]
+    surface_impair = PALETTE_SOMBRE["surface_container_low"]
+
+    for attribut, valeur in (
+        ("evenRowsBackColor", surface_pair),
+        ("oddRowsBackColor", surface_impair),
+    ):
+        if hasattr(window, attribut):
+            try:
+                setattr(window, attribut, valeur)
+            except Exception:
+                pass
+
+    try:
+        window.SetBackgroundColour(surface_pair)
+        window.SetForegroundColour(PALETTE_SOMBRE["on_surface"])
+    except Exception:
+        pass
+
+    try:
+        if hasattr(window, "stEmptyListMsg"):
+            window.stEmptyListMsg.SetBackgroundColour(surface_pair)
+            window.stEmptyListMsg.SetForegroundColour(PALETTE_SOMBRE["on_surface_variant"])
+            window.stEmptyListMsg.Refresh()
+    except Exception:
+        pass
+
+    try:
+        nbre = window.GetItemCount()
+        if nbre <= 2000:
+            for index in range(nbre):
+                couleur = window.GetItemBackgroundColour(index)
+                if not couleur.IsOk() or _fond_est_legacy_clair(couleur):
+                    window.SetItemBackgroundColour(index, surface_pair if index % 2 == 0 else surface_impair)
+    except Exception:
+        pass
 
 
 def _appliquer_couleurs(window, sombre):
@@ -254,26 +381,43 @@ def _appliquer_couleurs(window, sombre):
     fond_fenetre_systeme = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
     texte_systeme = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT)
 
-    # Ne jamais écraser une couleur métier explicitement posée par Noethys
-    # (cases vertes/rouges des effectifs, alertes, états, etc.).
     fond_est_standard = (
         _couleur_identique(fond_actuel, fond_bouton_systeme)
         or _couleur_identique(fond_actuel, fond_fenetre_systeme)
+        or _fond_est_legacy_clair(fond_actuel)
         or not fond_actuel.IsOk()
     )
-    texte_est_standard = _couleur_identique(texte_actuel, texte_systeme) or not texte_actuel.IsOk()
+    texte_est_standard = (
+        _couleur_identique(texte_actuel, texte_systeme)
+        or _couleur_proche(texte_actuel, wx.Colour(0, 0, 0), tolerance=20)
+        or not texte_actuel.IsOk()
+    )
 
     nom_classe = window.__class__.__name__.lower()
-    controle_saisie = any(mot in nom_classe for mot in ("textctrl", "listctrl", "treectrl", "choice", "combobox", "spin", "grid"))
+
+    if any(mot in nom_classe for mot in ("objectlistview", "listctrl", "listview")):
+        _appliquer_palette_liste(window)
+        return
+
+    if any(mot in nom_classe for mot in ("textctrl", "treectrl", "choice", "combobox", "spin", "checklist", "grid")):
+        role_fond = "surface_container_low"
+    elif any(mot in nom_classe for mot in ("button", "togglebutton", "bitmapbutton")):
+        role_fond = "surface_container_high"
+    elif any(mot in nom_classe for mot in ("toolbar", "auitoolbar", "notebook", "choicebook", "listbook")):
+        role_fond = "surface_container"
+    elif any(mot in nom_classe for mot in ("dialog", "frame", "panel", "scrolledwindow", "staticbox")):
+        role_fond = "surface"
+    else:
+        role_fond = "surface"
 
     if fond_est_standard:
         try:
-            window.SetBackgroundColour(PALETTE_SOMBRE["fond_controle"] if controle_saisie else PALETTE_SOMBRE["fond"])
+            window.SetBackgroundColour(PALETTE_SOMBRE[role_fond])
         except Exception:
             pass
-    if texte_est_standard:
+    if texte_est_standard and fond_est_standard:
         try:
-            window.SetForegroundColour(PALETTE_SOMBRE["texte"])
+            window.SetForegroundColour(PALETTE_SOMBRE["on_surface"])
         except Exception:
             pass
 
@@ -288,7 +432,6 @@ def _appliquer_barre_titre_sombre(window, sombre):
         import ctypes
         hwnd = int(window.GetHandle())
         valeur = ctypes.c_int(1)
-        # 20 est la valeur actuelle ; 19 couvre certaines versions antérieures.
         for attribut in (20, 19):
             resultat = ctypes.windll.dwmapi.DwmSetWindowAttribute(
                 hwnd, attribut, ctypes.byref(valeur), ctypes.sizeof(valeur)
@@ -399,6 +542,8 @@ class _GestionnaireAffichage(wx.EventFilter):
                 window = event.GetWindow()
                 if window is not None:
                     wx.CallAfter(AppliquerAffichage, window, False)
+                    if isinstance(window, wx.TopLevelWindow):
+                        wx.CallLater(150, AppliquerAffichage, window, True)
             except Exception:
                 pass
         return self.Event_Skip
