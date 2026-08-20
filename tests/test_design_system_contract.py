@@ -129,17 +129,20 @@ class DesignSystemContractTests(unittest.TestCase):
         self.assertIn("classe.__module__", self.interface_text)
         self.assertIn("classe.__name__", self.interface_text)
 
-    def test_existing_interface_already_uses_surface_hierarchy(self):
-        # Le nouveau contrat complète le moteur déjà présent : il ne doit pas
-        # devenir une seconde architecture sans rapport avec UTILS_Interface.
+    def test_interface_consumes_surface_hierarchy_through_central_contract(self):
+        # Les rôles complets vivent dans UTILS_DesignSystem. UTILS_Interface ne
+        # doit pas recopier la table : il consomme le contrat et référence
+        # directement seulement les surfaces dont son moteur a besoin.
+        self.assertIn("from Utils import UTILS_DesignSystem", self.interface_text)
+        self.assertIn("UTILS_DesignSystem.GetCouleur", self.interface_text)
+        self.assertIn("UTILS_DesignSystem.GetRoleComposant", self.interface_text)
         for role in (
             "surface_container_lowest",
             "surface_container_low",
-            "surface_container",
             "surface_container_high",
-            "surface_container_highest",
         ):
             self.assertIn('"%s"' % role, self.interface_text)
+        self.assertIn('"surface_container_highest"', self.design_text)
 
     def test_no_mobile_or_glass_defaults_are_introduced(self):
         lowered = self.design_text.lower()
