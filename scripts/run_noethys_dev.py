@@ -40,14 +40,16 @@ if EXAMPLES.is_dir():
 sys.path.insert(0, str(NOETHYS))
 sys.path.insert(0, str(ROOT))
 
-# runtime_crashlog détermine son dossier de logs depuis sys.executable. En mode
-# source, on lui présente temporairement l'emplacement de Noethys.py afin qu'il
-# retrouve noethys/Portable, exactement comme le portable trouve Portable à
-# côté de Noethys.exe. On restaure ensuite le vrai python.exe.
+# Les hooks de diagnostic déterminent leur dossier de logs depuis
+# sys.executable. En mode source, on leur présente temporairement l'emplacement
+# de Noethys.py afin qu'ils retrouvent noethys/Portable, exactement comme le
+# portable trouve Portable à côté de Noethys.exe. On restaure ensuite le vrai
+# python.exe.
 real_executable = sys.executable
 try:
     sys.executable = str(NOETHYS / "Noethys.exe")
     runpy.run_path(str(PACKAGING / "runtime_crashlog.py"), run_name="__noethys_runtime_crashlog__")
+    runpy.run_path(str(PACKAGING / "runtime_perf.py"), run_name="__noethys_runtime_perf__")
 finally:
     sys.executable = real_executable
 
