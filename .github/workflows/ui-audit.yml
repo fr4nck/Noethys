@@ -1,0 +1,34 @@
+name: UI layout audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'noethys/**'
+      - 'scripts/audit_ui_layout.py'
+      - '.github/workflows/ui-audit.yml'
+  pull_request:
+    paths:
+      - 'noethys/**'
+      - 'scripts/audit_ui_layout.py'
+      - '.github/workflows/ui-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit-ui-layout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Compiler les modules UI transversaux
+        run: |
+          python -m py_compile noethys/Utils/UTILS_UIMetrics.py
+          python -m py_compile noethys/Utils/UTILS_Responsive.py
+          python -m py_compile noethys/Utils/UTILS_Aui.py
+          python -m py_compile noethys/Ctrl/CTRL_Ephemeride.py
+      - name: Inventorier la dette de layout
+        run: python scripts/audit_ui_layout.py --json tmp/ui-layout-audit.json
