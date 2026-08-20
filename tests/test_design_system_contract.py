@@ -121,6 +121,14 @@ class DesignSystemContractTests(unittest.TestCase):
         self.assertEqual(roles, {"data", "input", "panel", "toolbar", "button", "floating"})
         self.assertIn("def GetRoleComposant", self.design_text)
 
+    def test_historical_ctrl_modules_are_classifiable(self):
+        # Les composants Noethys portent souvent la classe générique CTRL. Le
+        # contrat doit donc reconnaître aussi leur nom de module qualifié.
+        for marker in ("grille", "saisie", "bouton", "barre_outils"):
+            self.assertIn('"%s"' % marker, self.design_text)
+        self.assertIn("classe.__module__", self.interface_text)
+        self.assertIn("classe.__name__", self.interface_text)
+
     def test_existing_interface_already_uses_surface_hierarchy(self):
         # Le nouveau contrat complète le moteur déjà présent : il ne doit pas
         # devenir une seconde architecture sans rapport avec UTILS_Interface.
