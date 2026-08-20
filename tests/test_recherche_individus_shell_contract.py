@@ -22,6 +22,18 @@ class RechercheIndividusShellContractTests(unittest.TestCase):
         self.assertIn("entete.Add(self.ctrl_recherche", self.text)
         self.assertIn("entete.Add(self.ctrl_nouvelle_famille", self.text)
 
+    def test_header_exposes_contextual_communication_actions(self):
+        self.assertIn("self.ctrl_email", self.text)
+        self.assertIn("self.ctrl_sms", self.text)
+        self.assertIn("entete.Add(self.ctrl_email", self.text)
+        self.assertIn("entete.Add(self.ctrl_sms", self.text)
+        self.assertIn("def OnEmail", self.text)
+        self.assertIn("DLG_Mailer.Dialog", self.text)
+        self.assertIn("listeAdresses=adresses", self.text)
+        self.assertIn("def OnSMS", self.text)
+        self.assertIn("DLG_Envoi_sms.Dialog", self.text)
+        self.assertIn('GetPageByCode("saisie_manuelle")', self.text)
+
     def test_pane_exposes_standard_window_commands(self):
         self.assertIn("def _ConfigurerPaneAui", self.text)
         self.assertIn("pane.CloseButton(True)", self.text)
