@@ -16,6 +16,7 @@ La connexion DB est fournie par l'appelant et n'est jamais fermée ici.
 """
 
 from Data.DATA_Tables import DB_DATA
+from Utils import UTILS_Portail_tarifs
 
 
 CHAMPS_TARIFS = (
@@ -156,7 +157,7 @@ def charger_baremes(DB, IDsactivites=None):
     filtres = _charger_filtres(DB)
     tarifs = _charger_tarifs(DB)
 
-    filtre_activites = set(IDsactivites) if IDsactivites else None
+    filtre_activites = set(IDsactivites) if IDsactivites is not None else None
     resultats = []
 
     for tarif in tarifs:
@@ -183,3 +184,23 @@ def charger_baremes(DB, IDsactivites=None):
             resultats.append(item)
 
     return resultats
+
+
+def construire_publication(DB, IDsactivites=None, date_reference=None,
+                            inclure_expires=False, titre="Tarifs des activités"):
+    """Construit la représentation et le HTML à partir de la base Noethys.
+
+    Cette fonction ne modifie aucune donnée. Elle est destinée à alimenter un
+    aperçu puis, dans un lot suivant, le cache HTML du bloc portail.
+    """
+    baremes = charger_baremes(DB, IDsactivites=IDsactivites)
+    descriptions = UTILS_Portail_tarifs.decrire_tarifs(
+        baremes,
+        date_reference=date_reference,
+        inclure_expires=inclure_expires,
+    )
+    return {
+        "baremes": baremes,
+        "descriptions": descriptions,
+        "html": UTILS_Portail_tarifs.construire_html(descriptions, titre=titre),
+    }
