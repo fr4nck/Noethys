@@ -8,21 +8,18 @@
 
 Ce module complète ``UTILS_Interface`` sans remplacer les thèmes historiques.
 Il définit le vocabulaire stable que les composants transversaux doivent
-progressivement consommer : surfaces, textes, accents, états interactifs et
-couleurs métier.
+progressivement consommer : surfaces, textes, accents et états interactifs.
 
 Principes :
 - Fluent 2 pour la grammaire desktop et les états interactifs ;
 - Material Design 3 pour les rôles sémantiques et la hiérarchie des surfaces ;
 - effets de profondeur réservés aux couches fonctionnelles ;
-- compatibilité avec Vert / Bleu / Noir et avec les écrans historiques.
+- palette Repens Design plus sourde et plus adulte en sombre.
 """
 
 import wx
 
 
-# Rôles publics. Un écran métier ne devrait pas inventer un nouveau nom de
-# couleur quand l'un de ces rôles exprime déjà son intention.
 ROLES = (
     "surface",
     "surface_container_lowest",
@@ -64,8 +61,6 @@ ETATS_INTERACTIFS = (
 )
 
 
-# Palette claire volontairement neutre. L'accent reste fourni par le thème
-# historique afin de ne pas changer l'identité des installations existantes.
 PALETTE_CLAIRE = {
     "surface": wx.Colour(248, 249, 250),
     "surface_container_lowest": wx.Colour(255, 255, 255),
@@ -77,65 +72,64 @@ PALETTE_CLAIRE = {
     "on_surface_variant": wx.Colour(82, 82, 82),
     "outline": wx.Colour(124, 124, 124),
     "outline_variant": wx.Colour(207, 207, 207),
-    "selection": wx.Colour(218, 235, 210),
-    "selection_text": wx.Colour(29, 48, 24),
+    "selection": wx.Colour(226, 230, 210),
+    "selection_text": wx.Colour(48, 53, 35),
     "disabled": wx.Colour(235, 235, 235),
     "disabled_text": wx.Colour(145, 145, 145),
-    "focus": wx.Colour(0, 95, 184),
-    "success": wx.Colour(224, 242, 221),
-    "success_text": wx.Colour(37, 87, 35),
-    "warning": wx.Colour(250, 238, 202),
-    "warning_text": wx.Colour(103, 76, 0),
-    "danger": wx.Colour(250, 222, 222),
-    "danger_text": wx.Colour(128, 38, 38),
-    "info": wx.Colour(224, 236, 248),
-    "info_text": wx.Colour(33, 70, 110),
+    "focus": wx.Colour(112, 96, 154),
+    "success": wx.Colour(228, 232, 210),
+    "success_text": wx.Colour(70, 77, 42),
+    "warning": wx.Colour(246, 228, 201),
+    "warning_text": wx.Colour(117, 75, 29),
+    "danger": wx.Colour(235, 224, 239),
+    "danger_text": wx.Colour(93, 63, 103),
+    "info": wx.Colour(228, 224, 238),
+    "info_text": wx.Colour(78, 65, 111),
 }
 
 
-# Palette sombre graphite. On évite volontairement le noir pur et les traits
-# très lumineux : la profondeur vient de surfaces proches mais distinctes,
-# comme dans les outils métier modernes. Les couleurs d'état restent
-# désaturées afin de conserver la lisibilité des informations métier.
+# Repens Design sombre : graphite chaud, kaki/olive, ambre brûlé et prune.
+# La profondeur vient d'abord de surfaces distinctes ; les accents restent
+# suffisamment sourds pour cohabiter avec des tableaux très denses.
 PALETTE_SOMBRE = {
-    "surface": wx.Colour(24, 27, 31),
-    "surface_container_lowest": wx.Colour(19, 22, 25),
-    "surface_container_low": wx.Colour(28, 32, 37),
-    "surface_container": wx.Colour(33, 38, 44),
-    "surface_container_high": wx.Colour(41, 47, 54),
-    "surface_container_highest": wx.Colour(50, 57, 65),
-    "on_surface": wx.Colour(232, 235, 239),
-    "on_surface_variant": wx.Colour(174, 181, 190),
-    "outline": wx.Colour(92, 101, 112),
-    "outline_variant": wx.Colour(52, 59, 67),
-    "selection": wx.Colour(36, 67, 52),
-    "selection_text": wx.Colour(234, 245, 238),
-    "disabled": wx.Colour(39, 44, 50),
-    "disabled_text": wx.Colour(118, 126, 136),
-    "focus": wx.Colour(112, 169, 235),
-    "success": wx.Colour(31, 72, 49),
-    "success_text": wx.Colour(175, 226, 194),
-    "warning": wx.Colour(79, 63, 27),
-    "warning_text": wx.Colour(240, 215, 145),
-    "danger": wx.Colour(81, 42, 48),
-    "danger_text": wx.Colour(240, 181, 189),
-    "info": wx.Colour(31, 59, 83),
-    "info_text": wx.Colour(170, 207, 239),
+    "surface": wx.Colour(22, 24, 26),
+    "surface_container_lowest": wx.Colour(15, 17, 19),
+    "surface_container_low": wx.Colour(28, 31, 33),
+    "surface_container": wx.Colour(34, 38, 41),
+    "surface_container_high": wx.Colour(43, 47, 51),
+    "surface_container_highest": wx.Colour(53, 58, 63),
+    "on_surface": wx.Colour(236, 234, 228),
+    "on_surface_variant": wx.Colour(181, 178, 169),
+    "outline": wx.Colour(94, 96, 93),
+    "outline_variant": wx.Colour(55, 58, 57),
+    "selection": wx.Colour(67, 74, 48),
+    "selection_text": wx.Colour(240, 239, 222),
+    "disabled": wx.Colour(42, 45, 47),
+    "disabled_text": wx.Colour(122, 124, 121),
+    "focus": wx.Colour(151, 137, 196),
+    "success": wx.Colour(74, 82, 55),
+    "success_text": wx.Colour(211, 219, 177),
+    "warning": wx.Colour(104, 72, 35),
+    "warning_text": wx.Colour(235, 181, 96),
+    "danger": wx.Colour(84, 58, 87),
+    "danger_text": wx.Colour(216, 190, 224),
+    "info": wx.Colour(66, 59, 86),
+    "info_text": wx.Colour(203, 191, 229),
 }
 
 
 ACCENTS_CLAIRS = {
     "Vert": {
-        "primary": wx.Colour(79, 128, 54),
+        "primary": wx.Colour(104, 116, 66),
         "on_primary": wx.Colour(255, 255, 255),
-        "primary_container": wx.Colour(220, 239, 209),
-        "on_primary_container": wx.Colour(35, 67, 24),
+        "primary_container": wx.Colour(230, 234, 214),
+        "on_primary_container": wx.Colour(53, 61, 32),
     },
     "Bleu": {
-        "primary": wx.Colour(0, 103, 180),
+        "primary": wx.Colour(88, 78, 128),
         "on_primary": wx.Colour(255, 255, 255),
-        "primary_container": wx.Colour(218, 233, 250),
-        "on_primary_container": wx.Colour(0, 54, 101),
+        "primary_container": wx.Colour(232, 228, 241),
+        "on_primary_container": wx.Colour(58, 49, 91),
     },
     "Noir": {
         "primary": wx.Colour(78, 78, 78),
@@ -147,29 +141,26 @@ ACCENTS_CLAIRS = {
 
 ACCENTS_SOMBRES = {
     "Vert": {
-        "primary": wx.Colour(126, 211, 159),
-        "on_primary": wx.Colour(14, 45, 28),
-        "primary_container": wx.Colour(36, 77, 52),
-        "on_primary_container": wx.Colour(199, 239, 213),
+        "primary": wx.Colour(164, 176, 113),
+        "on_primary": wx.Colour(35, 40, 22),
+        "primary_container": wx.Colour(67, 74, 48),
+        "on_primary_container": wx.Colour(226, 231, 198),
     },
     "Bleu": {
-        "primary": wx.Colour(123, 183, 238),
-        "on_primary": wx.Colour(13, 47, 76),
-        "primary_container": wx.Colour(37, 72, 103),
-        "on_primary_container": wx.Colour(205, 229, 250),
+        "primary": wx.Colour(161, 146, 205),
+        "on_primary": wx.Colour(39, 32, 58),
+        "primary_container": wx.Colour(71, 61, 94),
+        "on_primary_container": wx.Colour(225, 216, 242),
     },
     "Noir": {
-        "primary": wx.Colour(195, 201, 209),
-        "on_primary": wx.Colour(42, 47, 53),
-        "primary_container": wx.Colour(64, 71, 79),
-        "on_primary_container": wx.Colour(234, 237, 241),
+        "primary": wx.Colour(198, 199, 194),
+        "on_primary": wx.Colour(43, 45, 46),
+        "primary_container": wx.Colour(67, 70, 72),
+        "on_primary_container": wx.Colour(236, 235, 231),
     },
 }
 
 
-# Rôle de surface recommandé selon les grandes familles wxPython et les noms de
-# modules historiques Noethys. Les contrôles maison s'appellent souvent CTRL :
-# le nom qualifié du module devient donc une information utile à la classification.
 ROLES_COMPOSANTS = {
     "data": "surface_container_lowest",
     "input": "surface_container_low",
@@ -228,12 +219,7 @@ def GetRoleComposant(nom_classe=""):
 
 
 def GetEtatCouleurs(etat="normal", sombre=False, theme="Vert"):
-    """Retourne les rôles utiles pour dessiner un état interactif cohérent.
-
-    La fonction reste volontairement simple : les contrôles natifs gardent leur
-    comportement natif lorsque celui-ci est meilleur. Ce contrat sert surtout
-    aux contrôles personnalisés Noethys.
-    """
+    """Retourne les rôles utiles pour dessiner un état interactif cohérent."""
     if etat not in ETATS_INTERACTIFS:
         etat = "normal"
 
