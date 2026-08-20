@@ -11,10 +11,18 @@
 
 import Chemins
 from Utils import UTILS_Adaptations
+from Utils import UTILS_Interface
 from Utils.UTILS_Traduction import _
 import wx
-from Ctrl import CTRL_Bouton_image
 import wx.html as html
+
+
+def _couleur_html(couleur):
+    """Convertit une wx.Colour en couleur HTML sans dupliquer la palette."""
+    try:
+        return u"#%02X%02X%02X" % (couleur.Red(), couleur.Green(), couleur.Blue())
+    except Exception:
+        return u"#000000"
 
 
 class MyHtml(html.HtmlWindow):
@@ -22,9 +30,28 @@ class MyHtml(html.HtmlWindow):
         html.HtmlWindow.__init__(self, parent, -1, style=wx.html.HW_NO_SELECTION | wx.html.HW_SCROLLBAR_NEVER | wx.NO_FULL_REPAINT_ON_RESIZE)
         if "gtk2" in wx.PlatformInfo:
             self.SetStandardFonts()
+        self.texte = texte
         self.SetBorders(0)
         self.SetMinSize((-1, hauteur))
-        self.SetPage(u"<FONT SIZE=-2>%s</FONT>""" % texte)
+        self.AppliquerTheme()
+
+    def AppliquerTheme(self):
+        """Applique au texte d'introduction les couleurs du design system."""
+        sombre = UTILS_Interface.EstSombre()
+        fond = UTILS_Interface.GetCouleurRole("surface_container_lowest", sombre=sombre)
+        texte = UTILS_Interface.GetCouleurRole("on_surface_variant", sombre=sombre)
+        try:
+            self.SetBackgroundColour(fond)
+            self.SetForegroundColour(texte)
+        except Exception:
+            pass
+        self.SetPage(
+            u'<BODY BGCOLOR="%s" TEXT="%s"><FONT SIZE=-2>%s</FONT></BODY>' % (
+                _couleur_html(fond),
+                _couleur_html(texte),
+                self.texte,
+            )
+        )
 
 
 class Bandeau(wx.Panel):
@@ -42,8 +69,52 @@ class Bandeau(wx.Panel):
         self.__do_layout()
 
     def __set_properties(self):
-        self.SetBackgroundColour(wx.Colour(255, 255, 255))
-        self.ctrl_titre.SetFont(wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
+        # Le bandeau reste une couche fonctionnelle légère : surface claire en
+        # mode clair, surface profonde mais distincte en sombre. Aucun écran
+        # métier n'a besoin de connaître les RGB correspondants.
+        self.AppliquerTheme()
+
+        # Conserve la typographie système de la plateforme et ne fixe plus une
+        # famille/taille historique. Le moteur global d'affichage pourra ainsi
+        # appliquer correctement l'échelle et la taille de texte choisies.
+        police = wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)
+        try:
+            police = wx.Font(police)
+            if hasattr(police, "GetFractionalPointSize") and hasattr(police, "SetFractionalPointSize"):
+                police.SetFractionalPointSize(max(5.0, police.GetFractionalPointSize() + 1.0))
+            else:
+                police.SetPointSize(max(5, police.GetPointSize() + 1))
+            police.SetWeight(wx.FONTWEIGHT_BOLD)
+            self.ctrl_titre.SetFont(police)
+        except Exception:
+            pass
+
+    def AppliquerTheme(self):
+        """Actualise les couleurs sémantiques du bandeau et de ses enfants."""
+        sombre = UTILS_Interface.EstSombre()
+        fond = UTILS_Interface.GetCouleurRole("surface_container_lowest", sombre=sombre)
+        texte = UTILS_Interface.GetCouleurRole("on_surface", sombre=sombre)
+        bordure = UTILS_Interface.GetCouleurRole("outline_variant", sombre=sombre)
+
+        try:
+            self.SetBackgroundColour(fond)
+            self.ctrl_titre.SetBackgroundColour(fond)
+            self.ctrl_titre.SetForegroundColour(texte)
+            self.ligne.SetForegroundColour(bordure)
+            self.ligne.SetBackgroundColour(bordure)
+        except Exception:
+            pass
+
+        if hasattr(self, "image"):
+            try:
+                self.image.SetBackgroundColour(fond)
+            except Exception:
+                pass
+
+        try:
+            self.ctrl_intro.AppliquerTheme()
+        except Exception:
+            pass
 
     def __do_layout(self):
         grid_sizer_vertical = wx.FlexGridSizer(rows=2, cols=1, vgap=4, hgap=4)
