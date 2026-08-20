@@ -8,7 +8,6 @@
 # Licence:         Licence GNU GPL
 #-----------------------------------------------------------
 
-
 import Chemins
 from Utils import UTILS_Adaptations
 from Utils.UTILS_Traduction import _
@@ -26,6 +25,108 @@ ID_OUVRIR_GRILLE = 60
 ID_OUVRIR_FICHE_IND = 70
 ID_PARAMETRES = wx.Window.NewControlId()
 ID_OUTILS = wx.Window.NewControlId()
+
+
+class ListeIndividusAccueil(OL_Individus.ListView):
+    """Vue d'accueil dense sans la colonne d'avatars historique.
+
+    La logique métier reste dans :class:`OL_Individus.ListView` (requêtes,
+    filtres, actions, sélection). Seule la présentation de cette vue est
+    remplacée directement ici : aucun image-list de civilités n'est créé et les
+    colonnes textuelles absorbent l'espace disponible.
+    """
+
+    LARGEURS_MIN = {
+        0: 120,  # Nom
+        1: 105,  # Prénom
+        2: 82,   # Date naissance
+        3: 55,   # Age
+        4: 150,  # Rue
+        5: 58,   # CP
+        6: 110,  # Ville
+        7: 105,  # Tel domicile
+        8: 105,  # Tel mobile
+        9: 170,  # Email
+        10: 72,  # Etat
+    }
+    COLONNES_EXPANSIBLES = (0, 1, 4, 6, 9)
+
+    def __init__(self, *args, **kwds):
+        OL_Individus.ListView.__init__(self, *args, **kwds)
+        self.Bind(wx.EVT_SIZE, self._OnSizeModerne)
+
+    def InitObjectListView(self):
+        def FormateDate(date):
+            return OL_Individus.UTILS_Dates.DateDDEnFr(date)
+
+        def FormateAge(age):
+            if age is None:
+                return ""
+            return _(u"%d ans") % age
+
+        def FormateEtat(etat):
+            if etat == "archive":
+                return _(u"Archivé")
+            if etat == "efface":
+                return _(u"Effacé")
+            return ""
+
+        self.oddRowsBackColor = UTILS_Interface.GetCouleurRole("surface_container_lowest")
+        self.evenRowsBackColor = UTILS_Interface.GetCouleurRole("surface")
+        self.useExpansionColumn = False
+
+        # Pas de colonne d'icône : les civilités restent une donnée métier mais
+        # n'ont aucune raison de consommer une colonne et des bitmaps à l'accueil.
+        colonnes = [
+            OL_Individus.ColumnDefn(_(u"Nom"), "left", self.LARGEURS_MIN[0], "nom", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"Prénom"), "left", self.LARGEURS_MIN[1], "prenom", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"Date naiss."), "left", self.LARGEURS_MIN[2], "date_naiss", typeDonnee="date", stringConverter=FormateDate),
+            OL_Individus.ColumnDefn(_(u"Age"), "left", self.LARGEURS_MIN[3], "age", typeDonnee="entier", stringConverter=FormateAge),
+            OL_Individus.ColumnDefn(_(u"Rue"), "left", self.LARGEURS_MIN[4], "rue_resid", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"C.P."), "left", self.LARGEURS_MIN[5], "cp_resid", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"Ville"), "left", self.LARGEURS_MIN[6], "ville_resid", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"Tél. domicile"), "left", self.LARGEURS_MIN[7], "tel_domicile", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"Tél. mobile"), "left", self.LARGEURS_MIN[8], "tel_mobile", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"Email"), "left", self.LARGEURS_MIN[9], "mail", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"État"), "left", self.LARGEURS_MIN[10], "etat", typeDonnee="texte", stringConverter=FormateEtat),
+            OL_Individus.ColumnDefn(_(u"Recherche"), "left", 0, "champ_recherche", typeDonnee="texte"),
+        ]
+
+        self.SetColumns(colonnes)
+        self.SetSortColumn(self.columns[0])
+        self.SetObjects(self.donnees)
+        wx.CallAfter(self._AjusteColonnes)
+
+    def _OnSizeModerne(self, event):
+        event.Skip()
+        wx.CallAfter(self._AjusteColonnes)
+
+    def _AjusteColonnes(self):
+        """Distribue le surplus horizontal sans réduire les minima métier."""
+        if self.GetColumnCount() < 11:
+            return
+        largeur_disponible = self.GetClientSize().GetWidth()
+        if largeur_disponible <= 0:
+            return
+
+        total_min = sum(self.LARGEURS_MIN.values())
+        # Petite marge pour le bord/scroll vertical. Si la fenêtre est trop
+        # étroite, on garde les minima et le ListCtrl fournit le scroll horizontal.
+        surplus = max(0, largeur_disponible - total_min - 24)
+        part = surplus // len(self.COLONNES_EXPANSIBLES) if surplus else 0
+        reste = surplus - (part * len(self.COLONNES_EXPANSIBLES))
+
+        for index, largeur_min in self.LARGEURS_MIN.items():
+            largeur = largeur_min
+            if index in self.COLONNES_EXPANSIBLES:
+                largeur += part
+                if reste > 0:
+                    largeur += 1
+                    reste -= 1
+            try:
+                self.SetColumnWidth(index, largeur)
+            except Exception:
+                pass
 
 
 class ToolBar(wx.ToolBar):
@@ -67,8 +168,7 @@ class ToolBar(wx.ToolBar):
         self.Bind(wx.EVT_TOOL, self.MenuOutils, id=ID_OUTILS)
 
         UTILS_Aui.ConfigurerToolBar(self, taille_base=32, fond_uni=True)
-        hauteur_cible = int(round(40 * max(1.0, UTILS_Interface.GetEchelle() / 100.0)))
-        self.SetMinSize((-1, max(40, min(56, hauteur_cible))))
+        self.SetMinSize((-1, UTILS_Responsive.GetTailleCibleAction(40)))
         self.Realize()
 
     def Ajouter_famille(self, event):
@@ -169,7 +269,7 @@ class Panel(wx.Panel):
         wx.Panel.__init__(self, parent, name="recherche_individus", id=-1, style=wx.TAB_TRAVERSAL)
 
         self.toolBar = ToolBar(self)
-        self.ctrl_listview = OL_Individus.ListView(
+        self.ctrl_listview = ListeIndividusAccueil(
             self,
             id=-1,
             style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.LC_HRULES | wx.LC_VRULES,
@@ -191,16 +291,8 @@ class Panel(wx.Panel):
         self.SetSizer(sizer)
         self.Layout()
 
-    def _AppliqueListeModerne(self):
-        try:
-            if self.ctrl_listview.GetColumnCount() > 0:
-                self.ctrl_listview.SetColumnWidth(0, 0)
-        except Exception:
-            pass
-
     def MAJ(self):
         self.ctrl_listview.MAJ(forceActualisation=True)
-        self._AppliqueListeModerne()
 
     def Aide(self):
         from Utils import UTILS_Aide
