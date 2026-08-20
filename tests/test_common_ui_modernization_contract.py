@@ -78,6 +78,9 @@ class CommonUIModernizationContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Saisie_tel.py",
             "noethys/Ctrl/CTRL_Saisie_euros.py",
             "noethys/Ctrl/CTRL_Saisie_compte.py",
+            "noethys/Ctrl/CTRL_Saisie_civilite.py",
+            "noethys/Ctrl/CTRL_Saisie_duree.py",
+            "noethys/Ctrl/CTRL_Saisie_releve_bancaire.py",
         ):
             text = self._read(relative_path)
             self.assertIn("UTILS_Interface", text)
@@ -91,10 +94,32 @@ class CommonUIModernizationContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Saisie_tel.py",
             "noethys/Ctrl/CTRL_Saisie_euros.py",
             "noethys/Ctrl/CTRL_Saisie_compte.py",
+            "noethys/Ctrl/CTRL_Saisie_civilite.py",
+            "noethys/Ctrl/CTRL_Saisie_duree.py",
         ):
             text = self._read(relative_path)
             self.assertNotIn("CTRL_Bouton_image", text)
             self.assertNotIn("import Chemins", text)
+
+    def test_identity_status_control_is_semantic_and_scalable(self):
+        text = self._read("noethys/Ctrl/CTRL_Saisie_numSecu.py")
+        self.assertIn('GetCouleurRole("success")', text)
+        self.assertIn('GetCouleurRole("danger")', text)
+        self.assertIn("wx.StaticText", text)
+        self.assertNotIn("wx.StaticBitmap", text)
+        self.assertNotIn("FlexGridSizer", text)
+
+    def test_country_and_bank_statement_selectors_use_modern_action_buttons(self):
+        for relative_path in (
+            "noethys/Ctrl/CTRL_Saisie_pays.py",
+            "noethys/Ctrl/CTRL_Saisie_releve_bancaire.py",
+        ):
+            text = self._read(relative_path)
+            self.assertIn("CTRL_Bouton_image.CTRL", text)
+            self.assertIn('iconeFluent="edit"', text)
+            self.assertIn("wx.BoxSizer(wx.HORIZONTAL)", text)
+            self.assertNotIn("wx.BitmapButton", text)
+            self.assertNotIn("FlexGridSizer", text)
 
 
 if __name__ == "__main__":
