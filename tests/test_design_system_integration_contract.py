@@ -8,13 +8,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INTERFACE = ROOT / "noethys" / "Utils" / "UTILS_Interface.py"
+DIALOG = ROOT / "noethys" / "Dlg" / "DLG_Echelle_interface.py"
 
 
 class DesignSystemIntegrationContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.text = INTERFACE.read_text(encoding="utf-8")
+        cls.dialog_text = DIALOG.read_text(encoding="utf-8")
         cls.tree = ast.parse(cls.text)
+        ast.parse(cls.dialog_text)
 
     def test_interface_imports_single_design_system_contract(self):
         self.assertIn("from Utils import UTILS_DesignSystem", self.text)
@@ -76,6 +79,28 @@ class DesignSystemIntegrationContractTests(unittest.TestCase):
         self.assertIn('GetCouleurRole("disabled", sombre=sombre)', self.text)
         self.assertIn('GetCouleurRole("disabled_text", sombre=sombre)', self.text)
 
+    def test_text_size_is_an_independent_accessibility_preference(self):
+        self.assertIn("TAILLES_TEXTE =", self.text)
+        self.assertIn('"interface_texte_pct"', self.text)
+        self.assertIn("def GetTailleTexte", self.text)
+        self.assertIn("def SetTailleTexte", self.text)
+
+        start = self.text.index("def AppliquerAffichage")
+        end = self.text.index("\ndef AppliquerAffichageGlobal", start)
+        block = self.text[start:end]
+        self.assertIn("facteur_interface = GetEchelle() / 100.0", block)
+        self.assertIn("facteur_texte = facteur_interface * (GetTailleTexte() / 100.0)", block)
+        self.assertIn("_appliquer_police(window, facteur_texte)", block)
+        self.assertIn("_appliquer_dimensions_speciales(window, facteur_interface)", block)
+
+    def test_preferences_dialog_exposes_accessibility_and_reset(self):
+        self.assertIn('title=_(u"Apparence et accessibilité")', self.dialog_text)
+        self.assertIn('_(u"Taille du texte :")', self.dialog_text)
+        self.assertIn("UTILS_Interface.TAILLES_TEXTE", self.dialog_text)
+        self.assertIn('_(u"Valeurs par défaut")', self.dialog_text)
+        self.assertIn("def OnValeursDefaut", self.dialog_text)
+        self.assertIn('UTILS_Interface.SetTailleTexte(valeurs["taille_texte"])', self.dialog_text)
+
     def test_existing_public_theme_and_scale_api_is_preserved(self):
         functions = {
             node.name
@@ -83,10 +108,10 @@ class DesignSystemIntegrationContractTests(unittest.TestCase):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
         }
         required = {
-            "GetEchelle", "SetEchelle", "GetApparence", "SetApparence",
-            "GetTheme", "SetTheme", "GetValeur", "GetCouleurRole",
-            "AppliquerAffichage", "AppliquerAffichageGlobal",
-            "InstallerGestionAffichage",
+            "GetEchelle", "SetEchelle", "GetTailleTexte", "SetTailleTexte",
+            "GetApparence", "SetApparence", "GetTheme", "SetTheme",
+            "GetValeur", "GetCouleurRole", "AppliquerAffichage",
+            "AppliquerAffichageGlobal", "InstallerGestionAffichage",
         }
         self.assertTrue(required.issubset(functions), sorted(required - functions))
 
