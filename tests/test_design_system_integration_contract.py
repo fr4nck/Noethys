@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 INTERFACE = ROOT / "noethys" / "Utils" / "UTILS_Interface.py"
 DIALOG = ROOT / "noethys" / "Dlg" / "DLG_Echelle_interface.py"
 BANDEAU = ROOT / "noethys" / "Ctrl" / "CTRL_Bandeau.py"
+BOUTON = ROOT / "noethys" / "Ctrl" / "CTRL_Bouton_image.py"
 
 
 class DesignSystemIntegrationContractTests(unittest.TestCase):
@@ -18,9 +19,11 @@ class DesignSystemIntegrationContractTests(unittest.TestCase):
         cls.text = INTERFACE.read_text(encoding="utf-8")
         cls.dialog_text = DIALOG.read_text(encoding="utf-8")
         cls.bandeau_text = BANDEAU.read_text(encoding="utf-8")
+        cls.bouton_text = BOUTON.read_text(encoding="utf-8")
         cls.tree = ast.parse(cls.text)
         ast.parse(cls.dialog_text)
         ast.parse(cls.bandeau_text)
+        ast.parse(cls.bouton_text)
 
     def test_interface_imports_single_design_system_contract(self):
         self.assertIn("from Utils import UTILS_DesignSystem", self.text)
@@ -117,6 +120,20 @@ class DesignSystemIntegrationContractTests(unittest.TestCase):
         self.assertIn("wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)", self.bandeau_text)
         self.assertNotIn("self.SetBackgroundColour(wx.Colour(255, 255, 255))", self.bandeau_text)
         self.assertNotIn("wx.Font(10, wx.DEFAULT", self.bandeau_text)
+
+    def test_common_image_button_keeps_native_light_and_semantic_dark_states(self):
+        self.assertIn("from Utils import UTILS_Interface", self.bouton_text)
+        self.assertIn("wx.EVT_ENTER_WINDOW", self.bouton_text)
+        self.assertIn("wx.EVT_LEAVE_WINDOW", self.bouton_text)
+        self.assertIn("wx.EVT_LEFT_DOWN", self.bouton_text)
+        self.assertIn("wx.EVT_LEFT_UP", self.bouton_text)
+        self.assertIn("wx.EVT_ENABLE", self.bouton_text)
+        self.assertIn('GetEtatCouleurs("pressed", sombre=True)', self.bouton_text)
+        self.assertIn('GetCouleurRole("surface_container_highest", sombre=True)', self.bouton_text)
+        self.assertIn('GetCouleurRole("surface_container_high", sombre=True)', self.bouton_text)
+        self.assertIn('GetCouleurRole("disabled", sombre=True)', self.bouton_text)
+        self.assertIn("if not sombre:", self.bouton_text)
+        self.assertIn("self._fond_natif", self.bouton_text)
 
     def test_existing_public_theme_and_scale_api_is_preserved(self):
         functions = {
