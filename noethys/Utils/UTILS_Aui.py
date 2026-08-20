@@ -6,8 +6,19 @@ n'est monkey-patché : les managers, toolbars, notebooks et grilles sont
 configurés explicitement lorsqu'ils entrent dans le shell Noethys.
 """
 
-PERSPECTIVE_LAYOUT_VERSION = 5
+PERSPECTIVE_LAYOUT_VERSION = 6
 PARAMETRE_PERSPECTIVE_VERSION = "aui_perspective_layout_version"
+
+# Modules qui peuvent se partager la grande zone de travail. La présence dans
+# ce registre ne crée ni n'affiche aucun module : un pane absent ou masqué ne
+# consomme strictement aucune place. Ajouter un futur tableau consiste donc à
+# lui donner un nom AUI et à l'inscrire ici, sans réécrire le responsive.
+WORKSPACE_PANES = (
+    {"nom": "recherche", "caption": u"Individus / Familles", "poids": 1.00, "minimum": 300},
+    {"nom": "messagerie", "caption": u"Messagerie", "poids": 0.72, "minimum": 300},
+    {"nom": "semaine_equipe", "caption": u"Semaine équipe", "poids": 0.62, "minimum": 300},
+    {"nom": "sms", "caption": u"SMS", "poids": 0.48, "minimum": 280},
+)
 
 
 def VerifierVersionPerspective(manager):
@@ -100,11 +111,7 @@ def _ItererDescendants(window):
 
 
 def ConfigurerGrille(grille):
-    """Applique la grammaire visuelle commune à une wx.Grid existante.
-
-    Les couleurs des cellules restent entièrement métier. Ici on ne définit que
-    le squelette commun : traits, labels, surfaces et métriques de rangée.
-    """
+    """Applique la grammaire visuelle commune à une wx.Grid existante."""
     if grille is None:
         return False
     try:
@@ -282,11 +289,7 @@ def _SetArtMetric(art, aui, constante, valeur):
 
 
 def _ConfigurerArtShell(art, aui):
-    """Palette AUI plate et dense, inspirée de Fluent 2.
-
-    Début et fin de gradient reçoivent volontairement la même surface : on
-    conserve le moteur de rendu AUI mais on élimine son ancien effet 3D.
-    """
+    """Palette AUI plate et dense, inspirée de Fluent 2."""
     try:
         from Utils import UTILS_UIMetrics
         caption = UTILS_UIMetrics.px(30)
@@ -352,16 +355,29 @@ def _ConfigurerBarresSysteme(manager):
             _AppelerPane(pane, methode, *args)
 
 
-def _ConfigurerPaneRecherche(manager, largeur, hauteur, largeur_gauche):
-    """Convertit l'ancien CenterPane Individus en vrai pane AUI manipulable.
+def _PaneEstVisible(pane):
+    if pane is None:
+        return False
+    try:
+        return bool(pane.IsShown())
+    except Exception:
+        return False
 
-    ``CenterPane()`` neutralise historiquement plusieurs commandes AUI. Le
-    panneau de recherche est désormais un dock droit normal : il conserve la
-    grande zone de travail mais peut être réduit, maximisé, restauré ou fermé.
-    Cette fonction ne rappelle jamais ``Show`` et respecte donc l'état choisi
-    par l'utilisateur après la conversion initiale.
-    """
-    pane = _GetPane(manager, "recherche")
+
+def _PaneEtatSpecial(pane):
+    if pane is None:
+        return False
+    for methode in ("IsMaximized", "IsMinimized"):
+        try:
+            if getattr(pane, methode)():
+                return True
+        except Exception:
+            pass
+    return False
+
+
+def _ConfigurerPaneWorkspace(pane, spec, layer):
+    """Applique uniquement les capacités d'une pane de travail existante."""
     if pane is None:
         return
 
@@ -371,17 +387,17 @@ def _ConfigurerPaneRecherche(manager, largeur, hauteur, largeur_gauche):
     except Exception:
         est_centre = False
 
+    # Migration de l'ancien CenterPane Individus. Les futurs modules sont
+    # normalement créés directement comme panes dockables, mais cette
+    # normalisation permet de rester compatible avec l'ancien Noethys.py.
     if est_centre:
-        for methode, args in (
-            ("Right", ()),
-            ("Layer", (0,)),
-            ("Row", (0,)),
-            ("Position", (0,)),
-        ):
-            _AppelerPane(pane, methode, *args)
+        _AppelerPane(pane, "Right")
 
     for methode, args in (
-        ("Caption", (u"Individus / Familles",)),
+        ("Layer", (layer,)),
+        ("Row", (0,)),
+        ("Position", (0,)),
+        ("Caption", (spec["caption"],)),
         ("CaptionVisible", (True,)),
         ("PaneBorder", (True,)),
         ("CloseButton", (True,)),
@@ -394,20 +410,63 @@ def _ConfigurerPaneRecherche(manager, largeur, hauteur, largeur_gauche):
     ):
         _AppelerPane(pane, methode, *args)
 
-    # Le pane occupe naturellement le reste du cockpit. On ne touche pas à sa
-    # taille pendant un état maximisé/minimisé : sinon un resize système peut
-    # annuler visuellement l'action de l'utilisateur.
-    etat_special = False
-    for methode in ("IsMaximized", "IsMinimized"):
+
+def _ConfigurerWorkspace(manager, largeur, hauteur, largeur_gauche):
+    """Répartit la surface restante entre les modules de travail visibles.
+
+    Il n'existe volontairement aucune largeur réservée à Individus. S'il est
+    seul, il prend presque toute la zone libre. Dès qu'un client mail, une vue
+    semaine ou un autre module est affiché, les panes visibles se partagent la
+    surface selon leurs poids et l'utilisateur conserve les sash AUI pour
+    ajuster la répartition à sa convenance.
+    """
+    existants = []
+    for spec in WORKSPACE_PANES:
+        pane = _GetPane(manager, spec["nom"])
+        if pane is not None:
+            existants.append((spec, pane))
+
+    visibles = [(spec, pane) for spec, pane in existants if _PaneEstVisible(pane)]
+    if not existants:
+        return
+
+    # Les couches droites forment des colonnes adjacentes. On ne touche jamais
+    # à Show()/Hide() : l'apparition d'un module reste du ressort du module ou
+    # du menu Affichage, et la fermeture rend automatiquement sa place.
+    for layer, (spec, pane) in enumerate(reversed(existants)):
+        _ConfigurerPaneWorkspace(pane, spec, layer)
+
+    if not visibles:
+        return
+
+    largeur_disponible = max(520, largeur - largeur_gauche - 24)
+    poids_total = sum(max(0.1, float(spec["poids"])) for spec, pane in visibles)
+    nb_visibles = len(visibles)
+
+    for spec, pane in visibles:
+        if _PaneEtatSpecial(pane):
+            continue
+        part = max(0.1, float(spec["poids"])) / poids_total
+        cible = int(round(largeur_disponible * part))
+        minimum = int(spec["minimum"])
+
+        # Avec plusieurs panes, le minimum doit pouvoir céder sur un écran
+        # étroit. Sur grand écran on garde des modules confortables.
+        if nb_visibles > 1:
+            minimum = min(minimum, max(240, int(largeur_disponible / nb_visibles * 0.58)))
+        cible = max(minimum, cible)
+
+        _AppelerPane(pane, "MinSize", (minimum, 240))
+        _AppelerPane(pane, "BestSize", (cible, max(360, int(hauteur * 0.72))))
         try:
-            if getattr(pane, methode)():
-                etat_special = True
+            pane.dock_proportion = max(1000, int(round(part * 100000)))
         except Exception:
             pass
-    if not etat_special:
-        largeur_recherche = max(460, largeur - largeur_gauche - 24)
-        _AppelerPane(pane, "MinSize", (420, 240))
-        _AppelerPane(pane, "BestSize", (largeur_recherche, max(360, int(hauteur * 0.72))))
+
+
+def ReequilibrerWorkspace(manager):
+    """API publique à appeler après ouverture/fermeture d'un module."""
+    return _AppliquerLayoutResponsive(manager, forcer=True)
 
 
 def _GetTailleClient(manager):
@@ -520,7 +579,7 @@ def _AppliquerLayoutResponsive(manager, forcer=False):
         _AppelerPane(pane_info, "MinSize", (-1, max(96, int(hauteur_info * 0.80))))
         _AppelerPane(pane_info, "BestSize", (-1, hauteur_info))
 
-    _ConfigurerPaneRecherche(manager, largeur, hauteur, largeur_gauche)
+    _ConfigurerWorkspace(manager, largeur, hauteur, largeur_gauche)
 
     try:
         manager.Update()
@@ -534,9 +593,10 @@ def _AppliquerLayoutResponsive(manager, forcer=False):
 
 
 def _InstallerResponsive(manager):
-    """Installe un seul gestionnaire de resize, débouncé par CallAfter."""
+    """Installe les écoutes nécessaires au responsive, sans reconstruire le dashboard."""
     try:
         import wx
+        import wx.lib.agw.aui as aui
         fenetre = manager.GetManagedWindow()
     except Exception:
         return False
@@ -548,24 +608,47 @@ def _InstallerResponsive(manager):
     fenetre._noethys_aui_responsive_installe = True
     fenetre._noethys_aui_responsive_pending = False
 
-    def _AppliquerPlusTard():
+    def _AppliquerPlusTard(forcer=False):
         try:
             fenetre._noethys_aui_responsive_pending = False
-            _AppliquerLayoutResponsive(manager, forcer=False)
+            _AppliquerLayoutResponsive(manager, forcer=forcer)
         except Exception:
             fenetre._noethys_aui_responsive_pending = False
 
-    def _OnSize(event):
-        event.Skip()
+    def _Programmer(forcer=False):
         if getattr(fenetre, "_noethys_aui_responsive_pending", False):
             return
         fenetre._noethys_aui_responsive_pending = True
-        wx.CallAfter(_AppliquerPlusTard)
+        wx.CallAfter(_AppliquerPlusTard, forcer)
+
+    def _OnSize(event):
+        event.Skip()
+        _Programmer(False)
+
+    def _OnPaneChange(event):
+        event.Skip()
+        _Programmer(True)
 
     try:
         fenetre.Bind(wx.EVT_SIZE, _OnSize)
     except Exception:
         return False
+
+    # L'ouverture/fermeture/maximisation d'un module change elle aussi la
+    # surface disponible. Les constantes diffèrent selon les versions AGW :
+    # on les branche seulement lorsqu'elles existent.
+    for nom_evt in (
+        "EVT_AUI_PANE_CLOSE",
+        "EVT_AUI_PANE_MAXIMIZE",
+        "EVT_AUI_PANE_RESTORE",
+        "EVT_AUI_PANE_ACTIVATED",
+    ):
+        evt = getattr(aui, nom_evt, None)
+        if evt is not None:
+            try:
+                fenetre.Bind(evt, _OnPaneChange)
+            except Exception:
+                pass
     return True
 
 
