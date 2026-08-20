@@ -48,6 +48,9 @@ jobs:
       - name: Installer les dépendances de fabrication
         run: python -m pip install --upgrade pip wheel && python -m pip install -r requirements-build.txt
 
+      - name: Compiler les hooks de diagnostic et compatibilité
+        run: python -m py_compile packaging/runtime_crashlog.py packaging/runtime_wx_compat.py packaging/runtime_frozen_smoke.py
+
       - name: Appliquer les corrections runtime Python 3 validées
         run: python scripts/apply_py3_runtime_source_fixes.py
 
