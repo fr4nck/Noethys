@@ -5,7 +5,7 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-11 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence : Licence GNU GPL
 #-----------------------------------------------------------
 
 import Chemins
@@ -18,6 +18,7 @@ from Utils import UTILS_ColonnesResponsive
 from Utils import UTILS_Config
 from Utils import UTILS_FluentIcons
 from Utils import UTILS_Interface
+from Utils import UTILS_Recherche
 from Utils import UTILS_Responsive
 from Utils import UTILS_UIMetrics
 
@@ -29,27 +30,22 @@ ID_OUVRIR_FICHE_IND = 70
 ID_PARAMETRES = wx.Window.NewControlId()
 ID_OUTILS = wx.Window.NewControlId()
 
+ATTRIBUTS_RECHERCHE = (
+    "nom", "prenom", "rue_resid", "cp_resid", "ville_resid",
+    "tel_domicile", "tel_mobile", "travail_tel", "mail", "travail_mail",
+    "profession", "employeur",
+)
+ATTRIBUTS_TELEPHONES = ("tel_domicile", "tel_mobile", "travail_tel")
+LIMITE_RESULTATS_ACCUEIL = 30
+
 
 class ListeIndividusAccueil(OL_Individus.ListView):
-    """Vue d'accueil dense sans la colonne d'avatars historique.
-
-    La logique métier reste dans :class:`OL_Individus.ListView` (requêtes,
-    filtres, actions, sélection). La présentation de cette vue est déclarée
-    explicitement ici et ses colonnes passent par le moteur responsive commun.
-    """
+    """Vue d'accueil dense sans la colonne d'avatars historique."""
 
     SPECS_COLONNES = (
-        (120, 1.4),  # Nom
-        (105, 1.0),  # Prénom
-        (82, 0.0),   # Date naissance
-        (55, 0.0),   # Age
-        (150, 2.2),  # Rue
-        (58, 0.0),   # CP
-        (110, 1.2),  # Ville
-        (105, 0.2),  # Tel domicile
-        (105, 0.2),  # Tel mobile
-        (170, 2.4),  # Email
-        (72, 0.0),   # Etat
+        (120, 1.4), (105, 1.0), (82, 0.0), (55, 0.0), (150, 2.2),
+        (58, 0.0), (110, 1.2), (105, 0.2), (105, 0.2), (170, 2.4),
+        (72, 0.0),
     )
 
     def __init__(self, *args, **kwds):
@@ -72,17 +68,12 @@ class ListeIndividusAccueil(OL_Individus.ListView):
                 return _(u"Effacé")
             return ""
 
-        # En sombre, l'information est structurée par une alternance très légère
-        # de surfaces graphite. Les règles H/V historiques ne sont pas utilisées :
-        # elles produisent des traits blancs beaucoup trop présents sous Windows.
         self.evenRowsBackColor = UTILS_Interface.GetCouleurRole("surface_container_lowest")
         self.oddRowsBackColor = UTILS_Interface.GetCouleurRole("surface_container_low")
         self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
         self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
         self.useExpansionColumn = False
 
-        # Pas de colonne d'icône : les civilités restent une donnée métier mais
-        # n'ont aucune raison de consommer une colonne et des bitmaps à l'accueil.
         colonnes = [
             OL_Individus.ColumnDefn(_(u"Nom"), "left", 120, "nom", typeDonnee="texte"),
             OL_Individus.ColumnDefn(_(u"Prénom"), "left", 105, "prenom", typeDonnee="texte"),
@@ -104,13 +95,119 @@ class ListeIndividusAccueil(OL_Individus.ListView):
         wx.CallAfter(UTILS_ColonnesResponsive.Ajuster, self)
 
 
+class BarreRechercheAccueil(OL_Individus.BarreRecherche):
+    """Recherche d'accueil orientée accès rapide à une famille.
+
+    Les accents, trémas, casse, ponctuation et séparateurs de téléphone sont
+    neutralisés. Si aucune correspondance exacte normalisée n'existe, une
+    seconde passe tolère une seule petite faute sur les mots assez longs.
+    """
+
+    def __init__(self, parent):
+        OL_Individus.BarreRecherche.__init__(self, parent, historique=True)
+        self.SetDescriptiveText(_(u"Rechercher : nom, prénom, téléphone, email, adresse, ville…"))
+        self.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
+        self._index = {}
+        try:
+            self.listView.SetFilter(None)
+        except Exception:
+            pass
+
+    def _GetIndex(self, track):
+        cle = getattr(track, "IDindividu", id(track))
+        index = self._index.get(cle)
+        if index is None:
+            index = UTILS_Recherche.ConstruireIndex(
+                track,
+                attributs=ATTRIBUTS_RECHERCHE,
+                attributs_telephones=ATTRIBUTS_TELEPHONES,
+            )
+            self._index[cle] = index
+        return index
+
+    def InvaliderIndex(self):
+        self._index = {}
+
+    def _Trouver(self, texte, approximatif=False):
+        resultats = []
+        for track in self.listView.donnees:
+            if UTILS_Recherche.Correspond(self._GetIndex(track), texte, approximatif=approximatif):
+                resultats.append(track)
+        return resultats
+
+    def _MajResume(self, texte, nbre, approximatif=False, tronque=False):
+        if not texte:
+            label = _(u"Saisissez quelques lettres, un numéro de téléphone, un email ou une adresse.")
+        elif nbre == 0:
+            label = _(u"Aucun résultat")
+        else:
+            suffixe = _(u" — correspondances proches") if approximatif else ""
+            plus = "+" if tronque else ""
+            label = _(u"%s%d résultat(s)%s") % (plus, nbre, suffixe)
+        try:
+            self.parent.ctrl_resume.SetLabel(label)
+        except Exception:
+            pass
+
+    def Recherche(self, event=None):
+        if self.timer.IsRunning():
+            self.timer.Stop()
+        texte = self.GetValue().strip()
+        self.ShowCancelButton(bool(texte))
+
+        if not texte:
+            self.listView.SetObjects([])
+            self._MajResume("", 0)
+            self.listView.Refresh()
+            return
+
+        resultats = self._Trouver(texte, approximatif=False)
+        approximatif = False
+        if not resultats:
+            resultats = self._Trouver(texte, approximatif=True)
+            approximatif = bool(resultats)
+
+        total = len(resultats)
+        tronque = total > LIMITE_RESULTATS_ACCUEIL
+        self.listView.SetObjects(resultats[:LIMITE_RESULTATS_ACCUEIL])
+        self._MajResume(texte, min(total, LIMITE_RESULTATS_ACCUEIL), approximatif, tronque)
+        self.listView.Refresh()
+
+        if self.ouvrir_fiche:
+            self.OuvrirFiche()
+
+    def OuvrirFiche(self):
+        if self.listView.GetItemCount() <= 0:
+            return
+        track = self.listView.GetObjectAt(0)
+        if track is None:
+            return
+        self.listView.SelectObject(track)
+        self.listView.OuvrirFicheFamille(track)
+        self.ouvrir_fiche = False
+
+    def AfficherTout(self):
+        self.InvaliderIndex()
+        try:
+            self.ChangeValue("")
+        except Exception:
+            self.SetValue("")
+        if self.timer.IsRunning():
+            self.timer.Stop()
+        self.ShowCancelButton(False)
+        self.listView.SetObjects(self.listView.donnees)
+        try:
+            self.parent.ctrl_resume.SetLabel(_(u"%d individu(s) — liste complète") % len(self.listView.donnees))
+        except Exception:
+            pass
+        self.listView.Refresh()
+
+
 class ToolBar(wx.ToolBar):
     def __init__(self, *args, **kwds):
         kwds["style"] = wx.TB_FLAT | wx.TB_TEXT | wx.TB_NODIVIDER
         wx.ToolBar.__init__(self, *args, **kwds)
 
-        # Les nouveaux contrôles demandent explicitement un rôle Fluent. Aucun
-        # mapping global de chemins historiques n'est nécessaire ici.
         liste_boutons = [
             {"ID": ID_CREER_FAMILLE, "label": _(u"Ajouter"), "icone": "add", "tooltip": _(u"Créer une nouvelle famille")},
             None,
@@ -173,7 +270,6 @@ class ToolBar(wx.ToolBar):
         if dlg.ShowModal() == wx.ID_OK:
             UTILS_Config.SetParametre("liste_individus_parametres", dlg.GetParametres())
         dlg.Destroy()
-
         self.GetParent().ActualiseParametresAffichage()
         self.GetParent().MAJ()
 
@@ -183,7 +279,6 @@ class ToolBar(wx.ToolBar):
 
     def MenuOutils(self, event):
         menuPop = UTILS_Adaptations.Menu()
-
         ID_ACTUALISER = wx.Window.NewControlId()
         ID_IMPRIMER = wx.Window.NewControlId()
         ID_APERCU = wx.Window.NewControlId()
@@ -202,7 +297,6 @@ class ToolBar(wx.ToolBar):
         self.Bind(wx.EVT_MENU, self.Imprimer, id=ID_IMPRIMER)
 
         menuPop.AppendSeparator()
-
         item = wx.MenuItem(menuPop, ID_EXPORT_TEXTE, _(u"Exporter au format Texte"), _(u"Exporter au format Texte"))
         item.SetBitmap(self._BitmapMenu("Images/16x16/Texte2.png"))
         menuPop.AppendItem(item)
@@ -214,14 +308,12 @@ class ToolBar(wx.ToolBar):
         self.Bind(wx.EVT_MENU, self.GetParent().ctrl_listview.ExportExcel, id=ID_EXPORT_EXCEL)
 
         menuPop.AppendSeparator()
-
         item = wx.MenuItem(menuPop, ID_ACTUALISER, _(u"Actualiser"), _(u"Actualiser l'affichage"))
         item.SetBitmap(self._BitmapMenu("Images/16x16/Actualiser2.png"))
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.Actualiser, id=ID_ACTUALISER)
 
         menuPop.AppendSeparator()
-
         item = wx.MenuItem(menuPop, ID_AIDE, _(u"Aide"), _(u"Aide"))
         item.SetBitmap(self._BitmapMenu("Images/16x16/Aide.png"))
         menuPop.AppendItem(item)
@@ -253,7 +345,11 @@ class Panel(wx.Panel):
             id=-1,
             style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.NO_BORDER,
         )
-        self.ctrl_recherche = OL_Individus.BarreRecherche(self, historique=True)
+        self.ctrl_recherche = BarreRechercheAccueil(self)
+        self.ctrl_voir_tout = wx.Button(self, label=_(u"Voir tout"))
+        self.ctrl_voir_tout.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
+        self.ctrl_resume = wx.StaticText(self, label=_(u"Saisissez quelques lettres, un numéro de téléphone, un email ou une adresse."))
+        self.ctrl_voir_tout.Bind(wx.EVT_BUTTON, lambda evt: self.ctrl_recherche.AfficherTout())
 
         self.__set_properties()
         self.__do_layout()
@@ -261,17 +357,25 @@ class Panel(wx.Panel):
 
     def __set_properties(self):
         self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        self.ctrl_resume.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
 
     def __do_layout(self):
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.toolBar, 0, wx.EXPAND)
-        sizer.Add(self.ctrl_listview, 1, wx.EXPAND)
-        sizer.Add(self.ctrl_recherche, 0, wx.EXPAND)
-        self.SetSizer(sizer)
+        principal = wx.BoxSizer(wx.VERTICAL)
+        recherche = wx.BoxSizer(wx.HORIZONTAL)
+        marge = UTILS_UIMetrics.spacing(2)
+        recherche.Add(self.ctrl_recherche, 1, wx.EXPAND | wx.RIGHT, marge)
+        recherche.Add(self.ctrl_voir_tout, 0, wx.EXPAND)
+        principal.Add(recherche, 0, wx.EXPAND | wx.ALL, marge)
+        principal.Add(self.ctrl_resume, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
+        principal.Add(self.toolBar, 0, wx.EXPAND)
+        principal.Add(self.ctrl_listview, 1, wx.EXPAND)
+        self.SetSizer(principal)
         self.Layout()
 
     def MAJ(self):
         self.ctrl_listview.MAJ(forceActualisation=True)
+        self.ctrl_recherche.InvaliderIndex()
+        self.ctrl_recherche.Recherche()
 
     def Aide(self):
         from Utils import UTILS_Aide
