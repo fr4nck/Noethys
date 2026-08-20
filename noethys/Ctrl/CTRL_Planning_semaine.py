@@ -13,9 +13,11 @@ import wx
 import wx.grid as gridlib
 
 from Utils.UTILS_Traduction import _
+from Utils import UTILS_Aui
 from Utils import UTILS_Interface
 from Utils import UTILS_Responsive
 from Utils import UTILS_Teamworks_Planning
+from Utils import UTILS_UIMetrics
 
 
 JOURS_COURTS = (_(u"Lun"), _(u"Mar"), _(u"Mer"), _(u"Jeu"), _(u"Ven"), _(u"Sam"), _(u"Dim"))
@@ -75,10 +77,16 @@ class Panel(wx.Panel):
         self.label_semaine.SetForegroundColour(texte)
         self.label_source.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
 
-        police = wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)
+        police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
+        facteur_texte = UTILS_Interface.GetTailleTexte() / 100.0
+        police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur_texte))))
         police_titre = wx.Font(police)
-        police_titre.SetWeight(wx.FONTWEIGHT_BOLD)
+        try:
+            police_titre.SetWeight(wx.FONTWEIGHT_SEMIBOLD)
+        except Exception:
+            police_titre.SetWeight(wx.FONTWEIGHT_BOLD)
         self.label_semaine.SetFont(police_titre)
+        self.label_source.SetFont(police)
         self.grid.SetDefaultCellFont(police)
         self.grid.SetLabelFont(police_titre)
 
@@ -89,20 +97,33 @@ class Panel(wx.Panel):
         self.grid.SetSelectionForeground(selection_texte)
         self.grid.SetLabelBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container"))
         self.grid.SetLabelTextColour(texte)
+        UTILS_Aui.ConfigurerGrille(self.grid)
+
+        cible = UTILS_UIMetrics.action_target("compact")
+        for bouton in (self.btn_precedent, self.btn_aujourdhui, self.btn_suivant, self.btn_source):
+            bouton.SetFont(police)
+            meilleur = bouton.GetBestSize()
+            bouton.SetMinSize((max(cible, meilleur.GetWidth()), cible))
+        self.btn_precedent.SetMinSize((cible, cible))
+        self.btn_suivant.SetMinSize((cible, cible))
 
     def _ConstruitLayout(self):
+        petit = UTILS_UIMetrics.spacing(1)
+        moyen = UTILS_UIMetrics.spacing(2)
+        grand = UTILS_UIMetrics.spacing(3)
+
         barre = wx.BoxSizer(wx.HORIZONTAL)
-        barre.Add(self.btn_precedent, 0, wx.RIGHT, 4)
-        barre.Add(self.btn_aujourdhui, 0, wx.RIGHT, 4)
-        barre.Add(self.btn_suivant, 0, wx.RIGHT, 10)
-        barre.Add(self.label_semaine, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 12)
+        barre.Add(self.btn_precedent, 0, wx.RIGHT, petit)
+        barre.Add(self.btn_aujourdhui, 0, wx.RIGHT, petit)
+        barre.Add(self.btn_suivant, 0, wx.RIGHT, grand)
+        barre.Add(self.label_semaine, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, grand)
         barre.AddStretchSpacer(1)
-        barre.Add(self.label_source, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        barre.Add(self.label_source, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, moyen)
         barre.Add(self.btn_source, 0)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(barre, 0, wx.EXPAND | wx.ALL, 8)
-        sizer.Add(self.grid, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        sizer.Add(barre, 0, wx.EXPAND | wx.ALL, moyen)
+        sizer.Add(self.grid, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, moyen)
         self.SetSizer(sizer)
         self.Layout()
 
@@ -186,9 +207,9 @@ class Panel(wx.Panel):
             return
 
         facteur = min(UTILS_Responsive.GetFacteurEcran(), 1.35)
-        largeur_nom = int(round(155 * facteur))
-        min_jour = int(round(112 * facteur))
-        marge = 28
+        largeur_nom = max(UTILS_UIMetrics.px(155), int(round(155 * facteur)))
+        min_jour = max(UTILS_UIMetrics.px(112), int(round(112 * facteur)))
+        marge = UTILS_UIMetrics.spacing(7)
         restant = largeur - largeur_nom - marge
         largeur_jour = max(min_jour, restant // 7 if restant > 0 else min_jour)
 
@@ -238,7 +259,7 @@ class Panel(wx.Panel):
         self._RedimensionneLignes(len(lignes))
 
         facteur = min(UTILS_Responsive.GetFacteurEcran(), 1.35)
-        hauteur_ligne = int(round(27 * facteur))
+        hauteur_ligne = max(UTILS_UIMetrics.row_height("table"), int(round(27 * facteur)))
         for row, personne in enumerate(lignes):
             self.grid.SetCellValue(row, 0, personne["nom"])
             self.grid.SetCellAlignment(row, 0, wx.ALIGN_LEFT, wx.ALIGN_TOP)
@@ -250,7 +271,8 @@ class Panel(wx.Panel):
                 textes = [self._FormatePresence(presence) for presence in evenements]
                 self.grid.SetCellValue(row, index + 1, u"\n".join(textes))
                 self.grid.SetCellAlignment(row, index + 1, wx.ALIGN_LEFT, wx.ALIGN_TOP)
-            self.grid.SetRowSize(row, max(hauteur_ligne, int(round((18 * max_evenements + 8) * facteur))))
+            hauteur_contenu = int(round((18 * max_evenements + 8) * facteur))
+            self.grid.SetRowSize(row, max(hauteur_ligne, hauteur_contenu))
 
         self._AjusteColonnes()
         self.grid.ForceRefresh()
