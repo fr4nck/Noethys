@@ -63,21 +63,112 @@ def main():
 
     replace_exact(
         "noethys/Utils/UTILS_Organisateur.py",
-        """        if largeur > hauteur :\n            hauteur = hauteur * tailleMaxi / largeur\n            largeur = tailleMaxi\n        else:\n            largeur = largeur * tailleMaxi / hauteur\n            hauteur = tailleMaxi\n    img.Rescale(width=largeur, height=hauteur, quality=wx.IMAGE_QUALITY_HIGH)\n    position = (((tailleImage[0]/2.0) - (largeur/2.0)), ((tailleImage[1]/2.0) - (hauteur/2.0)))\n""",
-        """        if largeur > hauteur :\n            hauteur = int(round(hauteur * tailleMaxi / float(largeur)))\n            largeur = tailleMaxi\n        else:\n            largeur = int(round(largeur * tailleMaxi / float(hauteur)))\n            hauteur = tailleMaxi\n    largeur = int(largeur)\n    hauteur = int(hauteur)\n    img.Rescale(width=largeur, height=hauteur, quality=wx.IMAGE_QUALITY_HIGH)\n    position = (\n        int(round((tailleImage[0] / 2.0) - (largeur / 2.0))),\n        int(round((tailleImage[1] / 2.0) - (hauteur / 2.0))),\n    )\n""",
+        """        if largeur > hauteur :
+            hauteur = hauteur * tailleMaxi / largeur
+            largeur = tailleMaxi
+        else:
+            largeur = largeur * tailleMaxi / hauteur
+            hauteur = tailleMaxi
+    img.Rescale(width=largeur, height=hauteur, quality=wx.IMAGE_QUALITY_HIGH)
+    position = (((tailleImage[0]/2.0) - (largeur/2.0)), ((tailleImage[1]/2.0) - (hauteur/2.0)))
+""",
+        """        if largeur > hauteur :
+            hauteur = int(round(hauteur * tailleMaxi / float(largeur)))
+            largeur = tailleMaxi
+        else:
+            largeur = int(round(largeur * tailleMaxi / float(hauteur)))
+            hauteur = tailleMaxi
+    largeur = int(largeur)
+    hauteur = int(hauteur)
+    img.Rescale(width=largeur, height=hauteur, quality=wx.IMAGE_QUALITY_HIGH)
+    position = (
+        int(round((tailleImage[0] / 2.0) - (largeur / 2.0))),
+        int(round((tailleImage[1] / 2.0) - (hauteur / 2.0))),
+    )
+""",
     )
 
     replace_exact(
         "noethys/Ctrl/CTRL_TaskBarIcon.py",
-        """        hauteurRond = hauteurTexte + padding * 2\n        largeurRond = largeurTexte + padding * 2 + hauteurRond/2.0\n        if largeurRond < hauteurRond :\n            largeurRond = hauteurRond\n\n        if \"gauche\" in alignement : xRond = 1\n        if \"droite\" in alignement : xRond = largeurImage - largeurRond - 1\n        if \"haut\" in alignement : yRond = 1\n        if \"bas\" in alignement : yRond = hauteurImage - hauteurRond - 1\n\n        if 'phoenix' in wx.PlatformInfo:\n            dc.DrawRoundedRectangle(wx.Rect(xRond, yRond, largeurRond, hauteurRond), hauteurRond / 2.0)\n        else:\n            dc.DrawRoundedRectangleRect(wx.Rect(xRond, yRond, largeurRond, hauteurRond), hauteurRond / 2.0)\n\n        # Texte\n        xTexte = xRond + largeurRond / 2.0 - largeurTexte / 2.0\n        yTexte = yRond + hauteurRond / 2.0 - hauteurTexte / 2.0 - 1\n        dc.DrawText(texte, xTexte, yTexte)\n""",
-        """        hauteurRond = int(round(hauteurTexte + padding * 2))\n        largeurRond = int(round(largeurTexte + padding * 2 + hauteurRond / 2.0))\n        if largeurRond < hauteurRond :\n            largeurRond = hauteurRond\n\n        if \"gauche\" in alignement : xRond = 1\n        if \"droite\" in alignement : xRond = largeurImage - largeurRond - 1\n        if \"haut\" in alignement : yRond = 1\n        if \"bas\" in alignement : yRond = hauteurImage - hauteurRond - 1\n\n        xRond = int(round(xRond))\n        yRond = int(round(yRond))\n        rayon = int(round(hauteurRond / 2.0))\n        if 'phoenix' in wx.PlatformInfo:\n            dc.DrawRoundedRectangle(wx.Rect(xRond, yRond, largeurRond, hauteurRond), rayon)\n        else:\n            dc.DrawRoundedRectangleRect(wx.Rect(xRond, yRond, largeurRond, hauteurRond), rayon)\n\n        # Texte\n        xTexte = int(round(xRond + largeurRond / 2.0 - largeurTexte / 2.0))\n        yTexte = int(round(yRond + hauteurRond / 2.0 - hauteurTexte / 2.0 - 1))\n        dc.DrawText(texte, xTexte, yTexte)\n""",
+        """        hauteurRond = hauteurTexte + padding * 2
+        largeurRond = largeurTexte + padding * 2 + hauteurRond/2.0
+        if largeurRond < hauteurRond :
+            largeurRond = hauteurRond
+
+        if \"gauche\" in alignement : xRond = 1
+        if \"droite\" in alignement : xRond = largeurImage - largeurRond - 1
+        if \"haut\" in alignement : yRond = 1
+        if \"bas\" in alignement : yRond = hauteurImage - hauteurRond - 1
+
+        if 'phoenix' in wx.PlatformInfo:
+            dc.DrawRoundedRectangle(wx.Rect(xRond, yRond, largeurRond, hauteurRond), hauteurRond / 2.0)
+        else:
+            dc.DrawRoundedRectangleRect(wx.Rect(xRond, yRond, largeurRond, hauteurRond), hauteurRond / 2.0)
+
+        # Texte
+        xTexte = xRond + largeurRond / 2.0 - largeurTexte / 2.0
+        yTexte = yRond + hauteurRond / 2.0 - hauteurTexte / 2.0 - 1
+        dc.DrawText(texte, xTexte, yTexte)
+""",
+        """        hauteurRond = int(round(hauteurTexte + padding * 2))
+        largeurRond = int(round(largeurTexte + padding * 2 + hauteurRond / 2.0))
+        if largeurRond < hauteurRond :
+            largeurRond = hauteurRond
+
+        if \"gauche\" in alignement : xRond = 1
+        if \"droite\" in alignement : xRond = largeurImage - largeurRond - 1
+        if \"haut\" in alignement : yRond = 1
+        if \"bas\" in alignement : yRond = hauteurImage - hauteurRond - 1
+
+        xRond = int(round(xRond))
+        yRond = int(round(yRond))
+        rayon = int(round(hauteurRond / 2.0))
+        if 'phoenix' in wx.PlatformInfo:
+            dc.DrawRoundedRectangle(wx.Rect(xRond, yRond, largeurRond, hauteurRond), rayon)
+        else:
+            dc.DrawRoundedRectangleRect(wx.Rect(xRond, yRond, largeurRond, hauteurRond), rayon)
+
+        # Texte
+        xTexte = int(round(xRond + largeurRond / 2.0 - largeurTexte / 2.0))
+        yTexte = int(round(yRond + hauteurRond / 2.0 - hauteurTexte / 2.0 - 1))
+        dc.DrawText(texte, xTexte, yTexte)
+""",
+    )
+
+    # Phoenix no longer accepts six.MAXSIZE as an implicit append index.
+    replace_exact(
+        "noethys/Dlg/DLG_Utilisateurs_reseau.py",
+        "                index = self.InsertItem(six.MAXSIZE, autorisationStr)",
+        "                index = self.InsertItem(self.GetItemCount(), autorisationStr)",
     )
 
     # File-like stdout redirect must implement flush() on Python 3 shutdown.
     replace_exact(
         "noethys/Noethys.py",
-        """    def write(self, text):\n        if self.filename.closed:\n            pass\n        else:\n            self.filename.write(text)\n            self.filename.flush()\n\n\n\n""",
-        """    def write(self, text):\n        if self.filename.closed:\n            pass\n        else:\n            self.filename.write(text)\n            self.filename.flush()\n\n    def flush(self):\n        if not self.filename.closed:\n            self.filename.flush()\n\n\n\n""",
+        """    def write(self, text):
+        if self.filename.closed:
+            pass
+        else:
+            self.filename.write(text)
+            self.filename.flush()
+
+
+
+""",
+        """    def write(self, text):
+        if self.filename.closed:
+            pass
+        else:
+            self.filename.write(text)
+            self.filename.flush()
+
+    def flush(self):
+        if not self.filename.closed:
+            self.filename.flush()
+
+
+
+""",
     )
 
 
