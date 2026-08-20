@@ -327,9 +327,23 @@ def _fond_est_legacy_clair(couleur):
     return False
 
 
+def _peut_remplacer_surface_liste(couleur):
+    """Ne remplace que les surfaces neutres/legacy, jamais une couleur métier."""
+    if couleur is None:
+        return True
+    try:
+        if not couleur.IsOk():
+            return True
+    except Exception:
+        return False
+    return _fond_est_legacy_clair(couleur)
+
+
 def _appliquer_palette_liste(window, sombre):
+    """Modernise les listes communes sans écraser leurs couleurs métier."""
     surface_pair = GetCouleurRole("surface_container_lowest", sombre=sombre)
     surface_impair = GetCouleurRole("surface_container_low", sombre=sombre)
+    surface_groupe = GetCouleurRole("surface_container_high", sombre=sombre)
     texte = GetCouleurRole("on_surface", sombre=sombre)
     texte_secondaire = GetCouleurRole("on_surface_variant", sombre=sombre)
 
@@ -339,43 +353,86 @@ def _appliquer_palette_liste(window, sombre):
     ):
         if hasattr(window, attribut):
             try:
-                setattr(window, attribut, valeur)
+                actuelle = getattr(window, attribut, None)
+                if _peut_remplacer_surface_liste(actuelle):
+                    setattr(window, attribut, valeur)
             except Exception:
                 pass
 
+    # Les GroupListView historiques imposaient un bleu fixe. On ne remplace que
+    # ce défaut connu afin de préserver d'éventuelles couleurs personnalisées.
     try:
-        window.SetBackgroundColour(surface_pair)
-        window.SetForegroundColour(texte)
+        if hasattr(window, "groupTextColour"):
+            actuelle = window.groupTextColour
+            if _couleur_proche(actuelle, wx.Colour(33, 33, 33), tolerance=8):
+                window.groupTextColour = texte
+        if hasattr(window, "groupBackgroundColour"):
+            actuelle = window.groupBackgroundColour
+            if _couleur_proche(actuelle, wx.Colour(159, 185, 250), tolerance=8):
+                window.groupBackgroundColour = surface_groupe
+    except Exception:
+        pass
+
+    try:
+        fond_actuel = window.GetBackgroundColour()
+        if _peut_remplacer_surface_liste(fond_actuel):
+            window.SetBackgroundColour(surface_pair)
+        texte_actuel = window.GetForegroundColour()
+        if (
+            not texte_actuel.IsOk()
+            or _couleur_proche(texte_actuel, wx.Colour(0, 0, 0), tolerance=20)
+            or _couleur_identique(texte_actuel, wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT))
+        ):
+            window.SetForegroundColour(texte)
     except Exception:
         pass
 
     try:
         if hasattr(window, "stEmptyListMsg"):
-            window.stEmptyListMsg.SetBackgroundColour(surface_pair)
-            window.stEmptyListMsg.SetForegroundColour(texte_secondaire)
+            try:
+                est_active = window.IsEnabled()
+            except Exception:
+                est_active = True
+            if est_active:
+                fond_vide = surface_pair
+                texte_vide = texte_secondaire
+            else:
+                fond_vide = GetCouleurRole("disabled", sombre=sombre)
+                texte_vide = GetCouleurRole("disabled_text", sombre=sombre)
+            window.stEmptyListMsg.SetBackgroundColour(fond_vide)
+            window.stEmptyListMsg.SetForegroundColour(texte_vide)
             window.stEmptyListMsg.Refresh()
     except Exception:
         pass
 
-    # En sombre, remplace seulement les fonds hérités de l'ancien thème clair.
-    # En clair, le design system est disponible mais on laisse les anciennes
-    # couleurs métier/listes intactes pendant la migration progressive.
-    if sombre:
-        try:
-            nbre = window.GetItemCount()
-            if nbre <= 2000:
-                for index in range(nbre):
-                    couleur = window.GetItemBackgroundColour(index)
-                    if not couleur.IsOk() or _fond_est_legacy_clair(couleur):
-                        window.SetItemBackgroundColour(index, surface_pair if index % 2 == 0 else surface_impair)
-        except Exception:
-            pass
+    # Les lignes neutres deviennent réellement alternées en clair comme en
+    # sombre. Les lignes portant une couleur métier explicite sont conservées.
+    try:
+        nbre = window.GetItemCount()
+        if nbre <= 2000:
+            for index in range(nbre):
+                couleur = window.GetItemBackgroundColour(index)
+                if _peut_remplacer_surface_liste(couleur):
+                    window.SetItemBackgroundColour(index, surface_pair if index % 2 == 0 else surface_impair)
+    except Exception:
+        pass
+
+    try:
+        window.Refresh()
+    except Exception:
+        pass
 
 
 def _appliquer_couleurs(window, sombre):
-    # Le thème clair historique est préservé pour ce lot : ses nouvelles
-    # couleurs sémantiques sont disponibles aux composants migrés explicitement,
-    # sans recoloration globale et brutale de l'interface existante.
+    nom_classe = window.__class__.__name__.lower()
+
+    # Première migration visible en mode clair : les listes/tableaux communs
+    # utilisent les surfaces sémantiques. Le reste de l'interface claire reste
+    # historique tant que ses composants n'ont pas été migrés explicitement.
+    if any(mot in nom_classe for mot in ("objectlistview", "listctrl", "listview")):
+        _appliquer_palette_liste(window, sombre=sombre)
+        return
+
     if not sombre:
         return
 
@@ -400,12 +457,6 @@ def _appliquer_couleurs(window, sombre):
         or _couleur_proche(texte_actuel, wx.Colour(0, 0, 0), tolerance=20)
         or not texte_actuel.IsOk()
     )
-
-    nom_classe = window.__class__.__name__.lower()
-
-    if any(mot in nom_classe for mot in ("objectlistview", "listctrl", "listview")):
-        _appliquer_palette_liste(window, sombre=True)
-        return
 
     role_fond = GetRoleComposant(window)
     fond_cible = GetCouleurRole(role_fond, sombre=True)
