@@ -2,7 +2,8 @@
 
 Ce hook conserve les alias wxPython Classic attendus par Noethys et neutralise
 quelques incompatibilités Python 3/Phoenix observées dans le portable Windows.
-Il ne touche ni à la base de données ni aux configurations utilisateur.
+Il ne charge volontairement aucun module applicatif Noethys au démarrage : les
+correctifs spécifiques sont appliqués au moment de leur import normal.
 """
 from __future__ import annotations
 
@@ -30,22 +31,21 @@ if not hasattr(wx, "NewId"):
 
 
 # Sous Python 3, les divisions historiques produisent des float alors que
-# wx.Image.Rescale exige des dimensions entières. Centraliser la conversion
-# évite de reproduire le même correctif dans chaque ancien écran.
+# wx.Image.Rescale exige des dimensions entières.
 _original_image_rescale = wx.Image.Rescale
 
 
 def _image_rescale_int(self, width, height, *args, **kwargs):
-    width = int(round(width))
-    height = int(round(height))
-    return _original_image_rescale(self, width, height, *args, **kwargs)
+    return _original_image_rescale(
+        self, int(round(width)), int(round(height)), *args, **kwargs
+    )
 
 
 wx.Image.Rescale = _image_rescale_int
 
 
 # wxPython Classic acceptait sys.maxsize/six.MAXSIZE comme index d'ajout dans
-# un ListCtrl. Phoenix exige désormais un identifiant d'item réellement valide.
+# un ListCtrl. Phoenix exige un index d'insertion valide.
 _original_listctrl_insert_item = wx.ListCtrl.InsertItem
 
 
@@ -58,98 +58,161 @@ def _listctrl_insert_item(self, item, *args, **kwargs):
 wx.ListCtrl.InsertItem = _listctrl_insert_item
 
 
-# CTRL_Saisie_transport contient des lambdas converties automatiquement sous
-# la forme ``lambda parent=self`` au niveau module. En Python 3, ``self``
-# n'existe pas à cet endroit et l'import bloque les fiches famille, le
-# gestionnaire de consommations, le badgeage et les demandes Connecthys.
-# On importe une fois le module avec un défaut inoffensif, puis on remplace
-# CreationControles afin que le vrai parent soit toujours fourni explicitement.
-_sentinel = object()
-_previous_builtin_self = getattr(builtins, "self", _sentinel)
-builtins.self = None
-try:
-    from Ctrl import CTRL_Saisie_transport as _transport
-finally:
-    if _previous_builtin_self is _sentinel:
-        del builtins.self
-    else:
-        builtins.self = _previous_builtin_self
+def _patch_transport(module):
+    """Corrige les factories ``lambda parent=self`` converties depuis Python 2."""
+
+    def creation_controles(self, rubrique="generalites", label=None):
+        if label is None:
+            label = module._(u"Généralités")
+
+        box = module.wx.StaticBox(self, -1, label)
+        box_sizer = module.wx.StaticBoxSizer(box, module.wx.VERTICAL)
+        grid_sizer = module.wx.FlexGridSizer(rows=18, cols=2, vgap=10, hgap=10)
+
+        for dict_controle in module.DICT_CONTROLES[rubrique]:
+            code = dict_controle["code"]
+            ctrl_label = module.wx.StaticText(
+                self, -1, u"%s :" % dict_controle["label"]
+            )
+            grid_sizer.Add(
+                ctrl_label,
+                0,
+                module.wx.ALIGN_RIGHT | module.wx.ALIGN_CENTER_VERTICAL,
+                0,
+            )
+
+            constructeur = dict_controle["ctrl"]
+            ctrl = constructeur(self)
+            ctrl.SetName(code)
+            ctrl.rubrique = rubrique
+            grid_sizer.Add(ctrl, 0, module.wx.EXPAND, 0)
+            self.listeControles.append((code, ctrl, ctrl_label))
+
+        grid_sizer.AddGrowableCol(1)
+        box_sizer.Add(grid_sizer, 1, module.wx.ALL | module.wx.EXPAND, 10)
+        self.grid_sizer_base.Add(box_sizer, 1, module.wx.EXPAND, 0)
+        self.listeSizers.append(box_sizer)
+        self.listeSizers.append(grid_sizer)
+
+    module.CTRL.CreationControles = creation_controles
 
 
-def _creation_controles_transport(self, rubrique="generalites", label=None):
-    if label is None:
-        label = _transport._(u"Généralités")
+def _patch_taskbar(module):
+    """Force en entiers les coordonnées du compteur Connecthys."""
 
-    box = _transport.wx.StaticBox(self, -1, label)
-    boxSizer = _transport.wx.StaticBoxSizer(box, _transport.wx.VERTICAL)
-    grid_sizer = _transport.wx.FlexGridSizer(rows=18, cols=2, vgap=10, hgap=10)
+    def ajoute_texte_image(
+        self,
+        image=None,
+        texte="",
+        alignement="droite-bas",
+        padding=0,
+        taille_police=9,
+    ):
+        largeur_image, hauteur_image = image.GetSize()
+        bmp = wx.Bitmap(largeur_image, hauteur_image)
+        mdc = wx.MemoryDC(bmp)
+        dc = wx.GCDC(mdc)
+        mdc.SetBackground(wx.Brush("black"))
+        mdc.Clear()
 
-    for dictControle in _transport.DICT_CONTROLES[rubrique]:
-        code = dictControle["code"]
-        ctrl_label = _transport.wx.StaticText(self, -1, u"%s :" % dictControle["label"])
-        grid_sizer.Add(
-            ctrl_label,
-            0,
-            _transport.wx.ALIGN_RIGHT | _transport.wx.ALIGN_CENTER_VERTICAL,
-            0,
+        dc.SetBrush(wx.Brush(wx.RED))
+        dc.SetPen(wx.TRANSPARENT_PEN)
+        dc.SetFont(wx.Font(taille_police, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
+        dc.SetTextForeground(wx.WHITE)
+        largeur_texte, hauteur_texte = dc.GetTextExtent(texte)
+        mdc.DrawBitmap(image, 0, 0)
+
+        hauteur_rond = int(round(hauteur_texte + padding * 2))
+        largeur_rond = int(
+            round(largeur_texte + padding * 2 + hauteur_rond / 2.0)
+        )
+        if largeur_rond < hauteur_rond:
+            largeur_rond = hauteur_rond
+
+        x_rond = 1 if "gauche" in alignement else largeur_image - largeur_rond - 1
+        y_rond = 1 if "haut" in alignement else hauteur_image - hauteur_rond - 1
+        x_rond = int(round(x_rond))
+        y_rond = int(round(y_rond))
+        rayon = int(round(hauteur_rond / 2.0))
+        dc.DrawRoundedRectangle(
+            wx.Rect(x_rond, y_rond, largeur_rond, hauteur_rond), rayon
         )
 
-        constructeur = dictControle["ctrl"]
-        ctrl = constructeur(self)
-        ctrl.SetName(code)
-        ctrl.rubrique = rubrique
-        grid_sizer.Add(ctrl, 0, _transport.wx.EXPAND, 0)
-        self.listeControles.append((code, ctrl, ctrl_label))
+        x_texte = int(round(x_rond + largeur_rond / 2.0 - largeur_texte / 2.0))
+        y_texte = int(
+            round(y_rond + hauteur_rond / 2.0 - hauteur_texte / 2.0 - 1)
+        )
+        dc.DrawText(texte, x_texte, y_texte)
 
-    grid_sizer.AddGrowableCol(1)
-    boxSizer.Add(grid_sizer, 1, _transport.wx.ALL | _transport.wx.EXPAND, 10)
-    self.grid_sizer_base.Add(boxSizer, 1, _transport.wx.EXPAND, 0)
-    self.listeSizers.append(boxSizer)
-    self.listeSizers.append(grid_sizer)
+        mdc.SelectObject(wx.NullBitmap)
+        bmp.SetMaskColour("black")
+        return bmp
 
-
-_transport.CTRL.CreationControles = _creation_controles_transport
+    module.CustomTaskBarIcon.AjouteTexteImage = ajoute_texte_image
 
 
-# Connecthys ajoute un compteur sur son icône de zone de notification. Les
-# coordonnées calculées avec /2.0 doivent être entières avec Phoenix.
-from Ctrl import CTRL_TaskBarIcon as _taskbar
+_TARGETS = {
+    "Ctrl.CTRL_Saisie_transport": _patch_transport,
+    "Ctrl.CTRL_TaskBarIcon": _patch_taskbar,
+}
 
 
-def _ajoute_texte_image(self, image=None, texte="", alignement="droite-bas", padding=0, taille_police=9):
-    largeurImage, hauteurImage = image.GetSize()
-    bmp = wx.Bitmap(largeurImage, hauteurImage)
-    mdc = wx.MemoryDC(bmp)
-    dc = wx.GCDC(mdc)
-    mdc.SetBackground(wx.Brush("black"))
-    mdc.Clear()
+class _DeferredPatchLoader:
+    def __init__(self, fullname, loader, patcher):
+        self.fullname = fullname
+        self.loader = loader
+        self.patcher = patcher
 
-    dc.SetBrush(wx.Brush(wx.RED))
-    dc.SetPen(wx.TRANSPARENT_PEN)
-    dc.SetFont(wx.Font(taille_police, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
-    dc.SetTextForeground(wx.WHITE)
-    largeurTexte, hauteurTexte = dc.GetTextExtent(texte)
-    mdc.DrawBitmap(image, 0, 0)
+    def create_module(self, spec):
+        create_module = getattr(self.loader, "create_module", None)
+        if create_module is None:
+            return None
+        return create_module(spec)
 
-    hauteurRond = int(round(hauteurTexte + padding * 2))
-    largeurRond = int(round(largeurTexte + padding * 2 + hauteurRond / 2.0))
-    if largeurRond < hauteurRond:
-        largeurRond = hauteurRond
+    def exec_module(self, module):
+        sentinel = object()
+        previous_self = sentinel
+        if self.fullname == "Ctrl.CTRL_Saisie_transport":
+            previous_self = getattr(builtins, "self", sentinel)
+            builtins.self = None
 
-    xRond = 1 if "gauche" in alignement else largeurImage - largeurRond - 1
-    yRond = 1 if "haut" in alignement else hauteurImage - hauteurRond - 1
-    xRond = int(round(xRond))
-    yRond = int(round(yRond))
-    rayon = int(round(hauteurRond / 2.0))
-    dc.DrawRoundedRectangle(wx.Rect(xRond, yRond, largeurRond, hauteurRond), rayon)
+        try:
+            self.loader.exec_module(module)
+        finally:
+            if self.fullname == "Ctrl.CTRL_Saisie_transport":
+                if previous_self is sentinel:
+                    try:
+                        del builtins.self
+                    except AttributeError:
+                        pass
+                else:
+                    builtins.self = previous_self
 
-    xTexte = int(round(xRond + largeurRond / 2.0 - largeurTexte / 2.0))
-    yTexte = int(round(yRond + hauteurRond / 2.0 - hauteurTexte / 2.0 - 1))
-    dc.DrawText(texte, xTexte, yTexte)
+        self.patcher(module)
 
-    mdc.SelectObject(wx.NullBitmap)
-    bmp.SetMaskColour("black")
-    return bmp
+    def __getattr__(self, name):
+        return getattr(self.loader, name)
 
 
-_taskbar.CustomTaskBarIcon.AjouteTexteImage = _ajoute_texte_image
+class _DeferredPatchFinder:
+    def find_spec(self, fullname, path=None, target=None):
+        patcher = _TARGETS.get(fullname)
+        if patcher is None:
+            return None
+
+        # Demande le spec aux finders déjà installés (dont celui de PyInstaller)
+        # sans rappeler ce finder et provoquer une récursion.
+        for finder in tuple(sys.meta_path):
+            if finder is self:
+                continue
+            find_spec = getattr(finder, "find_spec", None)
+            if find_spec is None:
+                continue
+            spec = find_spec(fullname, path, target)
+            if spec is not None and spec.loader is not None:
+                spec.loader = _DeferredPatchLoader(fullname, spec.loader, patcher)
+                return spec
+        return None
+
+
+sys.meta_path.insert(0, _DeferredPatchFinder())
