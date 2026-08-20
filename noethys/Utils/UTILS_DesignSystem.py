@@ -166,9 +166,9 @@ ACCENTS_SOMBRES = {
 }
 
 
-# Rôle de surface recommandé selon les grandes familles wxPython. Cette table
-# constitue un contrat central ; elle évite d'ajouter des choix visuels locaux
-# dans chaque dialogue.
+# Rôle de surface recommandé selon les grandes familles wxPython et les noms de
+# modules historiques Noethys. Les contrôles maison s'appellent souvent CTRL :
+# le nom qualifié du module devient donc une information utile à la classification.
 ROLES_COMPOSANTS = {
     "data": "surface_container_lowest",
     "input": "surface_container_low",
@@ -200,17 +200,28 @@ def GetCouleur(role, sombre=False, theme="Vert", defaut=None):
 
 
 def GetRoleComposant(nom_classe=""):
-    """Classe un contrôle wx dans une couche de surface sémantique."""
+    """Classe un contrôle wx ou Noethys dans une couche de surface sémantique."""
     nom = (nom_classe or "").lower()
-    if any(mot in nom for mot in ("objectlistview", "listctrl", "listview", "grid")):
+    if any(mot in nom for mot in (
+        "objectlistview", "listctrl", "listview", "dataview", "grid", "grille"
+    )):
         return ROLES_COMPOSANTS["data"]
-    if any(mot in nom for mot in ("textctrl", "treectrl", "choice", "combobox", "spin", "checklist")):
+    if any(mot in nom for mot in (
+        "textctrl", "treectrl", "choice", "combobox", "spin", "checklist",
+        "searchctrl", "datectrl", "saisie"
+    )):
         return ROLES_COMPOSANTS["input"]
-    if any(mot in nom for mot in ("toolbar", "auitoolbar", "notebook", "choicebook", "listbook")):
+    if any(mot in nom for mot in (
+        "toolbar", "auitoolbar", "notebook", "choicebook", "listbook", "barre_outils"
+    )):
         return ROLES_COMPOSANTS["toolbar"]
-    if any(mot in nom for mot in ("button", "togglebutton", "bitmapbutton")):
+    if any(mot in nom for mot in (
+        "button", "togglebutton", "bitmapbutton", "bouton"
+    )):
         return ROLES_COMPOSANTS["button"]
-    if any(mot in nom for mot in ("popup", "popover", "tipwindow", "miniframe")):
+    if any(mot in nom for mot in (
+        "popup", "popover", "tipwindow", "miniframe"
+    )):
         return ROLES_COMPOSANTS["floating"]
     return ROLES_COMPOSANTS["panel"]
 
