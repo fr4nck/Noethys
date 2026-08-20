@@ -8,101 +8,97 @@
 # Licence:         Licence GNU GPL
 #-----------------------------------------------------------
 
-
-import Chemins
-from Utils import UTILS_Adaptations
 from Utils.UTILS_Traduction import _
+from Utils import UTILS_FluentIcons
+from Utils import UTILS_Interface
+from Utils import UTILS_UIMetrics
 import wx
 from Ctrl import CTRL_Bouton_image
 import GestionDB
 
 
 class CTRL(wx.SearchCtrl):
-    def __init__(self, parent, size=(-1,20), IDfamille=None):
+    """Recherche de facture compacte mais compatible DPI et grosse police."""
+
+    def __init__(self, parent, size=wx.DefaultSize, IDfamille=None):
         wx.SearchCtrl.__init__(self, parent, size=size, style=wx.TE_PROCESS_ENTER)
         self.parent = parent
         self.IDfamille = IDfamille
         self.IDutilisateurActif = None
         self.SetDescriptiveText(_(u"N° de facture"))
-            
-        # Options
+
         self.ShowSearchButton(True)
-        self.SetCancelBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Interdit.png"), wx.BITMAP_TYPE_PNG))
-        self.SetSearchBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Codebarre.png"), wx.BITMAP_TYPE_PNG))
-        
-        # Binds
+        self.ShowCancelButton(False)
+        try:
+            taille = UTILS_UIMetrics.icon_size("inline")
+            bitmap = UTILS_FluentIcons.GetBitmap("search", taille=taille, role="on_surface_variant")
+            if bitmap is not None and bitmap.IsOk():
+                self.SetSearchBitmap(bitmap)
+        except Exception:
+            pass
+
+        # Une valeur de 20 px était trop petite dès 120 % de texte. Le contrôle
+        # conserve sa largeur décidée par son parent mais suit la cible desktop.
+        try:
+            largeur_min = max(UTILS_UIMetrics.px(120), self.GetMinSize().GetWidth())
+            self.SetMinSize((largeur_min, UTILS_UIMetrics.action_target("compact")))
+            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        except Exception:
+            pass
+
         self.Bind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.Recherche)
         self.Bind(wx.EVT_SEARCHCTRL_CANCEL_BTN, self.OnCancel)
         self.Bind(wx.EVT_TEXT_ENTER, self.Recherche)
         self.Bind(wx.EVT_TEXT, self.OnText)
-            
+
     def OnCancel(self, evt):
         self.SetValue("")
 
     def OnText(self, event):
         txtSearch = self.GetValue()
-        self.ShowCancelButton(len(txtSearch))
+        self.ShowCancelButton(bool(txtSearch))
         if len(txtSearch) > 6 and txtSearch.startswith("F") and "-" not in txtSearch:
             numFacture = txtSearch[1:]
             self.ReglerFacture(numFacture)
             self.SetValue("")
 
     def Recherche(self, event):
-        numFacture = self.GetValue()
-        # try :
-        #     numFacture = int(txtSearch)
-        # except :
-        #     dlg = wx.MessageDialog(self, _(u"Ce numéro de facture n'est pas valide !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
-        #     dlg.ShowModal()
-        #     dlg.Destroy()
-        #     return
-        self.ReglerFacture(numFacture)
-    
+        self.ReglerFacture(self.GetValue())
+
     def ReglerFacture(self, numFacture=None):
-        if self.IDfamille != None :
+        if self.IDfamille is not None:
             texteSupp = _(u"pour cette famille ")
             conditionFamille = " AND comptes_payeurs.IDfamille=%d" % self.IDfamille
         else:
             texteSupp = u""
             conditionFamille = ""
 
-        try :
-            if "-" in numFacture :
+        try:
+            if "-" in numFacture:
                 prefixe, numero = numFacture.split("-")
                 numero = int(numero)
                 conditionNumero = u"WHERE factures_prefixes.prefixe='%s' AND factures.numero=%d" % (prefixe, numero)
-            else :
+            else:
                 numero = int(numFacture)
                 conditionNumero = u"WHERE factures.numero=%d" % numero
-        except :
+        except Exception:
             conditionNumero = None
 
-        if conditionNumero == None :
-            dlg = wx.MessageDialog(self, _(u"Ce numéro de facture ne semble pas valide !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
+        if conditionNumero is None:
+            dlg = wx.MessageDialog(
+                self,
+                _(u"Ce numéro de facture ne semble pas valide !"),
+                _(u"Erreur de saisie"),
+                wx.OK | wx.ICON_EXCLAMATION,
+            )
             dlg.ShowModal()
             dlg.Destroy()
             return
 
         DB = GestionDB.DB()
-
-##        # Récupération des totaux des prestations pour chaque facture
-##        req = """
-##        SELECT 
-##        IDfacture, SUM(montant)
-##        FROM prestations
-##        WHERE IDfacture IS NOT NULL %s
-##        GROUP BY IDfacture
-##        ;""" % conditionFamille
-##        DB.ExecuterReq(req)
-##        listeDonnees = DB.ResultatReq()     
-##        dictPrestations = {}
-##        for IDfacture, totalPrestations in listeDonnees :
-##            if IDfacture != None :
-##                dictPrestations[IDfacture] = totalPrestations
-
-        # Recherche si le numéro de facture existe
         req = u"""
-        SELECT 
+        SELECT
         factures.IDfacture, factures.total, factures.regle, factures.solde,
         SUM(ventilation.montant), etat,
         comptes_payeurs.IDfamille
@@ -115,24 +111,32 @@ class CTRL(wx.SearchCtrl):
         GROUP BY factures.IDfacture
         ;""" % (conditionNumero, conditionFamille)
         DB.ExecuterReq(req)
-        listeDonnees = DB.ResultatReq()     
-        DB.Close() 
-        # Si le numéro de facture n'existe pas
-        if len(listeDonnees) == 0 :
-            dlg = wx.MessageDialog(self, _(u"Ce numéro ne correspond à aucune facture existante %s!") % texteSupp, _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
+        listeDonnees = DB.ResultatReq()
+        DB.Close()
+
+        if len(listeDonnees) == 0:
+            dlg = wx.MessageDialog(
+                self,
+                _(u"Ce numéro ne correspond à aucune facture existante %s!") % texteSupp,
+                _(u"Erreur"),
+                wx.OK | wx.ICON_EXCLAMATION,
+            )
             dlg.ShowModal()
             dlg.Destroy()
             return
-        
+
         IDfacture, totalInitial, regleInitial, soldeInitial, regleActuel, etat, IDfamille = listeDonnees[0]
-        if etat == "annulation" :
-            dlg = wx.MessageDialog(self, _(u"La facture n°%s a été annulée !") % numFacture, _(u"Facture annulée"), wx.OK | wx.ICON_EXCLAMATION)
+        if etat == "annulation":
+            dlg = wx.MessageDialog(
+                self,
+                _(u"La facture n°%s a été annulée !") % numFacture,
+                _(u"Facture annulée"),
+                wx.OK | wx.ICON_EXCLAMATION,
+            )
             dlg.ShowModal()
             dlg.Destroy()
             return
-        
-        # Recherche si la facture a déjà été réglée
-        
+
         DB = GestionDB.DB()
         req = """SELECT IDfacture, SUM(montant)
         FROM prestations
@@ -140,116 +144,126 @@ class CTRL(wx.SearchCtrl):
         GROUP BY IDfacture
         ;""" % IDfacture
         DB.ExecuterReq(req)
-        listeDonnees = DB.ResultatReq()     
-        if len(listeDonnees) > 0 :
-            totalActuel = listeDonnees[0][1]
-        else :
+        listeDonnees = DB.ResultatReq()
+        totalActuel = listeDonnees[0][1] if listeDonnees else 0.0
+        DB.Close()
+
+        if totalActuel is None:
             totalActuel = 0.0
-        DB.Close() 
-        
-        if totalActuel == None : totalActuel = 0.0 
-        if regleActuel == None : regleActuel = 0.0 
-        if totalActuel - regleActuel == 0.0 :
-            dlg = wx.MessageDialog(self, _(u"La facture n°%s a déjà été réglée en intégralité !") % numFacture, _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
+        if regleActuel is None:
+            regleActuel = 0.0
+        if totalActuel - regleActuel == 0.0:
+            dlg = wx.MessageDialog(
+                self,
+                _(u"La facture n°%s a déjà été réglée en intégralité !") % numFacture,
+                _(u"Erreur de saisie"),
+                wx.OK | wx.ICON_EXCLAMATION,
+            )
             dlg.ShowModal()
             dlg.Destroy()
             return
-        
-        # Ouverture de la fiche famille
-        if self.IDfamille != None :
-            self.GetGrandParent().ReglerFacture() 
+
+        if self.IDfamille is not None:
+            self.GetGrandParent().ReglerFacture()
         else:
             from Dlg import DLG_Famille
             dlg = DLG_Famille.Dialog(self, IDfamille=IDfamille, AfficherMessagesOuverture=False)
             dlg.ReglerFacture(IDfacture)
-            dlg.ShowModal() 
+            dlg.ShowModal()
             dlg.Destroy()
-        
+
         self.SetValue("")
-        if self.GetParent().GetName() == "DLG_Regler_facture" :
-            self.GetParent().Destroy() 
-        
+        if self.GetParent().GetName() == "DLG_Regler_facture":
+            self.GetParent().Destroy()
 
-
-
-# ----------------- FRAME DE TEST ----------------------------------------------------------------
 
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
         sizer_1 = wx.BoxSizer(wx.VERTICAL)
-        sizer_1.Add(panel, 1, wx.ALL|wx.EXPAND)
+        sizer_1.Add(panel, 1, wx.EXPAND)
         self.SetSizer(sizer_1)
         self.myOlv = CTRL(panel)
         self.myOlv2 = wx.TextCtrl(panel, -1, "test")
         sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2.Add(self.myOlv, 0, wx.ALL|wx.EXPAND, 10)
-        sizer_2.Add(self.myOlv2, 0, wx.ALL|wx.EXPAND, 10)
+        sizer_2.Add(self.myOlv, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer_2.Add(self.myOlv2, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
         panel.SetSizer(sizer_2)
         self.SetSize((500, 150))
         self.Layout()
         self.CenterOnScreen()
 
 
-# --------------------------- DLG de saisie de mot de passe ----------------------------
-
 class Dialog(wx.Dialog):
+    """Saisie d'un numéro de facture sans grille/spacer historique."""
+
     def __init__(self, parent, id=-1, title=_(u"Régler une facture"), IDfamille=None):
-        wx.Dialog.__init__(self, parent, id, title, name="DLG_Regler_facture")
+        wx.Dialog.__init__(
+            self,
+            parent,
+            id,
+            title,
+            name="DLG_Regler_facture",
+            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+        )
         self.parent = parent
         self.IDfamille = IDfamille
-        
-        self.staticbox = wx.StaticBox(self, -1, "")
 
-        self.label = wx.StaticText(self, -1, _(u"Veuillez saisir le numéro de la facture à régler ou\nscannez directement le code-barre sur la facture :"))
+        self.label = wx.StaticText(
+            self,
+            -1,
+            _(u"Saisissez le numéro de la facture à régler ou scannez directement son code-barres."),
+        )
         self.ctrl_mdp = CTRL(self, IDfamille=self.IDfamille)
-        
-        self.bouton_annuler = CTRL_Bouton_image.CTRL(self, id=wx.ID_CANCEL, texte=_(u"Annuler"), cheminImage="Images/32x32/Annuler.png")
-        
-        self.__set_properties()
+        self.bouton_annuler = CTRL_Bouton_image.CTRL(
+            self,
+            id=wx.ID_CANCEL,
+            texte=_(u"Annuler"),
+            cheminImage="Images/32x32/Annuler.png",
+        )
+
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        self.bouton_annuler.SetToolTip(wx.ToolTip(_(u"Annuler")))
         self.__do_layout()
-        
-    def __set_properties(self):
-        self.bouton_annuler.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour annuler")))
-        self.ctrl_mdp.SetMinSize((200, -1))
 
     def __do_layout(self):
-        grid_sizer_2 = wx.FlexGridSizer(rows=3, cols=1, vgap=0, hgap=0)
-        grid_sizer_4 = wx.FlexGridSizer(rows=1, cols=3, vgap=10, hgap=10)
-        sizer_3 = wx.StaticBoxSizer(self.staticbox, wx.HORIZONTAL)
-        grid_sizer_3 = wx.FlexGridSizer(rows=1, cols=2, vgap=10, hgap=10)
-        grid_sizer_2.Add(self.label, 0, wx.ALL, 10)
-        grid_sizer_3.Add(self.ctrl_mdp, 1, wx.EXPAND, 0)
-        grid_sizer_3.AddGrowableCol(0)
-        sizer_3.Add(grid_sizer_3, 1, wx.ALL|wx.EXPAND, 10)
-        grid_sizer_2.Add(sizer_3, 1, wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
-        grid_sizer_4.Add((20, 20), 0, 0, 0)
-        grid_sizer_4.Add(self.bouton_annuler, 0, 0, 0)
-        grid_sizer_4.AddGrowableCol(0)
-        grid_sizer_2.Add(grid_sizer_4, 1, wx.ALL|wx.EXPAND, 10)
-        self.SetSizer(grid_sizer_2)
-        grid_sizer_2.AddGrowableCol(0)
-        grid_sizer_2.Fit(self)
+        marge = UTILS_UIMetrics.spacing(4)
+        espace = UTILS_UIMetrics.spacing(3)
+
+        contenu = wx.BoxSizer(wx.VERTICAL)
+        contenu.Add(self.label, 0, wx.EXPAND | wx.BOTTOM, espace)
+        contenu.Add(self.ctrl_mdp, 0, wx.EXPAND)
+
+        actions = wx.BoxSizer(wx.HORIZONTAL)
+        actions.AddStretchSpacer(1)
+        actions.Add(self.bouton_annuler, 0)
+
+        principal = wx.BoxSizer(wx.VERTICAL)
+        principal.Add(contenu, 1, wx.EXPAND | wx.ALL, marge)
+        principal.Add(actions, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
+        self.SetSizer(principal)
+
+        ecran = wx.GetClientDisplayRect()
+        largeur = max(UTILS_UIMetrics.px(420), min(UTILS_UIMetrics.px(620), int(ecran.GetWidth() * 0.42)))
+        self.SetMinSize((UTILS_UIMetrics.px(360), -1))
+        self.SetSize((largeur, -1))
+        self.Fit()
         self.Layout()
-        self.CentreOnScreen()
+        self.CentreOnParent() if parent_valide(self.GetParent()) else self.CentreOnScreen()
+        wx.CallAfter(self.ctrl_mdp.SetFocus)
 
 
+def parent_valide(parent):
+    try:
+        return parent is not None and bool(parent)
+    except Exception:
+        return False
 
-# ----------------------------------------------------------------------------------------------------------------------
+
 if __name__ == '__main__':
     app = wx.App(0)
-    #wx.InitAllImageHandlers()
     dlg = Dialog(None)
     app.SetTopWindow(dlg)
     dlg.ShowModal()
     app.MainLoop()
-
-
-##if __name__ == '__main__':
-##    app = wx.App(0)
-##    #wx.InitAllImageHandlers()
-##    frame_1 = MyFrame(None, -1, "GroupListView")
-##    app.SetTopWindow(frame_1)
-##    frame_1.Show()
-##    app.MainLoop()
