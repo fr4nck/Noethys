@@ -20,6 +20,8 @@ class BusinessListsModernizationContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Liste_factures.py",
             "noethys/Ctrl/CTRL_Liste_cotisations.py",
             "noethys/Ctrl/CTRL_Liste_inscriptions.py",
+            "noethys/Ctrl/CTRL_Liste_locations.py",
+            "noethys/Ctrl/CTRL_Liste_locations_demandes.py",
         ):
             text = self._read(relative_path)
             self.assertIn("CTRL_Bouton_image.CTRL", text)
@@ -39,6 +41,16 @@ class BusinessListsModernizationContractTests(unittest.TestCase):
         self.assertIn("CocheListeTout()", text)
         self.assertIn("CocheListeRien()", text)
 
+    def test_location_filters_use_scaled_system_text(self):
+        for relative_path in (
+            "noethys/Ctrl/CTRL_Liste_locations.py",
+            "noethys/Ctrl/CTRL_Liste_locations_demandes.py",
+        ):
+            text = self._read(relative_path)
+            self.assertIn("wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)", text)
+            self.assertIn("UTILS_Interface.GetTailleTexte()", text)
+            self.assertNotIn("wx.Font(8,", text)
+
     def test_business_actions_preserve_underlying_list_operations(self):
         expectations = {
             "noethys/Ctrl/CTRL_Liste_factures.py": (
@@ -51,6 +63,14 @@ class BusinessListsModernizationContractTests(unittest.TestCase):
             ),
             "noethys/Ctrl/CTRL_Liste_inscriptions.py": (
                 "ImprimerPDF(None)", "EnvoyerEmail(None)",
+                "Apercu(None)", "Imprimer(None)", "ExportTexte(None)", "ExportExcel(None)",
+            ),
+            "noethys/Ctrl/CTRL_Liste_locations.py": (
+                "Reedition(None)", "EnvoyerEmail(None)", "Supprimer(None)",
+                "Apercu(None)", "Imprimer(None)", "ExportTexte(None)", "ExportExcel(None)",
+            ),
+            "noethys/Ctrl/CTRL_Liste_locations_demandes.py": (
+                "Reedition(None)", "EnvoyerEmail(None)", "Supprimer(None)",
                 "Apercu(None)", "Imprimer(None)", "ExportTexte(None)", "ExportExcel(None)",
             ),
         }
