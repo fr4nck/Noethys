@@ -8,174 +8,157 @@
 # Licence:         Licence GNU GPL
 #-----------------------------------------------------------
 
+import datetime
 
-import Chemins, datetime
-from Utils import UTILS_Adaptations
-from Utils.UTILS_Traduction import _
-from Utils import UTILS_Parametres
 import wx
-from Ctrl import CTRL_Bouton_image
-import GestionDB
 import wx.lib.agw.customtreectrl as CT
 
+import GestionDB
+from Ctrl import CTRL_Bouton_image
+from Utils import UTILS_Adaptations, UTILS_Interface, UTILS_Parametres, UTILS_UIMetrics
+from Utils.UTILS_Traduction import _
 
+
+def _PoliceInterface():
+    police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
+    facteur = UTILS_Interface.GetTailleTexte() / 100.0
+    police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
+    return police
+
+
+def _StyleListe(ctrl):
+    try:
+        ctrl.SetFont(_PoliceInterface())
+        ctrl.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+        ctrl.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+    except Exception:
+        pass
 
 
 class CTRL_Groupes(CT.CustomTreeCtrl):
-    def __init__(self, parent, id=wx.ID_ANY, pos=wx.DefaultPosition, size=wx.DefaultSize, style=wx.SIMPLE_BORDER) :
+    def __init__(self, parent, id=wx.ID_ANY, pos=wx.DefaultPosition, size=wx.DefaultSize, style=wx.SIMPLE_BORDER):
         CT.CustomTreeCtrl.__init__(self, parent, id, pos, size, style)
         self.parent = parent
         self.activation = True
         self.root = self.AddRoot(_(u"Racine"))
-        self.SetBackgroundColour(wx.WHITE)
-        self.SetAGWWindowStyleFlag(wx.TR_HIDE_ROOT | wx.TR_HAS_BUTTONS | wx.TR_HAS_VARIABLE_ROW_HEIGHT ) #CT.TR_AUTO_CHECK_CHILD
+        self.SetAGWWindowStyleFlag(wx.TR_HIDE_ROOT | wx.TR_HAS_BUTTONS | wx.TR_HAS_VARIABLE_ROW_HEIGHT)
         self.EnableSelectionVista(True)
         self.mode_importation = False
         self.dictItems = {}
-        
-        # Binds
+        _StyleListe(self)
         self.Bind(CT.EVT_TREE_ITEM_CHECKED, self.OnCheck)
 
     def Activation(self, etat=True):
-        """ Active ou désactive le contrôle """
         self.activation = etat
-        self.MAJ() 
+        self.MAJ()
 
     def Importation(self):
-        listeDonnees = []
         DB = GestionDB.DB()
-        req = """SELECT groupes.IDgroupe, groupes.nom, groupes.ordre, activites.IDactivite, activites.nom, activites.date_fin
+        req = """SELECT groupes.IDgroupe, groupes.nom, groupes.ordre,
+        activites.IDactivite, activites.nom, activites.date_fin
         FROM groupes
         LEFT JOIN activites ON activites.IDactivite = groupes.IDactivite
         ORDER BY activites.date_fin DESC;"""
         DB.ExecuterReq(req)
-        listeGroupes = DB.ResultatReq()      
-        DB.Close() 
+        listeGroupes = DB.ResultatReq()
+        DB.Close()
         return listeGroupes
 
     def MAJ(self):
-        anciensCoches = self.GetGroupes() 
-        
+        anciensCoches = self.GetGroupes()
         self.listeDonnees = self.Importation()
         self.DeleteAllItems()
         self.root = self.AddRoot(_(u"Données"))
         self.dictItems = {}
-        
-        # Préparation des données
+
         dictDonnees = {}
-        for IDgroupe, nomGroupe, ordreGroupe, IDactivite, nomActivite, dateFinActivite in self.listeDonnees :
-            if (IDactivite in dictDonnees) == False :
-                dictDonnees[IDactivite] = {"nom" : nomActivite, "IDactivite" : IDactivite, "dateFinActivite" : dateFinActivite, "groupes" : []}
+        for IDgroupe, nomGroupe, ordreGroupe, IDactivite, nomActivite, dateFinActivite in self.listeDonnees:
+            if IDactivite not in dictDonnees:
+                dictDonnees[IDactivite] = {
+                    "nom": nomActivite,
+                    "IDactivite": IDactivite,
+                    "dateFinActivite": dateFinActivite,
+                    "groupes": [],
+                }
             dictDonnees[IDactivite]["groupes"].append((ordreGroupe, IDgroupe, nomGroupe))
 
-        # Tri des noms des activités par ordre alpha
-        listeActivites = []
-        for IDactivite, dictActivite in dictDonnees.items() :
-            listeActivites.append((dictActivite["dateFinActivite"], IDactivite))
-        listeActivites.sort(reverse=True)         
-        
-        # Remplissage
-        for dateFinActivite, IDactivite in listeActivites :
-            
-            # Branche activité
-            dictActivite = dictDonnees[IDactivite]
-            nomActivite = dictActivite["nom"]
-            if nomActivite == None : nomActivite = u"Activité inconnue"
+        listeActivites = [(donnees["dateFinActivite"], IDactivite) for IDactivite, donnees in dictDonnees.items()]
+        listeActivites.sort(reverse=True)
+
+        for dateFinActivite, IDactivite in listeActivites:
+            donneesActivite = dictDonnees[IDactivite]
+            nomActivite = donneesActivite["nom"] or _(u"Activité inconnue")
             brancheActivite = self.AppendItem(self.root, nomActivite, ct_type=1)
-            dictData = {"type" : "activite", "IDactivite" : IDactivite, "nom" : nomActivite}
-            self.SetPyData(brancheActivite, dictData)
-##            self.SetItemBold(brancheActivite)
-            self.dictItems[brancheActivite] = dictData
-            
-            # Branches groupes
-            listeGroupes = dictActivite["groupes"]
-            listeGroupes.sort() 
-            
-            for ordreGroupe, IDgroupe, nomGroupe in listeGroupes :
+            dataActivite = {"type": "activite", "IDactivite": IDactivite, "nom": nomActivite}
+            self.SetPyData(brancheActivite, dataActivite)
+            self.dictItems[brancheActivite] = dataActivite
+
+            groupes = donneesActivite["groupes"]
+            groupes.sort()
+            for ordreGroupe, IDgroupe, nomGroupe in groupes:
                 brancheGroupe = self.AppendItem(brancheActivite, nomGroupe, ct_type=1)
-                dictData = {"type" : "groupe", "IDgroupe" : IDgroupe, "nom" : nomGroupe}
-                self.SetPyData(brancheGroupe, dictData)
-                self.dictItems[brancheGroupe] = dictData
-            
+                dataGroupe = {"type": "groupe", "IDgroupe": IDgroupe, "nom": nomGroupe}
+                self.SetPyData(brancheGroupe, dataGroupe)
+                self.dictItems[brancheGroupe] = dataGroupe
             self.EnableChildren(brancheActivite, False)
-            
-        if self.activation == False :
+
+        if not self.activation:
             self.EnableChildren(self.root, False)
-        
         self.SetGroupes(anciensCoches)
-        
+
     def OnCheck(self, event):
-        item = event.GetItem()
-        self.Coche(item=item)
-    
+        self.Coche(item=event.GetItem())
+
     def Coche(self, item=None, etat=None):
-        """ Coche ou décoche un item """
         dictData = self.GetItemPyData(item)
         itemParent = self.GetItemParent(item)
-        
-        if etat != None :
-            self.CheckItem(item, etat) 
-            
-        if dictData["type"] == "activite" :
-            if self.IsItemChecked(item) :
-                self.EnableChildren(item, True)
-                if self.mode_importation == False :
-                    self.CheckChilds(item, True)
-            else :
-                self.EnableChildren(item, False)
-                self.CheckChilds(item, False)
-            
-        if dictData["type"] == "groupe" :
-            if self.IsItemChecked(item) :
+        if etat is not None:
+            self.CheckItem(item, etat)
+
+        if dictData["type"] == "activite":
+            actif = self.IsItemChecked(item)
+            self.EnableChildren(item, actif)
+            if not actif or not self.mode_importation:
+                self.CheckChilds(item, actif)
+        elif dictData["type"] == "groupe":
+            if self.IsItemChecked(item):
                 self.CheckItem(itemParent, True)
-            else :
-                listeCoches = self.GetCochesItem(itemParent)
-                if len(listeCoches) == 0 :
-                    self.CheckItem(itemParent, False)
-        
+            elif not self.GetCochesItem(itemParent):
+                self.CheckItem(itemParent, False)
+
     def GetCochesItem(self, item=None):
-        """ Renvoie la liste des sous items cochés d'un item parent """
         listeItems = []
         itemTemp, cookie = self.GetFirstChild(item)
-        for index in range(0, self.GetChildrenCount(item, recursively=False)) :
-            if self.IsItemChecked(itemTemp) :
-                dictData = self.GetPyData(itemTemp)
-                listeItems.append(dictData)
+        for index in range(self.GetChildrenCount(item, recursively=False)):
+            if self.IsItemChecked(itemTemp):
+                listeItems.append(self.GetPyData(itemTemp))
             itemTemp, cookie = self.GetNextChild(item, cookie)
         return listeItems
-    
+
     def GetGroupes(self):
-        """ Renvoie la liste des groupes cochés """
-        listeGroupes = []
-        for item, dictData in self.dictItems.items() :
-            if self.IsItemEnabled(item) and self.IsItemChecked(item) and dictData["type"] == "groupe" :
-                listeGroupes.append(dictData["IDgroupe"])
+        listeGroupes = [
+            data["IDgroupe"] for item, data in self.dictItems.items()
+            if data["type"] == "groupe" and self.IsItemEnabled(item) and self.IsItemChecked(item)
+        ]
         listeGroupes.sort()
         return listeGroupes
-        
-    def SetGroupes(self, listeGroupes=[]):
-        """ Coche les groupes donnés """
+
+    def SetGroupes(self, listeGroupes=None):
+        if listeGroupes is None:
+            listeGroupes = []
         self.mode_importation = True
-        for item, dictData in self.dictItems.items() :
-            if dictData["type"] == "groupe" :
-                if dictData["IDgroupe"] in listeGroupes :
-                    self.Coche(item, etat=True)
-                else :
-                    self.Coche(item, etat=False)
+        for item, data in self.dictItems.items():
+            if data["type"] == "groupe":
+                self.Coche(item, etat=data["IDgroupe"] in listeGroupes)
         self.mode_importation = False
-    
-    def SetActivites(self, listeActivites=[]):
-        """ Coche les activités """
-        for item, dictData in self.dictItems.items() :
-            if dictData["type"] == "activite" :
-                if dictData["IDactivite"] in listeActivites :
-                    self.Coche(item, etat=True)
-                else :
-                    self.Coche(item, etat=False)
-        
-        
-        
-# ----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    def SetActivites(self, listeActivites=None):
+        if listeActivites is None:
+            listeActivites = []
+        for item, data in self.dictItems.items():
+            if data["type"] == "activite":
+                self.Coche(item, etat=data["IDactivite"] in listeActivites)
+
 
 class CTRL_Groupes_activites(wx.CheckListBox):
     def __init__(self, parent):
@@ -184,29 +167,25 @@ class CTRL_Groupes_activites(wx.CheckListBox):
         self.dictDonnees = {}
         self.dictActivites = {}
         self.dictIndex = {}
-        self.listeDonnees = self.Importation()
-        if self.listeDonnees == None : 
-            self.listeDonnees = []
-        self.MAJ() 
+        self.listeDonnees = []
+        _StyleListe(self)
+        self.MAJ()
         self.Bind(wx.EVT_CHECKLISTBOX, self.OnCheck)
-        
+
     def MAJ(self):
-        self.listeDonnees = self.Importation()
+        self.listeDonnees = self.Importation() or []
         self.Clear()
         self.dictIndex = {}
-        if self.listeDonnees == [] : return
         self.listeDonnees.sort()
-        index = 0
-        for nomGroupe, IDtype_groupe_activite in self.listeDonnees :
-            if nomGroupe == None :
-                nomGroupe = _(u"Groupe inconnu !")
-            self.Append(nomGroupe) 
+        for index, (nomGroupe, IDtype_groupe_activite) in enumerate(self.listeDonnees):
+            self.Append(nomGroupe or _(u"Groupe inconnu !"))
             self.dictIndex[index] = IDtype_groupe_activite
-            index += 1
 
     def Importation(self):
         DB = GestionDB.DB()
-        req = """SELECT IDgroupe_activite, groupes_activites.IDactivite, activites.nom, types_groupes_activites.nom, groupes_activites.IDtype_groupe_activite
+        req = """SELECT IDgroupe_activite, groupes_activites.IDactivite,
+        activites.nom, types_groupes_activites.nom,
+        groupes_activites.IDtype_groupe_activite
         FROM groupes_activites
         LEFT JOIN types_groupes_activites ON types_groupes_activites.IDtype_groupe_activite = groupes_activites.IDtype_groupe_activite
         LEFT JOIN activites ON activites.IDactivite = groupes_activites.IDactivite
@@ -214,73 +193,52 @@ class CTRL_Groupes_activites(wx.CheckListBox):
         DB.ExecuterReq(req)
         listeActivites = DB.ResultatReq()
         DB.Close()
-        if len(listeActivites) == 0 : return []
+
         listeDonnees = []
         self.dictDonnees = {}
-        for IDgroupe_activite, IDactivite, nomActivite, nomGroupe, IDtype_groupe_activite in listeActivites :
-            listeTemp = (nomGroupe, IDtype_groupe_activite)
-            if listeTemp not in listeDonnees : 
-                listeDonnees.append(listeTemp)
-            if (IDtype_groupe_activite in self.dictDonnees) == False :
-                self.dictDonnees[IDtype_groupe_activite] = []
-            self.dictDonnees[IDtype_groupe_activite].append(IDactivite)    
-            self.dictActivites[IDactivite] = nomActivite        
+        self.dictActivites = {}
+        for IDgroupe_activite, IDactivite, nomActivite, nomGroupe, IDtype_groupe_activite in listeActivites:
+            entree = (nomGroupe, IDtype_groupe_activite)
+            if entree not in listeDonnees:
+                listeDonnees.append(entree)
+            self.dictDonnees.setdefault(IDtype_groupe_activite, []).append(IDactivite)
+            self.dictActivites[IDactivite] = nomActivite
         return listeDonnees
-    
+
     def GetDictActivites(self):
         return self.dictActivites
-    
+
     def GetIDcoches(self):
         listeIDcoches = []
-        NbreItems = len(self.listeDonnees)
-        for index in range(0, NbreItems):
+        for index in range(len(self.listeDonnees)):
             if self.IsChecked(index):
-                IDtype_groupe_activite = self.dictIndex[index]
-                listeActivites = self.dictDonnees[IDtype_groupe_activite]
-                for IDactivite in listeActivites :
-                    if IDactivite not in listeIDcoches :
+                for IDactivite in self.dictDonnees[self.dictIndex[index]]:
+                    if IDactivite not in listeIDcoches:
                         listeIDcoches.append(IDactivite)
-        listeIDcoches.sort() 
+        listeIDcoches.sort()
         return listeIDcoches
 
     def GetIDgroupesCoches(self):
-        listeIDcoches = []
-        NbreItems = len(self.listeDonnees)
-        for index in range(0, NbreItems):
-            if self.IsChecked(index):
-                IDtype_groupe_activite = self.dictIndex[index]
-                listeIDcoches.append(IDtype_groupe_activite)
-        listeIDcoches.sort() 
-        return listeIDcoches
+        liste = [self.dictIndex[index] for index in range(len(self.listeDonnees)) if self.IsChecked(index)]
+        liste.sort()
+        return liste
 
     def CocheTout(self):
-        index = 0
-        for index in range(0, len(self.listeDonnees)):
+        for index in range(len(self.listeDonnees)):
             self.Check(index)
-            index += 1
 
-    def SetIDcoches(self, listeIDcoches=[]):
-        index = 0
-        for index in range(0, len(self.listeDonnees)):
-            ID = self.dictIndex[index]
-            if ID in listeIDcoches :
-                self.Check(index)
-            index += 1
-    
+    def SetIDcoches(self, listeIDcoches=None):
+        if listeIDcoches is None:
+            listeIDcoches = []
+        for index in range(len(self.listeDonnees)):
+            self.Check(index, self.dictIndex[index] in listeIDcoches)
+
     def OnCheck(self, event):
-        self.parent.OnCheck() 
-    
-    def GetLabelsGroupes(self):
-        """ Renvoie les labels des groupes d'activités sélectionnés """
-        listeLabels = []
-        index = 0
-        for nomGroupe, IDtype_groupe_activite in self.listeDonnees :
-            if self.IsChecked(index):
-                listeLabels.append(nomGroupe)
-            index += 1
-        return listeLabels
+        self.parent.OnCheck()
 
-# ----------------------------------------------------------------------------------------------------------------------------------
+    def GetLabelsGroupes(self):
+        return [nom for index, (nom, IDgroupe) in enumerate(self.listeDonnees) if self.IsChecked(index)]
+
 
 class CTRL_Activites(wx.CheckListBox):
     def __init__(self, parent):
@@ -288,90 +246,79 @@ class CTRL_Activites(wx.CheckListBox):
         self.parent = parent
         self.dictActivites = {}
         self.listeDonnees = []
+        _StyleListe(self)
         self.Bind(wx.EVT_CHECKLISTBOX, self.OnCheck)
 
     def MAJ(self):
-        # Paramètres
-        self.parametres = UTILS_Parametres.ParametresCategorie(mode="get", categorie="ctrl_selection_activites", dictParametres={"tri": "date+nom", "cacher_obsoletes": False})
+        self.parametres = UTILS_Parametres.ParametresCategorie(
+            mode="get",
+            categorie="ctrl_selection_activites",
+            dictParametres={"tri": "date+nom", "cacher_obsoletes": False},
+        )
         self.listeDonnees = self.Importation()
         self.SetListeChoix()
 
     def SetListeChoix(self):
         self.Clear()
-        listeItems = []
         self.dictActivites = {}
         self.dictIndex = {}
-        index = 0
-        for IDactivite, nom in self.listeDonnees :
-            if nom == None : nom = u"Activité inconnue"
+        for index, (IDactivite, nom) in enumerate(self.listeDonnees):
+            nom = nom or _(u"Activité inconnue")
             self.Append(nom)
             self.dictIndex[index] = IDactivite
             self.dictActivites[IDactivite] = nom
-            index += 1
 
     def Importation(self):
         tri = "nom ASC" if self.parametres["tri"] == "nom" else "date_fin DESC, nom ASC"
-        condition = ("WHERE (date_fin>='%s' OR date_fin IS NULL)" % datetime.date.today()) if self.parametres["cacher_obsoletes"] else ""
+        condition = ""
+        if self.parametres["cacher_obsoletes"]:
+            condition = "WHERE (date_fin>='%s' OR date_fin IS NULL)" % datetime.date.today()
         DB = GestionDB.DB()
         req = """SELECT IDactivite, nom
         FROM activites
         %s
-        ORDER BY %s
-        ;""" % (condition, tri)
+        ORDER BY %s;""" % (condition, tri)
         DB.ExecuterReq(req)
-        listeActivites = DB.ResultatReq()      
-        DB.Close() 
+        listeActivites = DB.ResultatReq()
+        DB.Close()
         return listeActivites
-    
+
     def GetDictActivites(self):
         return self.dictActivites
 
     def GetIDcoches(self):
-        listeIDcoches = []
-        NbreItems = len(self.listeDonnees)
-        for index in range(0, NbreItems):
-            if self.IsChecked(index):
-                listeIDcoches.append(self.dictIndex[index])
-        return listeIDcoches
-    
-    def CocheTout(self):
-        index = 0
-        for index in range(0, len(self.listeDonnees)):
-            self.Check(index)
-            index += 1
+        return [self.dictIndex[index] for index in range(len(self.listeDonnees)) if self.IsChecked(index)]
 
-    def SetIDcoches(self, listeIDcoches=[]):
-        index = 0
-        for index in range(0, len(self.listeDonnees)):
-            ID = self.dictIndex[index]
-            if ID in listeIDcoches :
-                self.Check(index)
-            index += 1
-    
+    def CocheTout(self):
+        for index in range(len(self.listeDonnees)):
+            self.Check(index)
+
+    def SetIDcoches(self, listeIDcoches=None):
+        if listeIDcoches is None:
+            listeIDcoches = []
+        for index in range(len(self.listeDonnees)):
+            self.Check(index, self.dictIndex[index] in listeIDcoches)
+
     def OnCheck(self, event):
-        self.parent.OnCheck() 
+        self.parent.OnCheck()
 
     def OnBoutonOptionsActivites(self, event):
-        # Création du menu Options
         menuPop = UTILS_Adaptations.Menu()
-
         item = wx.MenuItem(menuPop, 200, _(u"Trier par date de fin et nom"), kind=wx.ITEM_RADIO)
         menuPop.AppendItem(item)
-        if self.parametres["tri"] == "date+nom": item.Check(True)
+        item.Check(self.parametres["tri"] == "date+nom")
         self.Bind(wx.EVT_MENU, self.SetTri1, id=200)
 
         item = wx.MenuItem(menuPop, 201, _(u"Trier par nom"), kind=wx.ITEM_RADIO)
         menuPop.AppendItem(item)
-        if self.parametres["tri"] == "nom": item.Check(True)
+        item.Check(self.parametres["tri"] == "nom")
         self.Bind(wx.EVT_MENU, self.SetTri2, id=201)
 
         menuPop.AppendSeparator()
-
         item = wx.MenuItem(menuPop, 202, _(u"Masquer les activités obsolètes"), kind=wx.ITEM_CHECK)
         menuPop.AppendItem(item)
-        if self.parametres["cacher_obsoletes"]: item.Check(True)
+        item.Check(bool(self.parametres["cacher_obsoletes"]))
         self.Bind(wx.EVT_MENU, self.SetMasquerObsoletes, id=202)
-
         self.PopupMenu(menuPop)
         menuPop.Destroy()
 
@@ -384,11 +331,14 @@ class CTRL_Activites(wx.CheckListBox):
         self.MAJ()
 
     def SetMasquerObsoletes(self, event=None):
-        UTILS_Parametres.Parametres(mode="set", categorie="ctrl_selection_activites", nom="cacher_obsoletes", valeur=not self.parametres["cacher_obsoletes"])
+        UTILS_Parametres.Parametres(
+            mode="set",
+            categorie="ctrl_selection_activites",
+            nom="cacher_obsoletes",
+            valeur=not self.parametres["cacher_obsoletes"],
+        )
         self.MAJ()
 
-
-# -----------------------------------------------------------------------------------------------------------------------
 
 class CTRL(wx.Panel):
     def __init__(self, parent, afficheToutes=False, modeGroupes=False):
@@ -396,213 +346,186 @@ class CTRL(wx.Panel):
         self.parent = parent
         self.afficheToutes = afficheToutes
         self.modeGroupes = modeGroupes
-        
-        # Contrôles
+        try:
+            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        except Exception:
+            pass
+
         self.radio_toutes = wx.RadioButton(self, -1, _(u"Toutes les activités"), style=wx.RB_GROUP)
-        if self.afficheToutes == False :
-            style = wx.RB_GROUP
-        else :
-            style = 0
+        style = 0 if self.afficheToutes else wx.RB_GROUP
         self.radio_groupes_activites = wx.RadioButton(self, -1, _(u"Les groupes d'activités suivants :"), style=style)
         self.ctrl_groupes_activites = CTRL_Groupes_activites(self)
-        self.ctrl_groupes_activites.SetMinSize((200, 40))
         self.radio_activites = wx.RadioButton(self, -1, _(u"Les activités suivantes :"))
-        self.bouton_options_activites = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Options.png"), wx.BITMAP_TYPE_ANY), style=wx.BORDER_NONE)
-
+        self.bouton_options_activites = CTRL_Bouton_image.CTRL(
+            self,
+            texte="",
+            cheminImage="Images/16x16/Options.png",
+            tailleImage=(UTILS_UIMetrics.icon_size("inline"), UTILS_UIMetrics.icon_size("inline")),
+        )
+        self.bouton_options_activites.SetToolTip(wx.ToolTip(_(u"Options d'affichage des activités")))
         self.ctrl_activites = CTRL_Activites(self)
-        self.ctrl_activites.SetMinSize((200, 40))
-        
         self.ctrl_groupes = CTRL_Groupes(self)
-        self.ctrl_groupes.SetMinSize((200, 40))
-        
-        if self.modeGroupes == False :
-            self.ctrl_activites.MAJ() 
+
+        hauteur_liste = UTILS_UIMetrics.row_height("comfortable") * 3
+        for ctrl in (self.ctrl_groupes_activites, self.ctrl_activites, self.ctrl_groupes):
+            ctrl.SetMinSize((UTILS_UIMetrics.px(240), hauteur_liste))
+        for radio in (self.radio_toutes, self.radio_groupes_activites, self.radio_activites):
+            try:
+                radio.SetFont(_PoliceInterface())
+                radio.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+            except Exception:
+                pass
+
+        if not self.modeGroupes:
+            self.ctrl_activites.MAJ()
             self.ctrl_activites.Enable(self.radio_activites.GetValue())
-        else :
+        else:
             self.ctrl_groupes.Activation(self.radio_activites.GetValue())
-            
         self.ctrl_activites.Show(not self.modeGroupes)
         self.ctrl_groupes.Show(self.modeGroupes)
-        
-        # Binds
+
         self.Bind(wx.EVT_RADIOBUTTON, self.OnRadioActivites, self.radio_toutes)
         self.Bind(wx.EVT_RADIOBUTTON, self.OnRadioActivites, self.radio_groupes_activites)
         self.Bind(wx.EVT_RADIOBUTTON, self.OnRadioActivites, self.radio_activites)
         self.Bind(wx.EVT_BUTTON, self.ctrl_activites.OnBoutonOptionsActivites, self.bouton_options_activites)
 
-        # Layout
-        grid_sizer_base = wx.FlexGridSizer(rows=7, cols=1, vgap=5, hgap=5)
-        grid_sizer_base.Add(self.radio_toutes, 0, wx.BOTTOM, 5)
-        grid_sizer_base.Add(self.radio_groupes_activites, 0, 0, 0)
-        grid_sizer_base.Add(self.ctrl_groupes_activites, 0, wx.LEFT|wx.EXPAND, 18)
-        grid_sizer_base.Add((1, 1), 0, wx.EXPAND, 0)
+        marge_indentation = UTILS_UIMetrics.spacing(5)
+        espace = UTILS_UIMetrics.spacing(2)
+        ligne_activites = wx.BoxSizer(wx.HORIZONTAL)
+        ligne_activites.Add(self.radio_activites, 0, wx.ALIGN_CENTER_VERTICAL)
+        ligne_activites.Add(self.bouton_options_activites, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
 
-        grid_sizer_activites = wx.FlexGridSizer(rows=1, cols=3, vgap=0, hgap=0)
-        grid_sizer_activites.Add(self.radio_activites, 0, 0, 0)
-        grid_sizer_activites.Add((5, 5), 0, 0, 0)
-        grid_sizer_activites.Add(self.bouton_options_activites, 0, 0, 0)
-        grid_sizer_activites.AddGrowableCol(1)
-        grid_sizer_base.Add(grid_sizer_activites, 0, wx.EXPAND, 0)
+        principal = wx.BoxSizer(wx.VERTICAL)
+        principal.Add(self.radio_toutes, 0, wx.BOTTOM, espace)
+        principal.Add(self.radio_groupes_activites, 0)
+        principal.Add(self.ctrl_groupes_activites, 1, wx.LEFT | wx.TOP | wx.BOTTOM | wx.EXPAND, marge_indentation)
+        principal.Add(ligne_activites, 0, wx.TOP, espace)
+        principal.Add(self.ctrl_activites, 1, wx.LEFT | wx.TOP | wx.EXPAND, marge_indentation)
+        principal.Add(self.ctrl_groupes, 1, wx.LEFT | wx.TOP | wx.EXPAND, marge_indentation)
+        self.SetSizer(principal)
+        self.Layout()
 
-        grid_sizer_base.Add(self.ctrl_activites, 0, wx.LEFT|wx.EXPAND, 18)
-        grid_sizer_base.Add(self.ctrl_groupes, 0, wx.LEFT|wx.EXPAND, 18)
-        grid_sizer_base.AddGrowableRow(2)
-        grid_sizer_base.AddGrowableRow(5)
-        grid_sizer_base.AddGrowableRow(6)
-        grid_sizer_base.AddGrowableCol(0)
-
-        self.SetSizer(grid_sizer_base)
-        grid_sizer_base.Fit(self)
-
-        # Init Contrôles
         self.ctrl_groupes_activites.Enable(self.radio_groupes_activites.GetValue())
-        if self.afficheToutes == False :
+        if not self.afficheToutes:
             self.radio_toutes.Show(False)
-        
-    def OnRadioActivites(self, event): 
-        if self.ctrl_activites.IsShown() :
+
+    def OnRadioActivites(self, event):
+        if self.ctrl_activites.IsShown():
             self.ctrl_activites.Enable(self.radio_activites.GetValue())
-        if self.ctrl_groupes.IsShown() :
+        if self.ctrl_groupes.IsShown():
             self.ctrl_groupes.Activation(self.radio_activites.GetValue())
         self.ctrl_groupes_activites.Enable(self.radio_groupes_activites.GetValue())
         self.OnCheck()
-    
+
     def Validation(self):
-        """ Vérifie que des données ont été sélectionnées """
-        if self.afficheToutes == True and self.radio_toutes.GetValue() == True :
+        if self.afficheToutes and self.radio_toutes.GetValue():
             return True
-        if self.radio_groupes_activites.GetValue() == True and len(self.GetActivites()) == 0 :
-            dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucune activité !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
-            dlg.ShowModal()
-            dlg.Destroy()
-            return False
-        if self.radio_activites.GetValue() == True and ((self.modeGroupes == False and len(self.GetActivites()) == 0) or (self.modeGroupes == True and len(self.GetGroupes()) == 0)) :
-            dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucune activité !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
-            dlg.ShowModal()
-            dlg.Destroy()
-            return False
+        if self.radio_groupes_activites.GetValue() and not self.GetActivites():
+            return self._ErreurSelection()
+        if self.radio_activites.GetValue():
+            vide = not self.GetActivites() if not self.modeGroupes else not self.GetGroupes()
+            if vide:
+                return self._ErreurSelection()
         return True
-    
-    def SetActivites(self, listeActivites=[]):
-        if self.modeGroupes == False :
+
+    def _ErreurSelection(self):
+        dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucune activité !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
+        dlg.ShowModal()
+        dlg.Destroy()
+        return False
+
+    def SetActivites(self, listeActivites=None):
+        if listeActivites is None:
+            listeActivites = []
+        if not self.modeGroupes:
             self.ctrl_activites.SetIDcoches(listeActivites)
-        else :
+        else:
             self.ctrl_groupes.SetActivites(listeActivites)
-        if len(listeActivites) > 0 :
+        if listeActivites:
             self.radio_activites.SetValue(True)
             self.OnRadioActivites(None)
-        
+
     def GetActivites(self):
-        """ Retourne la liste des IDactivité sélectionnés """
-        # Vérifie les activités sélectionnées
-        if self.radio_groupes_activites.GetValue() == True :
-            listeActivites = self.ctrl_groupes_activites.GetIDcoches()
-        else:
-            if self.modeGroupes == False :
-                listeActivites = self.ctrl_activites.GetIDcoches()
-            else :
-                listeActivites = []
-        return listeActivites
-    
-    def SetGroupes(self, listeGroupes=[]):
+        if self.radio_groupes_activites.GetValue():
+            return self.ctrl_groupes_activites.GetIDcoches()
+        if not self.modeGroupes:
+            return self.ctrl_activites.GetIDcoches()
+        return []
+
+    def SetGroupes(self, listeGroupes=None):
+        if listeGroupes is None:
+            listeGroupes = []
         self.ctrl_groupes.SetGroupes(listeGroupes)
-        if len(listeGroupes) > 0 :
+        if listeGroupes:
             self.radio_activites.SetValue(True)
             self.OnRadioActivites(None)
-    
+
     def GetGroupes(self):
-        if self.radio_activites.GetValue() == True and self.modeGroupes == True :
-            listeGroupes = self.ctrl_groupes.GetGroupes()
-        else:
-            listeGroupes = []
-        return listeGroupes
-        
+        if self.radio_activites.GetValue() and self.modeGroupes:
+            return self.ctrl_groupes.GetGroupes()
+        return []
+
     def GetDictActivites(self):
-        if self.radio_groupes_activites.GetValue() == True :
-            dictActivites = self.ctrl_groupes_activites.GetDictActivites()
-        else:
-            dictActivites = self.ctrl_activites.GetDictActivites()
-        return dictActivites
-        
+        if self.radio_groupes_activites.GetValue():
+            return self.ctrl_groupes_activites.GetDictActivites()
+        return self.ctrl_activites.GetDictActivites()
+
     def OnCheck(self):
-        try :
+        try:
             self.parent.OnCheckActivites()
-        except :
+        except Exception:
             pass
 
     def GetLabelActivites(self):
-        """ Renvoie les labels des groupes ou activités sélectionnées """
-        if self.radio_groupes_activites.GetValue() == True :
-            # Groupe d'activités
-            listeTemp = self.ctrl_groupes_activites.GetLabelsGroupes()
-        else :
-            # Activités
-            listeTemp = []
-            dictActivites = self.GetDictActivites()
-            for IDactivite in self.GetActivites()  :
-                listeTemp.append(dictActivites[IDactivite])
-        return listeTemp
+        if self.radio_groupes_activites.GetValue():
+            return self.ctrl_groupes_activites.GetLabelsGroupes()
+        dictActivites = self.GetDictActivites()
+        return [dictActivites[IDactivite] for IDactivite in self.GetActivites()]
 
     def GetValeurs(self):
-        """ Retourne les valeurs sélectionnées """
-        if self.afficheToutes == True and self.radio_toutes.GetValue() == True :
-            mode = "toutes"
+        if self.afficheToutes and self.radio_toutes.GetValue():
+            return "toutes", []
+        if self.radio_groupes_activites.GetValue():
+            return "groupes", self.ctrl_groupes_activites.GetIDgroupesCoches()
+        listeID = self.ctrl_activites.GetIDcoches() if not self.modeGroupes else self.ctrl_groupes.GetGroupes()
+        return "activites", listeID
+
+    def SetValeurs(self, mode="", listeID=None):
+        if listeID is None:
             listeID = []
-        elif self.radio_groupes_activites.GetValue() == True :
-            mode = "groupes"
-            listeID = self.ctrl_groupes_activites.GetIDgroupesCoches()
-        else:
-            mode = "activites"
-            if self.modeGroupes == False :
-                listeID = self.ctrl_activites.GetIDcoches()
-            else :
-                listeID = self.ctrl_groupes.GetGroupes()
-        return mode, listeID
-    
-    def SetValeurs(self, mode="", listeID=[]):
-        if mode == "toutes" :
+        if mode == "toutes":
             self.radio_toutes.SetValue(True)
-        if mode == "groupes" :
+        elif mode == "groupes":
             self.radio_groupes_activites.SetValue(True)
             self.ctrl_groupes_activites.SetIDcoches(listeID)
-        if mode == "activites" :
+        elif mode == "activites":
             self.radio_activites.SetValue(True)
-            if self.modeGroupes == False :
+            if not self.modeGroupes:
                 self.ctrl_activites.SetIDcoches(listeID)
-            else :
+            else:
                 self.ctrl_groupes.SetGroupes(listeID)
         self.OnRadioActivites(None)
-
-            
-
 
 
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
-        bouton_test = wx.Button(panel, -1, u"Test")
-        sizer_1 = wx.BoxSizer(wx.VERTICAL)
-        sizer_1.Add(panel, 1, wx.ALL|wx.EXPAND)
-        self.SetSizer(sizer_1)
         self.ctrl = CTRL(panel, modeGroupes=False)
-        sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2.Add(self.ctrl, 1, wx.ALL|wx.EXPAND, 4)
-        sizer_2.Add(bouton_test, 0, wx.ALL|wx.EXPAND, 4)
-        panel.SetSizer(sizer_2)
-        self.SetMinSize((300, 600))
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(3))
+        panel.SetSizer(sizer)
+        cadre = wx.BoxSizer(wx.VERTICAL)
+        cadre.Add(panel, 1, wx.EXPAND)
+        self.SetSizer(cadre)
+        self.SetMinSize((UTILS_UIMetrics.px(520), UTILS_UIMetrics.px(420)))
         self.Layout()
         self.CentreOnScreen()
-        self.Bind(wx.EVT_BUTTON, self.OnBouton, bouton_test) 
-        
-    def OnBouton(self, event):
-        self.ctrl.ctrl_groupes.SetGroupes([1, 3])
-        
+
 
 if __name__ == '__main__':
     app = wx.App(0)
-    #wx.InitAllImageHandlers()
-    frame_1 = MyFrame(None, -1, "TEST", size=(800, 400))
+    frame_1 = MyFrame(None, -1, "TEST", size=(800, 560))
     app.SetTopWindow(frame_1)
     frame_1.Show()
     app.MainLoop()
