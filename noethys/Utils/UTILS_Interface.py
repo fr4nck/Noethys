@@ -219,7 +219,8 @@ def GetRoleComposant(window_ou_nom=""):
         nom = window_ou_nom
     else:
         try:
-            nom = window_ou_nom.__class__.__name__
+            classe = window_ou_nom.__class__
+            nom = "%s.%s" % (classe.__module__, classe.__name__)
         except Exception:
             nom = ""
     return UTILS_DesignSystem.GetRoleComposant(nom)
