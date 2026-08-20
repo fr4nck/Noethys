@@ -232,8 +232,8 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
 
         # Binds
         self.Bind(gridlib.EVT_GRID_CELL_RIGHT_CLICK, self.OnCellRightClick)
+        self.Bind(gridlib.EVT_GRID_CELL_LEFT_DCLICK, self.OnLeftDoubleClick)
         self.GetGridWindow().Bind(wx.EVT_MOTION, self.OnMouseMotion)
-        self.GetGridWindow().Bind(wx.EVT_LEFT_DCLICK, self.OnLeftDoubleClick)
         self.Bind(wx.EVT_CHAR, self.OnChar)
 
     def OnMouseMotion(self, event):
@@ -420,11 +420,10 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
             numLigne += 1
 
     def OnLeftDoubleClick(self, event):
-        x, y = self.CalcUnscrolledPosition(event.GetPosition())
-        numLigne = self.YToRow(y)
-        numColonne = self.XToCol(x)
-        if ((numLigne, numColonne) in self.dictCases) == False :
-            return False
+        numLigne = event.GetRow()
+        numColonne = event.GetCol()
+        if (numLigne, numColonne) not in self.dictCases:
+            return
         case = self.dictCases[(numLigne, numColonne)]
         dlg = DLG_Saisie_texte(self, texte=case.texte)
         if dlg.ShowModal() == wx.ID_OK :
