@@ -29,18 +29,42 @@ class Track(object):
 class ListView(FastObjectListView):
     def __init__(self, *args, **kwds):
         self.IDmodele = 0
+        self._activation_programmee = False
         # Initialisation du listCtrl
         self.nom_fichier_liste = __file__
         FastObjectListView.__init__(self, *args, **kwds)
         # Binds perso
         self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.OnItemActivated)
+        self.Bind(wx.EVT_LEFT_DCLICK, self.OnLeftDoubleClick)
         self.Bind(wx.EVT_CONTEXT_MENU, self.OnContextMenu)
 
     def SetIDmodele(self, IDmodele=None):
         self.IDmodele = IDmodele
 
-    def OnItemActivated(self,event):
+    def _ProgrammerModification(self):
+        """Coalesce l'activation native et le double-clic souris sous wxPython Phoenix."""
+        if self._activation_programmee:
+            return
+        self._activation_programmee = True
+        wx.CallAfter(self._ExecuterModification)
+
+    def _ExecuterModification(self):
+        self._activation_programmee = False
         self.Modifier(None)
+
+    def OnItemActivated(self, event):
+        self._ProgrammerModification()
+
+    def OnLeftDoubleClick(self, event):
+        """Double-clic explicite sur une ligne, fiable avec ObjectListView/Phoenix."""
+        index, flags = self.HitTest(event.GetPosition())
+        if index != wx.NOT_FOUND:
+            track = self.GetObjectAt(index)
+            if track is not None:
+                self.SelectObject(track, deselectOthers=True, ensureVisible=True)
+                self._ProgrammerModification()
+                return
+        event.Skip()
                 
     def InitModel(self):
         self.donnees = self.GetTracks()
