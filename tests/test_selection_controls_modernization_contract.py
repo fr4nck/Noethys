@@ -59,6 +59,34 @@ class SelectionControlsModernizationContractTests(unittest.TestCase):
         ):
             self.assertIn(token, text)
 
+    def test_period_grid_selector_is_semantic_and_not_grid_locked(self):
+        text = self._read("noethys/Ctrl/CTRL_Grille_periode.py")
+        self.assertIn("UTILS_Interface", text)
+        self.assertIn("UTILS_UIMetrics", text)
+        self.assertIn('action_target("compact")', text)
+        self.assertIn('GetCouleurRole("surface_container_lowest")', text)
+        self.assertIn("wx.BoxSizer(wx.VERTICAL)", text)
+        self.assertIn("wx.BoxSizer(wx.HORIZONTAL)", text)
+        self.assertNotIn("FlexGridSizer", text)
+        self.assertNotIn("GridSizer", text)
+        self.assertNotIn("SetMinSize((60, -1))", text)
+
+    def test_period_grid_scrolls_months_and_holidays_not_year_page(self):
+        text = self._read("noethys/Ctrl/CTRL_Grille_periode.py")
+        self.assertIn("if indexPage in (0, 1):", text)
+        self.assertNotIn("if indexPage in (0, 2):", text)
+
+    def test_internet_account_summary_uses_semantic_status_and_scaled_icon(self):
+        text = self._read("noethys/Ctrl/CTRL_Compte_internet.py")
+        self.assertIn("UTILS_Interface", text)
+        self.assertIn("UTILS_UIMetrics", text)
+        self.assertIn('GetCouleurRole("success")', text)
+        self.assertIn('GetCouleurRole("danger")', text)
+        self.assertIn("GetStaticIconPath", text)
+        self.assertIn('icon_size("inline")', text)
+        self.assertIn("html_std.escape", text)
+        self.assertNotIn("wx.SystemSettings.GetColour(30)", text)
+
 
 if __name__ == "__main__":
     unittest.main()
