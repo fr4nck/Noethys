@@ -10,6 +10,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 CHEMINS = ROOT / "noethys" / "Chemins.py"
 IDENTITES = ROOT / "noethys" / "Utils" / "UTILS_Icones_identites.py"
+CIVILITES = ROOT / "noethys" / "Data" / "DATA_Civilites.py"
 
 
 class ModernIdentityIconsContractTests(unittest.TestCase):
@@ -17,8 +18,10 @@ class ModernIdentityIconsContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.chemins_text = CHEMINS.read_text(encoding="utf-8")
         cls.identites_text = IDENTITES.read_text(encoding="utf-8")
+        cls.civilites_text = CIVILITES.read_text(encoding="utf-8")
         ast.parse(cls.chemins_text)
         ast.parse(cls.identites_text)
+        ast.parse(cls.civilites_text)
         spec = importlib.util.spec_from_file_location("noethys_identity_icons_contract", IDENTITES)
         cls.identites = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.identites)
@@ -53,6 +56,12 @@ class ModernIdentityIconsContractTests(unittest.TestCase):
         }
         for filename, kind in expected.items():
             self.assertEqual(self.identites._identite_pour_chemin(filename), (kind, None))
+
+    def test_civilities_no_longer_collapse_all_organizations_to_one_icon(self):
+        self.assertIn('(6, u"Collectivité", None, "Collectivite.png", None)', self.civilites_text)
+        self.assertIn('(7, u"Association", None,  "Association.png", None)', self.civilites_text)
+        self.assertIn('(8, u"Organisme", None, "Organisme.png", None)', self.civilites_text)
+        self.assertIn('(9, u"Entreprise", None, "Entreprise.png", None)', self.civilites_text)
 
     def test_unknown_business_art_is_not_reinterpreted(self):
         self.assertIsNone(self.identites._identite_pour_chemin("LogoClubTresSpecifique.png"))
