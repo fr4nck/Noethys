@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - 'scripts/apply_py3_runtime_source_fixes.py'
+      - '.github/workflows/apply-py3-runtime-source-fixes.yml'
 
 permissions:
   contents: write
