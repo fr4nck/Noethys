@@ -74,6 +74,7 @@ class CommonUIModernizationContractTests(unittest.TestCase):
     def test_common_entry_controls_follow_theme_text_and_dpi_metrics(self):
         for relative_path in (
             "noethys/Ctrl/CTRL_Saisie_heure.py",
+            "noethys/Ctrl/CTRL_Saisie_date.py",
             "noethys/Ctrl/CTRL_Saisie_mail.py",
             "noethys/Ctrl/CTRL_Saisie_tel.py",
             "noethys/Ctrl/CTRL_Saisie_euros.py",
@@ -133,6 +134,17 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertIn('GetCouleurRole("surface_container_lowest")', text)
         self.assertNotIn("wx.BitmapButton", text)
         self.assertNotIn("FlexGridSizer", text)
+
+    def test_date_selector_uses_fluent_calendar_and_responsive_menu_icons(self):
+        text = self._read("noethys/Ctrl/CTRL_Saisie_date.py")
+        self.assertIn('iconeFluent="calendar"', text)
+        self.assertIn("GetStaticIconPath", text)
+        self.assertIn('icon_size("compact")', text)
+        self.assertIn("wx.BoxSizer(wx.HORIZONTAL)", text)
+        self.assertNotIn("wx.BitmapButton", text)
+        self.assertNotIn("FlexGridSizer", text)
+        self.assertNotIn("if False else False", text)
+        self.assertNotIn("ID_MOIS_ACTUELLE", text)
 
 
 if __name__ == "__main__":
