@@ -407,17 +407,96 @@ class Panel(wx.Panel):
         self.ctrl_voir_tout = wx.Button(self, label=_(u"Voir tout"))
         self.ctrl_voir_tout.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
 
+        self.ctrl_email = self._CreerBoutonAction("mail", "Images/16x16/Emails_exp.png", _(u"Envoyer un email"))
+        self.ctrl_sms = self._CreerBoutonAction("chat", "Images/16x16/Sms.png", _(u"Envoyer un SMS"))
+
         self.toolBar = ToolBar(self)
         self.ctrl_etat = EtatRecherche(self)
 
         self.ctrl_nouvelle_famille.Bind(wx.EVT_BUTTON, self.toolBar.Ajouter_famille)
         self.ctrl_voir_tout.Bind(wx.EVT_BUTTON, lambda evt: self.ctrl_recherche.AfficherTout())
+        self.ctrl_email.Bind(wx.EVT_BUTTON, self.OnEmail)
+        self.ctrl_sms.Bind(wx.EVT_BUTTON, self.OnSMS)
 
         self.__set_properties()
         self.__do_layout()
         self.ActualiseParametresAffichage()
         wx.CallAfter(self.AfficherEtatVide)
         wx.CallAfter(self._ConfigurerPaneAui)
+
+    def _CreerBoutonAction(self, icone, fallback, tooltip):
+        taille_icone = UTILS_Responsive.GetTailleIcone(20)
+        bitmap = None
+        try:
+            bitmap = UTILS_FluentIcons.GetBitmap(icone, taille=taille_icone)
+        except Exception:
+            bitmap = None
+        if bitmap is None or not bitmap.IsOk():
+            try:
+                bitmap = wx.Bitmap(Chemins.GetStaticIconPath(fallback, taille=taille_icone), wx.BITMAP_TYPE_ANY)
+            except Exception:
+                bitmap = wx.NullBitmap
+        bouton = wx.Button(self, label=u"", size=(-1, UTILS_UIMetrics.action_target("compact")))
+        try:
+            bouton.SetBitmap(bitmap)
+        except Exception:
+            pass
+        bouton.SetMinSize((UTILS_UIMetrics.action_target("compact"), UTILS_UIMetrics.action_target("compact")))
+        bouton.SetToolTip(wx.ToolTip(tooltip))
+        return bouton
+
+    def _GetTrackSelectionne(self):
+        try:
+            index = self.ctrl_listview.GetFirstSelected()
+        except Exception:
+            index = -1
+        if index is None or index < 0:
+            return None
+        try:
+            return self.ctrl_listview.GetObjectAt(index)
+        except Exception:
+            return None
+
+    def OnEmail(self, event=None):
+        """Ouvre l'éditeur historique avec le destinataire contextuel prérempli."""
+        adresses = []
+        track = self._GetTrackSelectionne()
+        if track is not None:
+            for attribut in ("mail", "travail_mail"):
+                adresse = getattr(track, attribut, None)
+                if adresse not in (None, ""):
+                    adresses.append(adresse)
+                    break
+        from Dlg import DLG_Mailer
+        dlg = DLG_Mailer.Dialog(self, categorie="saisie_libre", listeAdresses=adresses)
+        dlg.ShowModal()
+        dlg.Destroy()
+
+    def OnSMS(self, event=None):
+        """Ouvre l'assistant SMS et préremplit le mobile de la ligne sélectionnée."""
+        numero = None
+        track = self._GetTrackSelectionne()
+        if track is not None:
+            for attribut in ("tel_mobile", "tel_domicile", "travail_tel"):
+                valeur = getattr(track, attribut, None)
+                if valeur not in (None, ""):
+                    numero = valeur
+                    break
+
+        from Dlg import DLG_Envoi_sms
+        dlg = DLG_Envoi_sms.Dialog(self)
+        if numero:
+            try:
+                destinataires = dlg.GetPage("destinataires").ctrl_destinataires
+                page = destinataires.GetPageByCode("saisie_manuelle")
+                page.SetDonnees({"texte": numero})
+                index = destinataires.GetIndexPageByCode("saisie_manuelle")
+                if index is not None:
+                    destinataires.SetSelection(index)
+            except Exception:
+                pass
+        dlg.ShowModal()
+        dlg.Destroy()
 
     def __set_properties(self):
         self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
@@ -434,15 +513,17 @@ class Panel(wx.Panel):
         principal = wx.BoxSizer(wx.VERTICAL)
         marge = UTILS_UIMetrics.spacing(1)
 
-        # Une seule ligne fonctionnelle : titre, état, recherche et création.
-        # L'ancienne superposition titre/sous-titre/recherche/résumé consommait
-        # beaucoup de surface sans apporter d'information supplémentaire.
+        # Une seule ligne fonctionnelle : titre, état, recherche, communication
+        # contextuelle et création. Les actions rapides restent toujours près de
+        # la donnée au lieu d'être cachées dans le menu général de Noethys.
         entete = wx.BoxSizer(wx.HORIZONTAL)
         entete.Add(self.ctrl_titre, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, UTILS_UIMetrics.spacing(2))
         entete.Add(self.ctrl_resume, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, UTILS_UIMetrics.spacing(2))
         entete.AddStretchSpacer(1)
         entete.Add(self.ctrl_recherche, 2, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, marge)
         entete.Add(self.ctrl_voir_tout, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, marge)
+        entete.Add(self.ctrl_email, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, marge)
+        entete.Add(self.ctrl_sms, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, marge)
         entete.Add(self.ctrl_nouvelle_famille, 0, wx.ALIGN_CENTER_VERTICAL)
         principal.Add(entete, 0, wx.EXPAND | wx.ALL, marge)
 
