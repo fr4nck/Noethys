@@ -3,90 +3,125 @@
 #-----------------------------------------------------------
 # Application :    Noethys, gestion multi-activités
 # Site internet :  www.noethys.com
-# Auteur:           Ivan LUCAS
+# Auteur:          Ivan LUCAS
 # Copyright:       (c) 2010-11 Ivan LUCAS
 # Licence:         Licence GNU GPL
 #-----------------------------------------------------------
 
+import wx
+
+from Ctrl import CTRL_ActionRepens
+from Ol import OL_Messages
 from Utils import UTILS_Adaptations
+from Utils import UTILS_ColonnesResponsive
 from Utils import UTILS_Interface
 from Utils import UTILS_UIMetrics
 from Utils.UTILS_Traduction import _
-import wx
-from Ol import OL_Messages
 
 
 ID_AJOUTER = wx.Window.NewControlId()
 ID_MODIFIER = wx.Window.NewControlId()
-ID_SUPPRIMER = wx.Window.NewControlId()
+ID_PLUS = wx.Window.NewControlId()
+
+
+class ListeMessagesAccueil(OL_Messages.ListView):
+    """Messages d'accueil sans icône 16 px historique ni largeur 950 fixe."""
+
+    SPECS_COLONNES = (
+        (0, 0.0),
+        (86, 0.0),
+        (180, 3.0),
+        (72, 0.0),
+    )
+
+    def __init__(self, *args, **kwds):
+        OL_Messages.ListView.__init__(self, *args, **kwds)
+        UTILS_ColonnesResponsive.Installer(self, self.SPECS_COLONNES)
+
+    def InitObjectListView(self):
+        def FormateDateCourt(dateDD):
+            if dateDD is None:
+                return ""
+            return OL_Messages.DateEngFr(str(dateDD))
+
+        def FormatePriorite(priorite):
+            return _(u"Prioritaire") if priorite == "HAUTE" else ""
+
+        self.oddRowsBackColor = UTILS_Interface.GetCouleurRole("surface_container_low")
+        self.evenRowsBackColor = UTILS_Interface.GetCouleurRole("surface_container_lowest")
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+        self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        self.useExpansionColumn = False
+
+        colonnes = [
+            OL_Messages.ColumnDefn(u"", "left", 0, "IDmessage", typeDonnee="entier"),
+            OL_Messages.ColumnDefn(_(u"Date"), "centre", 86, "date_parution", typeDonnee="date", stringConverter=FormateDateCourt),
+            OL_Messages.ColumnDefn(_(u"Message"), "left", 180, "texte", typeDonnee="texte"),
+            OL_Messages.ColumnDefn(_(u"Priorité"), "centre", 72, "priorite", typeDonnee="texte", stringConverter=FormatePriorite),
+        ]
+        self.SetColumns(colonnes)
+        self.SetEmptyListMsg(_(u"Aucun message à traiter"))
+        self.SetSortColumn(self.columns[1])
+        self.SetObjects(self.donnees)
+        wx.CallAfter(UTILS_ColonnesResponsive.Ajuster, self)
 
 
 class Panel(wx.Panel):
-    """Messages de l'accueil : dense, lisible et sans quadrillage agressif."""
+    """Messages & alertes : surface de travail compacte du cockpit."""
 
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
         self.parent = parent
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_low"))
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
 
-        self.ctrl_titre = wx.StaticText(self, label=_(u"Messages & alertes"))
-        self.ctrl_sous_titre = wx.StaticText(
-            self,
-            label=_(u"Rappels et informations à traiter"),
-        )
-        self.ctrl_compteur = wx.StaticText(self, label="")
-
-        police = self.ctrl_titre.GetFont()
-        police.SetWeight(wx.FONTWEIGHT_BOLD)
-        police.SetPointSize(max(police.GetPointSize() + 2, 11))
-        self.ctrl_titre.SetFont(police)
-        self.ctrl_titre.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        self.ctrl_sous_titre.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
+        self.ctrl_compteur = wx.StaticText(self, label=_(u"Aucun message"))
         self.ctrl_compteur.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
+        police = self.ctrl_compteur.GetFont()
+        try:
+            police.SetWeight(wx.FONTWEIGHT_SEMIBOLD)
+        except Exception:
+            police.SetWeight(wx.FONTWEIGHT_BOLD)
+        self.ctrl_compteur.SetFont(police)
 
-        self.barre_actions = UTILS_Adaptations.ToolBar(
+        self.ctrl_ajouter = CTRL_ActionRepens.CTRL(
             self,
-            style=wx.TB_FLAT | wx.TB_TEXT | wx.TB_NODIVIDER,
+            id=ID_AJOUTER,
+            label=_(u"Nouveau"),
+            icone="add",
+            variante="primaire",
+            tooltip=_(u"Saisir un message ou une alerte"),
         )
-        self.barre_actions.SetToolBitmapSize(wx.Size(24, 24))
-        self.barre_actions.AddFluentTool(
-            ID_AJOUTER,
-            _(u"Ajouter"),
-            "add",
-            _(u"Saisir un message"),
-            role="primary",
+        self.ctrl_modifier = CTRL_ActionRepens.CTRL(
+            self,
+            id=ID_MODIFIER,
+            label=_(u"Modifier"),
+            icone="edit",
+            tooltip=_(u"Modifier le message sélectionné"),
         )
-        self.barre_actions.AddFluentTool(
-            ID_MODIFIER,
-            _(u"Modifier"),
-            "edit",
-            _(u"Modifier le message sélectionné"),
+        self.ctrl_plus = CTRL_ActionRepens.CTRL(
+            self,
+            id=ID_PLUS,
+            label=_(u"Plus"),
+            icone="more",
+            variante="ghost",
+            tooltip=_(u"Supprimer ou actualiser"),
         )
-        self.barre_actions.AddFluentTool(
-            ID_SUPPRIMER,
-            _(u"Supprimer"),
-            "delete",
-            _(u"Supprimer le message sélectionné"),
-            role="danger",
-        )
-        self.barre_actions.Realize()
 
-        self.ctrl_messages = OL_Messages.ListView(
+        self.ctrl_messages = ListeMessagesAccueil(
             self,
             -1,
-            style=wx.LC_NO_HEADER | wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.NO_BORDER,
+            style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.NO_BORDER,
         )
-        self.ctrl_messages.SetBackgroundColour(
-            UTILS_Interface.GetCouleurRole("surface_container_lowest")
-        )
-        self.ctrl_messages.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+
+        self.ctrl_ajouter.Bind(wx.EVT_BUTTON, self.OnAjouterMessage)
+        self.ctrl_modifier.Bind(wx.EVT_BUTTON, self.OnModifierMessage)
+        self.ctrl_plus.Bind(wx.EVT_BUTTON, self.OnPlus)
+        self.ctrl_messages.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelectionChange)
+        self.ctrl_messages.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.OnSelectionChange)
 
         self.__do_layout()
+        self._ActualiserActions()
         wx.CallAfter(self._ActualisePaneAui)
-
-        self.Bind(wx.EVT_TOOL, self.OnAjouterMessage, id=ID_AJOUTER)
-        self.Bind(wx.EVT_TOOL, self.OnModifierMessage, id=ID_MODIFIER)
-        self.Bind(wx.EVT_TOOL, self.OnSupprimerMessage, id=ID_SUPPRIMER)
 
     def _ActualisePaneAui(self):
         gestionnaire = getattr(self.GetParent(), "_mgr", None)
@@ -96,46 +131,80 @@ class Panel(wx.Panel):
             pane = gestionnaire.GetPane(self)
             if pane.IsOk():
                 pane.Caption(_(u"Messages & alertes"))
+                pane.CloseButton(True)
+                pane.MinimizeButton(True)
+                pane.MaximizeButton(True)
+                pane.Resizable(True)
                 gestionnaire.Update()
         except Exception:
             pass
 
     def __do_layout(self):
         marge = UTILS_UIMetrics.spacing(2)
+        petit = UTILS_UIMetrics.spacing(1)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        entete = wx.BoxSizer(wx.HORIZONTAL)
-        textes = wx.BoxSizer(wx.VERTICAL)
-        textes.Add(self.ctrl_titre, 0, wx.BOTTOM, UTILS_UIMetrics.spacing(1))
-        textes.Add(self.ctrl_sous_titre, 0)
-        entete.Add(textes, 1, wx.ALIGN_CENTER_VERTICAL)
-        entete.Add(self.ctrl_compteur, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, marge)
-        sizer.Add(entete, 0, wx.EXPAND | wx.ALL, marge)
+        commandes = wx.BoxSizer(wx.HORIZONTAL)
+        commandes.Add(self.ctrl_compteur, 1, wx.ALIGN_CENTER_VERTICAL)
+        commandes.Add(self.ctrl_ajouter, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, marge)
+        commandes.Add(self.ctrl_modifier, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, petit)
+        commandes.Add(self.ctrl_plus, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, petit)
+        sizer.Add(commandes, 0, wx.EXPAND | wx.ALL, marge)
+        sizer.Add(self.ctrl_messages, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, petit)
 
-        sizer.Add(self.barre_actions, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, marge)
-        sizer.Add(self.ctrl_messages, 1, wx.EXPAND | wx.ALL, marge)
         self.SetSizer(sizer)
         self.Layout()
+
+    def _Selection(self):
+        try:
+            return bool(self.ctrl_messages.GetSelectedObjects())
+        except Exception:
+            return False
+
+    def _ActualiserActions(self):
+        self.ctrl_modifier.Enable(self._Selection())
+        self.ctrl_modifier.Refresh()
+
+    def OnSelectionChange(self, event):
+        wx.CallAfter(self._ActualiserActions)
+        event.Skip()
 
     def MAJ(self):
         self.ctrl_messages.MAJ()
         try:
             nbre = len(self.ctrl_messages.donnees)
             self.ctrl_compteur.SetLabel(
-                _(u"%d message(s)") % nbre if nbre else _(u"Aucun message")
+                _(u"%d message(s) à traiter") % nbre if nbre else _(u"Aucun message à traiter")
             )
         except Exception:
             self.ctrl_compteur.SetLabel("")
+        self._ActualiserActions()
         self.Layout()
 
-    def OnAjouterMessage(self, event):
+    def OnAjouterMessage(self, event=None):
         self.ctrl_messages.Ajouter(None)
+        self.MAJ()
 
-    def OnModifierMessage(self, event):
+    def OnModifierMessage(self, event=None):
         self.ctrl_messages.Modifier(None)
+        self.MAJ()
 
-    def OnSupprimerMessage(self, event):
+    def OnPlus(self, event=None):
+        menu = UTILS_Adaptations.Menu()
+        identifiant_supprimer = wx.Window.NewControlId()
+        item = menu.Append(identifiant_supprimer, _(u"Supprimer le message…"))
+        item.Enable(self._Selection())
+        self.Bind(wx.EVT_MENU, self.OnSupprimerMessage, id=identifiant_supprimer)
+        menu.AppendSeparator()
+        identifiant_actualiser = wx.Window.NewControlId()
+        menu.Append(identifiant_actualiser, _(u"Actualiser"))
+        self.Bind(wx.EVT_MENU, lambda evt: self.MAJ(), id=identifiant_actualiser)
+        self.PopupMenu(menu)
+        menu.Destroy()
+
+    def OnSupprimerMessage(self, event=None):
         self.ctrl_messages.Supprimer(None)
+        self.MAJ()
 
     def GetMessages(self):
         return self.ctrl_messages.donnees
@@ -159,7 +228,7 @@ class MyFrame(wx.Frame):
 
 if __name__ == '__main__':
     app = wx.App(0)
-    frame_1 = MyFrame(None, -1, "TEST", size=(800, 400))
+    frame_1 = MyFrame(None, -1, "TEST", size=(900, 420))
     app.SetTopWindow(frame_1)
     frame_1.Show()
     app.MainLoop()
