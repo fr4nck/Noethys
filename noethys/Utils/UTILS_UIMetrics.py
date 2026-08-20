@@ -2,13 +2,10 @@
 # -*- coding: utf-8 -*-
 """Métriques d'interface communes à Noethys.
 
-Ce module constitue la couche géométrique du design system. Les écrans ne
-doivent plus déduire leur géométrie de constantes historiques isolées : ils
-expriment une intention (icône, toolbar, ligne, espacement...) et cette couche
-l'adapte à l'échelle choisie par l'utilisateur.
-
-La définition est volontairement indépendante des widgets wxPython afin de
-pouvoir être réutilisée comme spécification par d'autres clients Noethys.
+Cette couche décrit la géométrie du design system. Les écrans expriment une
+intention (icône, ligne, toolbar, espacement...) au lieu d'empiler des tailles
+fixes. Les valeurs de référence sont indépendantes des widgets wxPython ; le
+client desktop peut ensuite les adapter au DPI et à la plateforme.
 """
 
 from __future__ import division
@@ -16,21 +13,30 @@ from __future__ import division
 from Utils import UTILS_Config
 
 
-def _echelle():
+ECHELLE_MIN = 80
+ECHELLE_MAX = 200
+
+
+def get_scale_percent():
+    """Retourne l'échelle d'interface enregistrée, en pourcentage."""
     try:
-        valeur = int(UTILS_Config.GetParametre("interface_echelle", 100) or 100)
+        valeur = int(UTILS_Config.GetParametre("interface_echelle_pct", 100) or 100)
     except Exception:
         valeur = 100
-    return max(80, min(200, valeur)) / 100.0
+    return max(ECHELLE_MIN, min(ECHELLE_MAX, valeur))
+
+
+def get_scale():
+    return get_scale_percent() / 100.0
 
 
 def px(valeur, minimum=1):
-    """Retourne une métrique logique adaptée à l'échelle de l'interface."""
-    return max(minimum, int(round(float(valeur) * _echelle())))
+    """Adapte une métrique de référence à l'échelle choisie."""
+    return max(minimum, int(round(float(valeur) * get_scale())))
 
 
 def spacing(niveau=2):
-    """Grille d'espacement 4 px : 4, 8, 12, 16... avant mise à l'échelle."""
+    """Grille d'espacement 4 px : 4, 8, 12, 16... à 100 %."""
     return px(max(1, int(niveau)) * 4)
 
 
@@ -55,30 +61,48 @@ def row_height(contexte="list"):
     return px(bases.get(contexte, 28))
 
 
-def toolbar_height(avec_libelle=True):
-    """Hauteur dérivée du contenu : jamais indépendante de l'icône."""
-    icone = icon_size("toolbar")
-    texte = px(18) if avec_libelle else 0
-    return icone + texte + spacing(3)
+def action_target(contexte="standard"):
+    """Hauteur/cible minimale d'une commande desktop."""
+    bases = {
+        "compact": 32,
+        "standard": 40,
+        "comfortable": 44,
+    }
+    return px(bases.get(contexte, 40))
+
+
+def toolbar_height(avec_libelle=True, icon_px=None):
+    """Hauteur minimale dérivée du contenu de la toolbar.
+
+    Même lorsqu'un backend affiche le texte à droite plutôt qu'en dessous, on
+    conserve une cible suffisamment généreuse pour la lisibilité à distance et
+    pour éviter les libellés rognés quand la police augmente.
+    """
+    if icon_px is None:
+        icon_px = icon_size("toolbar")
+    if avec_libelle:
+        return max(px(48), int(icon_px) + spacing(4))
+    return max(px(36), int(icon_px) + spacing(2))
 
 
 def command_height():
-    return max(px(32), icon_size("command") + spacing(2))
+    return max(action_target("standard"), icon_size("command") + spacing(2))
 
 
 def panel_min_height(contexte="secondary"):
     bases = {
         "compact": 72,
-        "secondary": 96,
+        "secondary": 92,
         "dashboard": 104,
     }
-    return px(bases.get(contexte, 96))
+    return px(bases.get(contexte, 92))
 
 
 def as_dict():
-    """Expose les tokens géométriques pour diagnostic ou futur autre client."""
+    """Expose les tokens géométriques pour diagnostic ou autre client."""
     return {
-        "scale": _echelle(),
+        "scale_percent": get_scale_percent(),
+        "scale": get_scale(),
         "spacing_1": spacing(1),
         "spacing_2": spacing(2),
         "spacing_3": spacing(3),
