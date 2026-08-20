@@ -42,6 +42,7 @@ def DrawBorder(grid, dc, rect):
     dc.SetPen(wx.Pen(wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DSHADOW)))
     dc.DrawLine(right, top, right, bottom)
     dc.DrawLine(left, top, left, bottom)
+    dc.DrawLine(left, bottom, right, bottom)
     dc.SetPen(wx.WHITE_PEN)
     dc.DrawLine(left + 1, top, left + 1, bottom)
     dc.DrawLine(left + 1, top, right, top)
@@ -136,7 +137,7 @@ class Case():
 
     def Coller(self, event=None):
         if self.ouvert == True and self.grid.presse_papiers["type"] in self.categorieColonne:
-            self.SetValeur(self.presse_papiers["valeur"])
+            self.SetValeur(self.grid.presse_papiers["valeur"])
 
     def RAZ(self, event=None):
         if self.ouvert == True:
