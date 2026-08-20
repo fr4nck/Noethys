@@ -71,9 +71,6 @@ class Panel(wx.Panel):
         )
         self.barre_actions.Realize()
 
-        # Les règles horizontales natives deviennent presque blanches sous
-        # Windows en thème sombre. La hiérarchie se fait par les surfaces et la
-        # sélection, pas par un quadrillage de tableur.
         self.ctrl_messages = OL_Messages.ListView(
             self,
             -1,
@@ -85,10 +82,23 @@ class Panel(wx.Panel):
         self.ctrl_messages.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
 
         self.__do_layout()
+        wx.CallAfter(self._ActualisePaneAui)
 
         self.Bind(wx.EVT_TOOL, self.OnAjouterMessage, id=ID_AJOUTER)
         self.Bind(wx.EVT_TOOL, self.OnModifierMessage, id=ID_MODIFIER)
         self.Bind(wx.EVT_TOOL, self.OnSupprimerMessage, id=ID_SUPPRIMER)
+
+    def _ActualisePaneAui(self):
+        gestionnaire = getattr(self.GetParent(), "_mgr", None)
+        if gestionnaire is None:
+            return
+        try:
+            pane = gestionnaire.GetPane(self)
+            if pane.IsOk():
+                pane.Caption(_(u"Messages & alertes"))
+                gestionnaire.Update()
+        except Exception:
+            pass
 
     def __do_layout(self):
         marge = UTILS_UIMetrics.spacing(2)
@@ -103,12 +113,7 @@ class Panel(wx.Panel):
         sizer.Add(entete, 0, wx.EXPAND | wx.ALL, marge)
 
         sizer.Add(self.barre_actions, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, marge)
-        sizer.Add(
-            self.ctrl_messages,
-            1,
-            wx.EXPAND | wx.ALL,
-            marge,
-        )
+        sizer.Add(self.ctrl_messages, 1, wx.EXPAND | wx.ALL, marge)
         self.SetSizer(sizer)
         self.Layout()
 
@@ -116,7 +121,9 @@ class Panel(wx.Panel):
         self.ctrl_messages.MAJ()
         try:
             nbre = len(self.ctrl_messages.donnees)
-            self.ctrl_compteur.SetLabel(_(u"%d en cours") % nbre if nbre else _(u"Aucun"))
+            self.ctrl_compteur.SetLabel(
+                _(u"%d message(s)") % nbre if nbre else _(u"Aucun message")
+            )
         except Exception:
             self.ctrl_compteur.SetLabel("")
         self.Layout()
