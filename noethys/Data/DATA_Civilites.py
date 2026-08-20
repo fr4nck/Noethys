@@ -25,10 +25,13 @@ LISTE_CIVILITES = (
         )),
     (u"AUTRE", 
         (
-        (6, u"Collectivité", None, "Organisme.png", None),
-        (7, u"Association", None,  "Organisme.png", None),
+        # Les anciennes versions utilisaient Organisme.png pour les quatre
+        # catégories. Les noms distincts permettent au design system moderne
+        # d'afficher un symbole pertinent sans modifier les données stockées.
+        (6, u"Collectivité", None, "Collectivite.png", None),
+        (7, u"Association", None, "Association.png", None),
         (8, u"Organisme", None, "Organisme.png", None),
-        (9, u"Entreprise", None, "Organisme.png", None),
+        (9, u"Entreprise", None, "Entreprise.png", None),
         )),
     ) # Rubrique > (ID, CiviliteLong, CiviliteAbrege, nomImage, Masculin/Féminin)
 
