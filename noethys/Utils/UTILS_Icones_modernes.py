@@ -25,9 +25,6 @@ def _normaliser(texte):
     return re.sub(r"[^a-z0-9]+", "_", texte.lower()).strip("_")
 
 
-# Les noms composés très courants sont associés explicitement avant l'analyse
-# par tokens. Cela évite de transformer par hasard un pictogramme métier dont
-# le nom contiendrait simplement une courte sous-chaîne connue.
 _MAPPINGS_EXACTS = {
     "calendrier_jour": "calendar_day",
     "calendrier_semaine": "calendar_week",
@@ -87,11 +84,9 @@ def _icone_pour_chemin(chemin):
     nom = _normaliser(os.path.splitext(os.path.basename(chemin or ""))[0])
     if not nom:
         return None
-
     icone = _MAPPINGS_EXACTS.get(nom)
     if icone is not None:
         return icone
-
     morceaux = set(nom.split("_"))
     for mots, icone in _MAPPINGS_TOKENS:
         for mot in mots:
@@ -102,7 +97,7 @@ def _icone_pour_chemin(chemin):
 
 def _taille_pour_chemin(chemin):
     normalise = (chemin or "").replace("\\", "/")
-    match = re.search(r"/(16|20|24|32|48)x\1/", "/" + normalise)
+    match = re.search(r"/(16|20|24|32|40|48)x\1/", "/" + normalise)
     if match:
         return int(match.group(1))
     return 16
@@ -194,7 +189,7 @@ def _dessiner(icone, taille, destination):
     elif icone == "badge":
         rr((4, 4, 20, 20), 2.2)
         d.ellipse(box(9, 7, 15, 13), outline=accent, width=w)
-        d.arc(box(7, 11, 17, 19), 200, 340, fill=accent, width=w)
+        d.arc(box(7, 11, 17, 19), 200, 340, fill=fg, width=w)
         line(((7, 4), (7, 2.5)), accent)
         line(((17, 4), (17, 2.5)), accent)
     elif icone == "payment":
@@ -305,14 +300,20 @@ def _dessiner(icone, taille, destination):
     return True
 
 
-def GetLegacyOverridePath(chemin):
+def GetLegacyOverridePath(chemin, taille=None):
     """Retourne un PNG moderne en cache, ou None pour conserver l'ancien."""
     icone = _icone_pour_chemin(chemin)
     if icone is None:
         return None
 
-    taille = _taille_pour_chemin(chemin)
-    if taille not in (16, 20, 24, 32, 48):
+    if taille is None:
+        taille = _taille_pour_chemin(chemin)
+    else:
+        try:
+            taille = int(taille)
+        except (TypeError, ValueError):
+            return None
+    if taille not in (16, 20, 24, 32, 40, 48):
         return None
 
     dossier = os.path.join(tempfile.gettempdir(), "noethys-modern-icons-%s" % _CACHE_VERSION)
