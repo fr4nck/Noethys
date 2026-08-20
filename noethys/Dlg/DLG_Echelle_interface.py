@@ -49,19 +49,26 @@ class Apercu(wx.Panel):
         sombre = UTILS_Interface.EstSombre(self.apparence)
 
         if sombre:
-            fond = UTILS_Interface.PALETTE_SOMBRE["fond"]
-            fond_controle = UTILS_Interface.PALETTE_SOMBRE["fond_controle"]
-            texte = UTILS_Interface.PALETTE_SOMBRE["texte"]
-            bordure = UTILS_Interface.PALETTE_SOMBRE["bordure"]
+            fond = UTILS_Interface.GetCouleurRole("surface", sombre=True, theme=self.theme)
+            fond_controle = UTILS_Interface.GetCouleurRole("surface_container", sombre=True, theme=self.theme)
+            fond_ligne = UTILS_Interface.GetCouleurRole("surface_container_lowest", sombre=True, theme=self.theme)
+            fond_ligne_alt = UTILS_Interface.GetCouleurRole("surface_container_low", sombre=True, theme=self.theme)
+            texte = UTILS_Interface.GetCouleurRole("on_surface", sombre=True, theme=self.theme)
+            texte_secondaire = UTILS_Interface.GetCouleurRole("on_surface_variant", sombre=True, theme=self.theme)
+            bordure = UTILS_Interface.GetCouleurRole("outline_variant", sombre=True, theme=self.theme)
+            accent = UTILS_Interface.GetCouleurRole("primary", sombre=True, theme=self.theme)
+            accent_texte = UTILS_Interface.GetCouleurRole("on_primary", sombre=True, theme=self.theme)
         else:
             fond = wx.Colour(245, 245, 245)
             fond_controle = wx.Colour(255, 255, 255)
+            fond_ligne = wx.Colour(255, 255, 255)
+            fond_ligne_alt = UTILS_Interface.GetValeur("couleur_tres_claire", wx.Colour(240, 251, 237), theme=self.theme)
             texte = wx.Colour(25, 25, 25)
+            texte_secondaire = wx.Colour(90, 90, 90)
             bordure = wx.Colour(190, 190, 190)
-
-        accent = UTILS_Interface.GetValeur(
-            "couleur_claire", wx.Colour(137, 206, 27), theme=self.theme
-        )
+            accent = UTILS_Interface.GetValeur("couleur_claire", wx.Colour(137, 206, 27), theme=self.theme)
+            luminance = accent.Red() * 0.299 + accent.Green() * 0.587 + accent.Blue() * 0.114
+            accent_texte = wx.BLACK if luminance > 150 else wx.WHITE
 
         dc.SetBackground(wx.Brush(fond))
         dc.Clear()
@@ -69,17 +76,19 @@ class Apercu(wx.Panel):
         marge = 12
         dc.SetPen(wx.Pen(bordure))
         dc.SetBrush(wx.Brush(fond_controle))
-        dc.DrawRectangle(marge, marge, max(10, largeur - marge * 2), max(10, hauteur - marge * 2))
+        dc.DrawRoundedRectangle(marge, marge, max(10, largeur - marge * 2), max(10, hauteur - marge * 2), 7)
 
         dc.SetTextForeground(texte)
         dc.SetFont(self._font(1.15, gras=True))
         dc.DrawText(_(u"Noethys — aperçu"), marge + 12, marge + 10)
 
         dc.SetFont(self._font())
+        dc.SetTextForeground(texte_secondaire)
         y = marge + 42
         dc.DrawText(_(u"Mercredi 2 septembre 2026"), marge + 12, y)
 
-        # Bouton / action simulé avec la couleur du thème.
+        # Bouton d'action : couleur primaire du thème, avec couleur de texte
+        # calculée comme un couple sémantique plutôt qu'un simple RGB isolé.
         texte_bouton = _(u"Ajouter")
         dc.SetFont(self._font(0.95, gras=True))
         tw, th = dc.GetTextExtent(texte_bouton)
@@ -87,25 +96,33 @@ class Apercu(wx.Panel):
         by = marge + 34
         dc.SetPen(wx.Pen(accent))
         dc.SetBrush(wx.Brush(accent))
-        dc.DrawRoundedRectangle(bx, by, tw + 20, th + 10, 4)
-        luminance = accent.Red() * 0.299 + accent.Green() * 0.587 + accent.Blue() * 0.114
-        dc.SetTextForeground(wx.BLACK if luminance > 150 else wx.WHITE)
+        dc.DrawRoundedRectangle(bx, by, tw + 20, th + 10, 10)
+        dc.SetTextForeground(accent_texte)
         dc.DrawText(texte_bouton, bx + 10, by + 5)
 
-        # Mini tableau : on conserve volontairement les couleurs métier.
+        # Mini tableau : les lignes structurelles suivent les surfaces M3 ; les
+        # couleurs métier restent réservées aux vraies alertes/états.
         y = marge + 76
-        lignes = [
-            (_(u"Bais — repas enfants"), u"42", wx.Colour(223, 245, 219)),
-            (_(u"Animateurs"), u"6", wx.Colour(236, 242, 248)),
-            (_(u"Alerte capacité"), u"60", wx.Colour(250, 205, 205)),
-        ]
+        if sombre:
+            lignes = [
+                (_(u"Bais — repas enfants"), u"42", fond_ligne_alt, texte),
+                (_(u"Animateurs"), u"6", fond_ligne, texte),
+                (_(u"Alerte capacité"), u"60", UTILS_Interface.PALETTE_SOMBRE["metier_rouge"], UTILS_Interface.PALETTE_SOMBRE["metier_rouge_texte"]),
+            ]
+        else:
+            lignes = [
+                (_(u"Bais — repas enfants"), u"42", fond_ligne_alt, wx.Colour(30, 30, 30)),
+                (_(u"Animateurs"), u"6", fond_ligne, wx.Colour(30, 30, 30)),
+                (_(u"Alerte capacité"), u"60", wx.Colour(250, 205, 205), wx.Colour(30, 30, 30)),
+            ]
+
         hauteur_ligne = max(24, int(round(24 * self.echelle / 100.0)))
         dc.SetFont(self._font(0.92))
-        for libelle, valeur, couleur in lignes:
+        for libelle, valeur, couleur, couleur_texte in lignes:
             dc.SetPen(wx.Pen(bordure))
             dc.SetBrush(wx.Brush(couleur))
             dc.DrawRectangle(marge + 12, y, max(30, largeur - marge * 2 - 24), hauteur_ligne)
-            dc.SetTextForeground(wx.Colour(30, 30, 30))
+            dc.SetTextForeground(couleur_texte)
             dc.DrawText(libelle, marge + 20, y + max(2, (hauteur_ligne - dc.GetCharHeight()) // 2))
             vw, vh = dc.GetTextExtent(valeur)
             dc.DrawText(valeur, largeur - marge - 22 - vw, y + max(2, (hauteur_ligne - vh) // 2))
