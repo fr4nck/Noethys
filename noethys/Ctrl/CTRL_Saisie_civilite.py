@@ -8,100 +8,124 @@
 # Licence:         Licence GNU GPL
 #-----------------------------------------------------------
 
-
-import Chemins
-from Utils import UTILS_Adaptations
-from Utils.UTILS_Traduction import _
 import wx
-from Ctrl import CTRL_Bouton_image
 
+from Utils.UTILS_Traduction import _
+from Utils import UTILS_Interface
+from Utils import UTILS_UIMetrics
 from Data import DATA_Civilites as Civilites
+
+
 LISTE_CIVILITES = Civilites.LISTE_CIVILITES
-    
+
+
 class Civilite(wx.Choice):
+    """Choix de civilité/genre avec métriques et couleurs sémantiques."""
+
     def __init__(self, parent):
-        wx.Choice.__init__(self, parent, -1, choices=self.GetListeCivilites()) 
+        wx.Choice.__init__(self, parent, -1, choices=self.GetListeCivilites())
         self.parent = parent
+        self._AppliqueStyle()
         self.SetToolTip(wx.ToolTip(_(u"Sélectionnez ici la civilité de l'individu s'il s'agit\nd'un adulte ou le genre s'il s'agit d'un enfant")))
-    
+
+    def _AppliqueStyle(self):
+        try:
+            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
+            facteur = UTILS_Interface.GetTailleTexte() / 100.0
+            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
+            self.SetFont(police)
+        except Exception:
+            pass
+        try:
+            self.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
+            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        except Exception:
+            pass
+
     def GetListeCivilites(self):
         self.dictCivilites = {}
         listeCivilites = []
         index = 0
-        for rubrique, civilites in LISTE_CIVILITES :
+        for rubrique, civilites in LISTE_CIVILITES:
             listeCivilites.append(u"--- %s ---" % rubrique)
-            self.dictCivilites[index] = {"ID" : None, "type" : "rubrique", "rubrique" : rubrique, "civilite" : None, "abrege" : None, "photo" : None, "sexe" : None}
+            self.dictCivilites[index] = {
+                "ID": None,
+                "type": "rubrique",
+                "rubrique": rubrique,
+                "civilite": None,
+                "abrege": None,
+                "photo": None,
+                "sexe": None,
+            }
             index += 1
-            for ID, civiliteLong, civiliteAbrege, photo, sexe in civilites :
+            for ID, civiliteLong, civiliteAbrege, photo, sexe in civilites:
                 listeCivilites.append(civiliteLong)
-                self.dictCivilites[index] = {"ID" : ID, "type" : "civilite", "rubrique" : rubrique, "civilite" : civiliteLong, "abrege" : civiliteAbrege, "photo" : photo, "sexe" : sexe}
+                self.dictCivilites[index] = {
+                    "ID": ID,
+                    "type": "civilite",
+                    "rubrique": rubrique,
+                    "civilite": civiliteLong,
+                    "abrege": civiliteAbrege,
+                    "photo": photo,
+                    "sexe": sexe,
+                }
                 index += 1
         return listeCivilites
-    
+
     def GetIndex(self):
-        index = self.GetSelection()
-        return index
+        return self.GetSelection()
 
     def SetID(self, ID=0):
         for index, values in self.dictCivilites.items():
-            if values["ID"] == ID :
-                 self.SetSelection(index)
+            if values["ID"] == ID:
+                self.SetSelection(index)
+
+    def _GetValeur(self, cle):
+        index = self.GetIndex()
+        if index == -1:
+            return None
+        return self.dictCivilites[index][cle]
 
     def GetID(self):
-        index = self.GetIndex()
-        if index == -1 : return None
-        return self.dictCivilites[index]["ID"]
-    
+        return self._GetValeur("ID")
+
     def GetType(self):
-        index = self.GetIndex()
-        if index == -1 : return None
-        return self.dictCivilites[index]["type"]
-    
+        return self._GetValeur("type")
+
     def GetRubrique(self):
-        index = self.GetIndex()
-        if index == -1 : return None
-        return self.dictCivilites[index]["rubrique"]
-    
+        return self._GetValeur("rubrique")
+
     def GetCivilite(self):
-        index = self.GetIndex()
-        if index == -1 : return None
-        return self.dictCivilites[index]["civilite"]
+        return self._GetValeur("civilite")
 
     def GetAbrege(self):
-        index = self.GetIndex()
-        if index == -1 : return None
-        return self.dictCivilites[index]["abrege"]
-        
+        return self._GetValeur("abrege")
+
     def GetPhoto(self):
-        index = self.GetIndex()
-        if index == -1 : return None
-        return self.dictCivilites[index]["photo"]
-    
+        return self._GetValeur("photo")
+
     def GetSexe(self):
-        index = self.GetIndex()
-        if index == -1 : return None
-        return self.dictCivilites[index]["sexe"]
-
-
+        return self._GetValeur("sexe")
 
 
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
-        sizer_1 = wx.BoxSizer(wx.VERTICAL)
-        sizer_1.Add(panel, 1, wx.ALL|wx.EXPAND)
-        self.SetSizer(sizer_1)
-        self.ctrl= Civilite(panel)
-        sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2.Add(self.ctrl, 1, wx.ALL|wx.EXPAND, 4)
-        panel.SetSizer(sizer_2)
+        self.ctrl = Civilite(panel)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.ctrl, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        panel.SetSizer(sizer)
+        cadre = wx.BoxSizer(wx.VERTICAL)
+        cadre.Add(panel, 1, wx.EXPAND)
+        self.SetSizer(cadre)
         self.Layout()
         self.CentreOnScreen()
 
+
 if __name__ == '__main__':
     app = wx.App(0)
-    #wx.InitAllImageHandlers()
     frame_1 = MyFrame(None, -1, "TEST", size=(800, 400))
     app.SetTopWindow(frame_1)
     frame_1.Show()
