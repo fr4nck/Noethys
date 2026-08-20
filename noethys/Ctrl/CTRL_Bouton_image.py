@@ -4,52 +4,54 @@
 # Application :    Noethys, gestion multi-activités
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
-# Copyright:       (c) 2010-15 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Copyright:        (c) 2010-15 Ivan LUCAS
+# Licence:          Licence GNU GPL
 #------------------------------------------------------------------------
 
-
-import Chemins
-from Utils import UTILS_Adaptations
-from Utils import UTILS_Interface
-from Utils.UTILS_Traduction import _
-import wx
-import time
 import os
-
+import wx
 import PIL.Image as Image
 import PIL.ImageOps as ImageOps
 
+import Chemins
+from Utils import UTILS_Interface
+from Utils import UTILS_UIMetrics
 
 
 def PILtoWx(image):
-    """Convert a PIL image to wx image format"""
     largeur, hauteur = image.size
     if 'phoenix' in wx.PlatformInfo:
         imagewx = wx.Image(largeur, hauteur)
-        imagewx.SetData(image.tobytes('raw', 'RGB'))
+        imagewx.SetData(image.convert("RGB").tobytes())
         imagewx.SetAlpha(image.convert("RGBA").tobytes()[3::4])
-    else :
+    else:
         imagewx = wx.EmptyImage(largeur, hauteur)
-        imagewx.SetData(image.tobytes('raw', 'RGB'))
+        imagewx.SetData(image.convert("RGB").tobytes())
         imagewx.SetAlphaData(image.convert("RGBA").tobytes()[3::4])
-    return imagewx        
+    return imagewx
 
 
 class CTRL(wx.Button):
-    def __init__(self, parent, id=-1, texte="", cheminImage=None, tailleImage=(20, 20), margesImage=(4, 0, 0, 0), positionImage=wx.LEFT, margesTexte=(0, 1)):
+    """Bouton d'action commun Noethys, natif et DPI-aware.
+
+    ``cheminImage`` reste compatible avec les écrans historiques. Les écrans
+    migrés utilisent ``iconeFluent`` explicitement, sans substitution globale.
+    """
+
+    def __init__(self, parent, id=-1, texte="", cheminImage=None, tailleImage=(20, 20),
+                 margesImage=(4, 0, 0, 0), positionImage=wx.LEFT, margesTexte=(0, 1),
+                 iconeFluent=None, roleIcone="on_surface"):
         wx.Button.__init__(self, parent, id=id, label=texte)
-        self.parent = parent   
+        self.parent = parent
         self.texte = texte
         self.cheminImage = cheminImage
         self.tailleImage = tailleImage
         self.margesImage = margesImage
         self.positionImage = positionImage
         self.margesTexte = margesTexte
+        self.iconeFluent = iconeFluent
+        self.roleIcone = roleIcone
 
-        # Mémorise le rendu natif : en mode clair on laisse volontairement la
-        # plateforme dessiner le bouton. Les états sémantiques sont appliqués
-        # surtout en sombre, où l'ancien contrôle restait visuellement clair.
         try:
             self._fond_natif = self.GetBackgroundColour()
             self._texte_natif = self.GetForegroundColour()
@@ -65,54 +67,90 @@ class CTRL(wx.Button):
         self.Bind(wx.EVT_KILL_FOCUS, self._OnFocus)
         self.Bind(wx.EVT_LEFT_DOWN, self._OnPress)
         self.Bind(wx.EVT_LEFT_UP, self._OnRelease)
+        self.MAJ()
 
-        self.MAJ() 
-    
-    def MAJ(self):
-        # Redimensionne et ajoute des marges autour de l'image
-        if self.cheminImage not in ("", None) :
-            img = Image.open(Chemins.GetStaticPath(self.cheminImage))
-            try:
-                # Pillow >= 10.0.0
-                img = img.resize(self.tailleImage, Image.Resampling.LANCZOS)
-            except AttributeError:
-                # Pillow < 10.0.0
-                img = img.resize(self.tailleImage, Image.LANCZOS)
-            img = ImageOps.expand(img, border=self.margesImage)
-            img = PILtoWx(img) 
-            bmp = img.ConvertToBitmap()
-        else :
-            bmp = wx.NullBitmap
-            
-        # MAJ du bouton
-        self.SetBitmap(bmp, self.positionImage)
-        if self.cheminImage not in ("", None) :
-            self.SetBitmapMargins(self.margesTexte)
-
-        # Historiquement ce contrôle imposait systématiquement une police
-        # SWISS 9pt. Cela empêchait la typographie native et l'échelle globale
-        # de fonctionner correctement. On conserve uniquement l'intention
-        # historique (libellé en gras) sur la police réellement héritée.
+    def _TailleImage(self):
         try:
-            police = wx.Font(self.GetFont())
-            if police.IsOk():
-                police.SetWeight(wx.FONTWEIGHT_BOLD)
-                self.SetFont(police)
+            largeur, hauteur = self.tailleImage
+        except Exception:
+            largeur = hauteur = 20
+        try:
+            facteur = max(1.0, UTILS_UIMetrics.get_scale())
+        except Exception:
+            facteur = 1.0
+        return (max(12, int(round(float(largeur) * facteur))),
+                max(12, int(round(float(hauteur) * facteur))))
+
+    def _BitmapFluent(self):
+        if not self.iconeFluent:
+            return None
+        try:
+            from Utils import UTILS_FluentIcons
+            largeur, hauteur = self._TailleImage()
+            return UTILS_FluentIcons.GetBitmap(self.iconeFluent, taille=max(largeur, hauteur), role=self.roleIcone)
+        except Exception:
+            return None
+
+    def _BitmapHistorique(self):
+        if self.cheminImage in ("", None):
+            return wx.NullBitmap
+        chemin = self.cheminImage
+        if not os.path.isabs(chemin):
+            chemin = Chemins.GetStaticPath(chemin)
+        try:
+            img = Image.open(chemin).convert("RGBA")
+            try:
+                img = img.resize(self._TailleImage(), Image.Resampling.LANCZOS)
+            except AttributeError:
+                img = img.resize(self._TailleImage(), Image.LANCZOS)
+            img = ImageOps.expand(img, border=self.margesImage)
+            return PILtoWx(img).ConvertToBitmap()
+        except Exception:
+            return wx.NullBitmap
+
+    def MAJ(self):
+        bitmap = self._BitmapFluent()
+        if bitmap is None or not getattr(bitmap, "IsOk", lambda: False)():
+            bitmap = self._BitmapHistorique()
+        try:
+            self.SetBitmap(bitmap, self.positionImage)
+            if bitmap is not None and bitmap.IsOk():
+                self.SetBitmapMargins(self.margesTexte)
         except Exception:
             pass
 
-        # Le bouton est un composant transversal : appliquer immédiatement le
-        # moteur commun évite un flash de mauvais thème et dimensionne le bouton
-        # après prise en compte de l'échelle utilisateur.
+        try:
+            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
+            facteur = UTILS_Interface.GetTailleTexte() / 100.0
+            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
+            self.SetFont(police)
+        except Exception:
+            pass
+
         try:
             UTILS_Interface.AppliquerAffichage(self, recursif=False)
         except Exception:
             pass
+
+        try:
+            cible = UTILS_UIMetrics.action_target("standard")
+            self.SetMinSize((max(cible, self.GetBestSize().GetWidth()), cible))
+        except Exception:
+            pass
+
         self._AppliquerEtat()
-        self.SetInitialSize() 
+        try:
+            self.InvalidateBestSize()
+        except Exception:
+            pass
+        try:
+            parent = self.GetParent()
+            if parent is not None:
+                parent.Layout()
+        except Exception:
+            pass
 
     def _AppliquerEtat(self):
-        """Applique les états Fluent sans remplacer le bouton natif en clair."""
         sombre = UTILS_Interface.EstSombre()
         if not sombre:
             try:
@@ -129,21 +167,21 @@ class CTRL(wx.Button):
             actif = self.IsEnabled()
         except Exception:
             actif = True
-
         if not actif:
             fond = UTILS_Interface.GetCouleurRole("disabled", sombre=True)
-            texte = UTILS_Interface.GetCouleurRole("disabled_text", sombre=True)
+            try:
+                texte = UTILS_Interface.GetCouleurRole("disabled_text", sombre=True)
+            except Exception:
+                texte = UTILS_Interface.GetCouleurRole("on_surface_variant", sombre=True)
         elif self._presse:
             etat = UTILS_Interface.GetEtatCouleurs("pressed", sombre=True)
-            fond = etat["background"]
-            texte = etat["foreground"]
+            fond, texte = etat["background"], etat["foreground"]
         elif self._survole:
             fond = UTILS_Interface.GetCouleurRole("surface_container_highest", sombre=True)
             texte = UTILS_Interface.GetCouleurRole("on_surface", sombre=True)
         else:
             fond = UTILS_Interface.GetCouleurRole("surface_container_high", sombre=True)
             texte = UTILS_Interface.GetCouleurRole("on_surface", sombre=True)
-
         try:
             self.SetBackgroundColour(fond)
             self.SetForegroundColour(texte)
@@ -163,8 +201,6 @@ class CTRL(wx.Button):
         event.Skip()
 
     def _OnFocus(self, event):
-        # Le contour de focus reste natif à la plateforme ; on ne le remplace
-        # pas par un dessin propriétaire qui dégraderait le clavier/accessibilité.
         self._AppliquerEtat()
         event.Skip()
 
@@ -179,182 +215,52 @@ class CTRL(wx.Button):
         event.Skip()
 
     def Enable(self, enable=True):
-        """Conserve l'état visuel sans dépendre d'un EVT_ENABLE absent de Phoenix."""
         resultat = wx.Button.Enable(self, enable)
         self._AppliquerEtat()
         return resultat
 
     def Disable(self):
         return self.Enable(False)
-        
+
     def SetImage(self, cheminImage=""):
-        self.SetBitmap(wx.NullBitmap)
+        self.iconeFluent = None
         self.cheminImage = cheminImage
-        self.MAJ() 
-        
+        self.MAJ()
+
+    def SetIconeFluent(self, nom="", role="on_surface"):
+        self.cheminImage = None
+        self.iconeFluent = nom
+        self.roleIcone = role
+        self.MAJ()
+
     def SetTexte(self, texte=""):
         self.texte = texte
         self.SetLabel(texte)
-        self.MAJ() 
-        
+        self.MAJ()
+
     def SetImageEtTexte(self, cheminImage="", texte=""):
-        self.SetBitmap(wx.NullBitmap)
+        self.iconeFluent = None
         self.cheminImage = cheminImage
         self.texte = texte
         self.SetLabel(texte)
-        self.MAJ() 
-        
-# -------------------------------------------- DLG de test -----------------------------------------------------
+        self.MAJ()
 
-class Dialog(wx.Dialog):
-    def __init__(self, parent):
-        wx.Dialog.__init__(self, parent, -1, style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER|wx.MAXIMIZE_BOX|wx.MINIMIZE_BOX)
-        self.parent = parent   
-        t1 = time.time() 
-        
-        self.label_test = wx.StaticText(self, wx.ID_ANY, _(u"Test :"))
-        self.ctrl_test = wx.TextCtrl(self, wx.ID_ANY, u"", style=wx.TE_MULTILINE)
-        
-        self.bouton_aide1 = CTRL(self, texte=_(u"Transmettre\npar Email"), tailleImage=(32, 32), margesImage=(4, 4, 0, 0), margesTexte=(0, 1), cheminImage="Images/32x32/Emails_exp.png")
-        self.bouton_aide2 = wx.BitmapButton(self, wx.ID_ANY, wx.Bitmap(Chemins.GetStaticPath(u"Images/BoutonsImages/Aide_L72.png"), wx.BITMAP_TYPE_ANY))
-        self.bouton_ok1 = CTRL(self, texte=_(u"Ok"), cheminImage="Images/32x32/Valider.png")
-        self.bouton_ok2 = wx.BitmapButton(self, wx.ID_ANY, wx.Bitmap(Chemins.GetStaticPath(u"Images/BoutonsImages/Ok_L72.png"), wx.BITMAP_TYPE_ANY))
-        self.bouton_annuler1 = CTRL(self, texte=_(u"Annuler"), cheminImage="Images/32x32/Fermer.png")
-        self.bouton_annuler2 = CTRL(self, texte=_(u"Enregistrer sous"), cheminImage="Images/48x48/Sauvegarder.png", tailleImage=(48, 48), margesImage=(40, 20, 40, 0), positionImage=wx.TOP, margesTexte=(10, 10))
+    def SetIconeEtTexte(self, iconeFluent="", texte="", role="on_surface"):
+        self.cheminImage = None
+        self.iconeFluent = iconeFluent
+        self.roleIcone = role
+        self.texte = texte
+        self.SetLabel(texte)
+        self.MAJ()
 
 
-        self.__set_properties()
-        self.__do_layout()
-        
-        print("Temps d'affichage =", time.time() - t1)
-        
-        self.Bind(wx.EVT_BUTTON, self.OnBoutonTest, self.bouton_aide1)
-
-    def __set_properties(self):
-        self.SetTitle(_(u"Saisie d'une traduction"))
-        self.SetMinSize((670, 400))
-
-    def __do_layout(self):
-        grid_sizer_base = wx.FlexGridSizer(3, 1, 10, 10)
-        
-        grid_sizer_haut = wx.FlexGridSizer(4, 2, 10, 10)
-        grid_sizer_haut.Add(self.label_test, 0, wx.ALIGN_RIGHT, 0)
-        grid_sizer_haut.Add(self.ctrl_test, 0, wx.EXPAND, 0)
-        grid_sizer_haut.AddGrowableRow(0)
-        grid_sizer_haut.AddGrowableRow(1)
-        grid_sizer_haut.AddGrowableCol(1)
-        grid_sizer_base.Add(grid_sizer_haut, 1, wx.ALL | wx.EXPAND, 10)
-        
-        grid_sizer_boutons = wx.FlexGridSizer(1, 8, 10, 10)
-        grid_sizer_boutons.Add(self.bouton_aide1, 0, 0, 0)
-        grid_sizer_boutons.Add(self.bouton_aide2, 0, 0, 0)
-        grid_sizer_boutons.Add((5, 5), 0, 0, 0)
-        grid_sizer_boutons.Add(self.bouton_ok1, 0, 0, 0)
-        grid_sizer_boutons.Add(self.bouton_ok2, 0, 0, 0)
-        grid_sizer_boutons.Add(self.bouton_annuler1, 0, 0, 0)
-        grid_sizer_boutons.Add(self.bouton_annuler2, 0, 0, 0)
-        grid_sizer_boutons.AddGrowableCol(2)
-        grid_sizer_base.Add(grid_sizer_boutons, 1, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
-        self.SetSizer(grid_sizer_base)
-        grid_sizer_base.AddGrowableCol(0)
-        grid_sizer_base.AddGrowableRow(0)
-        self.Layout()
-        self.CenterOnScreen() 
-    
-    def OnBoutonTest(self, event):
-        self.bouton_aide1.SetImage(Chemins.GetStaticPath("Images/32x32/Fermer.png"))
-        self.bouton_aide1.SetTexte("Coucou")
-        
-def ModifieFichiers():
-    listeTextes = [
-        ("""wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/BoutonsImages/Aide_L72.png"), wx.BITMAP_TYPE_ANY))""", """CTRL_Bouton_image.CTRL(self, texte=_(u"Aide"), cheminImage="Images/32x32/Aide.png")"""),
-        ("""wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/BoutonsImages/Ok_L72.png"), wx.BITMAP_TYPE_ANY))""", """CTRL_Bouton_image.CTRL(self, texte=_(u"Ok"), cheminImage="Images/32x32/Valider.png")"""),
-        ("""wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/BoutonsImages/Annuler_L72.png"), wx.BITMAP_TYPE_ANY))""", """CTRL_Bouton_image.CTRL(self, texte=_(u"Annuler"), cheminImage="Images/32x32/Annuler.png")"""),
-        ("""wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/BoutonsImages/Fermer_L72.png"), wx.BITMAP_TYPE_ANY))""", """CTRL_Bouton_image.CTRL(self, texte=_(u"Fermer"), cheminImage="Images/32x32/Fermer.png")"""),
-        ("""wx.BitmapButton(self, wx.ID_CANCEL, wx.Bitmap(Chemins.GetStaticPath("Images/BoutonsImages/Annuler_L72.png"), wx.BITMAP_TYPE_ANY))""", """CTRL_Bouton_image.CTRL(self, id=wx.ID_CANCEL, texte=_(u"Annuler"), cheminImage="Images/32x32/Annuler.png")"""),
-        ("""wx.BitmapButton(self, wx.ID_CANCEL, wx.Bitmap(Chemins.GetStaticPath("Images/BoutonsImages/Fermer_L72.png"), wx.BITMAP_TYPE_ANY))""", """CTRL_Bouton_image.CTRL(self, id=wx.ID_CANCEL, texte=_(u"Fermer"), cheminImage="Images/32x32/Fermer.png")"""),
-        
-        ("""wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/BoutonsImages/Imprimer_L72.png"), wx.BITMAP_TYPE_ANY))""", """CTRL_Bouton_image.CTRL(self, texte=_(u"Imprimer"), cheminImage="Images/32x32/Imprimante.png")"""),
-        ("""wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/BoutonsImages/Apercu_L72.png"), wx.BITMAP_TYPE_ANY))""", """CTRL_Bouton_image.CTRL(self, texte=_(u"Aperçu"), cheminImage="Images/32x32/Apercu.png")"""),        
-        
-        ("""wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/BoutonsImages/Envoyer_par_email.png"), wx.BITMAP_TYPE_ANY))""", """CTRL_Bouton_image.CTRL(self, texte=_(u"Envoyer par Email"), cheminImage="Images/32x32/Emails_exp.png")"""),        
-        ("""wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/BoutonsImages/Envoyer_mail.png"), wx.BITMAP_TYPE_ANY))""", """CTRL_Bouton_image.CTRL(self, texte=_(u"Envoyer l'Email"), cheminImage="Images/32x32/Emails_exp.png")"""),        
-        
-        ("""wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/BoutonsImages/Rafraichir_liste.png"), wx.BITMAP_TYPE_ANY))""", """CTRL_Bouton_image.CTRL(self, texte=_(u"Rafraîchir la liste"), cheminImage="Images/32x32/Actualiser.png")"""),        
-        
-        ("""wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/BoutonsImages/Options_L72.png"), wx.BITMAP_TYPE_ANY))""", """CTRL_Bouton_image.CTRL(self, texte=_(u"Options"), cheminImage="Images/32x32/Configuration.png")"""),        
-        ("""wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/BoutonsImages/Options.png"), wx.BITMAP_TYPE_ANY))""", """CTRL_Bouton_image.CTRL(self, texte=_(u"Options"), cheminImage="Images/32x32/Configuration2.png")"""),        
-        ("""wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/BoutonsImages/Outils.png"), wx.BITMAP_TYPE_ANY))""", """CTRL_Bouton_image.CTRL(self, texte=_(u"Outils"), cheminImage="Images/32x32/Configuration.png")"""),        
-        
-        
-        ]
-        
-    # Get fichiers
-    listeFichiers = os.listdir(os.getcwd())
-    indexFichier = 0
-    for nomFichier in listeFichiers :
-        if nomFichier.endswith("py") and nomFichier.startswith("DATA_") == False and nomFichier != "CTRL_Bouton_image.py" :
-            print("%d/%d :  %s..." % (indexFichier, len(listeFichiers), nomFichier))
-            
-            # Ouverture des fichiers
-            fichier = open(nomFichier, "r", encoding="utf-8")
-            dirty = False
-            
-            listeLignes = []
-            for ligne in fichier :
-                
-                # Corrections diverses
-                if "wx.BitmapButton(" in ligne :
-                    if "wx.ID_ANY" in ligne : 
-                        ligne = ligne.replace("wx.ID_ANY", "-1")
-                        dirty = True
-                    if """u"Images/BoutonsImages""" in ligne :
-                        ligne = ligne.replace("""(u"Images/BoutonsImages""", """("Images/BoutonsImages""")
-                        dirty = True
-                        
-                # Remplacement des chaines
-                for texteAncien, texteNouveau in listeTextes :
-                    if texteAncien in ligne : 
-                        ligne = ligne.replace(texteAncien, texteNouveau)
-                        dirty = True
-                    
-                # Ecriture du nouveau fichier
-                listeLignes.append(ligne)
-                
-                # Insertion de l'import
-##                if "import wx\n" in ligne :
-##                    listeLignes.append("import CTRL_Bouton_image\n")
-##                    dirty = True
-                
-            # Clôture des fichiers
-            fichier.close()
-            
-            # Ecriture du nouveau fichier
-            if dirty == True :
-                nouveauFichier = open("New/%s" % nomFichier, "w", encoding="utf-8")
-                for ligne in listeLignes :
-                    nouveauFichier.write(ligne)
-                nouveauFichier.close()
-            
-        indexFichier += 1
-            
-    print("Fini !!!!!!!!!!!!!!!!!")
-
-
-
-
-
-
-
-
-
-
-if __name__ == u"__main__":
-##    ModifieFichiers() 
-    
+if __name__ == '__main__':
     app = wx.App(0)
-    #wx.InitAllImageHandlers()
-    dialog_1 = Dialog(None)
-    app.SetTopWindow(dialog_1)
-    dialog_1.ShowModal()
+    frame = wx.Frame(None, -1, "Bouton Noethys", size=(480, 180))
+    panel = wx.Panel(frame)
+    bouton = CTRL(panel, texte="Paramètres", iconeFluent="settings", tailleImage=(24, 24))
+    sizer = wx.BoxSizer(wx.VERTICAL)
+    sizer.Add(bouton, 0, wx.ALL, UTILS_UIMetrics.spacing(4))
+    panel.SetSizer(sizer)
+    frame.Show()
     app.MainLoop()
