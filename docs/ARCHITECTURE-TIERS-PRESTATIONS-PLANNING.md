@@ -58,6 +58,22 @@ Une fiche « Demande / programmation annuelle » enregistre : structure, saison,
 
 Le renouvellement d'une saison doit permettre de recopier la programmation précédente puis de marquer chaque ligne : inchangée, modifiée, supprimée ou ajoutée.
 
+## Formulaire web futur de demande annuelle
+
+Le formulaire papier de demande de créneaux doit pouvoir être remplacé par un formulaire web public ou semi-public sécurisé par un lien ou jeton propre à la structure.
+
+Objectifs :
+- préremplir la structure et ses contacts connus ;
+- présenter les créneaux de la saison précédente ;
+- permettre, ligne par ligne : inchangé, modifier, supprimer ou ajouter ;
+- permettre la correction des coordonnées et des contacts de planning/facturation ;
+- enregistrer directement la demande dans Noethys sans ressaisie ;
+- historiser les demandes par saison ;
+- soumettre la programmation à l'écran « Impact planning » de PMSL-Équipe avant validation ;
+- produire ensuite convention et annexe prévisionnelle depuis la programmation acceptée.
+
+Ce formulaire peut constituer un premier module web dédié avant l'existence d'un portail structures complet.
+
 ## Convention et annexe
 
 La convention et la facturation ne sont pas saisies séparément : elles sont produites depuis la même relation contractuelle et la même programmation.
