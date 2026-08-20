@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import datetime
 import sys
 import unittest
 from pathlib import Path
@@ -110,6 +111,29 @@ class PortailTarifsDonneesTests(unittest.TestCase):
         tarifs = DONNEES.charger_baremes(FakeDB(), IDsactivites=[2])
         self.assertEqual(len(tarifs), 1)
         self.assertEqual(tarifs[0]["IDactivite"], 2)
+        self.assertEqual(DONNEES.charger_baremes(FakeDB(), IDsactivites=[]), [])
+
+    def test_publication_relit_la_source_noethys_et_signale_les_conditions(self):
+        publication = DONNEES.construire_publication(
+            FakeDB(),
+            IDsactivites=[1, 2],
+            date_reference=datetime.date(2026, 9, 2),
+        )
+
+        self.assertEqual(len(publication["baremes"]), 3)
+        self.assertEqual(len(publication["descriptions"]), 3)
+        html = publication["html"]
+        self.assertIn("Tarifs des activités", html)
+        self.assertIn("ALSH Bais", html)
+        self.assertIn("École multisports", html)
+        self.assertIn("QF A", html)
+        self.assertIn("9,35 €", html)
+        self.assertIn("89,00 €", html)
+        # Le tarif ALSH fictif porte groupe, filtre et états : la publication
+        # doit l'indiquer au lieu de le présenter comme un prix personnalisé.
+        self.assertIn("groupe de l&#x27;inscription", html)
+        self.assertIn("questionnaire", html)
+        self.assertIn("état de la consommation", html)
 
 
 if __name__ == "__main__":
