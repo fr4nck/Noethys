@@ -44,15 +44,11 @@ def GetTailleIcone(base=16):
         return 16
     if base <= 24:
         if facteur >= 1.30:
-            return 28
-        if facteur >= 1.10:
-            return 24
-        return base
+            return 32
+        return 24
     if base <= 32:
-        if facteur >= 1.30:
+        if facteur >= 1.24:
             return 40
-        if facteur >= 1.10:
-            return 36
         return 32
     return min(48, max(base, int(round(base * min(facteur, 1.20)))))
 
