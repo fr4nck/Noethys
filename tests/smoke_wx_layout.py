@@ -2,12 +2,21 @@
 # -*- coding: utf-8 -*-
 """Smoke test d'interface wxPython sans données métier.
 
-Construit une petite fenêtre représentative (sizers, texte, bouton, liste AGW),
-force le layout et un cycle d'événements, puis vérifie que les contrôles ont des
-dimensions cohérentes. Aucun fichier utilisateur ni base n'est ouvert.
+Construit une petite fenêtre représentative (sizers, texte, toolbar, bouton,
+liste AGW), force le layout et vérifie que les métriques communes ne tronquent
+pas leurs composants. Aucun fichier utilisateur ni base n'est ouvert.
 """
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "noethys"))
+
 import wx
 from wx.lib.agw import ultimatelistctrl as ULC
+
+from Utils import UTILS_Aui
+from Utils import UTILS_UIMetrics
 
 
 app = wx.App(False)
@@ -19,6 +28,14 @@ frame = wx.Frame(None, title="Noethys UI smoke", size=(640, 420))
 panel = wx.Panel(frame)
 
 root = wx.BoxSizer(wx.VERTICAL)
+
+toolbar = wx.ToolBar(panel, style=wx.TB_FLAT | wx.TB_TEXT | wx.TB_NODIVIDER)
+bitmap = wx.ArtProvider.GetBitmap(wx.ART_INFORMATION, wx.ART_TOOLBAR, wx.Size(32, 32))
+toolbar.AddTool(wx.ID_ANY, "Action lisible", bitmap, shortHelp="Action de test")
+toolbar.Realize()
+UTILS_Aui.ConfigurerToolBar(toolbar, taille_base=32, fond_uni=True)
+root.Add(toolbar, 0, wx.EXPAND)
+
 header = wx.BoxSizer(wx.HORIZONTAL)
 label = wx.StaticText(panel, label="Recherche")
 search = wx.TextCtrl(panel, value="test")
@@ -46,6 +63,12 @@ assert search.GetSize().width > 0
 assert button.GetSize().width > 0
 assert listctrl.GetSize().width > 0 and listctrl.GetSize().height > 0
 assert listctrl.GetItemCount() == 1
+
+hauteur_toolbar = toolbar.GetSize().height
+hauteur_min = UTILS_UIMetrics.toolbar_height(avec_libelle=True, icon_px=32)
+print("toolbar :", hauteur_toolbar, "minimum design :", hauteur_min)
+assert hauteur_toolbar >= hauteur_min
+assert hauteur_toolbar > 32
 
 frame.Destroy()
 wx.Yield()
