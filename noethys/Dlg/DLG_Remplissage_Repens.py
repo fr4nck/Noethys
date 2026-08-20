@@ -120,8 +120,8 @@ class ToolBar(wx.ToolBar):
     def OnPlus(self, event=None):
         menu = UTILS_Adaptations.Menu()
         actions = (
-            (_(u"Aperçu avant impression"), self.GetParent().Apercu),
-            (_(u"Imprimer"), self.GetParent().Imprimer),
+            (_(u"Aperçu avant impression"), lambda evt=None: self.GetParent().Apercu()),
+            (_(u"Imprimer"), lambda evt=None: self.GetParent().Imprimer()),
             None,
             (_(u"Exporter au format Texte"), lambda evt=None: self.GetParent().ctrl_remplissage.ExportTexte(None)),
             (_(u"Exporter au format Excel"), lambda evt=None: self.GetParent().ctrl_remplissage.ExportExcel(None)),
