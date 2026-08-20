@@ -3,23 +3,22 @@
 #-----------------------------------------------------------
 # Application :    Noethys, gestion multi-activités
 # Site internet :  www.noethys.com
-# Auteur:          Ivan LUCAS
+# Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-18 Ivan LUCAS
 # Licence:         Licence GNU GPL
 #-----------------------------------------------------------
 
-
 import Chemins
-from Utils import UTILS_Adaptations
 from Utils.UTILS_Traduction import _
+from Utils import UTILS_Interface
+from Utils import UTILS_UIMetrics
 import wx
 import six
-if wx.VERSION < (2, 9, 0, 0) :
+if wx.VERSION < (2, 9, 0, 0):
     from Outils import ultimatelistctrl as ULC
-else :
+else:
     from wx.lib.agw import ultimatelistctrl as ULC
 
-# Import des assistants pour pouvoir les inclure dans la compilation windows
 from Ctrl import CTRL_Assistant_annuelle
 from Ctrl import CTRL_Assistant_sejour
 from Ctrl import CTRL_Assistant_stage
@@ -30,137 +29,156 @@ from Ctrl import CTRL_Assistant_sorties
 LISTE_ASSISTANTS = [
     {"code": "nouveau", "image": "Generation.png", "nom": _(u"Créer une nouvelle activité"),
      "description": _(u"Personnalisez votre nouvelle activité de A à Z")},
-
     {"code": "annuelle", "image": "Basket.png", "nom": _(u"Une activité culturelle ou sportive annuelle"),
      "description": _(u"Assistant pour créer une activité annuelle : club de gym, danse, couture, etc...")},
-
     {"code": "sejour", "image": "Camping.png", "nom": _(u"Un séjour"),
      "description": _(u"Assistant pour créer un séjour, un camp, un mini-camp...")},
-
     {"code": "stage", "image": "Guitare.png", "nom": _(u"Un stage"),
      "description": _(u"Assistant pour créer un stage de théâtre, de danse, de guitare, etc...")},
-
     {"code": "cantine", "image": "Repas.png", "nom": _(u"Une cantine"),
      "description": _(u"Assistant pour créer une cantine avec un ou plusieurs services")},
-
     {"code": "sorties", "image": "Bus.png", "nom": _(u"Des sorties familiales"),
      "description": _(u"Assistant pour créer une activité de gestion de sorties familiales...")},
-
 ]
 
 
+def _BitmapActivite(nom):
+    """Conserve les pictos métier riches, mais les adapte à la vraie échelle UI."""
+    taille = UTILS_UIMetrics.icon_size("hero")
+    try:
+        bitmap = wx.Bitmap(Chemins.GetStaticIconPath("Images/32x32/%s" % nom, taille=taille), wx.BITMAP_TYPE_ANY)
+        if bitmap.IsOk() and (bitmap.GetWidth() != taille or bitmap.GetHeight() != taille):
+            bitmap = wx.Bitmap(bitmap.ConvertToImage().Scale(taille, taille, wx.IMAGE_QUALITY_HIGH))
+        return bitmap
+    except Exception:
+        return wx.NullBitmap
+
+
 class FirstColumnRenderer(object):
-    def __init__(self, parent, dictItem={}):
+    def __init__(self, parent, dictItem=None):
         self.parent = parent
+        dictItem = dictItem or {}
 
-        self.normalFont = wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)
-        self.normalFont.SetPointSize(self.normalFont.GetPointSize() + 2)        
-        self.smallerFont = wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)
-        self.greyColour = wx.SystemSettings.GetColour(wx.SYS_COLOUR_GRAYTEXT)
+        self.normalFont = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
+        self.normalFont.SetWeight(wx.FONTWEIGHT_SEMIBOLD if hasattr(wx, "FONTWEIGHT_SEMIBOLD") else wx.FONTWEIGHT_BOLD)
+        try:
+            self.normalFont.SetPointSize(max(8, int(round(self.normalFont.GetPointSize() * (UTILS_Interface.GetTailleTexte() / 100.0)))))
+        except Exception:
+            pass
 
-        self.code = dictItem["code"]
-        self.icon = wx.Bitmap(Chemins.GetStaticPath("Images/32x32/%s" % dictItem["image"]))
-        self.text = dictItem["nom"]
-        self.description = dictItem["description"]
-        
+        self.smallerFont = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
+        try:
+            self.smallerFont.SetPointSize(max(7, int(round(self.smallerFont.GetPointSize() * 0.92 * (UTILS_Interface.GetTailleTexte() / 100.0)))))
+        except Exception:
+            pass
+
+        self.code = dictItem.get("code")
+        self.icon = _BitmapActivite(dictItem.get("image", ""))
+        self.text = dictItem.get("nom", "")
+        self.description = dictItem.get("description", "")
+
+    def _Ellipsize(self, texte, dc, largeur):
+        if largeur <= 20:
+            return ""
+        try:
+            return wx.Control.Ellipsize(texte, dc, wx.ELLIPSIZE_END, largeur)
+        except Exception:
+            return texte
 
     def DrawSubItem(self, dc, rect, line, highlighted, enabled):
-        # Icone
         bmpWidth, bmpHeight = self.icon.GetWidth(), self.icon.GetHeight()
-        dc.DrawBitmap(self.icon, int(rect.x+8), int(rect.y+(rect.height-bmpHeight)/2))
+        marge = UTILS_UIMetrics.spacing(2)
+        x_icon = rect.x + marge
+        y_icon = rect.y + max(0, (rect.height - bmpHeight) // 2)
+        if self.icon.IsOk():
+            dc.DrawBitmap(self.icon, int(x_icon), int(y_icon), True)
 
-        # Titre
+        x_texte = rect.x + bmpWidth + marge * 2
+        largeur_texte = max(20, rect.width - (x_texte - rect.x) - marge)
+
         dc.SetFont(self.normalFont)
-        textWidth, textHeight = dc.GetTextExtent(self.text)
-        dc.SetTextForeground(wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNTEXT))
-        dc.DrawText(self.text, int(rect.x+bmpWidth+18), int(rect.y+(rect.height - textHeight)/4))
+        dc.SetTextForeground(UTILS_Interface.GetCouleurRole("on_surface"))
+        _, h_titre = dc.GetTextExtent(self.text)
+        titre = self._Ellipsize(self.text, dc, largeur_texte)
+        dc.DrawText(titre, int(x_texte), int(rect.y + max(marge, rect.height * 0.22 - h_titre / 2)))
 
-        # Description
         if self.description:
             dc.SetFont(self.smallerFont)
-            textWidth, textHeight = dc.GetTextExtent(self.description)
-            dc.SetTextForeground(self.greyColour)
-            dc.DrawText(self.description, int(rect.x+bmpWidth+18), int(rect.y+3*(rect.height - textHeight)/4))
-        
+            dc.SetTextForeground(UTILS_Interface.GetCouleurRole("on_surface_variant"))
+            _, h_desc = dc.GetTextExtent(self.description)
+            description = self._Ellipsize(self.description, dc, largeur_texte)
+            dc.DrawText(description, int(x_texte), int(rect.y + rect.height * 0.68 - h_desc / 2))
 
     def GetLineHeight(self):
-        dc = wx.MemoryDC()
-        if 'phoenix' in wx.PlatformInfo:
-            dc.SelectObject(wx.Bitmap(100, 20))
-        else :
-            dc.SelectObject(wx.EmptyBitmap(100, 20))
-        
-        bmpWidth, bmpHeight = self.icon.GetWidth(), self.icon.GetHeight()
-
-        dc.SetFont(self.normalFont)
-        
-        textWidth, textHeight = dc.GetTextExtent(self.text)
-
-        dc.SetFont(self.smallerFont)
-        textWidth, textHeight = dc.GetTextExtent(self.description)
-
-        dc.SelectObject(wx.NullBitmap)
-
-        return max(2*textHeight, bmpHeight) + 20
-    
+        icon_h = self.icon.GetHeight() if self.icon.IsOk() else 0
+        return max(UTILS_UIMetrics.px(58), icon_h + UTILS_UIMetrics.spacing(4))
 
     def GetSubItemWidth(self):
-        return 250
-    
+        try:
+            largeur = self.parent.GetClientSize().GetWidth()
+        except Exception:
+            largeur = 0
+        return max(UTILS_UIMetrics.px(320), largeur - UTILS_UIMetrics.spacing(2))
 
 
-
-        
-        
 class CTRL(ULC.UltimateListCtrl):
     def __init__(self, parent):
-        ULC.UltimateListCtrl.__init__(self, parent, -1, style=wx.BORDER_THEME, agwStyle=wx.LC_REPORT|wx.LC_NO_HEADER|wx.LC_HRULES|ULC.ULC_HAS_VARIABLE_ROW_HEIGHT)
+        ULC.UltimateListCtrl.__init__(
+            self,
+            parent,
+            -1,
+            style=wx.BORDER_NONE,
+            agwStyle=wx.LC_REPORT | wx.LC_NO_HEADER | wx.LC_HRULES | ULC.ULC_HAS_VARIABLE_ROW_HEIGHT,
+        )
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+        self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
         self.EnableSelectionVista()
+        self.Bind(wx.EVT_SIZE, self._OnSize)
         self.Remplissage()
 
+    def _OnSize(self, event):
+        event.Skip()
+        wx.CallAfter(self._AjusteColonne)
+
+    def _AjusteColonne(self):
+        try:
+            largeur = max(UTILS_UIMetrics.px(320), self.GetClientSize().GetWidth() - UTILS_UIMetrics.spacing(1))
+            self.SetColumnWidth(0, largeur)
+        except Exception:
+            pass
+
     def Remplissage(self):
-        """ Remplissage du contrôle """
         self.ClearAll()
-        self.InsertColumn(0, "Column 1") 
+        self.InsertColumn(0, "")
 
         for dictItem in LISTE_ASSISTANTS:
             index = self.InsertStringItem(six.MAXSIZE, "")
-
-            klass = FirstColumnRenderer(self, dictItem)
-            self.SetItemCustomRenderer(index, 0, klass)
+            self.SetItemCustomRenderer(index, 0, FirstColumnRenderer(self, dictItem))
             self.SetItemPyData(index, dictItem)
 
-        self.SetColumnWidth(0, ULC.ULC_AUTOSIZE_FILL)
+        wx.CallAfter(self._AjusteColonne)
 
-        self.SendSizeEvent()
-
-
-
-        
-# ----------------------------------------------------------------------------------------------------------------------
 
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
-        sizer_1 = wx.BoxSizer(wx.VERTICAL)
-        sizer_1.Add(panel, 1, wx.ALL|wx.EXPAND)
-        self.SetSizer(sizer_1)
-        
         self.ctrl = CTRL(panel)
         self.Bind(ULC.EVT_LIST_ITEM_ACTIVATED, self.OnSelection, self.ctrl)
-        
-        sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2.Add(self.ctrl, 1, wx.ALL|wx.EXPAND, 4)
-        panel.SetSizer(sizer_2)
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.ctrl, 1, wx.EXPAND)
+        panel.SetSizer(sizer)
+        cadre = wx.BoxSizer(wx.VERTICAL)
+        cadre.Add(panel, 1, wx.EXPAND)
+        self.SetSizer(cadre)
         self.Layout()
         self.CentreOnScreen()
-    
+
     def OnSelection(self, event):
         index = self.ctrl.GetFirstSelected()
         print(self.ctrl.GetItemPyData(index))
-        
-        
+
 
 if __name__ == '__main__':
     app = wx.App(0)
