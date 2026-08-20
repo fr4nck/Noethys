@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 AUI = ROOT / "noethys" / "Utils" / "UTILS_Aui.py"
+RESPONSIVE = ROOT / "noethys" / "Utils" / "UTILS_Responsive.py"
 
 
 class AuiResponsiveContractTests(unittest.TestCase):
@@ -20,6 +21,8 @@ class AuiResponsiveContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.text = AUI.read_text(encoding="utf-8")
         cls.tree = ast.parse(cls.text)
+        cls.responsive_text = RESPONSIVE.read_text(encoding="utf-8")
+        ast.parse(cls.responsive_text)
 
     def test_layout_generation_is_bumped(self):
         self.assertIn("PERSPECTIVE_LAYOUT_VERSION = 4", self.text)
@@ -57,6 +60,11 @@ class AuiResponsiveContractTests(unittest.TestCase):
         self.assertIn('GetCouleurRole("surface_container_low")', self.text)
         self.assertIn('GetCouleurRole("on_surface")', self.text)
         self.assertIn("AUI_TB_PLAIN_BACKGROUND", self.text)
+
+    def test_legacy_16px_assets_have_a_20px_desktop_floor(self):
+        self.assertIn("if base <= 16:", self.responsive_text)
+        self.assertIn("return 20", self.responsive_text)
+        self.assertIn("Les pictos historiques 16 px étaient trop petits", self.responsive_text)
 
     def test_old_ephemeride_caption_is_replaced_at_shell_level(self):
         self.assertIn("Aujourd'hui / Échéancier", self.text)
