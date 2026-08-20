@@ -22,6 +22,7 @@ from urllib.parse import urlparse
 
 CATEGORIE_CONTENU_EXTERNE = "bloc_contenu_externe"
 CATEGORIE_CONNECTHYS_TEXTE = "bloc_texte"
+MARQUEUR_CONTENU_EXTERNE = "noethys_portail_contenu_externe"
 
 HAUTEUR_MIN = 120
 HAUTEUR_MAX = 3000
@@ -60,6 +61,7 @@ def normaliser_parametres(parametres=None):
     """Retourne la configuration canonique d'un bloc de contenu externe."""
     source = dict(parametres or {})
     return {
+        "source": MARQUEUR_CONTENU_EXTERNE,
         "version": 1,
         "type": source.get("type", "iframe"),
         "url": normaliser_url(source.get("url", "")),
@@ -80,19 +82,26 @@ def serialiser_parametres(parametres=None):
     )
 
 
-def deserialiser_parametres(valeur):
-    """Lit une configuration sauvegardée et retombe sur les valeurs par défaut."""
+def _charger_json(valeur):
     if not valeur:
-        return normaliser_parametres()
+        return {}
     if isinstance(valeur, bytes):
         valeur = valeur.decode("utf-8")
     try:
         donnees = json.loads(valeur)
     except (TypeError, ValueError):
-        donnees = {}
-    if not isinstance(donnees, dict):
-        donnees = {}
-    return normaliser_parametres(donnees)
+        return {}
+    return donnees if isinstance(donnees, dict) else {}
+
+
+def est_configuration_contenu_externe(valeur):
+    """Détecte uniquement les paramètres écrits par ce moteur, sans faux positif."""
+    return _charger_json(valeur).get("source") == MARQUEUR_CONTENU_EXTERNE
+
+
+def deserialiser_parametres(valeur):
+    """Lit une configuration sauvegardée et retombe sur les valeurs par défaut."""
+    return normaliser_parametres(_charger_json(valeur))
 
 
 def construire_iframe(parametres=None):
