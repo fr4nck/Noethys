@@ -489,9 +489,6 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
             # mémorisation des dates
             if date not in dictDonnees["liste_dates"] :
                 dictDonnees["liste_dates"].append(date)
-        dictDonnees["liste_dates"].sort()
-
-        dictDonnees["liste_dates"].append(_(u"Total"))
 
         # Consommations
         req = """SELECT IDconso, date, IDgroupe, IDunite, IDindividu
@@ -505,6 +502,9 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         dictDonnees["dict_dates"] = {}
         for IDconso, date, IDgroupe, IDunite, IDindividu in listeDonnees :
             date = UTILS_Dates.DateEngEnDateDD(date)
+
+            if date not in dictDonnees["liste_dates"] :
+                dictDonnees["liste_dates"].append(date)
 
             if (date in dictDonnees["dict_conso"]) == False:
                 dictDonnees["dict_conso"][date] = {}
@@ -523,6 +523,9 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                 dictDonnees["dict_dates"][date][IDindividu] = []
             if IDgroupe not in dictDonnees["dict_dates"][date][IDindividu] :
                 dictDonnees["dict_dates"][date][IDindividu].append(IDgroupe)
+
+        dictDonnees["liste_dates"].sort()
+        dictDonnees["liste_dates"].append(_(u"Total"))
 
 
         if len(dictDonnees["liste_individus"]) == 0 : conditionIndividus = "()"
