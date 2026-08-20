@@ -24,9 +24,9 @@ from Utils.UTILS_Traduction import _
 class ToolBar(wx.ToolBar):
     MODES = (
         (Legacy.ID_MODE_PLACES_INITIALES, u"Capacité", "people", "nbrePlacesInitial", _(u"Afficher la capacité maximale")),
-        (Legacy.ID_MODE_PLACES_PRISES, u"Occupé", "check", "nbrePlacesPrises", _(u"Afficher le nombre de places prises")),
+        (Legacy.ID_MODE_PLACES_PRISES, u"Occupé", "calendar_day", "nbrePlacesPrises", _(u"Afficher le nombre de places prises")),
         (Legacy.ID_MODE_PLACES_RESTANTES, u"Disponible", "add", "nbrePlacesRestantes", _(u"Afficher le nombre de places disponibles")),
-        (Legacy.ID_MODE_PLACES_ATTENTE, u"Attente", "clock", "nbreAttente", _(u"Afficher le nombre de places en attente")),
+        (Legacy.ID_MODE_PLACES_ATTENTE, u"Attente", "calendar", "nbreAttente", _(u"Afficher le nombre de places en attente")),
     )
 
     def __init__(self, parent):
@@ -44,7 +44,7 @@ class ToolBar(wx.ToolBar):
 
         self.AddStretchableSpace()
         self._AjouterOutil(Legacy.ID_PARAMETRES, _(u"Affichage"), "settings", taille, wx.ITEM_NORMAL, _(u"Paramètres d'affichage"))
-        self._AjouterOutil(Legacy.ID_OUTILS, _(u"Plus"), "more", taille, wx.ITEM_NORMAL, _(u"Imprimer, exporter, actualiser ou obtenir de l'aide"))
+        self._AjouterOutil(Legacy.ID_OUTILS, _(u"Plus"), "print", taille, wx.ITEM_NORMAL, _(u"Imprimer, exporter, actualiser ou obtenir de l'aide"))
         self.Bind(wx.EVT_TOOL, self.OnParametres, id=Legacy.ID_PARAMETRES)
         self.Bind(wx.EVT_TOOL, self.OnPlus, id=Legacy.ID_OUTILS)
 
@@ -58,8 +58,6 @@ class ToolBar(wx.ToolBar):
         except Exception:
             bitmap = None
         if bitmap is None or not bitmap.IsOk():
-            # Repli volontairement discret : l'outil reste utilisable si une
-            # icône Fluent n'est pas encore dans le catalogue.
             bitmap = wx.NullBitmap
         return bitmap
 
