@@ -8,80 +8,124 @@
 # Licence:         Licence GNU GPL
 #-----------------------------------------------------------
 
-
-import Chemins
-from Utils import UTILS_Adaptations
-from Utils.UTILS_Traduction import _
 import wx
-from Ctrl import CTRL_Bouton_image
 import wx.lib.agw.hypertreelist as HTL
-import datetime
 
-
+from Utils import UTILS_Interface
+from Utils import UTILS_UIMetrics
+from Utils.UTILS_Traduction import _
 
 
 class CTRL_Unite_remplissage(wx.Panel):
+    """Petite cellule de total, alignée sur les surfaces du design system."""
+
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
         self.parent = parent
-        
-        self.SetSize((55, -1))
-        self.SetMinSize((55, -1))
-                
-        # Contrôle
-        self.ctrl = wx.StaticText(self, -1, u"XXX")
-        
-        # Layout
-        grid_sizer_base = wx.FlexGridSizer(rows=1, cols=4, vgap=2, hgap=2)
-        grid_sizer_contenu = wx.FlexGridSizer(rows=1, cols=4, vgap=2, hgap=2)
-        grid_sizer_contenu.Add( (1, 1), 0, wx.EXPAND|wx.ALL, 0)
-        grid_sizer_contenu.Add(self.ctrl, 0, wx.TOP, 1)
-        grid_sizer_contenu.AddGrowableCol(0)
-        grid_sizer_base.Add(grid_sizer_contenu, 1, wx.EXPAND|wx.ALL, 2)
-        grid_sizer_base.AddGrowableCol(0)
-        self.SetSizer(grid_sizer_base)
-        self.Layout()
-        
-        self.grid_sizer_contenu = grid_sizer_contenu
-                
+        self.ctrl = wx.StaticText(self, -1, u"XXX", style=wx.ALIGN_RIGHT)
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_high"))
+        self.ctrl.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        self.ctrl.SetBackgroundColour(self.GetBackgroundColour())
+        try:
+            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
+            facteur = UTILS_Interface.GetTailleTexte() / 100.0
+            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
+            try:
+                police.SetWeight(wx.FONTWEIGHT_SEMIBOLD)
+            except Exception:
+                pass
+            self.ctrl.SetFont(police)
+        except Exception:
+            pass
+
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.AddStretchSpacer(1)
+        sizer.Add(self.ctrl, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, UTILS_UIMetrics.spacing(1))
+        self.SetSizer(sizer)
+        self.SetMinSize((UTILS_UIMetrics.px(60), UTILS_UIMetrics.action_target("compact")))
+
     def SetValeur(self, valeur=""):
-        # Label
-        self.ctrl.SetLabel(valeur)
-        self.SetBackgroundColour(wx.Colour(100, 100, 100))
-        self.grid_sizer_contenu.Layout()
-        self.Refresh() 
-
-        
-# -------------------------------------------------------------------------------------------------------------------
+        self.ctrl.SetLabel(str(valeur))
+        self.Layout()
+        self.Refresh()
 
 
-
-            
 class CTRL(HTL.HyperTreeList):
-    def __init__(self, parent, grille=None): 
+    """Totaux de la grille de consommations, thème et largeur responsive."""
+
+    def __init__(self, parent, grille=None):
         HTL.HyperTreeList.__init__(self, parent, -1)
         self.parent = parent
         self.grille = grille
         self.date = None
-        
-        self.SetBackgroundColour(wx.WHITE)
+        self._resize_pending = False
+
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+        self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        try:
+            main = self.GetMainWindow()
+            main.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+            main.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        except Exception:
+            pass
+        try:
+            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
+            facteur = UTILS_Interface.GetTailleTexte() / 100.0
+            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
+            self.SetFont(police)
+            self.GetMainWindow().SetFont(police)
+        except Exception:
+            pass
+
         if 'phoenix' in wx.PlatformInfo:
             TR_COLUMN_LINES = HTL.TR_COLUMN_LINES
-        else :
+        else:
             TR_COLUMN_LINES = wx.TR_COLUMN_LINES
-        self.SetAGWWindowStyleFlag(TR_COLUMN_LINES |  wx.TR_HIDE_ROOT | wx.TR_HAS_BUTTONS | wx.TR_HAS_VARIABLE_ROW_HEIGHT | wx.TR_FULL_ROW_HIGHLIGHT | HTL.TR_NO_HEADER)
-                    
+        self.SetAGWWindowStyleFlag(
+            TR_COLUMN_LINES | wx.TR_HIDE_ROOT | wx.TR_HAS_BUTTONS |
+            wx.TR_HAS_VARIABLE_ROW_HEIGHT | wx.TR_FULL_ROW_HIGHLIGHT | HTL.TR_NO_HEADER
+        )
+        self.SetMinSize((UTILS_UIMetrics.px(320), UTILS_UIMetrics.px(180)))
+        self.Bind(wx.EVT_SIZE, self.OnSize)
+
+    def OnSize(self, event):
+        event.Skip()
+        if self._resize_pending:
+            return
+        self._resize_pending = True
+        wx.CallAfter(self._AjusterColonnes)
+
+    def _AjusterColonnes(self):
+        self._resize_pending = False
+        try:
+            nbre = self.GetColumnCount()
+            if nbre <= 0:
+                return
+            largeur = self.GetClientSize().GetWidth()
+            marge = UTILS_UIMetrics.spacing(2)
+            largeur_groupe = max(UTILS_UIMetrics.px(150), int(largeur * 0.34))
+            largeur_groupe = min(largeur_groupe, max(UTILS_UIMetrics.px(150), largeur - marge))
+            self.SetColumnWidth(0, largeur_groupe)
+            if nbre > 1:
+                disponible = max(0, largeur - largeur_groupe - marge)
+                largeur_unite = max(UTILS_UIMetrics.px(54), disponible // (nbre - 1) if disponible else 0)
+                for index in range(1, nbre):
+                    self.SetColumnWidth(index, largeur_unite)
+        except Exception:
+            pass
+
     def MAJ(self, date=None):
-        """ Met à jour (redessine) tout le contrôle """
-        if date != None :
+        if date is not None:
             self.date = date
         self.Freeze()
-        self.DeleteAllItems()
-        for numColonne in range(self.GetColumnCount()-1, -1, -1) :
-            self.RemoveColumn(numColonne)
-        # Création de la racine
-        self.Remplissage()
-        self.Thaw() 
+        try:
+            self.DeleteAllItems()
+            for numColonne in range(self.GetColumnCount() - 1, -1, -1):
+                self.RemoveColumn(numColonne)
+            self.Remplissage()
+        finally:
+            self.Thaw()
+        wx.CallAfter(self._AjusterColonnes)
 
     def Remplissage(self):
         self.dictGroupes = self.grille.dictGroupes
@@ -93,116 +137,80 @@ class CTRL(HTL.HyperTreeList):
         self.dictRemplissage2 = self.grille.dictRemplissage2
         self.dictUnitesRemplissage = self.grille.dictUnitesRemplissage
         self.dictConsoUnites = self.grille.dictConsoUnites
-        
-        self.dictBranches = { "activites" : {}, "groupes" : {}, "totaux" : {} }
-        
-        # tri des groupes par ordre
-        listeGroupes = []
-        for IDgroupe, dictGroupe in self.dictGroupes.items() :
-            listeGroupes.append((dictGroupe["ordre"], IDgroupe))
-        listeGroupes.sort()
-        
-        # Récupération des groupes par activité
+
+        self.dictBranches = {"activites": {}, "groupes": {}, "totaux": {}}
+
+        listeGroupes = sorted((dictGroupe["ordre"], IDgroupe) for IDgroupe, dictGroupe in self.dictGroupes.items())
         self.dictGroupeTmp = {}
-        for ordre, IDgroupe in listeGroupes :
+        for ordre, IDgroupe in listeGroupes:
             dictGroupe = self.dictGroupes[IDgroupe]
             IDactivite = dictGroupe["IDactivite"]
-            if (IDactivite in self.dictGroupeTmp) == False :
-                self.dictGroupeTmp[IDactivite] = []
-            self.dictGroupeTmp[IDactivite].append((IDgroupe, dictGroupe["nom"]))
-        
-        # Si groupe unique
-        for IDactivite in self.listeActivites :
-            if (IDactivite in self.dictGroupeTmp) == False :
-                self.dictGroupeTmp[IDactivite] = [(0, _(u"Groupe unique")),]
-        
-        # Récupération des unités de remplissage
+            self.dictGroupeTmp.setdefault(IDactivite, []).append((IDgroupe, dictGroupe["nom"]))
+
+        for IDactivite in self.listeActivites:
+            self.dictGroupeTmp.setdefault(IDactivite, [(0, _(u"Groupe unique"))])
+
         self.dictUnitesRemplissageTemp = {}
-        for IDunite_remplissage, dictUniteRemplissage in self.dictRemplissage.items() :
-            if "IDactivite" in dictUniteRemplissage :
+        for IDunite_remplissage, dictUniteRemplissage in self.dictRemplissage.items():
+            if "IDactivite" in dictUniteRemplissage:
                 IDactivite = dictUniteRemplissage["IDactivite"]
-                abrege = dictUniteRemplissage["abrege"]
-                ordre = dictUniteRemplissage["ordre"]
-                if (IDactivite in self.dictUnitesRemplissageTemp) == False :
-                    self.dictUnitesRemplissageTemp[IDactivite] = []
-                self.dictUnitesRemplissageTemp[IDactivite].append((ordre, IDunite_remplissage, abrege))
+                self.dictUnitesRemplissageTemp.setdefault(IDactivite, []).append((
+                    dictUniteRemplissage["ordre"],
+                    IDunite_remplissage,
+                    dictUniteRemplissage["abrege"],
+                ))
                 self.dictUnitesRemplissageTemp[IDactivite].sort()
-            
-        # Préparation des colonnes
-        listeColonnes = [
-            ( _(u"Groupe"), 150, wx.ALIGN_LEFT),
-            ]
+
         listeNbreUnites = []
-        for IDactivite in self.listeActivites :
-            nbre = 0
-            if IDactivite in self.dictListeUnites :
-                nbre += len(self.dictListeUnites[IDactivite])
-            if IDactivite in self.dictUnitesRemplissageTemp :
-                nbre += len(self.dictUnitesRemplissageTemp[IDactivite])
+        for IDactivite in self.listeActivites:
+            nbre = len(self.dictListeUnites.get(IDactivite, []))
+            nbre += len(self.dictUnitesRemplissageTemp.get(IDactivite, []))
             listeNbreUnites.append(nbre)
-        
-        if len(listeNbreUnites) == 0: 
+        if len(listeNbreUnites) == 0:
             return
-            
-        for x in range(0, max(listeNbreUnites)):
-            listeColonnes.append((u"", 50, wx.ALIGN_CENTER))
-            
-        # Création des colonnes
-        numColonne = 0
-        for label, largeur, alignement in listeColonnes :
-            self.AddColumn(label)
-            self.SetColumnWidth(numColonne, largeur)
-            self.SetColumnAlignment(numColonne, alignement)
-            numColonne += 1
-        
-        # Création de la racine
+
+        self.AddColumn(_(u"Groupe"))
+        self.SetColumnAlignment(0, wx.ALIGN_LEFT)
+        for _index in range(max(listeNbreUnites)):
+            self.AddColumn(u"")
+            self.SetColumnAlignment(self.GetColumnCount() - 1, wx.ALIGN_CENTER)
+
         self.root = self.AddRoot(_(u"Racine"))
-        
-        # Création des branches
-        for IDactivite in self.listeActivites :
-            
-            # Label activité
+        couleur_activite = UTILS_Interface.GetCouleurRole("surface_container_high")
+        couleur_total = UTILS_Interface.GetCouleurRole("danger")
+
+        for IDactivite in self.listeActivites:
             label = self.dictActivites[IDactivite]["nom"] if IDactivite in self.dictActivites else u"?"
             activite = self.AppendItem(self.root, label)
             self.dictBranches["activites"][IDactivite] = activite
             self.SetPyData(activite, IDactivite)
             self.SetItemBold(activite, True)
-            self.SetItemBackgroundColour(activite, wx.Colour(200, 200, 200))
-            
-            # Entete de colonnes : UNITES
+            self.SetItemBackgroundColour(activite, couleur_activite)
+
             indexColonne = 1
-            if IDactivite in self.dictListeUnites:
-                for dictUnite in self.dictListeUnites[IDactivite] :
-                    nomUnite = dictUnite["abrege"]
-                    self.SetItemText(activite, nomUnite, indexColonne)
-                    indexColonne += 1
-            
-            # Entete de colones : UNITES DE REMPLISSAGE
-            if IDactivite in self.dictUnitesRemplissageTemp : 
-                for ordre, IDunite_remplissage, nomUniteRemplissage in self.dictUnitesRemplissageTemp[IDactivite] :
-                    self.SetItemText(activite, nomUniteRemplissage, indexColonne)
-                    indexColonne += 1
-                
-            # Lignes : GROUPES
-            dictTotaux = {}
-            for IDgroupe, nomGroupe in self.dictGroupeTmp[IDactivite] :
+            for dictUnite in self.dictListeUnites.get(IDactivite, []):
+                self.SetItemText(activite, dictUnite["abrege"], indexColonne)
+                indexColonne += 1
+            for ordre, IDunite_remplissage, nomUniteRemplissage in self.dictUnitesRemplissageTemp.get(IDactivite, []):
+                self.SetItemText(activite, nomUniteRemplissage, indexColonne)
+                indexColonne += 1
+
+            for IDgroupe, nomGroupe in self.dictGroupeTmp[IDactivite]:
                 groupe = self.AppendItem(activite, nomGroupe)
                 self.dictBranches["groupes"][IDgroupe] = groupe
                 self.SetPyData(groupe, IDgroupe)
-                                        
-            # Ligne TOTAL
+
             total = self.AppendItem(activite, _(u"Total"))
             self.dictBranches["totaux"][IDactivite] = total
             self.SetPyData(total, None)
-            self.SetItemTextColour(total, wx.RED)
-            
+            self.SetItemTextColour(total, couleur_total)
+            self.SetItemBold(total, True)
+
         self.ExpandAllChildren(self.root)
-        
-        # Remplit les chiffres dans le tableau
-        self.MAJ_contenu() 
+        self.MAJ_contenu()
+        wx.CallAfter(self._AjusterColonnes)
 
     def MAJ_donnees(self):
-        """ Récupère les données """
         self.dictGroupes = self.grille.dictGroupes
         self.dictActivites = self.grille.dictActivites
         self.listeActivites = self.grille.listeActivites
@@ -214,77 +222,55 @@ class CTRL(HTL.HyperTreeList):
         self.dictConsoUnites = self.grille.dictConsoUnites
 
     def MAJ_contenu(self):
-        """ Remplissage du tableau avec les chiffres """
-        for IDactivite in self.listeActivites :
-                
-            # Lignes : GROUPES
+        for IDactivite in self.listeActivites:
             dictTotaux = {}
-            for IDgroupe, nomGroupe in self.dictGroupeTmp[IDactivite] :
+            for IDgroupe, nomGroupe in self.dictGroupeTmp[IDactivite]:
                 groupe = self.dictBranches["groupes"][IDgroupe]
-                
-                # Nbre d'unités
                 indexColonne = 1
-                if IDactivite in self.dictListeUnites:
-                    for dictUnite in self.dictListeUnites[IDactivite] :
-                        IDunite = dictUnite["IDunite"]
-                        try :
-                            nbre = self.dictConsoUnites[IDunite][IDgroupe]
-                            if (indexColonne in dictTotaux) == False :
-                                dictTotaux[indexColonne] = 0
-                            dictTotaux[indexColonne] += nbre
-                        except :
-                            nbre = 0
-                        if nbre != 0 :
-                            self.SetItemText(groupe, str(nbre), indexColonne)
-                        else:
-                            self.SetItemText(groupe, "", indexColonne)
-                        indexColonne += 1
-                    
-                # Total par unité de remplissage
-                if IDactivite in self.dictUnitesRemplissageTemp : 
-                    for ordre, IDunite_remplissage, nomUniteRemplissage in self.dictUnitesRemplissageTemp[IDactivite] :
-                        nbre = 0
-                        if IDunite_remplissage in self.dictRemplissage2 :
-                            if self.date in self.dictRemplissage2[IDunite_remplissage] :
-                                if IDgroupe in self.dictRemplissage2[IDunite_remplissage][self.date] :
-                                    d = self.dictRemplissage2[IDunite_remplissage][self.date][IDgroupe]
-                                    if "reservation" in d : nbre += d["reservation"]
-                                    if "present" in d : nbre += d["present"]
-                                    if (indexColonne in dictTotaux) == False :
-                                        dictTotaux[indexColonne] = 0
-                                    dictTotaux[indexColonne] += nbre
-                                    
-                        if nbre != 0 :
-                            self.SetItemText(groupe, str(nbre), indexColonne)
-                        else:
-                            self.SetItemText(groupe, "", indexColonne)
-                            
-                        indexColonne += 1
-                
-            # Ligne TOTAL
-            total = self.dictBranches["totaux"][IDactivite]
-            for indexColonne in range(1, self.GetColumnCount()) :
-                if indexColonne in dictTotaux :
-                    nbre = dictTotaux[indexColonne]
-                    if nbre != 0 :
-                        self.SetItemText(total, str(nbre), indexColonne)
-                else:
-                    self.SetItemText(total, "", indexColonne)
 
-                    
+                for dictUnite in self.dictListeUnites.get(IDactivite, []):
+                    IDunite = dictUnite["IDunite"]
+                    try:
+                        nbre = self.dictConsoUnites[IDunite][IDgroupe]
+                        dictTotaux[indexColonne] = dictTotaux.get(indexColonne, 0) + nbre
+                    except Exception:
+                        nbre = 0
+                    self.SetItemText(groupe, str(nbre) if nbre != 0 else "", indexColonne)
+                    indexColonne += 1
+
+                for ordre, IDunite_remplissage, nomUniteRemplissage in self.dictUnitesRemplissageTemp.get(IDactivite, []):
+                    nbre = 0
+                    if IDunite_remplissage in self.dictRemplissage2:
+                        if self.date in self.dictRemplissage2[IDunite_remplissage]:
+                            if IDgroupe in self.dictRemplissage2[IDunite_remplissage][self.date]:
+                                d = self.dictRemplissage2[IDunite_remplissage][self.date][IDgroupe]
+                                nbre += d.get("reservation", 0)
+                                nbre += d.get("present", 0)
+                                dictTotaux[indexColonne] = dictTotaux.get(indexColonne, 0) + nbre
+                    self.SetItemText(groupe, str(nbre) if nbre != 0 else "", indexColonne)
+                    indexColonne += 1
+
+            total = self.dictBranches["totaux"][IDactivite]
+            for indexColonne in range(1, self.GetColumnCount()):
+                nbre = dictTotaux.get(indexColonne, 0)
+                self.SetItemText(total, str(nbre) if nbre != 0 else "", indexColonne)
+
     def OnCompareItems(self, item1, item2):
-        if self.GetPyData(item1) > self.GetPyData(item2) :
-            return 1
-        elif self.GetPyData(item1) < self.GetPyData(item2) :
-            return -1
-        else:
+        data1 = self.GetPyData(item1)
+        data2 = self.GetPyData(item2)
+        if data1 is None or data2 is None:
             return 0
-        
+        if data1 > data2:
+            return 1
+        if data1 < data2:
+            return -1
+        return 0
+
     def RAZ(self):
         self.DeleteAllItems()
-        for indexColonne in range(self.GetColumnCount()-1, -1, -1) :
+        for indexColonne in range(self.GetColumnCount() - 1, -1, -1):
             self.RemoveColumn(indexColonne)
-        self.DeleteRoot() 
-        self.Initialisation()
-    
-
+        try:
+            self.DeleteRoot()
+        except Exception:
+            pass
