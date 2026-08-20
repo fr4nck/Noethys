@@ -15,14 +15,16 @@ class Apercu(wx.Panel):
     """Petit aperçu sans effet sur l'interface en cours."""
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, -1, style=wx.BORDER_SIMPLE)
-        self.SetMinSize((500, 190))
+        self.SetMinSize((500, 205))
         self.echelle = 100
+        self.taille_texte = 100
         self.apparence = "systeme"
         self.theme = "Vert"
         self.Bind(wx.EVT_PAINT, self.OnPaint)
 
-    def SetValeurs(self, echelle=100, apparence="systeme", theme="Vert"):
+    def SetValeurs(self, echelle=100, taille_texte=100, apparence="systeme", theme="Vert"):
         self.echelle = echelle
+        self.taille_texte = taille_texte
         self.apparence = apparence
         self.theme = theme
         self.Refresh()
@@ -34,7 +36,8 @@ class Apercu(wx.Panel):
             taille = police.GetFractionalPointSize()
         except Exception:
             taille = float(police.GetPointSize())
-        taille = max(5.0, taille * (self.echelle / 100.0) * coefficient)
+        facteur = (self.echelle / 100.0) * (self.taille_texte / 100.0)
+        taille = max(5.0, taille * facteur * coefficient)
         if hasattr(police, "SetFractionalPointSize"):
             police.SetFractionalPointSize(taille)
         else:
@@ -48,27 +51,17 @@ class Apercu(wx.Panel):
         largeur, hauteur = self.GetClientSize()
         sombre = UTILS_Interface.EstSombre(self.apparence)
 
-        if sombre:
-            fond = UTILS_Interface.GetCouleurRole("surface", sombre=True, theme=self.theme)
-            fond_controle = UTILS_Interface.GetCouleurRole("surface_container", sombre=True, theme=self.theme)
-            fond_ligne = UTILS_Interface.GetCouleurRole("surface_container_lowest", sombre=True, theme=self.theme)
-            fond_ligne_alt = UTILS_Interface.GetCouleurRole("surface_container_low", sombre=True, theme=self.theme)
-            texte = UTILS_Interface.GetCouleurRole("on_surface", sombre=True, theme=self.theme)
-            texte_secondaire = UTILS_Interface.GetCouleurRole("on_surface_variant", sombre=True, theme=self.theme)
-            bordure = UTILS_Interface.GetCouleurRole("outline_variant", sombre=True, theme=self.theme)
-            accent = UTILS_Interface.GetCouleurRole("primary", sombre=True, theme=self.theme)
-            accent_texte = UTILS_Interface.GetCouleurRole("on_primary", sombre=True, theme=self.theme)
-        else:
-            fond = wx.Colour(245, 245, 245)
-            fond_controle = wx.Colour(255, 255, 255)
-            fond_ligne = wx.Colour(255, 255, 255)
-            fond_ligne_alt = UTILS_Interface.GetValeur("couleur_tres_claire", wx.Colour(240, 251, 237), theme=self.theme)
-            texte = wx.Colour(25, 25, 25)
-            texte_secondaire = wx.Colour(90, 90, 90)
-            bordure = wx.Colour(190, 190, 190)
-            accent = UTILS_Interface.GetValeur("couleur_claire", wx.Colour(137, 206, 27), theme=self.theme)
-            luminance = accent.Red() * 0.299 + accent.Green() * 0.587 + accent.Blue() * 0.114
-            accent_texte = wx.BLACK if luminance > 150 else wx.WHITE
+        fond = UTILS_Interface.GetCouleurRole("surface", sombre=sombre, theme=self.theme)
+        fond_controle = UTILS_Interface.GetCouleurRole("surface_container", sombre=sombre, theme=self.theme)
+        fond_ligne = UTILS_Interface.GetCouleurRole("surface_container_lowest", sombre=sombre, theme=self.theme)
+        fond_ligne_alt = UTILS_Interface.GetCouleurRole("surface_container_low", sombre=sombre, theme=self.theme)
+        texte = UTILS_Interface.GetCouleurRole("on_surface", sombre=sombre, theme=self.theme)
+        texte_secondaire = UTILS_Interface.GetCouleurRole("on_surface_variant", sombre=sombre, theme=self.theme)
+        bordure = UTILS_Interface.GetCouleurRole("outline_variant", sombre=sombre, theme=self.theme)
+        accent = UTILS_Interface.GetCouleurRole("primary", sombre=sombre, theme=self.theme)
+        accent_texte = UTILS_Interface.GetCouleurRole("on_primary", sombre=sombre, theme=self.theme)
+        danger = UTILS_Interface.GetCouleurRole("danger", sombre=sombre, theme=self.theme)
+        danger_texte = UTILS_Interface.GetCouleurRole("danger_text", sombre=sombre, theme=self.theme)
 
         dc.SetBackground(wx.Brush(fond))
         dc.Clear()
@@ -88,7 +81,7 @@ class Apercu(wx.Panel):
         dc.DrawText(_(u"Mercredi 2 septembre 2026"), marge + 12, y)
 
         # Bouton d'action : couleur primaire du thème, avec couleur de texte
-        # calculée comme un couple sémantique plutôt qu'un simple RGB isolé.
+        # issue du couple sémantique du design system.
         texte_bouton = _(u"Ajouter")
         dc.SetFont(self._font(0.95, gras=True))
         tw, th = dc.GetTextExtent(texte_bouton)
@@ -100,21 +93,14 @@ class Apercu(wx.Panel):
         dc.SetTextForeground(accent_texte)
         dc.DrawText(texte_bouton, bx + 10, by + 5)
 
-        # Mini tableau : les lignes structurelles suivent les surfaces M3 ; les
-        # couleurs métier restent réservées aux vraies alertes/états.
-        y = marge + 76
-        if sombre:
-            lignes = [
-                (_(u"Bais — repas enfants"), u"42", fond_ligne_alt, texte),
-                (_(u"Animateurs"), u"6", fond_ligne, texte),
-                (_(u"Alerte capacité"), u"60", UTILS_Interface.PALETTE_SOMBRE["metier_rouge"], UTILS_Interface.PALETTE_SOMBRE["metier_rouge_texte"]),
-            ]
-        else:
-            lignes = [
-                (_(u"Bais — repas enfants"), u"42", fond_ligne_alt, wx.Colour(30, 30, 30)),
-                (_(u"Animateurs"), u"6", fond_ligne, wx.Colour(30, 30, 30)),
-                (_(u"Alerte capacité"), u"60", wx.Colour(250, 205, 205), wx.Colour(30, 30, 30)),
-            ]
+        # L'échelle agit sur la hauteur structurelle des lignes. La taille du
+        # texte ne change que la typographie : l'aperçu matérialise la différence.
+        y = marge + 80
+        lignes = [
+            (_(u"Bais — repas enfants"), u"42", fond_ligne_alt, texte),
+            (_(u"Animateurs"), u"6", fond_ligne, texte),
+            (_(u"Alerte capacité"), u"60", danger, danger_texte),
+        ]
 
         hauteur_ligne = max(24, int(round(24 * self.echelle / 100.0)))
         dc.SetFont(self._font(0.92))
@@ -133,7 +119,13 @@ class Apercu(wx.Panel):
 
 class Dialog(wx.Dialog):
     def __init__(self, parent):
-        wx.Dialog.__init__(self, parent, -1, title=_(u"Échelle et apparence"), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+        wx.Dialog.__init__(
+            self,
+            parent,
+            -1,
+            title=_(u"Apparence et accessibilité"),
+            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+        )
 
         # Apparence
         self.liste_codes_apparence = [code for code, label in UTILS_Interface.APPARENCES]
@@ -144,10 +136,10 @@ class Dialog(wx.Dialog):
         # Couleur d'accent / thème historique Noethys
         self.liste_codes_theme = [code for code, label in UTILS_Interface.THEMES]
         self.liste_labels_theme = [label for code, label in UTILS_Interface.THEMES]
-        self.label_theme = wx.StaticText(self, -1, _(u"Couleur du thème :"))
+        self.label_theme = wx.StaticText(self, -1, _(u"Couleur d'accent :"))
         self.ctrl_theme = wx.Choice(self, -1, choices=self.liste_labels_theme)
 
-        # Échelle
+        # Échelle générale
         self.label_echelle = wx.StaticText(self, -1, _(u"Échelle de l'interface :"))
         self.ctrl_echelle = wx.Choice(
             self,
@@ -155,7 +147,20 @@ class Dialog(wx.Dialog):
             choices=[u"%d %%" % valeur for valeur in UTILS_Interface.ECHELLES],
         )
 
+        # Accessibilité typographique indépendante de la géométrie de l'UI.
+        self.label_texte = wx.StaticText(self, -1, _(u"Taille du texte :"))
+        self.ctrl_texte = wx.Choice(
+            self,
+            -1,
+            choices=[u"%d %%" % valeur for valeur in UTILS_Interface.TAILLES_TEXTE],
+        )
+
         self.info_systeme = wx.StaticText(self, -1, "")
+        self.info_accessibilite = wx.StaticText(
+            self,
+            -1,
+            _(u"Échelle : agrandit l'interface complète. Taille du texte : agrandit principalement la typographie."),
+        )
         self.apercu = Apercu(self)
 
         self.info = wx.StaticText(
@@ -164,6 +169,7 @@ class Dialog(wx.Dialog):
             _(u"L'aperçu est immédiat. L'interface complète utilisera ces réglages au prochain démarrage."),
         )
 
+        self.bouton_defaut = wx.Button(self, wx.ID_ANY, _(u"Valeurs par défaut"))
         self.bouton_ok = wx.Button(self, wx.ID_OK, _(u"Valider"))
         self.bouton_annuler = wx.Button(self, wx.ID_CANCEL, _(u"Annuler"))
 
@@ -172,8 +178,8 @@ class Dialog(wx.Dialog):
         self._binds()
         self.MAJaperçu()
 
-        self.SetMinSize((570, 390))
-        self.SetSize((620, 450))
+        self.SetMinSize((590, 440))
+        self.SetSize((650, 510))
         self.CenterOnParent()
 
     def _importation(self):
@@ -188,43 +194,64 @@ class Dialog(wx.Dialog):
         echelle = UTILS_Interface.GetEchelle()
         self.ctrl_echelle.SetSelection(UTILS_Interface.ECHELLES.index(echelle))
 
+        taille_texte = UTILS_Interface.GetTailleTexte()
+        self.ctrl_texte.SetSelection(UTILS_Interface.TAILLES_TEXTE.index(taille_texte))
+
     def _layout(self):
-        grille = wx.FlexGridSizer(rows=3, cols=2, vgap=8, hgap=10)
+        grille = wx.FlexGridSizer(rows=4, cols=2, vgap=8, hgap=10)
         grille.Add(self.label_apparence, 0, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
         grille.Add(self.ctrl_apparence, 1, wx.EXPAND)
         grille.Add(self.label_theme, 0, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
         grille.Add(self.ctrl_theme, 1, wx.EXPAND)
         grille.Add(self.label_echelle, 0, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
         grille.Add(self.ctrl_echelle, 1, wx.EXPAND)
+        grille.Add(self.label_texte, 0, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
+        grille.Add(self.ctrl_texte, 1, wx.EXPAND)
         grille.AddGrowableCol(1)
 
         box_apercu = wx.StaticBoxSizer(wx.StaticBox(self, -1, _(u"Aperçu")), wx.VERTICAL)
         box_apercu.Add(self.apercu, 1, wx.ALL | wx.EXPAND, 6)
 
-        boutons = wx.StdDialogButtonSizer()
-        boutons.AddButton(self.bouton_ok)
-        boutons.AddButton(self.bouton_annuler)
-        boutons.Realize()
+        boutons_validation = wx.StdDialogButtonSizer()
+        boutons_validation.AddButton(self.bouton_ok)
+        boutons_validation.AddButton(self.bouton_annuler)
+        boutons_validation.Realize()
+
+        ligne_boutons = wx.BoxSizer(wx.HORIZONTAL)
+        ligne_boutons.Add(self.bouton_defaut, 0, 0, 0)
+        ligne_boutons.AddStretchSpacer(1)
+        ligne_boutons.Add(boutons_validation, 0, 0, 0)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(grille, 0, wx.ALL | wx.EXPAND, 12)
         sizer.Add(self.info_systeme, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 12)
+        sizer.Add(self.info_accessibilite, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 12)
         sizer.Add(box_apercu, 1, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 12)
         sizer.Add(self.info, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 12)
-        sizer.Add(boutons, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.ALIGN_RIGHT, 12)
+        sizer.Add(ligne_boutons, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 12)
         self.SetSizer(sizer)
 
     def _binds(self):
         self.ctrl_apparence.Bind(wx.EVT_CHOICE, self.OnChoix)
         self.ctrl_theme.Bind(wx.EVT_CHOICE, self.OnChoix)
         self.ctrl_echelle.Bind(wx.EVT_CHOICE, self.OnChoix)
+        self.ctrl_texte.Bind(wx.EVT_CHOICE, self.OnChoix)
+        self.bouton_defaut.Bind(wx.EVT_BUTTON, self.OnValeursDefaut)
 
     def GetValeurs(self):
         return {
             "apparence": self.liste_codes_apparence[self.ctrl_apparence.GetSelection()],
             "theme": self.liste_codes_theme[self.ctrl_theme.GetSelection()],
             "echelle": UTILS_Interface.ECHELLES[self.ctrl_echelle.GetSelection()],
+            "taille_texte": UTILS_Interface.TAILLES_TEXTE[self.ctrl_texte.GetSelection()],
         }
+
+    def OnValeursDefaut(self, event):
+        self.ctrl_apparence.SetSelection(self.liste_codes_apparence.index("systeme"))
+        self.ctrl_theme.SetSelection(self.liste_codes_theme.index("Vert"))
+        self.ctrl_echelle.SetSelection(UTILS_Interface.ECHELLES.index(100))
+        self.ctrl_texte.SetSelection(UTILS_Interface.TAILLES_TEXTE.index(100))
+        self.MAJaperçu()
 
     def OnChoix(self, event):
         self.MAJaperçu()
@@ -250,5 +277,6 @@ def Ouvrir(parent):
         UTILS_Interface.SetApparence(valeurs["apparence"])
         UTILS_Interface.SetTheme(valeurs["theme"])
         UTILS_Interface.SetEchelle(valeurs["echelle"])
+        UTILS_Interface.SetTailleTexte(valeurs["taille_texte"])
     dlg.Destroy()
     return valeurs

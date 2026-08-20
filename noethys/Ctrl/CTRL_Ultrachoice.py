@@ -11,6 +11,7 @@
 
 import Chemins
 from Utils import UTILS_Adaptations
+from Utils import UTILS_Interface
 from Utils.UTILS_Traduction import _
 import wx
 from Ctrl import CTRL_Bouton_image
@@ -25,10 +26,15 @@ class CTRL(OwnerDrawnComboBox):
     def __init__(self, parent, donnees=[], nbreLignesDescription=1, wrap=False, hauteur=None, style=wx.CB_READONLY) :
         self.donnees = donnees
         self.nbreLignesDescription = nbreLignesDescription
+        facteur_interface = UTILS_Interface.GetEchelle() / 100.0
+        facteur_texte = facteur_interface * (UTILS_Interface.GetTailleTexte() / 100.0)
+        # Le contrôle reste dense, mais sa hauteur minimale suit la taille du
+        # texte afin d'éviter tout rognage avec les réglages d'accessibilité.
+        facteur_hauteur = max(facteur_interface, facteur_texte)
         if hauteur == None :
-            self.hauteurItem = 33 + (self.nbreLignesDescription*14)
+            self.hauteurItem = max(28, int(round((33 + (self.nbreLignesDescription * 14)) * facteur_hauteur)))
         else :
-            self.hauteurItem = hauteur
+            self.hauteurItem = max(20, int(round(hauteur * facteur_interface)))
         self.wrap = wrap
         self.selection = None
             
@@ -38,8 +44,29 @@ class CTRL(OwnerDrawnComboBox):
             listeLabels.append(donnee["label"])
 
         OwnerDrawnComboBox.__init__(self, parent, -1, choices=listeLabels, size=(-1, self.hauteurItem), style=style)
+        try:
+            UTILS_Interface.AppliquerAffichage(self, recursif=False)
+        except Exception:
+            pass
 
         self.Bind(wx.EVT_COMBOBOX, self.OnSelection)
+
+    def _Police(self, coefficient=1.0, gras=False):
+        """Retourne une police dérivée de la police réellement héritée."""
+        try:
+            police = wx.Font(self.GetFont())
+            if not police.IsOk():
+                police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
+            if hasattr(police, "GetFractionalPointSize") and hasattr(police, "SetFractionalPointSize"):
+                taille = max(5.0, police.GetFractionalPointSize() * coefficient)
+                police.SetFractionalPointSize(taille)
+            else :
+                police.SetPointSize(max(5, int(round(police.GetPointSize() * coefficient))))
+            if gras:
+                police.SetWeight(wx.FONTWEIGHT_BOLD)
+            return police
+        except Exception:
+            return self.GetFont()
 
     def OnSelection(self, event):
         self.selection = event.GetSelection() 
@@ -74,17 +101,26 @@ class CTRL(OwnerDrawnComboBox):
             if flags & ODCB_PAINTING_CONTROL:
                 # for painting the control itself
                 self.selection = item
-                self.DessineItemActif(dc, r, dictItem)
+                self.DessineItemActif(dc, r, dictItem, flags)
             else:
                 # for painting the items in the popup
-                self.DessineItem(dc, r, dictItem)
+                self.DessineItem(dc, r, dictItem, flags)
            
-    def DessineItemActif(self, dc, r, dictItem):
+    def DessineItemActif(self, dc, r, dictItem, flags=0):
         """ Dessine le contrôle """        
-        self.DessineItem(dc, r, dictItem)
+        self.DessineItem(dc, r, dictItem, flags)
         
-    def DessineItem(self, dc, r, dictItem):
+    def DessineItem(self, dc, r, dictItem, flags=0):
         """ Dessine un item dans la liste popup """
+        sombre = UTILS_Interface.EstSombre()
+        selectionne = bool(flags & ODCB_PAINTING_SELECTED)
+        # Quand la plateforme dessine la sélection, on conserve sa couleur de
+        # texte native. Sinon, les deux niveaux typographiques suivent les rôles
+        # du design system.
+        texte_natif = dc.GetTextForeground()
+        texte_principal = texte_natif if selectionne else UTILS_Interface.GetCouleurRole("on_surface", sombre=sombre)
+        texte_secondaire = texte_natif if selectionne else UTILS_Interface.GetCouleurRole("on_surface_variant", sombre=sombre)
+
         # Image
         if ("image" in dictItem) == False or dictItem["image"] == None :
             tailleImage = (0, 0)
@@ -93,38 +129,38 @@ class CTRL(OwnerDrawnComboBox):
             dc.DrawBitmap(dictItem["image"], int(r.x), int((r.y + 0) + ( (r.height/2) - dc.GetCharHeight() )/2))
         
         # Dessin du label
-        dc.SetFont(wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
-        dc.DrawText(dictItem["label"], int(r.x + tailleImage[0] + 4), int((r.y + 0) + ( (r.height/2) - dc.GetCharHeight() )/2))
-        
-        # Dessin de la ligne
-##        pen = wx.Pen(dc.GetTextForeground(), 0.5, wx.SOLID)
-##        dc.SetPen(pen)
-##        dc.DrawLine( r.x+5+ tailleImage[0], r.y+((r.height/4)*3)-8, r.x+r.width - 5, r.y+((r.height/4)*3)-8)
+        dc.SetTextForeground(texte_principal)
+        dc.SetFont(self._Police(1.05, gras=True))
+        hauteur_label = dc.GetCharHeight()
+        dc.DrawText(dictItem["label"], int(r.x + tailleImage[0] + 4), int(r.y + max(0, (r.height / 2 - hauteur_label) / 2)))
         
         # Dessin de la description
         description = dictItem["description"]
-        dc.SetFont(wx.Font(7, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, ""))
+        dc.SetTextForeground(texte_secondaire)
+        dc.SetFont(self._Police(0.82, gras=False))
         largeur = r.width - tailleImage[0] - 4
         description = wordwrap.wordwrap(description, largeur, dc)
         if self.wrap == False :
             if "\n" in description :
                 description = u"%s..." % description[0:description.index("\n")-1]
-            
-            dc.DrawText(description, int(r.x + tailleImage[0] + 4), int((r.y + 16) + ( (r.height/2) - dc.GetCharHeight() )/2))
+            y_description = r.y + max(hauteur_label + 3, int(r.height / 2))
+            dc.DrawText(description, int(r.x + tailleImage[0] + 4), int(y_description))
         else :
-            dc.DrawLabel(description, wx.Rect(int(r.x + tailleImage[0] + 4), int((r.y + 16) + ( (r.height/2) - dc.GetCharHeight() )/2), int(r.width - tailleImage[0]), int(self.nbreLignesDescription*15)))
+            y_description = r.y + max(hauteur_label + 3, int(r.height / 2))
+            dc.DrawLabel(description, wx.Rect(int(r.x + tailleImage[0] + 4), int(y_description), int(r.width - tailleImage[0]), int(max(14, r.height - (y_description - r.y)))))
         
     
     def OnDrawBackground(self, dc, rect, item, flags):
-        # If the item is selected, or its item # iseven, or we are painting the
-        # combo control itself, then use the default rendering.
-        if (item & 1 == 0 or flags & (ODCB_PAINTING_CONTROL |
-                                      ODCB_PAINTING_SELECTED)):
+        # Sélection et contrôle fermé : conserver le rendu natif de la
+        # plateforme. Les lignes du popup reçoivent simplement une alternance
+        # sémantique discrète, claire comme sombre.
+        if flags & (ODCB_PAINTING_CONTROL | ODCB_PAINTING_SELECTED):
             OwnerDrawnComboBox.OnDrawBackground(self, dc, rect, item, flags)
             return
 
-        # Otherwise, draw every other background with different colour.
-        bgCol = wx.Colour(240, 240, 250)
+        sombre = UTILS_Interface.EstSombre()
+        role = "surface_container_lowest" if item % 2 == 0 else "surface_container_low"
+        bgCol = UTILS_Interface.GetCouleurRole(role, sombre=sombre)
         dc.SetBrush(wx.Brush(bgCol))
         dc.SetPen(wx.Pen(bgCol))
         if 'phoenix' in wx.PlatformInfo:
@@ -135,7 +171,6 @@ class CTRL(OwnerDrawnComboBox):
     # Overridden from OwnerDrawnComboBox, should return the height
     # needed to display an item in the popup, or -1 for default
     def OnMeasureItem(self, item):
-        # Simply demonstrate the ability to have variable-height items
         return self.hauteurItem
 
     # Overridden from OwnerDrawnComboBox.  Callback for item width, or
@@ -187,7 +222,7 @@ class MyFrame(wx.Frame):
 if __name__ == '__main__':
     app = wx.App(0)
     #wx.InitAllImageHandlers()
-    frame_1 = MyFrame(None, -1, "OL TEST")
+    frame_1 = MyFrame(None, -1, "OL TEST", size=(800, 400))
     app.SetTopWindow(frame_1)
     frame_1.Show()
     app.MainLoop()
