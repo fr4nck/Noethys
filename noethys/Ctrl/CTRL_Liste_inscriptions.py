@@ -8,120 +8,101 @@
 # Licence:         Licence GNU GPL
 #------------------------------------------------------------------------
 
-
-import Chemins
-from Utils import UTILS_Adaptations
-from Utils.UTILS_Traduction import _
 import wx
+
 from Ctrl import CTRL_Bouton_image
-import wx.lib.agw.hyperlink as Hyperlink
 from Ol import OL_Liste_inscriptions
-from Utils import UTILS_Utilisateurs
-
-
+from Utils import UTILS_Interface
+from Utils import UTILS_UIMetrics
+from Utils.UTILS_Traduction import _
 
 
 class CTRL(wx.Panel):
+    """Liste des inscriptions avec commandes nommées et surface responsive."""
+
     def __init__(self, parent, filtres=[], nomListe="OL_Liste_inscriptions"):
         wx.Panel.__init__(self, parent, id=-1, name="CTRL_Liste_inscriptions", style=wx.TAB_TRAVERSAL)
         self.parent = parent
-        
-        # Liste des locations
-        self.listviewAvecFooter = OL_Liste_inscriptions.ListviewAvecFooter(self, kwargs={"checkColonne" : True, "nomListe": nomListe})
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+
+        self.listviewAvecFooter = OL_Liste_inscriptions.ListviewAvecFooter(
+            self,
+            kwargs={"checkColonne": True, "nomListe": nomListe},
+        )
         self.ctrl_inscriptions = self.listviewAvecFooter.GetListview()
 
-        # Commandes de liste
-        self.bouton_apercu = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Apercu.png"), wx.BITMAP_TYPE_ANY))
-        self.bouton_email = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Emails_exp.png"), wx.BITMAP_TYPE_ANY))
-        self.bouton_supprimer = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Supprimer.png"), wx.BITMAP_TYPE_ANY))
-        self.bouton_liste_apercu = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Apercu.png"), wx.BITMAP_TYPE_ANY))
-        self.bouton_liste_imprimer = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Imprimante.png"), wx.BITMAP_TYPE_ANY))
-        self.bouton_liste_export_texte = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Texte2.png"), wx.BITMAP_TYPE_ANY))
-        self.bouton_liste_export_excel = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Excel.png"), wx.BITMAP_TYPE_ANY))
-        
-        # Options de liste
-        self.ctrl_recherche = OL_Liste_inscriptions.CTRL_Outils(self, listview=self.ctrl_inscriptions, afficherCocher=True)
+        self.bouton_apercu = self._CreerBouton(_(u"Aperçu inscription"), "Images/16x16/Apercu.png", _(u"Afficher un aperçu de l'inscription sélectionnée"))
+        self.bouton_email = self._CreerBouton(_(u"Envoyer"), "Images/16x16/Emails_exp.png", _(u"Envoyer l'inscription sélectionnée par Email"))
+        # L'action suppression reste volontairement non reliée comme dans le code historique.
+        self.bouton_supprimer = self._CreerBouton(_(u"Supprimer"), "Images/16x16/Supprimer.png", _(u"Supprimer l'inscription sélectionnée"))
+        self.bouton_supprimer.Hide()
+        self.bouton_liste_apercu = self._CreerBouton(_(u"Aperçu liste"), "Images/16x16/Apercu.png", _(u"Afficher un aperçu avant impression de cette liste"))
+        self.bouton_liste_imprimer = self._CreerBouton(_(u"Imprimer"), "Images/16x16/Imprimante.png", _(u"Imprimer cette liste"))
+        self.bouton_liste_export_texte = self._CreerBouton(_(u"Texte"), "Images/16x16/Texte2.png", _(u"Exporter cette liste au format Texte"))
+        self.bouton_liste_export_excel = self._CreerBouton(_(u"Excel"), "Images/16x16/Excel.png", _(u"Exporter cette liste au format Excel"))
 
-        self.__set_properties()
+        self.ctrl_recherche = OL_Liste_inscriptions.CTRL_Outils(self, listview=self.ctrl_inscriptions, afficherCocher=True)
         self.__do_layout()
 
         self.Bind(wx.EVT_BUTTON, self.OnBoutonApercu, self.bouton_apercu)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonEmail, self.bouton_email)
-        # self.Bind(wx.EVT_BUTTON, self.OnBoutonSupprimer, self.bouton_supprimer)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonListeApercu, self.bouton_liste_apercu)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonListeImprimer, self.bouton_liste_imprimer)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonListeExportTexte, self.bouton_liste_export_texte)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonListeExportExcel, self.bouton_liste_export_excel)
 
-    def __set_properties(self):
-        self.bouton_apercu.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour afficher un aperçu de l'inscription sélectionnée")))
-        self.bouton_email.SetToolTip(wx.ToolTip(_(u"Cliquez ici envoyer l'inscription sélectionnée par Email")))
-        self.bouton_supprimer.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour supprimer l'inscription sélectionnée ou les locations cochées")))
-        self.bouton_liste_apercu.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour afficher un aperçu avant impression de cette liste")))
-        self.bouton_liste_imprimer.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour imprimer cette liste")))
-        self.bouton_liste_export_texte.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour exporter cette liste au format Texte")))
-        self.bouton_liste_export_excel.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour exporter cette liste au format Excel")))
+    def _CreerBouton(self, texte, image, tooltip):
+        bouton = CTRL_Bouton_image.CTRL(self, texte=texte, cheminImage=image, tailleImage=(20, 20))
+        bouton.SetToolTip(wx.ToolTip(tooltip))
+        return bouton
 
     def __do_layout(self):
-        grid_sizer_base = wx.FlexGridSizer(rows=2, cols=1, vgap=5, hgap=5)
+        marge = UTILS_UIMetrics.spacing(2)
+        espace = UTILS_UIMetrics.spacing(1)
+        separation = UTILS_UIMetrics.spacing(3)
 
-        grid_sizer_liste = wx.FlexGridSizer(rows=2, cols=2, vgap=5, hgap=5)
-        grid_sizer_liste.Add(self.listviewAvecFooter, 1, wx.EXPAND, 0)
-        
-        # Commandes de liste
-        grid_sizer_commandes = wx.FlexGridSizer(rows=10, cols=1, vgap=5, hgap=5)
-        grid_sizer_commandes.Add(self.bouton_apercu, 0, 0, 0)
-        grid_sizer_commandes.Add(self.bouton_email, 0, 0, 0)
-        grid_sizer_commandes.Add((5, 5), 0, wx.EXPAND, 0)
+        actions = wx.BoxSizer(wx.HORIZONTAL)
+        for bouton in (self.bouton_apercu, self.bouton_email):
+            actions.Add(bouton, 0, wx.RIGHT, espace)
+        actions.AddSpacer(separation)
+        for bouton in (
+            self.bouton_liste_apercu,
+            self.bouton_liste_imprimer,
+            self.bouton_liste_export_texte,
+            self.bouton_liste_export_excel,
+        ):
+            actions.Add(bouton, 0, wx.RIGHT, espace)
+        actions.AddStretchSpacer(1)
 
-        # grid_sizer_commandes.Add(self.bouton_supprimer, 0, 0, 0)
-        # grid_sizer_commandes.Add((5, 5), 0, wx.EXPAND, 0)
-
-        grid_sizer_commandes.Add(self.bouton_liste_apercu, 0, 0, 0)
-        grid_sizer_commandes.Add(self.bouton_liste_imprimer, 0, 0, 0)
-        grid_sizer_commandes.Add((5, 5), 0, wx.EXPAND, 0)
-        
-        grid_sizer_commandes.Add(self.bouton_liste_export_texte, 0, 0, 0)
-        grid_sizer_commandes.Add(self.bouton_liste_export_excel, 0, 0, 0)
-        grid_sizer_liste.Add(grid_sizer_commandes, 1, wx.EXPAND, 0)
-        
-        grid_sizer_outils = wx.FlexGridSizer(rows=1, cols=2, vgap=5, hgap=30)
-        grid_sizer_outils.Add(self.ctrl_recherche, 1, wx.EXPAND, 0)
-        grid_sizer_outils.AddGrowableCol(0)
-        grid_sizer_liste.Add(grid_sizer_outils, 1, wx.EXPAND, 0)
-        
-        grid_sizer_liste.AddGrowableRow(0)
-        grid_sizer_liste.AddGrowableCol(0)
-        grid_sizer_base.Add(grid_sizer_liste, 1, wx.EXPAND, 0)
-        
-        grid_sizer_base.AddGrowableRow(0)
-        grid_sizer_base.AddGrowableCol(0)
-
-        self.SetSizer(grid_sizer_base)
-        grid_sizer_base.Fit(self)
+        principal = wx.BoxSizer(wx.VERTICAL)
+        principal.Add(actions, 0, wx.EXPAND | wx.BOTTOM, marge)
+        principal.Add(self.listviewAvecFooter, 1, wx.EXPAND)
+        principal.Add(self.ctrl_recherche, 0, wx.EXPAND | wx.TOP, marge)
+        self.SetSizer(principal)
+        self.SetMinSize((UTILS_UIMetrics.px(600), UTILS_UIMetrics.px(300)))
         self.Layout()
 
-    def OnBoutonApercu(self, event): 
+    def OnBoutonApercu(self, event):
         self.ctrl_inscriptions.ImprimerPDF(None)
 
-    def OnBoutonEmail(self, event): 
+    def OnBoutonEmail(self, event):
         self.ctrl_inscriptions.EnvoyerEmail(None)
 
-    def OnBoutonSupprimer(self, event): 
+    def OnBoutonSupprimer(self, event):
         self.ctrl_inscriptions.Supprimer(None)
 
-    def OnBoutonListeApercu(self, event): 
+    def OnBoutonListeApercu(self, event):
         self.ctrl_inscriptions.Apercu(None)
 
-    def OnBoutonListeImprimer(self, event): 
+    def OnBoutonListeImprimer(self, event):
         self.ctrl_inscriptions.Imprimer(None)
 
-    def OnBoutonListeExportTexte(self, event): 
+    def OnBoutonListeExportTexte(self, event):
         self.ctrl_inscriptions.ExportTexte(None)
 
-    def OnBoutonListeExportExcel(self, event): 
+    def OnBoutonListeExportExcel(self, event):
         self.ctrl_inscriptions.ExportExcel(None)
-    
+
     def GetTracksCoches(self):
         return self.ctrl_inscriptions.GetTracksCoches()
 
@@ -130,43 +111,30 @@ class CTRL(wx.Panel):
 
     def MAJ(self):
         self.ctrl_inscriptions.MAJ(IDactivite=0, listeGroupes=None, listeCategories=None)
-        
+
     def SetFiltres(self, filtres=[]):
         self.ctrl_inscriptions.SetFiltres(filtres)
-
-
-
-
 
 
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
-        sizer_1 = wx.BoxSizer(wx.VERTICAL)
-        sizer_1.Add(panel, 1, wx.ALL|wx.EXPAND)
-        self.SetSizer(sizer_1)        
         self.ctrl = CTRL(panel)
-        self.ctrl.MAJ() 
-        self.boutonTest = wx.Button(panel, -1, _(u"Bouton de test"))
-        sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2.Add(self.ctrl, 1, wx.ALL|wx.EXPAND, 4)
-        sizer_2.Add(self.boutonTest, 0, wx.ALL|wx.EXPAND, 4)
-        panel.SetSizer(sizer_2)
+        self.ctrl.MAJ()
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        panel.SetSizer(sizer)
+        principal = wx.BoxSizer(wx.VERTICAL)
+        principal.Add(panel, 1, wx.EXPAND)
+        self.SetSizer(principal)
         self.Layout()
         self.CentreOnScreen()
-        self.Bind(wx.EVT_BUTTON, self.OnBoutonTest, self.boutonTest)
-        
-    def OnBoutonTest(self, event):
-        """ Bouton Test """
-        pass
+
 
 if __name__ == '__main__':
     app = wx.App(0)
-    #wx.InitAllImageHandlers()
-    frame_1 = MyFrame(None, -1, _(u"TEST"), size=(700, 500))
+    frame_1 = MyFrame(None, -1, _(u"TEST"), size=(1000, 600))
     app.SetTopWindow(frame_1)
     frame_1.Show()
     app.MainLoop()
-
-
