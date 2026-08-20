@@ -13,19 +13,20 @@ import datetime
 
 import wx
 import wx.lib.agw.hypertreelist as HTL
-from wx.lib.agw.customtreectrl import (
-    EVT_TREE_ITEM_CHECKED, EVT_TREE_ITEM_RIGHT_CLICK
-)
+from wx.lib.agw.customtreectrl import EVT_TREE_ITEM_CHECKED, EVT_TREE_ITEM_RIGHT_CLICK
 
 import Chemins
-from Utils import UTILS_Adaptations
 import GestionDB
+from Utils import UTILS_Adaptations
 from Utils import UTILS_Dates
+from Utils import UTILS_Interface
+from Utils import UTILS_UIMetrics
 from Utils.UTILS_Traduction import _
 
 
-
 class CTRL(HTL.HyperTreeList):
+    """Sélection des écoles/classes affichées dans les grilles métier."""
+
     def __init__(self, parent):
         HTL.HyperTreeList.__init__(self, parent, -1)
         self.parent = parent
@@ -36,23 +37,62 @@ class CTRL(HTL.HyperTreeList):
         self.cocheInconnue = True
         self.cochesActives = {}
         self.cochesEcolesActives = set()
+        self._resize_pending = False
 
-        self.SetBackgroundColour(wx.WHITE)
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+        self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        try:
+            main = self.GetMainWindow()
+            main.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+            main.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        except Exception:
+            pass
+        try:
+            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
+            facteur = UTILS_Interface.GetTailleTexte() / 100.0
+            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
+            self.SetFont(police)
+            self.GetMainWindow().SetFont(police)
+        except Exception:
+            pass
+
         self.SetAGWWindowStyleFlag(
             HTL.TR_NO_HEADER | wx.TR_HIDE_ROOT | wx.TR_HAS_BUTTONS |
             wx.TR_HAS_VARIABLE_ROW_HEIGHT | wx.TR_FULL_ROW_HIGHLIGHT
         )
         self.EnableSelectionVista(True)
+        self.SetToolTip(wx.ToolTip(_(u"Cochez les écoles et classes à afficher. Clic droit pour tout cocher ou décocher.")))
 
-        self.SetToolTip(wx.ToolTip(_(u"Cochez les écoles et classes à afficher")))
+        self.AddColumn(_(u"École / classe"))
+        self.SetMinSize((UTILS_UIMetrics.px(300), UTILS_UIMetrics.px(220)))
 
-        # Création des colonnes
-        self.AddColumn(_(u"Ecole/classe"))
-        self.SetColumnWidth(0, 420)
-
-        # Binds
         self.Bind(EVT_TREE_ITEM_CHECKED, self.OnCheckItem)
         self.Bind(EVT_TREE_ITEM_RIGHT_CLICK, self.OnContextMenu)
+        self.Bind(wx.EVT_SIZE, self.OnSize)
+        wx.CallAfter(self._AjusterColonne)
+
+    def _BitmapMenu(self, image):
+        taille = UTILS_UIMetrics.icon_size("compact")
+        chemin = Chemins.GetStaticIconPath(image, taille=taille)
+        bitmap = wx.Bitmap(chemin, wx.BITMAP_TYPE_ANY)
+        if bitmap.IsOk() and (bitmap.GetWidth() != taille or bitmap.GetHeight() != taille):
+            bitmap = wx.Bitmap(bitmap.ConvertToImage().Scale(taille, taille, wx.IMAGE_QUALITY_HIGH))
+        return bitmap
+
+    def OnSize(self, event):
+        event.Skip()
+        if self._resize_pending:
+            return
+        self._resize_pending = True
+        wx.CallAfter(self._AjusterColonne)
+
+    def _AjusterColonne(self):
+        self._resize_pending = False
+        try:
+            largeur = self.GetClientSize().GetWidth()
+            self.SetColumnWidth(0, max(UTILS_UIMetrics.px(280), largeur - UTILS_UIMetrics.spacing(2)))
+        except Exception:
+            pass
 
     def SetDate(self, date=None):
         self.date = date
@@ -65,7 +105,6 @@ class CTRL(HTL.HyperTreeList):
         if self.MAJenCours is False:
             item = event.GetItem()
             data = self.GetPyData(item)
-            # Active ou non les branches enfants
             if data["type"] == "ecole":
                 if self.IsItemChecked(item):
                     self.EnableChildren(item, True)
@@ -81,42 +120,28 @@ class CTRL(HTL.HyperTreeList):
                     cochesGroupes.discard(data["ID"])
             else:
                 self.cocheInconnue = self.IsItemChecked(item)
-            # Envoie les données aux contrôle parent
             if hasattr(self.parent, "MAJecoles"):
                 self.parent.MAJecoles()
 
     def OnContextMenu(self, event):
         menu = UTILS_Adaptations.Menu()
-
         self.ID_COCHER_TOUTES = wx.Window.NewControlId()
         self.ID_COCHER_AUCUNE = wx.Window.NewControlId()
 
-        # Ajouter les éléments au menu
-        item = wx.MenuItem(
-            menu, self.ID_COCHER_TOUTES, u"Tout cocher",
-            u"Cocher toutes les écoles et classes",
-        )
-        item.SetBitmap(wx.Bitmap(
-            Chemins.GetStaticPath("Images/16x16/Cocher.png"),
-            wx.BITMAP_TYPE_ANY,
-        ))
-        menu.AppendItem(item)
-        item = wx.MenuItem(
-            menu, self.ID_COCHER_AUCUNE, u"Tout décocher",
-            u"Décocher toutes les écoles et classes",
-        )
-        item.SetBitmap(wx.Bitmap(
-            Chemins.GetStaticPath("Images/16x16/Decocher.png"),
-            wx.BITMAP_TYPE_ANY,
-        ))
+        item = wx.MenuItem(menu, self.ID_COCHER_TOUTES, _(u"Tout cocher"), _(u"Cocher toutes les écoles et classes"))
+        item.SetBitmap(self._BitmapMenu("Images/16x16/Cocher.png"))
         menu.AppendItem(item)
 
-        # Attache les événements
-        wx.EVT_MENU(menu, self.ID_COCHER_TOUTES, self.OnCocher)
-        wx.EVT_MENU(menu, self.ID_COCHER_AUCUNE, self.OnCocher)
+        item = wx.MenuItem(menu, self.ID_COCHER_AUCUNE, _(u"Tout décocher"), _(u"Décocher toutes les écoles et classes"))
+        item.SetBitmap(self._BitmapMenu("Images/16x16/Decocher.png"))
+        menu.AppendItem(item)
 
-        # Affiche le menu
-        self.PopupMenu(menu, event.GetPoint())
+        self.Bind(wx.EVT_MENU, self.OnCocher, id=self.ID_COCHER_TOUTES)
+        self.Bind(wx.EVT_MENU, self.OnCocher, id=self.ID_COCHER_AUCUNE)
+        try:
+            self.PopupMenu(menu, event.GetPoint())
+        except Exception:
+            self.PopupMenu(menu)
         menu.Destroy()
 
     def OnCocher(self, event):
@@ -127,14 +152,13 @@ class CTRL(HTL.HyperTreeList):
             self.CocheListeRien()
         else:
             return
-
         if hasattr(self.parent, "MAJecoles"):
             self.parent.MAJecoles()
 
     def Cocher(self, etat=True):
         self.MAJenCours = True
         item = self.root
-        for index in range(0, self.GetChildrenCount(self.root)):
+        for _index in range(0, self.GetChildrenCount(self.root)):
             item = self.GetNext(item)
             self.CheckItem(item, etat)
         if etat:
@@ -143,41 +167,33 @@ class CTRL(HTL.HyperTreeList):
 
     def CocheListeTout(self):
         self.Cocher(True)
-
-        # Mets à jour l'état des coches
         self.cocheInconnue = True
         self.cochesEcolesActives = set(self.dictEcoles.keys())
         self.cochesActives = {
-            ID: set([
-                d["IDclasse"] for d in self.dictEcoles[ID]["classes"]
-            ]) for ID in self.cochesEcolesActives
+            ID: set(d["IDclasse"] for d in self.dictEcoles[ID]["classes"])
+            for ID in self.cochesEcolesActives
         }
 
     def CocheListeRien(self):
         self.Cocher(False)
-
-        # Mets à jour l'état des coches
         self.cocheInconnue = False
         self.cochesEcolesActives.clear()
-        self.cochesActives = {
-            ID: set() for ID in list(self.dictEcoles.keys())
-        }
+        self.cochesActives = {ID: set() for ID in self.dictEcoles.keys()}
 
     def MAJ(self):
-        """ Met à jour (redessine) tout le contrôle """
         self.dictEcoles = self.Importation()
         self.MAJenCours = True
         self.DeleteAllItems()
         self.root = self.AddRoot(_(u"Racine"))
         self.Remplissage()
         self.MAJenCours = False
+        wx.CallAfter(self._AjusterColonne)
 
     def Importation(self):
         dictEcoles = {}
         if not self.date:
             return dictEcoles
 
-        # Récupération des écoles disponibles le jour sélectionné
         DB = GestionDB.DB()
         req = """SELECT ecoles.IDecole, ecoles.nom,
         classes.IDclasse, classes.nom, classes.niveaux,
@@ -192,95 +208,68 @@ class CTRL(HTL.HyperTreeList):
         listeDonnees = DB.ResultatReq()
         DB.Close()
 
-        for (IDecole, nomEcole, IDclasse, nomClasse, niveaux, date_debut, date_fin) in listeDonnees:
+        for IDecole, nomEcole, IDclasse, nomClasse, niveaux, date_debut, date_fin in listeDonnees:
             if date_debut is not None:
                 date_debut = UTILS_Dates.DateEngEnDateDD(date_debut)
             if date_fin is not None:
                 date_fin = UTILS_Dates.DateEngEnDateDD(date_fin)
-
-            # Mémorisation de l'école
             if IDecole not in dictEcoles:
                 dictEcoles[IDecole] = {"nom": nomEcole, "classes": []}
-
-            # Mémorisation de la classe
             dictEcoles[IDecole]["classes"].append({
                 "IDclasse": IDclasse,
                 "nom": nomClasse,
                 "date_debut": date_debut,
-                "date_fin": date_fin
+                "date_fin": date_fin,
             })
-
         return dictEcoles
 
     def Remplissage(self):
-        # Tri des écoles par nom
-        listeEcoles = []
-        for IDecole, dictEcole in self.dictEcoles.items():
-            listeEcoles.append((dictEcole["nom"], IDecole))
-        listeEcoles.sort()
+        listeEcoles = sorted((dictEcole["nom"], IDecole) for IDecole, dictEcole in self.dictEcoles.items())
 
-        # Remplissage
         for nomEcole, IDecole in listeEcoles:
             dictEcole = self.dictEcoles[IDecole]
-
-            # Initialise l'état des coches pour l'école
             if IDecole not in self.cochesActives:
                 if self.cocherParDefaut is True:
                     self.cochesEcolesActives.add(IDecole)
-                    self.cochesActives[IDecole] = set([
-                        d["IDclasse"] for d in dictEcole["classes"]
-                    ])
+                    self.cochesActives[IDecole] = set(d["IDclasse"] for d in dictEcole["classes"])
                 else:
                     self.cochesActives[IDecole] = set()
 
-            # Niveau Ecole
             niveauEcole = self.AppendItem(self.root, nomEcole, ct_type=1)
-            self.SetPyData(niveauEcole, {
-                "type": "ecole",
-                "ID": IDecole,
-                "nom": nomEcole
-            })
+            self.SetPyData(niveauEcole, {"type": "ecole", "ID": IDecole, "nom": nomEcole})
             self.SetItemBold(niveauEcole, True)
 
-            # Niveau Classes
             for dictClasse in dictEcole["classes"]:
                 IDclasse = dictClasse["IDclasse"]
                 nomClasse = dictClasse["nom"]
-                label = u"{0} (du {1} au {2})".format(
+                label = _(u"{0} (du {1} au {2})").format(
                     nomClasse,
                     UTILS_Dates.DateEngFr(dictClasse["date_debut"]),
                     UTILS_Dates.DateEngFr(dictClasse["date_fin"]),
                 )
                 niveauClasse = self.AppendItem(niveauEcole, label, ct_type=1)
                 self.SetPyData(niveauClasse, {
-                    "type": "classe",
-                    "ID": IDclasse,
-                    "nom": nomClasse,
-                    "IDecole": IDecole,
+                    "type": "classe", "ID": IDclasse, "nom": nomClasse, "IDecole": IDecole,
                 })
-
                 if IDclasse in self.cochesActives[IDecole]:
                     self.CheckItem(niveauClasse)
 
-            # Coche l'école et active ses classes
             if IDecole in self.cochesEcolesActives:
                 self.CheckItem(niveauEcole)
                 self.EnableChildren(niveauEcole, True)
             else:
                 self.EnableChildren(niveauEcole, False)
 
-        # Ajoute une entrée pour les enfants dont la scolarité est inconnue
-        item = self.AppendItem(self.root, u"Scolarité inconnue", ct_type=1)
+        item = self.AppendItem(self.root, _(u"Scolarité inconnue"), ct_type=1)
         self.SetPyData(item, {"type": "inconnu"})
         if self.cocheInconnue:
             self.CheckItem(item)
-
         self.ExpandAllChildren(self.root)
 
     def GetCoches(self, typeTemp="ecole"):
         listeCoches = []
         item = self.root
-        for index in range(0, self.GetChildrenCount(self.root)):
+        for _index in range(0, self.GetChildrenCount(self.root)):
             item = self.GetNext(item)
             if self.IsItemChecked(item) and self.IsItemEnabled(item):
                 data = self.GetPyData(item)
@@ -306,14 +295,14 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
-        sizer_1 = wx.BoxSizer(wx.VERTICAL)
-        sizer_1.Add(panel, 1, wx.ALL | wx.EXPAND)
-        self.SetSizer(sizer_1)
         self.ctrl = CTRL(panel)
         self.ctrl.MAJ()
-        sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, 4)
-        panel.SetSizer(sizer_2)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        panel.SetSizer(sizer)
+        principal = wx.BoxSizer(wx.VERTICAL)
+        principal.Add(panel, 1, wx.EXPAND)
+        self.SetSizer(principal)
         self.Layout()
         self.CentreOnScreen()
 
