@@ -14,8 +14,10 @@ from Utils import UTILS_Adaptations
 from Utils.UTILS_Traduction import _
 import wx
 from Ol import OL_Individus
+from Utils import UTILS_Aui
 from Utils import UTILS_Config
 from Utils import UTILS_Interface
+from Utils import UTILS_Responsive
 
 ID_CREER_FAMILLE = wx.Window.NewControlId()
 ID_MODIFIER_FAMILLE = wx.Window.NewControlId()
@@ -43,11 +45,14 @@ class ToolBar(wx.ToolBar):
             {"ID": ID_PARAMETRES, "label": _(u"Paramètres"), "image": "Images/32x32/Configuration2.png", "tooltip": _(u"Sélectionner les paramètres d'affichage")},
             {"ID": ID_OUTILS, "label": _(u"Outils"), "image": "Images/32x32/Configuration.png", "tooltip": _(u"Outils")},
         ]
+
+        taille_bitmap = UTILS_Responsive.GetTailleIcone(32)
         for bouton in liste_boutons:
             if bouton is None:
                 self.AddSeparator()
             else:
-                bitmap = wx.Bitmap(Chemins.GetStaticPath(bouton["image"]), wx.BITMAP_TYPE_ANY)
+                chemin = Chemins.GetStaticIconPath(bouton["image"], taille=taille_bitmap)
+                bitmap = wx.Bitmap(chemin, wx.BITMAP_TYPE_ANY)
                 try:
                     self.AddTool(bouton["ID"], bouton["label"], bitmap, wx.NullBitmap, wx.ITEM_NORMAL, bouton["tooltip"], "")
                 except Exception:
@@ -61,9 +66,7 @@ class ToolBar(wx.ToolBar):
         self.Bind(wx.EVT_TOOL, self.Parametres, id=ID_PARAMETRES)
         self.Bind(wx.EVT_TOOL, self.MenuOutils, id=ID_OUTILS)
 
-        # Les bitmaps restent denses (desktop) mais vivent dans une barre native
-        # suffisamment haute pour constituer une vraie cible d'action.
-        self.SetToolBitmapSize((32, 32))
+        UTILS_Aui.ConfigurerToolBar(self, taille_base=32, fond_uni=True)
         hauteur_cible = int(round(40 * max(1.0, UTILS_Interface.GetEchelle() / 100.0)))
         self.SetMinSize((-1, max(40, min(56, hauteur_cible))))
         self.Realize()
@@ -95,6 +98,10 @@ class ToolBar(wx.ToolBar):
         self.GetParent().ActualiseParametresAffichage()
         self.GetParent().MAJ()
 
+    def _BitmapMenu(self, image):
+        taille = UTILS_Responsive.GetTailleIcone(16)
+        return wx.Bitmap(Chemins.GetStaticIconPath(image, taille=taille), wx.BITMAP_TYPE_PNG)
+
     def MenuOutils(self, event):
         menuPop = UTILS_Adaptations.Menu()
 
@@ -106,38 +113,38 @@ class ToolBar(wx.ToolBar):
         ID_AIDE = wx.Window.NewControlId()
 
         item = wx.MenuItem(menuPop, ID_APERCU, _(u"Aperçu avant impression"), _(u"Imprimer la liste des effectifs affichée"))
-        item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Apercu.png"), wx.BITMAP_TYPE_PNG))
+        item.SetBitmap(self._BitmapMenu("Images/16x16/Apercu.png"))
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.Apercu, id=ID_APERCU)
 
         item = wx.MenuItem(menuPop, ID_IMPRIMER, _(u"Imprimer"), _(u"Imprimer la liste des effectifs affichée"))
-        item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Imprimante.png"), wx.BITMAP_TYPE_PNG))
+        item.SetBitmap(self._BitmapMenu("Images/16x16/Imprimante.png"))
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.Imprimer, id=ID_IMPRIMER)
 
         menuPop.AppendSeparator()
 
         item = wx.MenuItem(menuPop, ID_EXPORT_TEXTE, _(u"Exporter au format Texte"), _(u"Exporter au format Texte"))
-        item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Texte2.png"), wx.BITMAP_TYPE_PNG))
+        item.SetBitmap(self._BitmapMenu("Images/16x16/Texte2.png"))
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.GetParent().ctrl_listview.ExportTexte, id=ID_EXPORT_TEXTE)
 
         item = wx.MenuItem(menuPop, ID_EXPORT_EXCEL, _(u"Exporter au format Excel"), _(u"Exporter au format Excel"))
-        item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Excel.png"), wx.BITMAP_TYPE_PNG))
+        item.SetBitmap(self._BitmapMenu("Images/16x16/Excel.png"))
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.GetParent().ctrl_listview.ExportExcel, id=ID_EXPORT_EXCEL)
 
         menuPop.AppendSeparator()
 
         item = wx.MenuItem(menuPop, ID_ACTUALISER, _(u"Actualiser"), _(u"Actualiser l'affichage"))
-        item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Actualiser2.png"), wx.BITMAP_TYPE_PNG))
+        item.SetBitmap(self._BitmapMenu("Images/16x16/Actualiser2.png"))
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.Actualiser, id=ID_ACTUALISER)
 
         menuPop.AppendSeparator()
 
         item = wx.MenuItem(menuPop, ID_AIDE, _(u"Aide"), _(u"Aide"))
-        item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Aide.png"), wx.BITMAP_TYPE_PNG))
+        item.SetBitmap(self._BitmapMenu("Images/16x16/Aide.png"))
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.Aide, id=ID_AIDE)
 
@@ -171,15 +178,12 @@ class Panel(wx.Panel):
 
         self.__set_properties()
         self.__do_layout()
-
         self.ActualiseParametresAffichage()
 
     def __set_properties(self):
         self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
 
     def __do_layout(self):
-        # Le vieux FlexGridSizer n'apportait rien ici : trois éléments verticaux,
-        # dont la liste doit absorber tout l'espace disponible.
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.toolBar, 0, wx.EXPAND)
         sizer.Add(self.ctrl_listview, 1, wx.EXPAND)
@@ -188,12 +192,6 @@ class Panel(wx.Panel):
         self.Layout()
 
     def _AppliqueListeModerne(self):
-        """Retire la colonne d'avatars décoratifs du panneau d'accueil.
-
-        La suppression du chargement des images est effectuée ensuite dans
-        ``OL_Individus`` ; ici on garantit déjà qu'aucune largeur écran n'est
-        gaspillée par cette colonne historique.
-        """
         try:
             if self.ctrl_listview.GetColumnCount() > 0:
                 self.ctrl_listview.SetColumnWidth(0, 0)
