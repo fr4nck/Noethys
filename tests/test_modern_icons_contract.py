@@ -68,6 +68,11 @@ class ModernIconsContractTests(unittest.TestCase):
         self.assertIsNone(self.icones._icone_pour_chemin("Images/16x16/ProfilExpert.png"))
         self.assertEqual(self.icones._icone_pour_chemin("Images/16x16/Tel.png"), "phone")
 
+    def test_requested_target_size_reaches_generic_modern_pack(self):
+        self.assertIn("GetLegacyOverridePath(normalise, taille=taille_cible)", self.chemins_text)
+        self.assertIn("def GetLegacyOverridePath(chemin, taille=None):", self.icones_text)
+        self.assertIn("(16, 20, 24, 32, 40, 48)", self.icones_text)
+
     def test_identity_layer_is_resolved_before_generic_icons(self):
         self.assertLess(
             self.chemins_text.index("UTILS_Icones_identites"),
