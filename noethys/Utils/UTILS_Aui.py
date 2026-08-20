@@ -6,6 +6,51 @@ ces fonctions sur leurs propres managers/toolbars afin que le comportement
 reste local, testable et prévisible.
 """
 
+# À incrémenter lorsqu'une évolution structurelle du dashboard rend les
+# perspectives précédentes impropres à la restauration.
+PERSPECTIVE_LAYOUT_VERSION = 2
+PARAMETRE_PERSPECTIVE_VERSION = "aui_perspective_layout_version"
+
+
+def VerifierVersionPerspective(manager):
+    """Invalide proprement une ancienne génération de disposition AUI.
+
+    Le manager est déjà explicitement fourni par la MainFrame : aucune classe wx
+    n'est interceptée. Lors d'une montée de version, les perspectives utilisateur
+    de l'ancienne structure sont abandonnées avant le premier chargement.
+    """
+    if manager is None:
+        return False
+    try:
+        from Utils import UTILS_Config
+        version = int(UTILS_Config.GetParametre(PARAMETRE_PERSPECTIVE_VERSION, 0) or 0)
+    except Exception:
+        version = 0
+
+    if version == PERSPECTIVE_LAYOUT_VERSION:
+        return True
+
+    try:
+        fenetre = manager.GetManagedWindow()
+    except Exception:
+        fenetre = None
+
+    # Les attributs existent sur MainFrame. Les effacer ici évite qu'une
+    # perspective ancienne soit ré-enregistrée à la fermeture après avoir été
+    # rejetée.
+    if fenetre is not None:
+        try:
+            fenetre.perspectives = []
+            fenetre.perspective_active = None
+        except Exception:
+            pass
+
+    try:
+        UTILS_Config.SetParametre(PARAMETRE_PERSPECTIVE_VERSION, PERSPECTIVE_LAYOUT_VERSION)
+    except Exception:
+        pass
+    return False
+
 
 def ConfigurerManager(manager):
     """Applique une séparation de panes plus lisible au manager fourni."""
@@ -111,11 +156,21 @@ def ConfigurerToolBar(toolbar, taille_base=16, fond_uni=True):
 
 
 def ChargerPerspective(manager, perspective, fallback=None):
-    """Charge une perspective AUI avec repli sûr sur ``fallback``."""
+    """Charge une perspective AUI avec repli sûr sur ``fallback``.
+
+    Une perspective d'une génération antérieure n'est jamais restaurée : seul
+    le fallback courant est alors chargé.
+    """
     ConfigurerManager(manager)
+    version_valide = VerifierVersionPerspective(manager)
+
+    if version_valide:
+        sources = (perspective, fallback)
+    else:
+        sources = (fallback,)
 
     candidates = []
-    for candidate in (perspective, fallback):
+    for candidate in sources:
         if isinstance(candidate, str) and candidate.strip() and candidate not in candidates:
             candidates.append(candidate)
 
