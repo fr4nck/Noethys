@@ -11,13 +11,39 @@ Write-Host ''
 Write-Host '=== Noethys - recette locale Windows ==='
 Write-Host "Depot : $Root"
 
+function Get-NoethysBootstrapPython {
+    $py = Get-Command py -ErrorAction SilentlyContinue
+    if ($null -ne $py) {
+        try {
+            & py -3.10 -c "import sys; print(sys.executable)" *> $null
+            if ($LASTEXITCODE -eq 0) {
+                return @{ Command = 'py'; Args = @('-3.10') }
+            }
+        }
+        catch {}
+    }
+
+    foreach ($candidate in @('python', 'python3')) {
+        $cmd = Get-Command $candidate -ErrorAction SilentlyContinue
+        if ($null -ne $cmd) {
+            try {
+                $version = & $candidate -c "import sys; print('%d.%d' % sys.version_info[:2])"
+                if ($LASTEXITCODE -eq 0 -and $version.Trim() -eq '3.10') {
+                    return @{ Command = $candidate; Args = @() }
+                }
+            }
+            catch {}
+        }
+    }
+
+    throw 'Python 3.10 est introuvable. Installer Python 3.10 pour Windows puis relancer DEV-Noethys.cmd.'
+}
+
 if (-not (Test-Path $Python)) {
     Write-Host 'Premiere utilisation : creation du venv Python 3.10...'
-    $py = Get-Command py -ErrorAction SilentlyContinue
-    if ($null -eq $py) {
-        throw 'Le lanceur Python "py" est introuvable. Installer Python 3.10 pour Windows puis relancer.'
-    }
-    & py -3.10 -m venv $Venv
+    $bootstrap = Get-NoethysBootstrapPython
+    $bootstrapArgs = @($bootstrap.Args) + @('-m', 'venv', $Venv)
+    & $bootstrap.Command @bootstrapArgs
     if ($LASTEXITCODE -ne 0) { throw 'Impossible de creer le venv Python 3.10.' }
 }
 
