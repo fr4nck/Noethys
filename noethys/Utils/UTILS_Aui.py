@@ -6,7 +6,7 @@ n'est monkey-patché : les managers, toolbars, notebooks et grilles sont
 configurés explicitement lorsqu'ils entrent dans le shell Noethys.
 """
 
-PERSPECTIVE_LAYOUT_VERSION = 2
+PERSPECTIVE_LAYOUT_VERSION = 3
 PARAMETRE_PERSPECTIVE_VERSION = "aui_perspective_layout_version"
 
 
@@ -252,6 +252,204 @@ def _ConfigurerPoliceCaptions(art):
         pass
 
 
+def _GetPane(manager, nom):
+    try:
+        pane = manager.GetPane(nom)
+        if pane is not None and pane.IsOk():
+            return pane
+    except Exception:
+        pass
+    return None
+
+
+def _AppelerPane(pane, nom, *args):
+    if pane is None:
+        return
+    try:
+        getattr(pane, nom)(*args)
+    except Exception:
+        pass
+
+
+def _ConfigurerBarresSysteme(manager):
+    """Fige les barres structurelles du shell sans interdire les barres perso."""
+    for nom, position in (("barre_raccourcis", 0), ("barre_utilisateur", 1)):
+        pane = _GetPane(manager, nom)
+        if pane is None:
+            continue
+        for methode, args in (
+            ("Top", ()),
+            ("Layer", (0,)),
+            ("Row", (0,)),
+            ("Position", (position,)),
+            ("ToolbarPane", ()),
+            ("Gripper", (False,)),
+            ("Floatable", (False,)),
+            ("DockFixed", (True,)),
+            ("CloseButton", (False,)),
+            ("MaximizeButton", (False,)),
+            ("MinimizeButton", (False,)),
+        ):
+            _AppelerPane(pane, methode, *args)
+
+
+def _GetTailleClient(manager):
+    try:
+        fenetre = manager.GetManagedWindow()
+        taille = fenetre.GetClientSize()
+        largeur = int(taille.GetWidth())
+        hauteur = int(taille.GetHeight())
+        return fenetre, largeur, hauteur
+    except Exception:
+        return None, 0, 0
+
+
+def _GetDimensionsResponsive(largeur, hauteur):
+    """Retourne les métriques du cockpit à partir de la place réellement disponible."""
+    try:
+        from Utils import UTILS_Responsive
+        facteur = min(1.30, max(1.0, float(UTILS_Responsive.GetFacteurEcran())))
+    except Exception:
+        facteur = 1.0
+
+    if largeur >= 1800:
+        ratio_gauche = 0.32
+    elif largeur >= 1450:
+        ratio_gauche = 0.34
+    elif largeur >= 1150:
+        ratio_gauche = 0.37
+    else:
+        ratio_gauche = 0.40
+
+    minimum_gauche = int(round(390 * facteur))
+    maximum_gauche = int(round(760 * facteur))
+    largeur_gauche = max(minimum_gauche, min(maximum_gauche, int(round(largeur * ratio_gauche))))
+
+    hauteur_info = max(
+        int(round(104 * facteur)),
+        min(int(round(176 * facteur)), int(round(hauteur * 0.15))),
+    )
+    hauteur_messages_min = max(96, int(round(110 * facteur)))
+
+    return {
+        "largeur_gauche": largeur_gauche,
+        "hauteur_info": hauteur_info,
+        "hauteur_messages_min": hauteur_messages_min,
+    }
+
+
+def _AjusterDocksLateraux(manager, largeur_gauche):
+    """Ajuste la largeur du dock gauche existant sans imposer de pixels aux enfants."""
+    try:
+        import wx.lib.agw.aui as aui
+        docks = manager.GetAllDocks()
+    except Exception:
+        return
+
+    for dock in docks:
+        try:
+            if dock.dock_direction == aui.AUI_DOCK_LEFT:
+                dock.size = largeur_gauche
+        except Exception:
+            pass
+
+
+def _AppliquerLayoutResponsive(manager, forcer=False):
+    """Recalcule uniquement la géométrie structurelle du cockpit."""
+    if manager is None:
+        return False
+
+    fenetre, largeur, hauteur = _GetTailleClient(manager)
+    if fenetre is None or largeur < 500 or hauteur < 400:
+        return False
+
+    precedent = getattr(fenetre, "_noethys_aui_responsive_size", None)
+    if not forcer and precedent is not None:
+        if abs(largeur - precedent[0]) < 28 and abs(hauteur - precedent[1]) < 22:
+            return False
+    fenetre._noethys_aui_responsive_size = (largeur, hauteur)
+
+    dimensions = _GetDimensionsResponsive(largeur, hauteur)
+    _ConfigurerBarresSysteme(manager)
+
+    try:
+        manager.SetDockSizeConstraint(0.46, 0.32)
+    except Exception:
+        pass
+
+    pane_effectifs = _GetPane(manager, "effectifs")
+    if pane_effectifs is not None:
+        largeur_gauche = dimensions["largeur_gauche"]
+        _AppelerPane(pane_effectifs, "MinSize", (min(largeur_gauche, 430), 190))
+        _AppelerPane(pane_effectifs, "BestSize", (largeur_gauche, max(320, int(hauteur * 0.66))))
+        try:
+            pane_effectifs.dock_proportion = 72000
+        except Exception:
+            pass
+        _AjusterDocksLateraux(manager, largeur_gauche)
+
+    pane_messages = _GetPane(manager, "messages")
+    if pane_messages is not None:
+        _AppelerPane(pane_messages, "MinSize", (260, dimensions["hauteur_messages_min"]))
+        try:
+            pane_messages.dock_proportion = 28000
+        except Exception:
+            pass
+
+    pane_info = _GetPane(manager, "ephemeride")
+    if pane_info is not None:
+        hauteur_info = dimensions["hauteur_info"]
+        _AppelerPane(pane_info, "Caption", u"Aujourd'hui / Échéancier")
+        _AppelerPane(pane_info, "MinSize", (-1, max(96, int(hauteur_info * 0.80))))
+        _AppelerPane(pane_info, "BestSize", (-1, hauteur_info))
+
+    try:
+        manager.Update()
+    except Exception:
+        pass
+    try:
+        fenetre.Layout()
+    except Exception:
+        pass
+    return True
+
+
+def _InstallerResponsive(manager):
+    """Installe un seul gestionnaire de resize, débouncé par CallAfter."""
+    try:
+        import wx
+        fenetre = manager.GetManagedWindow()
+    except Exception:
+        return False
+    if fenetre is None:
+        return False
+    if getattr(fenetre, "_noethys_aui_responsive_installe", False):
+        return True
+
+    fenetre._noethys_aui_responsive_installe = True
+    fenetre._noethys_aui_responsive_pending = False
+
+    def _AppliquerPlusTard():
+        try:
+            fenetre._noethys_aui_responsive_pending = False
+            _AppliquerLayoutResponsive(manager, forcer=False)
+        except Exception:
+            fenetre._noethys_aui_responsive_pending = False
+
+    def _OnSize(event):
+        event.Skip()
+        if getattr(fenetre, "_noethys_aui_responsive_pending", False):
+            return
+        fenetre._noethys_aui_responsive_pending = True
+        wx.CallAfter(_AppliquerPlusTard)
+
+    try:
+        fenetre.Bind(wx.EVT_SIZE, _OnSize)
+    except Exception:
+        return False
+    return True
+
+
 def ConfigurerManager(manager):
     """Structure visuellement les panes et composants du manager fourni."""
     if manager is None:
@@ -293,13 +491,14 @@ def ConfigurerManager(manager):
                 pass
 
     _ConfigurerComposantsDuManager(manager)
+    _InstallerResponsive(manager)
+    _AppliquerLayoutResponsive(manager, forcer=True)
 
     try:
         manager.Update()
         fenetre = manager.GetManagedWindow()
         if fenetre is not None:
             fenetre.Layout()
-            fenetre.SendSizeEvent()
     except Exception:
         pass
     return True
