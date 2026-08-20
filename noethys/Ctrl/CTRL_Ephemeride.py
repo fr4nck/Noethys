@@ -6,10 +6,10 @@
 #------------------------------------------------------------------------
 """Panneau d'accueil « Aujourd'hui ».
 
-L'ancien éphéméride mélangeait horloge analogique, citations, fêtes et ticker.
-Ce contrôle conserve le point d'accroche historique ``CTRL_Ephemeride.CTRL`` afin
-que les installations existantes restent compatibles, mais remplace directement
-son contenu et son layout par un panneau opérationnel.
+Le contrôle conserve le point d'accroche historique ``CTRL_Ephemeride.CTRL``
+mais suit désormais les métriques du design system. La météo ne dépend plus de
+coordonnées GPS déjà saisies : ville/code postal peuvent être géocodés et mis en
+cache localement sans modifier la base métier.
 """
 
 import datetime
@@ -24,6 +24,7 @@ import GestionDB
 from Utils.UTILS_Traduction import _
 from Utils import UTILS_Config
 from Utils import UTILS_Interface
+from Utils import UTILS_UIMetrics
 from Utils import UTILS_VacancesScolaires
 
 try:
@@ -52,6 +53,8 @@ LIBELLES_METEO = {
     80: _(u"averses faibles"), 81: _(u"averses"), 82: _(u"fortes averses"),
     95: _(u"orage"), 96: _(u"orage avec grêle"), 99: _(u"fort orage avec grêle"),
 }
+
+PARAM_CACHE_GEOCODAGE = "dashboard_geocodage_cache"
 
 
 def DateDDEnDateFR(date_dd):
@@ -115,20 +118,20 @@ class CTRL(wx.Panel):
         sizer_principal = wx.BoxSizer(wx.HORIZONTAL)
 
         sizer_jour = wx.BoxSizer(wx.VERTICAL)
-        sizer_jour.Add(self.ctrl_date, 0, wx.BOTTOM, 4)
-        sizer_jour.Add(self.ctrl_lieu, 0, wx.BOTTOM, 2)
-        sizer_jour.Add(self.ctrl_meteo, 0, wx.BOTTOM, 2)
+        sizer_jour.Add(self.ctrl_date, 0, wx.BOTTOM, UTILS_UIMetrics.spacing(1))
+        sizer_jour.Add(self.ctrl_lieu, 0, wx.BOTTOM, UTILS_UIMetrics.px(2))
+        sizer_jour.Add(self.ctrl_meteo, 0, wx.BOTTOM, UTILS_UIMetrics.px(2))
         sizer_jour.Add(self.ctrl_soleil, 0)
 
         separation = wx.StaticLine(self, style=wx.LI_VERTICAL)
 
         sizer_echeances = wx.BoxSizer(wx.VERTICAL)
-        sizer_echeances.Add(self.ctrl_titre_echeances, 0, wx.BOTTOM, 4)
+        sizer_echeances.Add(self.ctrl_titre_echeances, 0, wx.BOTTOM, UTILS_UIMetrics.spacing(1))
         sizer_echeances.Add(self.ctrl_echeances, 1, wx.EXPAND)
 
-        marge = 10
+        marge = UTILS_UIMetrics.spacing(2)
         sizer_principal.Add(sizer_jour, 0, wx.EXPAND | wx.ALL, marge)
-        sizer_principal.Add(separation, 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 8)
+        sizer_principal.Add(separation, 0, wx.EXPAND | wx.TOP | wx.BOTTOM, marge)
         sizer_principal.Add(sizer_echeances, 1, wx.EXPAND | wx.ALL, marge)
 
         self.SetSizer(sizer_principal)
@@ -143,9 +146,11 @@ class CTRL(wx.Panel):
             pane = gestionnaire.GetPane(self)
             if not pane.IsOk():
                 return
+            hauteur_min = UTILS_UIMetrics.panel_min_height("compact")
+            hauteur_ideale = max(hauteur_min, UTILS_UIMetrics.px(88))
             pane.Caption(_(u"Aujourd'hui / Échéancier"))
-            pane.MinSize((-1, 110))
-            pane.BestSize((-1, 120))
+            pane.MinSize((-1, hauteur_min))
+            pane.BestSize((-1, hauteur_ideale))
             gestionnaire.Update()
         except Exception:
             pass
@@ -174,11 +179,25 @@ class CTRL(wx.Panel):
             if ville:
                 wx.CallAfter(self.ctrl_lieu.SetLabel, ville)
 
-            meteo = self._GetMeteoOpenMeteo(organisateur)
+            # Résolution locale/GPS/cache puis géocodage réseau seulement si
+            # nécessaire. L'absence de GPS n'est donc plus confondue avec une
+            # absence de connexion Internet.
+            self._ResoudreCoordonnees(organisateur)
+
+            meteo = None
+            try:
+                meteo = self._GetMeteoOpenMeteo(organisateur)
+            except Exception:
+                meteo = None
+
             if meteo:
                 wx.CallAfter(self._AfficheMeteo, meteo)
             else:
-                wx.CallAfter(self.ctrl_meteo.SetLabel, _(u"Météo : indisponible hors connexion"))
+                if organisateur.get("lat") is None or organisateur.get("long") is None:
+                    message_meteo = _(u"Météo : localisation indisponible")
+                else:
+                    message_meteo = _(u"Météo : données indisponibles")
+                wx.CallAfter(self.ctrl_meteo.SetLabel, message_meteo)
                 soleil = self._GetSoleilLocal(organisateur)
                 wx.CallAfter(
                     self.ctrl_soleil.SetLabel,
@@ -188,7 +207,8 @@ class CTRL(wx.Panel):
             wx.CallAfter(self._ChargeEcheances)
         except Exception:
             try:
-                wx.CallAfter(self.ctrl_meteo.SetLabel, _(u"Météo : indisponible"))
+                wx.CallAfter(self.ctrl_meteo.SetLabel, _(u"Météo : données indisponibles"))
+                wx.CallAfter(self.ctrl_soleil.SetLabel, _(u"Soleil : horaires indisponibles"))
                 wx.CallAfter(self._ChargeEcheances)
             except Exception:
                 pass
@@ -214,6 +234,80 @@ class CTRL(wx.Panel):
             return {"cp": cp, "ville": ville, "lat": lat, "long": long}
         finally:
             db.Close()
+
+    def _CleGeocodage(self, organisateur):
+        cp = (organisateur.get("cp") or "").strip()
+        ville = (organisateur.get("ville") or "").strip().lower()
+        return u"%s|%s" % (cp, ville)
+
+    def _ResoudreCoordonnees(self, organisateur):
+        if not organisateur:
+            return False
+        if organisateur.get("lat") is not None and organisateur.get("long") is not None:
+            return True
+
+        cle = self._CleGeocodage(organisateur)
+        cache = UTILS_Config.GetParametre(PARAM_CACHE_GEOCODAGE, {})
+        if not isinstance(cache, dict):
+            cache = {}
+        valeur = cache.get(cle)
+        if isinstance(valeur, (list, tuple)) and len(valeur) == 2:
+            try:
+                organisateur["lat"] = float(valeur[0])
+                organisateur["long"] = float(valeur[1])
+                return True
+            except Exception:
+                pass
+
+        coordonnees = self._GeocoderOpenMeteo(organisateur)
+        if coordonnees is None:
+            return False
+
+        lat, long = coordonnees
+        organisateur["lat"], organisateur["long"] = lat, long
+        cache[cle] = [lat, long]
+        try:
+            UTILS_Config.SetParametre(PARAM_CACHE_GEOCODAGE, cache)
+        except Exception:
+            pass
+        return True
+
+    def _GeocoderOpenMeteo(self, organisateur):
+        ville = (organisateur.get("ville") or "").strip()
+        if not ville:
+            return None
+
+        params = urlencode({
+            "name": ville,
+            "count": 8,
+            "language": "fr",
+            "format": "json",
+        })
+        reponse = urlopen("https://geocoding-api.open-meteo.com/v1/search?%s" % params, timeout=4)
+        try:
+            donnees = json.loads(reponse.read().decode("utf-8"))
+        finally:
+            try:
+                reponse.close()
+            except Exception:
+                pass
+
+        resultats = donnees.get("results") or []
+        if not resultats:
+            return None
+
+        # Noethys est historiquement centré sur les structures françaises : à
+        # nom égal on privilégie donc FR, sans empêcher un résultat étranger.
+        resultat = resultats[0]
+        for candidat in resultats:
+            if candidat.get("country_code") == "FR":
+                resultat = candidat
+                break
+
+        try:
+            return float(resultat["latitude"]), float(resultat["longitude"])
+        except Exception:
+            return None
 
     def _GetMeteoOpenMeteo(self, organisateur):
         if not organisateur:
@@ -289,7 +383,6 @@ class CTRL(wx.Panel):
         aujourd_hui = datetime.date.today()
         echeances = []
 
-        # Échéances métier configurées localement.
         donnees = UTILS_Config.GetParametre("dashboard_echeances", [])
         if isinstance(donnees, (list, tuple)):
             for item in donnees:
@@ -306,7 +399,6 @@ class CTRL(wx.Panel):
                 if date_dd >= aujourd_hui:
                     echeances.append((date_dd, label))
 
-        # Vacances scolaires : zone déduite automatiquement du code postal.
         cp = self.dictOrganisateur.get("cp") if self.dictOrganisateur else None
         zone = UTILS_VacancesScolaires.GetZoneDepuisCodePostal(cp)
         periode = UTILS_VacancesScolaires.GetProchainePeriode(zone, aujourd_hui) if zone else None
@@ -321,7 +413,6 @@ class CTRL(wx.Panel):
                 label = _(u"Vacances zone %s : %s · départ %s · reprise %s") % (
                     zone, periode["nom"], debut.strftime("%d/%m"), reprise.strftime("%d/%m")
                 )
-            # Si la période est en cours, elle doit rester en tête de l'échéancier.
             cle_tri = max(aujourd_hui, debut)
             echeances.append((cle_tri, label))
 
