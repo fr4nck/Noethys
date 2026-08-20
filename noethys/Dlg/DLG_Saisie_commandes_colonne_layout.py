@@ -43,6 +43,18 @@ def _RendSelectionExtensible(panel, controle, hauteur_min=220):
 class PAGE_Unites(legacy.PAGE_Unites):
     def __init__(self, parent):
         super(PAGE_Unites, self).__init__(parent)
+
+        # Dans un point de livraison repas, afficher d'abord les unités qui ont
+        # explicitement le drapeau repas. L'utilisateur conserve la case à
+        # cocher historique et peut donc réafficher toutes les activités si une
+        # ancienne configuration atypique l'exige.
+        try:
+            if not self.check_repas.GetValue():
+                self.check_repas.SetValue(True)
+                self.ctrl_unites.MAJ()
+        except Exception:
+            pass
+
         _RendSelectionExtensible(self, self.ctrl_unites, hauteur_min=220)
 
 
