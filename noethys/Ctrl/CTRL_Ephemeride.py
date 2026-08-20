@@ -1,350 +1,383 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#-----------------------------------------------------------
+#------------------------------------------------------------------------
 # Application :    Noethys, gestion multi-activités
-# Site internet :  www.noethys.com
-# Auteur:           Ivan LUCAS
-# Copyright:       (c) 2010-11 Ivan LUCAS
-# Licence:         Licence GNU GPL
-#-----------------------------------------------------------
+# Licence :        GNU GPL
+#------------------------------------------------------------------------
+"""Panneau d'accueil « Aujourd'hui ».
 
+L'ancien éphéméride mélangeait horloge analogique, citations, fêtes et ticker.
+Ce contrôle conserve le point d'accroche historique ``CTRL_Ephemeride.CTRL`` afin
+que les installations existantes restent compatibles, mais remplace directement
+son contenu et son layout par un panneau opérationnel.
 
-import Chemins
-from Utils import UTILS_Adaptations
-from Utils.UTILS_Traduction import _
-import wx
-from Ctrl import CTRL_Bouton_image
-import sys
-from Ctrl import CTRL_Newsticker
-import wx.lib.analogclock as clock
-import GestionDB
+Principes :
+- pas de surcouche runtime autour de l'ancien contrôle ;
+- layout natif ``wx.BoxSizer`` réellement extensible ;
+- aucune horloge/ticker/citation décorative ;
+- météo Open-Meteo sans clé API, chargée hors du thread UI ;
+- repli silencieux hors connexion ;
+- zone d'échéances prête à recevoir les échéances métier configurées.
+"""
 
 import datetime
-import random
+import json
 import threading
 
-from Data.DATA_Celebrations import DICT_FETES
-from Data.DATA_Celebrations import DICT_CELEBRATIONS
-from Data.DATA_Citations import LISTE_CITATIONS
+import wx
+from six.moves.urllib.parse import urlencode
+from six.moves.urllib.request import urlopen
 
-try :
+import GestionDB
+from Utils.UTILS_Traduction import _
+from Utils import UTILS_Config
+from Utils import UTILS_Interface
+
+try:
     from Utils.UTILS_Astral import City
-except Exception as err :
-    print(err)
-    
-from Utils import UTILS_Meteo
+except Exception:
+    City = None
 
 
-def DateDDEnDateFR(dateDD):
-    """ Transforme une datetime.date en date complète FR """
-    listeJours = ("Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche")
-    listeMois = (_(u"janvier"), _(u"février"), _(u"mars"), _(u"avril"), _(u"mai"), _(u"juin"), _(u"juillet"), _(u"août"), _(u"septembre"), _(u"octobre"), _(u"novembre"), _(u"décembre"))
-    return listeJours[dateDD.weekday()] + " " + str(dateDD.day) + " " + listeMois[dateDD.month-1] + " " + str(dateDD.year)
+JOURS = (
+    _(u"Lundi"), _(u"Mardi"), _(u"Mercredi"), _(u"Jeudi"),
+    _(u"Vendredi"), _(u"Samedi"), _(u"Dimanche"),
+)
+MOIS = (
+    _(u"janvier"), _(u"février"), _(u"mars"), _(u"avril"),
+    _(u"mai"), _(u"juin"), _(u"juillet"), _(u"août"),
+    _(u"septembre"), _(u"octobre"), _(u"novembre"), _(u"décembre"),
+)
 
-def DateEngEnDateDD(dateEng):
-    if dateEng == None or dateEng == "" : return None
-    return datetime.date.fromisoformat(dateEng[:10])
+# WMO weather interpretation codes utilisés par Open-Meteo.
+LIBELLES_METEO = {
+    0: _(u"ciel dégagé"),
+    1: _(u"plutôt dégagé"),
+    2: _(u"partiellement nuageux"),
+    3: _(u"couvert"),
+    45: _(u"brouillard"),
+    48: _(u"brouillard givrant"),
+    51: _(u"bruine faible"),
+    53: _(u"bruine"),
+    55: _(u"bruine forte"),
+    61: _(u"pluie faible"),
+    63: _(u"pluie"),
+    65: _(u"forte pluie"),
+    71: _(u"neige faible"),
+    73: _(u"neige"),
+    75: _(u"fortes chutes de neige"),
+    80: _(u"averses faibles"),
+    81: _(u"averses"),
+    82: _(u"fortes averses"),
+    95: _(u"orage"),
+    96: _(u"orage avec grêle"),
+    99: _(u"fort orage avec grêle"),
+}
 
-def Concatenation(listeTextes=[]):
-    if len(listeTextes) == 0 : 
-        return ""
-    elif len(listeTextes) == 1 :
-        return listeTextes[0]
-    elif len(listeTextes) == 2 :
-        return _(u"%s et %s") % (listeTextes[0], listeTextes[1])
-    else :
-        premiers = ", ".join(listeTextes[:-1])
-        return _(u"%s et %s") % (premiers, listeTextes[-1])
 
-def GetAge(date_naiss=None):
-    if date_naiss == None : return None
-    datedujour = datetime.date.today()
-    age = (datedujour.year - date_naiss.year) - int((datedujour.month, datedujour.day) < (date_naiss.month, date_naiss.day))
-    return age
+def DateDDEnDateFR(date_dd):
+    return u"%s %d %s %d" % (
+        JOURS[date_dd.weekday()], date_dd.day, MOIS[date_dd.month - 1], date_dd.year
+    )
 
-    
+
+def _heure_iso(valeur):
+    if not valeur:
+        return None
+    try:
+        # Open-Meteo renvoie par exemple 2026-08-20T07:03
+        return valeur.split("T", 1)[1][:5]
+    except Exception:
+        return None
+
 
 class CTRL(wx.Panel):
+    """Résumé opérationnel du jour, compatible avec l'ancien point d'entrée."""
+
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
+
         self.dateJour = datetime.date.today()
         self.dictOrganisateur = None
-        
-        # Horloge
-        self.ctrl_horloge = clock.AnalogClock(self, size=(80, 80), 
-                            hoursStyle=clock.TICKS_CIRCLE,
-                            minutesStyle=clock.TICKS_CIRCLE,
-                            clockStyle=clock.SHOW_HOURS_TICKS| \
-                                       clock.SHOW_MINUTES_TICKS|
-                                       clock.SHOW_HOURS_HAND| \
-                                       clock.SHOW_MINUTES_HAND| \
-                                       clock.SHOW_SECONDS_HAND)
-        self.ctrl_horloge.SetTickSize(12, target=clock.HOUR)
-        
-        # Date du jour
+        self._chargement_en_cours = False
+
         self.ctrl_date = wx.StaticText(self, -1, DateDDEnDateFR(self.dateJour))
-        
-        # Newsticker
-        self.ctrl_ticker = CTRL_Newsticker.Newsticker(self, pauseTime=10000, start=False, size=(-1, 100))   
-        self.ctrl_ticker.SetFont(wx.Font(7, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, ""))
-        
-        # Adaptation pour Linux : Couleur de l'horloge
-        if  "linux" in sys.platform :
-            couleur = self.ctrl_date.GetBackgroundColour()
-            self.ctrl_horloge.SetBackgroundColour(couleur)
-            self.ctrl_horloge.SetFaceFillColour(couleur)
-            self.ctrl_horloge.SetFaceBorderColour(couleur)
+        self.ctrl_lieu = wx.StaticText(self, -1, _(u"Localisation de l'organisateur"))
+        self.ctrl_meteo = wx.StaticText(self, -1, _(u"Météo : chargement…"))
+        self.ctrl_soleil = wx.StaticText(self, -1, _(u"Soleil : chargement…"))
 
-        self.__set_properties()
-        self.__do_layout()
-        
-        self.ctrl_ticker.Start()
+        self.ctrl_titre_echeances = wx.StaticText(self, -1, _(u"À venir"))
+        self.ctrl_echeances = wx.StaticText(
+            self,
+            -1,
+            _(u"Aucune échéance configurée. Les échéances métier apparaîtront ici."),
+        )
 
-    def __set_properties(self):
-        self.ctrl_date.SetFont(wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
+        self._AppliqueApparence()
+        self._ConstruitLayout()
 
-    def __do_layout(self):
-        grid_sizer_base = wx.FlexGridSizer(rows=1, cols=2, vgap=5, hgap=5)
-        grid_sizer_droite = wx.FlexGridSizer(rows=2, cols=1, vgap=5, hgap=5)
-        grid_sizer_base.Add(self.ctrl_horloge, 0, wx.LEFT|wx.ALL, 10)
-        grid_sizer_droite.Add(self.ctrl_date, 0, wx.EXPAND|wx.TOP, 5)
-        grid_sizer_droite.Add(self.ctrl_ticker, 0, wx.EXPAND|wx.BOTTOM|wx.RIGHT|wx.TOP, 5)
-        grid_sizer_droite.AddGrowableRow(1)
-        grid_sizer_droite.AddGrowableCol(0)
-        grid_sizer_base.Add(grid_sizer_droite, 1, wx.EXPAND, 0)
-        self.SetSizer(grid_sizer_base)
-        grid_sizer_base.Fit(self)
-        grid_sizer_base.AddGrowableRow(0)
-        grid_sizer_base.AddGrowableCol(1)
-    
+    def _Police(self, poids=wx.FONTWEIGHT_NORMAL, delta=0):
+        police = wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)
+        taille = max(7, police.GetPointSize() + delta)
+        police.SetPointSize(taille)
+        police.SetWeight(poids)
+        return police
+
+    def _AppliqueApparence(self):
+        fond = UTILS_Interface.GetCouleurRole("surface_container_low")
+        texte = UTILS_Interface.GetCouleurRole("on_surface")
+        secondaire = UTILS_Interface.GetCouleurRole("on_surface_variant")
+
+        self.SetBackgroundColour(fond)
+        for ctrl in (self.ctrl_date, self.ctrl_titre_echeances):
+            ctrl.SetForegroundColour(texte)
+            ctrl.SetBackgroundColour(fond)
+            ctrl.SetFont(self._Police(wx.FONTWEIGHT_BOLD, 1))
+
+        for ctrl in (self.ctrl_lieu, self.ctrl_meteo, self.ctrl_soleil, self.ctrl_echeances):
+            ctrl.SetForegroundColour(secondaire)
+            ctrl.SetBackgroundColour(fond)
+            ctrl.SetFont(self._Police())
+
+    def _ConstruitLayout(self):
+        # Deux zones horizontales denses : informations du jour puis échéancier.
+        # La seconde absorbe toute la largeur disponible.
+        sizer_principal = wx.BoxSizer(wx.HORIZONTAL)
+
+        sizer_jour = wx.BoxSizer(wx.VERTICAL)
+        sizer_jour.Add(self.ctrl_date, 0, wx.BOTTOM, 4)
+        sizer_jour.Add(self.ctrl_lieu, 0, wx.BOTTOM, 2)
+        sizer_jour.Add(self.ctrl_meteo, 0, wx.BOTTOM, 2)
+        sizer_jour.Add(self.ctrl_soleil, 0)
+
+        separation = wx.StaticLine(self, style=wx.LI_VERTICAL)
+
+        sizer_echeances = wx.BoxSizer(wx.VERTICAL)
+        sizer_echeances.Add(self.ctrl_titre_echeances, 0, wx.BOTTOM, 4)
+        sizer_echeances.Add(self.ctrl_echeances, 1, wx.EXPAND)
+
+        marge = 10
+        sizer_principal.Add(sizer_jour, 0, wx.EXPAND | wx.ALL, marge)
+        sizer_principal.Add(separation, 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 8)
+        sizer_principal.Add(sizer_echeances, 1, wx.EXPAND | wx.ALL, marge)
+
+        self.SetSizer(sizer_principal)
+        self.Layout()
+
     def Initialisation(self):
-        timerInit = threading.Thread(None, self.InitListes)
-        timerInit.start()
-        
-    def InitListes(self):
-        try :
-            listePages = []
-            
-            self.DB = GestionDB.DB() 
-            
-            # Infos Organisateur
-            self.dictOrganisateur = self.GetOrganisateur() 
-            
-            # Ajout des célébrations
-            texte = self.GetCelebrations()
-            if texte != None :
-                listePages.append(texte)
+        """Charge les informations externes sans bloquer l'ouverture de Noethys."""
+        if self._chargement_en_cours:
+            return
+        self._chargement_en_cours = True
+        thread = threading.Thread(target=self._ChargeInformations, name="Noethys-AujourdHui")
+        thread.daemon = True
+        thread.start()
 
-            # Ajout des anniversaires
-            texte = self.GetAnniversaires()
-            if texte != None :
-                listePages.append(texte)
-
-            # Ajout de la citation
-            texte = self.GetCitation()
-            if texte != None :
-                listePages.append(texte)
-
-            # Ajout des heures de soleil
-            texte = self.GetSoleil()
-            if texte != None :
-                listePages.append(texte)
-
-            # Ajout de la météo
-##            texte = self.GetMeteo()
-##            if texte != None :
-##                listePages.append(texte)
-            
-            self.DB.Close() 
-            
-            # Envoi des textes au ticker
-            self.ctrl_ticker.SetPages(listePages, restart=True)
-
-        except:
-            pass
-        
+    # Compatibilité avec les appels historiques du panneau éphéméride.
     def StartTicker(self):
-        self.ctrl_ticker.Start()
-    
+        self.Initialisation()
+
     def StopTicker(self):
-        self.ctrl_ticker.Stop()
+        pass
 
-    def GetOrganisateur(self):
-        """ Récupère les infos sur l'organisateur """
-        req = """SELECT cp, ville, gps
-        FROM organisateur WHERE IDorganisateur=1;"""
-        self.DB.ExecuterReq(req)
-        listeDonnees = self.DB.ResultatReq()
-        if len(listeDonnees) == 0 : return None
-        cp, ville, gps = listeDonnees[0]
-        if cp == None : cp = ""
-        if ville == None : ville = ""
-        if gps == None : gps = ""
-        if len(gps) > 0 :
-            lat, long = gps.split(";") 
-        else :
-            lat, long = self.GetGPSOrganisateur(cp, ville) 
-        dictOrganisateur = {"cp":cp, "ville":ville, "lat":lat, "long":long}
-        return dictOrganisateur
-    
-    def GetGPSOrganisateur(self, cp="", ville=""):
-        """ Récupère les coordonnées GPS de l'organisateur """
-        if ville == "" or cp == "" : 
-            return None, None
-        # Recherche des coordonnées
-        from Utils import UTILS_Gps
-        dictGPS = UTILS_Gps.GPS(cp=cp, ville=ville, pays="France")
-        if dictGPS == None : 
-            lat, long = None, None
-        else :
-            # Sauvegarde des coordonnées GPS dans la base
-            lat, long = dictGPS["lat"], dictGPS["long"]
-            self.DB.ReqMAJ("organisateur", [("gps", u"%s;%s" % (str(lat), str(long)) ),], "IDorganisateur", 1)
-        return lat, long
-        
-    def GetCelebrations(self):
-        """ Récupère les célébrations du jour """
-        try :
-            # Fêtes
-            texteFetes = ""
-            if (self.dateJour.day, self.dateJour.month) in DICT_FETES :
-                noms = DICT_FETES[(self.dateJour.day, self.dateJour.month)]
-                listeNoms = noms.split(";")
-                texteFetes = Concatenation(listeNoms)
-                
-            # Fêtes
-            texteCelebrations = ""
-            if (self.dateJour.day, self.dateJour.month) in DICT_CELEBRATIONS :
-                texteCelebrations = DICT_CELEBRATIONS[(self.dateJour.day, self.dateJour.month)]
-                
-            # Mix des fêtes et des célébrations
-            texte = u""
-            intro = _(u"<t>LES CELEBRATIONS DU JOUR</t>")
-            if len(texteFetes) > 0 and len(texteCelebrations) > 0 : texte = _(u"%sNous fêtons aujourd'hui les %s et célébrons %s.") % (intro, texteFetes, texteCelebrations)
-            if len(texteFetes) > 0 and len(texteCelebrations) == 0 : texte = _(u"%sNous fêtons aujourd'hui les %s.") % (intro, texteFetes)
-            if len(texteFetes) == 0 and len(texteCelebrations) > 0 : texte = _(u"%sNous célébrons aujourd'hui %s.") % (intro, texteCelebrations)
-            if texte == "" : 
-                return None
-            return texte
-        
-        except :
+    def _ChargeInformations(self):
+        try:
+            organisateur = self._GetOrganisateur()
+            self.dictOrganisateur = organisateur
+
+            ville = organisateur.get("ville", "") if organisateur else ""
+            if ville:
+                wx.CallAfter(self.ctrl_lieu.SetLabel, ville)
+
+            meteo = self._GetMeteoOpenMeteo(organisateur)
+            if meteo:
+                wx.CallAfter(self._AfficheMeteo, meteo)
+            else:
+                wx.CallAfter(self.ctrl_meteo.SetLabel, _(u"Météo : indisponible hors connexion"))
+                soleil = self._GetSoleilLocal(organisateur)
+                if soleil:
+                    wx.CallAfter(self.ctrl_soleil.SetLabel, soleil)
+                else:
+                    wx.CallAfter(self.ctrl_soleil.SetLabel, _(u"Soleil : horaires indisponibles"))
+
+            wx.CallAfter(self._ChargeEcheancesConfigurees)
+        except Exception:
+            # Le dashboard ne doit jamais empêcher l'ouverture du logiciel.
+            try:
+                wx.CallAfter(self.ctrl_meteo.SetLabel, _(u"Météo : indisponible"))
+            except Exception:
+                pass
+        finally:
+            self._chargement_en_cours = False
+
+    def _GetOrganisateur(self):
+        db = GestionDB.DB()
+        try:
+            req = """SELECT cp, ville, gps FROM organisateur WHERE IDorganisateur=1;"""
+            db.ExecuterReq(req)
+            resultat = db.ResultatReq()
+            if not resultat:
+                return {}
+            cp, ville, gps = resultat[0]
+            cp = cp or ""
+            ville = ville or ""
+            lat = long = None
+            if gps:
+                try:
+                    lat, long = gps.split(";", 1)
+                    lat, long = float(lat), float(long)
+                except Exception:
+                    lat = long = None
+            return {"cp": cp, "ville": ville, "lat": lat, "long": long}
+        finally:
+            db.Close()
+
+    def _GetMeteoOpenMeteo(self, organisateur):
+        if not organisateur:
+            return None
+        lat = organisateur.get("lat")
+        long = organisateur.get("long")
+        if lat is None or long is None:
             return None
 
-    def GetAnniversaires(self):
-        """ Récupère les anniversaires """
-        try :
-            conditionJour = "%02d-%02d" % (self.dateJour.month, self.dateJour.day) 
-            req = """SELECT individus.IDindividu, nom, prenom, date_naiss
-            FROM individus 
-            LEFT JOIN inscriptions ON inscriptions.IDindividu = individus.IDindividu
-            WHERE inscriptions.statut='ok' AND date_naiss LIKE '%%%s' AND IDinscription IS NOT NULL
-            GROUP BY individus.IDindividu
-            ORDER BY date_naiss DESC
-            ;""" % conditionJour
-            self.DB.ExecuterReq(req)
-            listeDonnees = self.DB.ResultatReq()
-            if len(listeDonnees) == 0 : return None
-            listeTextes = []
-            for IDindividu, nom, prenom, date_naiss in listeDonnees :
-                date_naiss = DateEngEnDateDD(date_naiss)
-                age = GetAge(date_naiss)
-                listeTextes.append(_(u"%s %s (%d ans)") % (prenom, nom, age))
-            texte = _(u"<t>LES ANNIVERSAIRES DU JOUR</t>Joyeux anniversaire à %s.") % Concatenation(listeTextes)
-            return texte
-        
-        except :
+        params = urlencode({
+            "latitude": lat,
+            "longitude": long,
+            "current": "temperature_2m,weather_code,wind_speed_10m",
+            "daily": "sunrise,sunset",
+            "forecast_days": 2,
+            "timezone": "auto",
+        })
+        url = "https://api.open-meteo.com/v1/forecast?%s" % params
+        reponse = urlopen(url, timeout=4)
+        try:
+            donnees = json.loads(reponse.read().decode("utf-8"))
+        finally:
+            try:
+                reponse.close()
+            except Exception:
+                pass
+
+        actuel = donnees.get("current", {})
+        quotidien = donnees.get("daily", {})
+        levers = quotidien.get("sunrise", [])
+        couchers = quotidien.get("sunset", [])
+        return {
+            "temperature": actuel.get("temperature_2m"),
+            "code": actuel.get("weather_code"),
+            "vent": actuel.get("wind_speed_10m"),
+            "lever": _heure_iso(levers[0]) if levers else None,
+            "coucher": _heure_iso(couchers[0]) if couchers else None,
+        }
+
+    def _AfficheMeteo(self, meteo):
+        code = meteo.get("code")
+        condition = LIBELLES_METEO.get(code, _(u"conditions variables"))
+        temperature = meteo.get("temperature")
+        vent = meteo.get("vent")
+
+        morceaux = [_(u"Météo : %s") % condition]
+        if temperature is not None:
+            morceaux.append(u"%s °C" % temperature)
+        if vent is not None:
+            morceaux.append(_(u"vent %s km/h") % vent)
+        self.ctrl_meteo.SetLabel(u" · ".join(morceaux))
+
+        lever = meteo.get("lever")
+        coucher = meteo.get("coucher")
+        if lever and coucher:
+            self.ctrl_soleil.SetLabel(_(u"Soleil : lever %s · coucher %s") % (lever, coucher))
+        else:
+            soleil = self._GetSoleilLocal(self.dictOrganisateur)
+            self.ctrl_soleil.SetLabel(soleil or _(u"Soleil : horaires indisponibles"))
+        self.Layout()
+
+    def _GetSoleilLocal(self, organisateur):
+        if City is None or not organisateur:
+            return None
+        ville = organisateur.get("ville")
+        lat = organisateur.get("lat")
+        long = organisateur.get("long")
+        if not ville or lat is None or long is None:
+            return None
+        try:
+            city = City((ville, "France", float(lat), float(long), "Europe/Paris"))
+            lever = city.sunrise()
+            coucher = city.sunset()
+            return _(u"Soleil : lever %02d:%02d · coucher %02d:%02d") % (
+                lever.hour, lever.minute, coucher.hour, coucher.minute
+            )
+        except Exception:
             return None
 
-    def GetCitation(self):
-        """ Récupère la citation du jour """
-        texte = ""
-        index = random.randint(0, len(LISTE_CITATIONS) - 1)
-        citation, auteur = LISTE_CITATIONS[index]
-        texte = _(u"<t>LA CITATION DU JOUR</t>%s (%s)") % (citation, auteur)
-        return texte
+    def _ChargeEcheancesConfigurees(self):
+        """Affiche les prochaines échéances déjà configurées par le dossier.
 
-    def GetSoleil(self):
-        """ Récupère les heures de lever et de coucher du soleil """
-        try :
-            # Récupère les coordonnées GPS de l'organisateur
-            if self.dictOrganisateur == None : 
-                return None
-            ville = self.dictOrganisateur["ville"]
-            lat = self.dictOrganisateur["lat"]
-            long = self.dictOrganisateur["long"]
-            if ville == "" or ville == None or lat == None or long == None :
-                return None
-            
-            # Récupère les heures de lever et de coucher du soleil
-            c = City((ville, "France", float(lat), float(long), "Europe/Paris"))
-            heureLever = c.sunrise()
-            heureCoucher = c.sunset()
-            texte = _(u"<t>HORAIRES DU SOLEIL</t>Aujourd'hui à %s, le soleil se lève à %dh%02d et se couche à %dh%02d.") % (ville.capitalize(), heureLever.hour, heureLever.minute, heureCoucher.hour, heureCoucher.minute)
-            return texte
-        
-        except Exception as err :
-            return None
-    
-    def GetMeteo(self):
-        """ Récupère la météo """
-        try :
-            # Récupère les coordonnées GPS de l'organisateur
-            if self.dictOrganisateur == None : 
-                return None
-            ville = self.dictOrganisateur["ville"]
-            cp = self.dictOrganisateur["cp"]
-            if ville == "" or cp == "" :
-                return None
-            
-            # Récupère la météo
-            dictMeteo = UTILS_Meteo.Meteo(ville, cp)
-            if dictMeteo == None :
-                return None
-            texte = _(u"<t>METEO</t>Actuellement sur %s, c'est %s (%s°c - %s, %s). Prévision pour demain : %s.") % (
-                    ville.capitalize(), 
-                    dictMeteo["jour"]["condition"].decode("utf8").replace(u"&#39;", "'").lower(), 
-                    dictMeteo["jour"]["temp"].decode("utf8"),
-                    dictMeteo["jour"]["vent"].decode("utf8"), 
-                    dictMeteo["jour"]["humidite"].decode("utf8"),
-                    dictMeteo["previsions"][1]["condition"].decode("utf8").replace(u"&#39;", "'").lower(),
-                    )
-            return texte
-        
-        except :
-            return None
+        Le format volontairement simple prépare l'étape suivante sans imposer de
+        table SQL avant d'avoir stabilisé le besoin : une liste de dictionnaires
+        ``{date: 'AAAA-MM-JJ', label: '…'}`` dans le paramètre
+        ``dashboard_echeances``. Les futures sources SDJES/CAF/vacances pourront
+        alimenter la même vue sans changer le contrôle.
+        """
+        donnees = UTILS_Config.GetParametre("dashboard_echeances", [])
+        if not isinstance(donnees, (list, tuple)):
+            donnees = []
 
+        aujourd_hui = datetime.date.today()
+        echeances = []
+        for item in donnees:
+            if not isinstance(item, dict):
+                continue
+            label = item.get("label") or item.get("titre")
+            date_texte = item.get("date")
+            if not label or not date_texte:
+                continue
+            try:
+                date_dd = datetime.datetime.strptime(date_texte[:10], "%Y-%m-%d").date()
+            except Exception:
+                continue
+            if date_dd < aujourd_hui:
+                continue
+            echeances.append((date_dd, label))
 
-# Pour astral :
-# Pour récupérer la liste de tous les timezones :
-# import pytz
-# from pytz import all_timezones
-# print all_timezones
+        echeances.sort(key=lambda valeur: valeur[0])
+        echeances = echeances[:4]
+        if not echeances:
+            self.ctrl_echeances.SetLabel(
+                _(u"Aucune échéance configurée · le calendrier métier arrive dans la prochaine tranche.")
+            )
+            return
 
-
-
-
-
+        lignes = []
+        for date_dd, label in echeances:
+            delta = (date_dd - aujourd_hui).days
+            if delta == 0:
+                prefixe = _(u"Aujourd'hui")
+            elif delta == 1:
+                prefixe = _(u"Demain")
+            else:
+                prefixe = date_dd.strftime("%d/%m")
+            lignes.append(u"%s — %s" % (prefixe, label))
+        self.ctrl_echeances.SetLabel(u"\n".join(lignes))
+        self.Layout()
 
 
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
-        sizer_1 = wx.BoxSizer(wx.VERTICAL)
-        sizer_1.Add(panel, 1, wx.ALL|wx.EXPAND)
-        self.SetSizer(sizer_1)
-        self.ctrl = CTRL(self)
-        self.ctrl.Initialisation() 
-        sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2.Add(self.ctrl, 1, wx.ALL|wx.EXPAND, 0)
-        panel.SetSizer(sizer_2)
-        self.Layout()
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        self.ctrl = CTRL(panel)
+        sizer.Add(self.ctrl, 1, wx.EXPAND | wx.ALL, 8)
+        panel.SetSizer(sizer)
+        self.SetSize((1000, 180))
         self.CentreOnScreen()
+        self.ctrl.Initialisation()
+
 
 if __name__ == '__main__':
     app = wx.App(0)
-    #wx.InitAllImageHandlers()
-    frame_1 = MyFrame(None, -1, "TEST", size=(800, 200))
-    app.SetTopWindow(frame_1)
-    frame_1.Show()
+    frame = MyFrame(None, -1, u"Aujourd'hui")
+    app.SetTopWindow(frame)
+    frame.Show()
     app.MainLoop()
