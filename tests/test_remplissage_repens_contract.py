@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Contrat statique du tableau de fréquentation Repens.
 
-Le test ne charge pas wxPython : il garantit que le cockpit utilise le nouveau
-panneau, que son rendu est sémantique/arrondi et qu'il ne réintroduit ni les
-anciens RGB criards ni le faux relief 3D.
+Le test ne charge pas wxPython : il garantit que le cockpit construit le
+nouveau panneau directement, que son rendu est sémantique/arrondi et qu'il ne
+réintroduit ni anciens RGB criards ni faux relief 3D.
 """
 
 import ast
@@ -30,8 +30,16 @@ class RemplissageRepensContractTests(unittest.TestCase):
     def test_dashboard_uses_complete_repens_panel(self):
         self.assertIn("from Dlg import DLG_Remplissage_Repens as DLG_Remplissage", self.effectifs)
         self.assertIn("DLG_Remplissage.Panel(self.notebook)", self.effectifs)
-        self.assertIn("class Panel(Legacy.Panel)", self.panel)
+        self.assertIn("class Panel(wx.Panel)", self.panel)
         self.assertIn("CTRL_Remplissage_Repens.CTRL", self.panel)
+
+    def test_panel_is_built_directly_without_creating_legacy_widgets_first(self):
+        self.assertNotIn("class Panel(Legacy.Panel)", self.panel)
+        self.assertNotIn("Legacy.Panel.__init__", self.panel)
+        self.assertNotIn("ancienne_toolbar", self.panel)
+        self.assertNotIn("ancienne_grille", self.panel)
+        self.assertIn("CTRL_Ticker_presents.CTRL", self.panel)
+        self.assertIn("wx.BoxSizer(wx.VERTICAL)", self.panel)
 
     def test_renderer_uses_semantic_repens_states(self):
         for role in (
