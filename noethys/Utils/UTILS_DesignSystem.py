@@ -93,33 +93,34 @@ PALETTE_CLAIRE = {
 }
 
 
-# Palette sombre cohérente avec le socle déjà introduit dans UTILS_Interface.
-# Les valeurs sont légèrement amorties pour ne pas transformer les couleurs
-# métier en aplats fluorescents.
+# Palette sombre graphite. On évite volontairement le noir pur et les traits
+# très lumineux : la profondeur vient de surfaces proches mais distinctes,
+# comme dans les outils métier modernes. Les couleurs d'état restent
+# désaturées afin de conserver la lisibilité des informations métier.
 PALETTE_SOMBRE = {
-    "surface": wx.Colour(20, 18, 24),
-    "surface_container_lowest": wx.Colour(15, 13, 19),
-    "surface_container_low": wx.Colour(29, 27, 32),
-    "surface_container": wx.Colour(33, 31, 38),
-    "surface_container_high": wx.Colour(43, 41, 48),
-    "surface_container_highest": wx.Colour(54, 52, 59),
-    "on_surface": wx.Colour(230, 224, 233),
-    "on_surface_variant": wx.Colour(202, 196, 208),
-    "outline": wx.Colour(147, 143, 153),
-    "outline_variant": wx.Colour(73, 69, 79),
-    "selection": wx.Colour(55, 74, 48),
-    "selection_text": wx.Colour(232, 247, 225),
-    "disabled": wx.Colour(47, 45, 51),
-    "disabled_text": wx.Colour(128, 123, 132),
-    "focus": wx.Colour(169, 199, 255),
-    "success": wx.Colour(47, 72, 47),
-    "success_text": wx.Colour(204, 232, 201),
-    "warning": wx.Colour(78, 68, 38),
-    "warning_text": wx.Colour(240, 224, 174),
-    "danger": wx.Colour(82, 47, 49),
-    "danger_text": wx.Colour(245, 197, 199),
-    "info": wx.Colour(42, 61, 79),
-    "info_text": wx.Colour(196, 220, 244),
+    "surface": wx.Colour(24, 27, 31),
+    "surface_container_lowest": wx.Colour(19, 22, 25),
+    "surface_container_low": wx.Colour(28, 32, 37),
+    "surface_container": wx.Colour(33, 38, 44),
+    "surface_container_high": wx.Colour(41, 47, 54),
+    "surface_container_highest": wx.Colour(50, 57, 65),
+    "on_surface": wx.Colour(232, 235, 239),
+    "on_surface_variant": wx.Colour(174, 181, 190),
+    "outline": wx.Colour(92, 101, 112),
+    "outline_variant": wx.Colour(52, 59, 67),
+    "selection": wx.Colour(36, 67, 52),
+    "selection_text": wx.Colour(234, 245, 238),
+    "disabled": wx.Colour(39, 44, 50),
+    "disabled_text": wx.Colour(118, 126, 136),
+    "focus": wx.Colour(112, 169, 235),
+    "success": wx.Colour(31, 72, 49),
+    "success_text": wx.Colour(175, 226, 194),
+    "warning": wx.Colour(79, 63, 27),
+    "warning_text": wx.Colour(240, 215, 145),
+    "danger": wx.Colour(81, 42, 48),
+    "danger_text": wx.Colour(240, 181, 189),
+    "info": wx.Colour(31, 59, 83),
+    "info_text": wx.Colour(170, 207, 239),
 }
 
 
@@ -146,22 +147,22 @@ ACCENTS_CLAIRS = {
 
 ACCENTS_SOMBRES = {
     "Vert": {
-        "primary": wx.Colour(177, 214, 154),
-        "on_primary": wx.Colour(34, 57, 23),
-        "primary_container": wx.Colour(57, 81, 44),
-        "on_primary_container": wx.Colour(205, 238, 181),
+        "primary": wx.Colour(126, 211, 159),
+        "on_primary": wx.Colour(14, 45, 28),
+        "primary_container": wx.Colour(36, 77, 52),
+        "on_primary_container": wx.Colour(199, 239, 213),
     },
     "Bleu": {
-        "primary": wx.Colour(169, 199, 255),
-        "on_primary": wx.Colour(0, 48, 92),
-        "primary_container": wx.Colour(31, 71, 116),
-        "on_primary_container": wx.Colour(213, 227, 255),
+        "primary": wx.Colour(123, 183, 238),
+        "on_primary": wx.Colour(13, 47, 76),
+        "primary_container": wx.Colour(37, 72, 103),
+        "on_primary_container": wx.Colour(205, 229, 250),
     },
     "Noir": {
-        "primary": wx.Colour(202, 196, 208),
-        "on_primary": wx.Colour(50, 47, 53),
-        "primary_container": wx.Colour(73, 69, 79),
-        "on_primary_container": wx.Colour(232, 222, 237),
+        "primary": wx.Colour(195, 201, 209),
+        "on_primary": wx.Colour(42, 47, 53),
+        "primary_container": wx.Colour(64, 71, 79),
+        "on_primary_container": wx.Colour(234, 237, 241),
     },
 }
 
