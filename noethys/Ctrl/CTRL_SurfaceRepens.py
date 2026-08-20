@@ -40,6 +40,15 @@ class CTRL(wx.Panel):
     def GetPadding(self):
         return UTILS_UIMetrics.px(self.padding_base)
 
+    def _GetCouleurExterieure(self):
+        try:
+            couleur = self.GetParent().GetBackgroundColour()
+            if couleur.IsOk():
+                return couleur
+        except Exception:
+            pass
+        return UTILS_Interface.GetCouleurRole("surface")
+
     def SetRoles(self, role_fond=None, role_contour=None):
         if role_fond:
             self.role_fond = role_fond
@@ -49,7 +58,7 @@ class CTRL(wx.Panel):
 
     def OnPaint(self, event):
         dc = wx.AutoBufferedPaintDC(self)
-        dc.SetBackground(wx.Brush(UTILS_Interface.GetCouleurRole("surface")))
+        dc.SetBackground(wx.Brush(self._GetCouleurExterieure()))
         dc.Clear()
         rect = self.GetClientRect()
         if rect.width <= 1 or rect.height <= 1:
