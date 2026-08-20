@@ -26,7 +26,7 @@ NOETHYS = ROOT / "noethys"
 THIRD_PARTY_DIRS = {"ObjectListView", "Outils"}
 
 # Un match n'implique pas un bug. ``hooked`` indique qu'un repli existe dans
-# packaging/runtime_wx_compat.py pour le portable PyInstaller.
+# packaging/runtime_wx_compat.py ou dans la couche d'adaptation Noethys.
 PATTERNS = {
     "wx.EmptyBitmap": {"kind": "legacy_alias", "hooked": True, "modern": "wx.Bitmap", "runtime": "wx.EmptyBitmap"},
     "wx.EmptyIcon": {"kind": "legacy_alias", "hooked": True, "modern": "wx.Icon", "runtime": "wx.EmptyIcon"},
@@ -45,6 +45,26 @@ PATTERNS = {
     "wx.InitAllImageHandlers": {"kind": "obsolete_noop", "hooked": False, "modern": "remove / no-op with Phoenix", "runtime": "wx.InitAllImageHandlers"},
     "from wx import gizmos": {"kind": "legacy_import", "hooked": False, "modern": "qualify replacement", "runtime": "module:wx.gizmos"},
     "import wx.gizmos": {"kind": "legacy_import", "hooked": False, "modern": "qualify replacement", "runtime": "module:wx.gizmos"},
+
+    # Interaction : les listes ObjectListView ont désormais un repli central
+    # sous Phoenix/Windows. On garde l'inventaire des écrans qui consomment
+    # l'événement d'activation pour surveiller la couverture du correctif.
+    "EVT_LIST_ITEM_ACTIVATED": {
+        "kind": "list_activation",
+        "hooked": True,
+        "modern": "activation native + repli central UTILS_Adaptations",
+        "runtime": "wx.EVT_LIST_ITEM_ACTIVATED",
+    },
+
+    # Un double-clic brut attaché à la fenêtre interne d'une wx.Grid est un
+    # motif fragile sous Phoenix : préférer EVT_GRID_CELL_LEFT_DCLICK et les
+    # coordonnées ligne/colonne portées par GridEvent.
+    "GetGridWindow().Bind(wx.EVT_LEFT_DCLICK": {
+        "kind": "raw_grid_double_click",
+        "hooked": False,
+        "modern": "gridlib.EVT_GRID_CELL_LEFT_DCLICK",
+        "runtime": "wx.EVT_LEFT_DCLICK",
+    },
 }
 
 
@@ -142,12 +162,12 @@ def print_report(findings: list[dict], runtime: dict | None) -> None:
     print("=====================")
     print(f"Occurrences statiques : {len(findings)}")
     for (scope, kind), count in sorted(counts.items()):
-        print(f"  {scope:11s} {kind:18s}: {count}")
+        print(f"  {scope:11s} {kind:24s}: {count}")
 
     first_party = [f for f in findings if f["scope"] == "first_party"]
     print(f"\nOccurrences first-party : {len(first_party)}")
     for f in first_party:
-        hook = "hook portable" if f["hooked"] else "runtime à vérifier"
+        hook = "hook commun" if f["hooked"] else "runtime/comportement à vérifier"
         print(f"  {f['file']}:{f['line']}: {f['token']} -> {f['modern']} [{hook}]")
 
     third_count = sum(1 for f in findings if f["scope"] == "third_party")
