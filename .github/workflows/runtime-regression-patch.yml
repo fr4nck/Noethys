@@ -50,3 +50,5 @@ jobs:
           git rm .github/workflows/runtime-regression-patch.yml
           git commit -m "Fix Python 3 wx runtime regressions"
           git push origin HEAD:master
+
+# retrigger after confirming the first push did not apply the guarded patch
