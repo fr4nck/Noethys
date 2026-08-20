@@ -17,6 +17,8 @@ from Utils import UTILS_Dates
 
 AUTO_FLAG = "_noethys_auto_repas"
 AUTO_SITE = "_noethys_auto_repas_site"
+AUTO_ACTIVITY = "_noethys_auto_repas_activite"
+AUTO_GROUP = "_noethys_auto_repas_groupe"
 
 
 def _ParseParametres(parametres):
@@ -42,15 +44,16 @@ def _ConditionRepas(strict=True):
 def _RechercheReservations(date_debut, date_fin, strict=True):
     DB = GestionDB.DB()
     req = """SELECT consommations.IDactivite, activites.nom,
-    consommations.IDgroupe, consommations.IDunite
+    consommations.IDgroupe, groupes.nom, consommations.IDunite
     FROM consommations
     LEFT JOIN unites ON unites.IDunite = consommations.IDunite
     LEFT JOIN activites ON activites.IDactivite = consommations.IDactivite
+    LEFT JOIN groupes ON groupes.IDgroupe = consommations.IDgroupe
     WHERE consommations.date>='%s' AND consommations.date<='%s'
     AND consommations.etat IN ('reservation', 'present')
     AND %s
-    GROUP BY consommations.IDactivite, activites.nom, consommations.IDgroupe, consommations.IDunite
-    ORDER BY activites.nom, consommations.IDgroupe, consommations.IDunite;""" % (
+    GROUP BY consommations.IDactivite, activites.nom, consommations.IDgroupe, groupes.nom, consommations.IDunite
+    ORDER BY activites.nom, groupes.ordre, groupes.nom, consommations.IDgroupe, consommations.IDunite;""" % (
         date_debut, date_fin, _ConditionRepas(strict=strict))
     DB.ExecuterReq(req)
     donnees = DB.ResultatReq()
@@ -58,34 +61,78 @@ def _RechercheReservations(date_debut, date_fin, strict=True):
     return donnees
 
 
-def RechercheReservationsRepas(date_debut, date_fin):
-    """Retourne les couples groupe/unité de repas regroupés par activité.
+def _CleGroupe(IDactivite, IDgroupe):
+    return "activite:%s:groupe:%s" % (IDactivite, IDgroupe)
 
-    L'activité sert ici de regroupement administratif, pas de notion de site
-    physique. Le drapeau unites.repas est la référence ; le nom de l'unité
-    n'est utilisé qu'en repli pour les anciennes bases incomplètement réglées.
+
+def RechercheReservationsRepas(date_debut, date_fin):
+    """Construit les regroupements automatiques utiles aux commandes de repas.
+
+    Noethys ne possède pas ici de notion générique de site physique. Une seule
+    activité reste donc un regroupement suffisant tant qu'elle n'utilise qu'un
+    groupe pour les repas. Lorsqu'une même activité comporte plusieurs groupes,
+    on les sépare : c'est la donnée existante la plus fine avant l'unité et cela
+    évite d'écraser plusieurs lieux/logiques d'accueil dans une seule colonne.
     """
     donnees = _RechercheReservations(date_debut, date_fin, strict=True)
     if not donnees:
         donnees = _RechercheReservations(date_debut, date_fin, strict=False)
 
-    sites = {}
-    ordre = []
-    for IDactivite, nom_activite, IDgroupe, IDunite in donnees:
+    activites = {}
+    ordre_activites = []
+    for IDactivite, nom_activite, IDgroupe, nom_groupe, IDunite in donnees:
         if IDactivite is None or IDunite is None:
             continue
-        if IDactivite not in sites:
-            sites[IDactivite] = {
-                "IDactivite": IDactivite,
+        if IDactivite not in activites:
+            activites[IDactivite] = {
                 "nom": nom_activite or "Repas",
+                "groupes": {},
+                "ordre_groupes": [],
+            }
+            ordre_activites.append(IDactivite)
+        groupes = activites[IDactivite]["groupes"]
+        if IDgroupe not in groupes:
+            groupes[IDgroupe] = {
+                "nom": nom_groupe,
                 "unites": [],
             }
-            ordre.append(IDactivite)
+            activites[IDactivite]["ordre_groupes"].append(IDgroupe)
         couple = (IDgroupe, IDunite)
-        if couple not in sites[IDactivite]["unites"]:
-            sites[IDactivite]["unites"].append(couple)
+        if couple not in groupes[IDgroupe]["unites"]:
+            groupes[IDgroupe]["unites"].append(couple)
 
-    return [sites[IDactivite] for IDactivite in ordre]
+    regroupements = []
+    for IDactivite in ordre_activites:
+        activite = activites[IDactivite]
+        groupes_non_vides = [
+            IDgroupe for IDgroupe in activite["ordre_groupes"]
+            if activite["groupes"][IDgroupe]["unites"]
+        ]
+        if len(groupes_non_vides) <= 1:
+            unites = []
+            for IDgroupe in groupes_non_vides:
+                unites.extend(activite["groupes"][IDgroupe]["unites"])
+            regroupements.append({
+                "cle": IDactivite,
+                "IDactivite": IDactivite,
+                "IDgroupe": groupes_non_vides[0] if groupes_non_vides else None,
+                "nom": activite["nom"],
+                "unites": unites,
+            })
+            continue
+
+        for IDgroupe in groupes_non_vides:
+            groupe = activite["groupes"][IDgroupe]
+            nom_groupe = groupe["nom"] or ("Groupe %s" % IDgroupe)
+            regroupements.append({
+                "cle": _CleGroupe(IDactivite, IDgroupe),
+                "IDactivite": IDactivite,
+                "IDgroupe": IDgroupe,
+                "nom": nom_groupe,
+                "unites": groupe["unites"],
+            })
+
+    return regroupements
 
 
 def GetProchainePeriodeRepas(nb_jours=14):
@@ -116,8 +163,9 @@ def GetProchainePeriodeRepas(nb_jours=14):
 def AssureColonnesAutomatiques(IDmodele, date_debut, date_fin):
     """Complète un modèle non configuré à partir des réservations réelles.
 
-    Une configuration historique explicite (au moins une colonne avec des
-    unités sélectionnées manuellement) n'est jamais modifiée.
+    Une configuration historique explicite n'est jamais modifiée. Une colonne
+    automatique créée par une version précédente (clé = IDactivité) est aussi
+    conservée telle quelle et continue d'absorber tous les groupes de l'activité.
     """
     if IDmodele is None or date_debut is None or date_fin is None:
         return False
@@ -145,22 +193,45 @@ def AssureColonnesAutomatiques(IDmodele, date_debut, date_fin):
                 "parametres": params,
             }
 
-    sites = RechercheReservationsRepas(date_debut, date_fin)
-    if not sites:
+    regroupements = RechercheReservationsRepas(date_debut, date_fin)
+    if not regroupements:
         DB.Close()
         return False
 
+    # Compatibilité avec les premières colonnes automatiques : si une activité
+    # dispose déjà d'une colonne auto historique, on ne la scinde pas après coup.
+    regroupements_effectifs = []
+    par_activite = {}
+    for item in regroupements:
+        par_activite.setdefault(item["IDactivite"], []).append(item)
+    for IDactivite, items in par_activite.items():
+        if IDactivite in colonnes_auto:
+            unites = []
+            for item in items:
+                for couple in item["unites"]:
+                    if couple not in unites:
+                        unites.append(couple)
+            regroupements_effectifs.append({
+                "cle": IDactivite,
+                "IDactivite": IDactivite,
+                "IDgroupe": None,
+                "nom": items[0]["nom"],
+                "unites": unites,
+            })
+        else:
+            regroupements_effectifs.extend(items)
+
     modifie = False
     prochain_ordre = ordre_max + 1
-    for site in sites:
-        IDsite = site["IDactivite"]
-        unites = site["unites"]
+    for item in regroupements_effectifs:
+        cle = item["cle"]
+        unites = item["unites"]
         if not unites:
             continue
-        if IDsite in colonnes_auto:
-            colonne = colonnes_auto[IDsite]
+        if cle in colonnes_auto:
+            colonne = colonnes_auto[cle]
             params = colonne["parametres"]
-            anciennes_unites = [tuple(item) for item in params.get("unites", [])]
+            anciennes_unites = [tuple(valeur) for valeur in params.get("unites", [])]
             nouvelles_unites = list(anciennes_unites)
             for couple in unites:
                 if tuple(couple) not in nouvelles_unites:
@@ -170,15 +241,18 @@ def AssureColonnesAutomatiques(IDmodele, date_debut, date_fin):
                 DB.ReqMAJ("modeles_commandes_colonnes", [("parametres", str(params)),], "IDcolonne", colonne["IDcolonne"])
                 modifie = True
             continue
+
         params = {
-            "unites": [tuple(item) for item in unites],
+            "unites": [tuple(valeur) for valeur in unites],
             AUTO_FLAG: True,
-            AUTO_SITE: IDsite,
+            AUTO_SITE: cle,
+            AUTO_ACTIVITY: item["IDactivite"],
+            AUTO_GROUP: item["IDgroupe"],
         }
         DB.ReqInsert("modeles_commandes_colonnes", [
             ("IDmodele", IDmodele),
             ("ordre", prochain_ordre),
-            ("nom", site["nom"]),
+            ("nom", item["nom"]),
             ("largeur", 100),
             ("categorie", "numerique_avec_suggestion"),
             ("parametres", str(params)),
