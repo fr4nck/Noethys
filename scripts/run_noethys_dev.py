@@ -11,14 +11,30 @@ chargés avant Noethys.py, puis l'application utilise le dossier historique
 from pathlib import Path
 import os
 import runpy
+import shutil
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 NOETHYS = ROOT / "noethys"
 PACKAGING = ROOT / "packaging"
 PORTABLE = NOETHYS / "Portable"
+PORTABLE_DATA = PORTABLE / "Data"
+EXAMPLES = NOETHYS / "Static" / "Exemples"
 
 PORTABLE.mkdir(parents=True, exist_ok=True)
+PORTABLE_DATA.mkdir(parents=True, exist_ok=True)
+
+# La fenêtre de bienvenue historique liste les fichiers locaux via
+# UTILS_Fichiers.GetRepData(), donc en mode portable elle regarde Portable/Data.
+# Dans une installation classique, les exemples sont copiés par la logique de
+# premier démarrage. Pour la recette depuis les sources, on reproduit cette
+# initialisation sans téléchargement et sans écraser un fichier existant.
+if EXAMPLES.is_dir():
+    for source in EXAMPLES.iterdir():
+        if source.is_file() and source.name.startswith("EXEMPLE_") and source.suffix.lower() == ".dat":
+            destination = PORTABLE_DATA / source.name
+            if not destination.exists():
+                shutil.copy2(str(source), str(destination))
 
 # Noethys utilise des imports historiques absolus (Ctrl, Utils, Dlg...).
 sys.path.insert(0, str(NOETHYS))
