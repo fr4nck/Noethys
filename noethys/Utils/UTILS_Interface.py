@@ -30,6 +30,7 @@ APPARENCES = [
 ]
 
 ECHELLES = (80, 90, 100, 110, 125, 150, 175, 200)
+TAILLES_TEXTE = (80, 90, 100, 110, 125, 150, 175, 200)
 
 DONNEES = {
 
@@ -82,12 +83,14 @@ _GESTIONNAIRE_AFFICHAGE = None
 _ID_MENU_AFFICHAGE = wx.Window.NewControlId()
 
 
-def _normalise_echelle(valeur, defaut=100):
+def _normalise_echelle(valeur, defaut=100, valeurs=None):
+    if valeurs is None:
+        valeurs = ECHELLES
     try:
         valeur = int(valeur)
     except (TypeError, ValueError):
         valeur = defaut
-    return min(ECHELLES, key=lambda item: abs(item - valeur))
+    return min(valeurs, key=lambda item: abs(item - valeur))
 
 
 def GetEchelle():
@@ -97,6 +100,20 @@ def GetEchelle():
 def SetEchelle(valeur=100):
     valeur = _normalise_echelle(valeur)
     UTILS_Config.SetParametre("interface_echelle_pct", valeur)
+    return valeur
+
+
+def GetTailleTexte():
+    """Retourne le facteur typographique additionnel, indépendant de l'échelle."""
+    return _normalise_echelle(
+        UTILS_Config.GetParametre("interface_texte_pct", 100),
+        valeurs=TAILLES_TEXTE,
+    )
+
+
+def SetTailleTexte(valeur=100):
+    valeur = _normalise_echelle(valeur, valeurs=TAILLES_TEXTE)
+    UTILS_Config.SetParametre("interface_texte_pct", valeur)
     return valeur
 
 
@@ -508,11 +525,15 @@ def _appliquer_barre_titre_sombre(window, sombre):
 def AppliquerAffichage(window, recursif=True):
     if window is None:
         return
-    facteur = GetEchelle() / 100.0
+    facteur_interface = GetEchelle() / 100.0
+    facteur_texte = facteur_interface * (GetTailleTexte() / 100.0)
     sombre = EstSombre()
 
-    _appliquer_police(window, facteur)
-    _appliquer_dimensions_speciales(window, facteur)
+    # L'échelle générale agit sur les métriques et la typographie. Le réglage
+    # texte est un multiplicateur supplémentaire qui n'agrandit pas les lignes,
+    # grilles et contrôles : accessibilité sans transformer toute l'UI.
+    _appliquer_police(window, facteur_texte)
+    _appliquer_dimensions_speciales(window, facteur_interface)
     _appliquer_couleurs(window, sombre)
     _appliquer_barre_titre_sombre(window, sombre)
 
@@ -547,8 +568,8 @@ def _ouvrir_reglages_affichage(parent):
     if valeur is not None:
         dlg = wx.MessageDialog(
             parent,
-            _(u"Les nouveaux réglages d'affichage seront appliqués complètement au prochain démarrage de Noethys."),
-            _(u"Affichage"),
+            _(u"Les nouveaux réglages d'apparence et d'accessibilité seront appliqués complètement au prochain démarrage de Noethys."),
+            _(u"Apparence et accessibilité"),
             wx.OK | wx.ICON_INFORMATION,
         )
         dlg.ShowModal()
@@ -579,8 +600,8 @@ def _installer_menu_affichage():
         menu_cible.AppendSeparator()
         menu_cible.Append(
             _ID_MENU_AFFICHAGE,
-            _(u"Échelle et apparence…\tCtrl+Alt+Z"),
-            _(u"Ajuster la taille de l'interface et le mode clair/sombre."),
+            _(u"Apparence et accessibilité…\tCtrl+Alt+Z"),
+            _(u"Ajuster le thème, la taille de l'interface et la taille du texte."),
         )
         parent.Bind(
             wx.EVT_MENU,
