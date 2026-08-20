@@ -14,9 +14,12 @@ from Utils.UTILS_Traduction import _
 import wx
 from Ol import OL_Individus
 from Utils import UTILS_Aui
+from Utils import UTILS_ColonnesResponsive
 from Utils import UTILS_Config
+from Utils import UTILS_FluentIcons
 from Utils import UTILS_Interface
 from Utils import UTILS_Responsive
+from Utils import UTILS_UIMetrics
 
 ID_CREER_FAMILLE = wx.Window.NewControlId()
 ID_MODIFIER_FAMILLE = wx.Window.NewControlId()
@@ -31,29 +34,27 @@ class ListeIndividusAccueil(OL_Individus.ListView):
     """Vue d'accueil dense sans la colonne d'avatars historique.
 
     La logique métier reste dans :class:`OL_Individus.ListView` (requêtes,
-    filtres, actions, sélection). Seule la présentation de cette vue est
-    remplacée directement ici : aucun image-list de civilités n'est créé et les
-    colonnes textuelles absorbent l'espace disponible.
+    filtres, actions, sélection). La présentation de cette vue est déclarée
+    explicitement ici et ses colonnes passent par le moteur responsive commun.
     """
 
-    LARGEURS_MIN = {
-        0: 120,  # Nom
-        1: 105,  # Prénom
-        2: 82,   # Date naissance
-        3: 55,   # Age
-        4: 150,  # Rue
-        5: 58,   # CP
-        6: 110,  # Ville
-        7: 105,  # Tel domicile
-        8: 105,  # Tel mobile
-        9: 170,  # Email
-        10: 72,  # Etat
-    }
-    COLONNES_EXPANSIBLES = (0, 1, 4, 6, 9)
+    SPECS_COLONNES = (
+        (120, 1.4),  # Nom
+        (105, 1.0),  # Prénom
+        (82, 0.0),   # Date naissance
+        (55, 0.0),   # Age
+        (150, 2.2),  # Rue
+        (58, 0.0),   # CP
+        (110, 1.2),  # Ville
+        (105, 0.2),  # Tel domicile
+        (105, 0.2),  # Tel mobile
+        (170, 2.4),  # Email
+        (72, 0.0),   # Etat
+    )
 
     def __init__(self, *args, **kwds):
         OL_Individus.ListView.__init__(self, *args, **kwds)
-        self.Bind(wx.EVT_SIZE, self._OnSizeModerne)
+        UTILS_ColonnesResponsive.Installer(self, self.SPECS_COLONNES)
 
     def InitObjectListView(self):
         def FormateDate(date):
@@ -78,55 +79,24 @@ class ListeIndividusAccueil(OL_Individus.ListView):
         # Pas de colonne d'icône : les civilités restent une donnée métier mais
         # n'ont aucune raison de consommer une colonne et des bitmaps à l'accueil.
         colonnes = [
-            OL_Individus.ColumnDefn(_(u"Nom"), "left", self.LARGEURS_MIN[0], "nom", typeDonnee="texte"),
-            OL_Individus.ColumnDefn(_(u"Prénom"), "left", self.LARGEURS_MIN[1], "prenom", typeDonnee="texte"),
-            OL_Individus.ColumnDefn(_(u"Date naiss."), "left", self.LARGEURS_MIN[2], "date_naiss", typeDonnee="date", stringConverter=FormateDate),
-            OL_Individus.ColumnDefn(_(u"Age"), "left", self.LARGEURS_MIN[3], "age", typeDonnee="entier", stringConverter=FormateAge),
-            OL_Individus.ColumnDefn(_(u"Rue"), "left", self.LARGEURS_MIN[4], "rue_resid", typeDonnee="texte"),
-            OL_Individus.ColumnDefn(_(u"C.P."), "left", self.LARGEURS_MIN[5], "cp_resid", typeDonnee="texte"),
-            OL_Individus.ColumnDefn(_(u"Ville"), "left", self.LARGEURS_MIN[6], "ville_resid", typeDonnee="texte"),
-            OL_Individus.ColumnDefn(_(u"Tél. domicile"), "left", self.LARGEURS_MIN[7], "tel_domicile", typeDonnee="texte"),
-            OL_Individus.ColumnDefn(_(u"Tél. mobile"), "left", self.LARGEURS_MIN[8], "tel_mobile", typeDonnee="texte"),
-            OL_Individus.ColumnDefn(_(u"Email"), "left", self.LARGEURS_MIN[9], "mail", typeDonnee="texte"),
-            OL_Individus.ColumnDefn(_(u"État"), "left", self.LARGEURS_MIN[10], "etat", typeDonnee="texte", stringConverter=FormateEtat),
+            OL_Individus.ColumnDefn(_(u"Nom"), "left", 120, "nom", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"Prénom"), "left", 105, "prenom", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"Date naiss."), "left", 82, "date_naiss", typeDonnee="date", stringConverter=FormateDate),
+            OL_Individus.ColumnDefn(_(u"Age"), "left", 55, "age", typeDonnee="entier", stringConverter=FormateAge),
+            OL_Individus.ColumnDefn(_(u"Rue"), "left", 150, "rue_resid", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"C.P."), "left", 58, "cp_resid", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"Ville"), "left", 110, "ville_resid", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"Tél. domicile"), "left", 105, "tel_domicile", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"Tél. mobile"), "left", 105, "tel_mobile", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"Email"), "left", 170, "mail", typeDonnee="texte"),
+            OL_Individus.ColumnDefn(_(u"État"), "left", 72, "etat", typeDonnee="texte", stringConverter=FormateEtat),
             OL_Individus.ColumnDefn(_(u"Recherche"), "left", 0, "champ_recherche", typeDonnee="texte"),
         ]
 
         self.SetColumns(colonnes)
         self.SetSortColumn(self.columns[0])
         self.SetObjects(self.donnees)
-        wx.CallAfter(self._AjusteColonnes)
-
-    def _OnSizeModerne(self, event):
-        event.Skip()
-        wx.CallAfter(self._AjusteColonnes)
-
-    def _AjusteColonnes(self):
-        """Distribue le surplus horizontal sans réduire les minima métier."""
-        if self.GetColumnCount() < 11:
-            return
-        largeur_disponible = self.GetClientSize().GetWidth()
-        if largeur_disponible <= 0:
-            return
-
-        total_min = sum(self.LARGEURS_MIN.values())
-        # Petite marge pour le bord/scroll vertical. Si la fenêtre est trop
-        # étroite, on garde les minima et le ListCtrl fournit le scroll horizontal.
-        surplus = max(0, largeur_disponible - total_min - 24)
-        part = surplus // len(self.COLONNES_EXPANSIBLES) if surplus else 0
-        reste = surplus - (part * len(self.COLONNES_EXPANSIBLES))
-
-        for index, largeur_min in self.LARGEURS_MIN.items():
-            largeur = largeur_min
-            if index in self.COLONNES_EXPANSIBLES:
-                largeur += part
-                if reste > 0:
-                    largeur += 1
-                    reste -= 1
-            try:
-                self.SetColumnWidth(index, largeur)
-            except Exception:
-                pass
+        wx.CallAfter(UTILS_ColonnesResponsive.Ajuster, self)
 
 
 class ToolBar(wx.ToolBar):
@@ -134,26 +104,29 @@ class ToolBar(wx.ToolBar):
         kwds["style"] = wx.TB_FLAT | wx.TB_TEXT | wx.TB_NODIVIDER
         wx.ToolBar.__init__(self, *args, **kwds)
 
+        # Les nouveaux contrôles demandent explicitement un rôle Fluent. Aucun
+        # mapping global de chemins historiques n'est nécessaire ici.
         liste_boutons = [
-            {"ID": ID_CREER_FAMILLE, "label": _(u"Ajouter"), "image": "Images/32x32/Famille_ajouter.png", "tooltip": _(u"Créer une nouvelle famille")},
+            {"ID": ID_CREER_FAMILLE, "label": _(u"Ajouter"), "icone": "add", "tooltip": _(u"Créer une nouvelle famille")},
             None,
-            {"ID": ID_MODIFIER_FAMILLE, "label": _(u"Modifier"), "image": "Images/32x32/Famille_modifier.png", "tooltip": _(u"Modifier la fiche famille de l'individu sélectionné")},
-            {"ID": ID_SUPPRIMER_FAMILLE, "label": _(u"Supprimer"), "image": "Images/32x32/Famille_supprimer.png", "tooltip": _(u"Supprimer ou détacher l'individu sélectionné")},
+            {"ID": ID_MODIFIER_FAMILLE, "label": _(u"Modifier"), "icone": "edit", "tooltip": _(u"Modifier la fiche famille de l'individu sélectionné")},
+            {"ID": ID_SUPPRIMER_FAMILLE, "label": _(u"Supprimer"), "icone": "delete", "tooltip": _(u"Supprimer ou détacher l'individu sélectionné")},
             None,
-            {"ID": ID_OUVRIR_GRILLE, "label": _(u"Calendrier"), "image": "Images/32x32/Calendrier.png", "tooltip": _(u"Ouvrir la grille des consommations de l'individu sélectionné\n(ou double-clic sur la ligne + touche CTRL enfoncée)")},
-            {"ID": ID_OUVRIR_FICHE_IND, "label": _(u"Fiche ind."), "image": "Images/32x32/Personnes.png", "tooltip": _(u"Ouvrir la fiche individuelle de l'individu sélectionné\n(ou double-clic sur la ligne + touche SHIFT enfoncée)")},
+            {"ID": ID_OUVRIR_GRILLE, "label": _(u"Calendrier"), "icone": "calendar", "tooltip": _(u"Ouvrir la grille des consommations de l'individu sélectionné\n(ou double-clic sur la ligne + touche CTRL enfoncée)")},
+            {"ID": ID_OUVRIR_FICHE_IND, "label": _(u"Fiche ind."), "icone": "people", "tooltip": _(u"Ouvrir la fiche individuelle de l'individu sélectionné\n(ou double-clic sur la ligne + touche SHIFT enfoncée)")},
             None,
-            {"ID": ID_PARAMETRES, "label": _(u"Paramètres"), "image": "Images/32x32/Configuration2.png", "tooltip": _(u"Sélectionner les paramètres d'affichage")},
-            {"ID": ID_OUTILS, "label": _(u"Outils"), "image": "Images/32x32/Configuration.png", "tooltip": _(u"Outils")},
+            {"ID": ID_PARAMETRES, "label": _(u"Paramètres"), "icone": "settings", "tooltip": _(u"Sélectionner les paramètres d'affichage")},
+            {"ID": ID_OUTILS, "label": _(u"Outils"), "icone": "settings", "tooltip": _(u"Outils")},
         ]
 
-        taille_bitmap = UTILS_Responsive.GetTailleIcone(32)
+        taille_bitmap = UTILS_Responsive.GetTailleIcone(24)
         for bouton in liste_boutons:
             if bouton is None:
                 self.AddSeparator()
             else:
-                chemin = Chemins.GetStaticIconPath(bouton["image"], taille=taille_bitmap)
-                bitmap = wx.Bitmap(chemin, wx.BITMAP_TYPE_ANY)
+                bitmap = UTILS_FluentIcons.GetBitmap(bouton["icone"], taille=taille_bitmap)
+                if bitmap is None:
+                    bitmap = wx.NullBitmap
                 try:
                     self.AddTool(bouton["ID"], bouton["label"], bitmap, wx.NullBitmap, wx.ITEM_NORMAL, bouton["tooltip"], "")
                 except Exception:
@@ -167,8 +140,9 @@ class ToolBar(wx.ToolBar):
         self.Bind(wx.EVT_TOOL, self.Parametres, id=ID_PARAMETRES)
         self.Bind(wx.EVT_TOOL, self.MenuOutils, id=ID_OUTILS)
 
-        UTILS_Aui.ConfigurerToolBar(self, taille_base=32, fond_uni=True)
-        self.SetMinSize((-1, UTILS_Responsive.GetTailleCibleAction(40)))
+        UTILS_Aui.ConfigurerToolBar(self, taille_base=24, fond_uni=True)
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_low"))
+        self.SetMinSize((-1, UTILS_UIMetrics.toolbar_height(avec_libelle=True, icon_px=taille_bitmap)))
         self.Realize()
 
     def Ajouter_famille(self, event):
