@@ -15,7 +15,7 @@ from Utils.UTILS_Traduction import _
 from Utils import UTILS_Aui
 from Utils import UTILS_Interface
 from Utils import UTILS_UIMetrics
-from Dlg import DLG_Remplissage
+from Ctrl import CTRL_Remplissage_Repens
 from Dlg import DLG_Recap_evenements
 from Dlg import DLG_Nbre_inscrits_2 as DLG_Nbre_inscrits
 from Dlg import DLG_Tableau_bord_locations
@@ -47,9 +47,6 @@ class CTRL(wx.Panel):
         police.SetPointSize(max(police.GetPointSize() + 2, 11))
         self.ctrl_titre.SetFont(police)
 
-        # Onglets en tête de contenu : l'utilisateur choisit d'abord la vue,
-        # puis lit son tableau. L'ancien placement bas obligeait à parcourir
-        # visuellement toute la grille avant de découvrir la navigation.
         self.notebook = aui.AuiNotebook(
             self,
             agwStyle=(
@@ -60,7 +57,9 @@ class CTRL(wx.Panel):
         )
         self.notebook.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
 
-        self.ctrl_remplissage = DLG_Remplissage.Panel(self.notebook)
+        # La vue Consommations garde son moteur historique mais remplace
+        # explicitement la grille wx par le renderer Repens dédié.
+        self.ctrl_remplissage = CTRL_Remplissage_Repens.CreerPanel(self.notebook)
         self.notebook.AddPage(self.ctrl_remplissage, _(u"Consommations"))
         try:
             self.notebook.SetPageTooltip(0, _(u"État des consommations et des capacités."))
