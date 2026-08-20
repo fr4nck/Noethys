@@ -37,16 +37,44 @@ class DesignSystemIntegrationContractTests(unittest.TestCase):
         self.assertNotIn('role_fond = "surface_container_low"', block)
         self.assertNotIn('role_fond = "surface_container_high"', block)
 
-    def test_light_mode_is_not_globally_repainted_yet(self):
+    def test_light_mode_opts_in_only_shared_lists_before_general_return(self):
         start = self.text.index("def _appliquer_couleurs")
         end = self.text.index("\ndef _appliquer_barre_titre_sombre", start)
         block = self.text[start:end]
-        self.assertIn("if not sombre:", block)
-        self.assertIn("return", block)
+        list_marker = block.index('"objectlistview", "listctrl", "listview"')
+        list_theme = block.index("_appliquer_palette_liste(window, sombre=sombre)")
+        light_return = block.index("if not sombre:")
+        self.assertLess(list_marker, list_theme)
+        self.assertLess(list_theme, light_return)
+
+    def test_list_rows_use_semantic_surface_pair(self):
+        start = self.text.index("def _appliquer_palette_liste")
+        end = self.text.index("\ndef _appliquer_couleurs", start)
+        block = self.text[start:end]
+        self.assertIn('GetCouleurRole("surface_container_lowest", sombre=sombre)', block)
+        self.assertIn('GetCouleurRole("surface_container_low", sombre=sombre)', block)
+        self.assertIn("index % 2 == 0", block)
+
+    def test_business_colours_are_protected_before_list_recolouring(self):
+        self.assertIn("def _peut_remplacer_surface_liste", self.text)
+        start = self.text.index("def _appliquer_palette_liste")
+        end = self.text.index("\ndef _appliquer_couleurs", start)
+        block = self.text[start:end]
+        self.assertIn("_peut_remplacer_surface_liste(couleur)", block)
+
+    def test_historical_group_blue_is_replaced_only_as_default(self):
+        start = self.text.index("def _appliquer_palette_liste")
+        end = self.text.index("\ndef _appliquer_couleurs", start)
+        block = self.text[start:end]
+        self.assertIn('hasattr(window, "groupBackgroundColour")', block)
+        self.assertIn("wx.Colour(159, 185, 250)", block)
+        self.assertIn('GetCouleurRole("surface_container_high", sombre=sombre)', block)
 
     def test_disabled_controls_use_semantic_roles(self):
         self.assertIn('GetCouleurRole("disabled", sombre=True)', self.text)
         self.assertIn('GetCouleurRole("disabled_text", sombre=True)', self.text)
+        self.assertIn('GetCouleurRole("disabled", sombre=sombre)', self.text)
+        self.assertIn('GetCouleurRole("disabled_text", sombre=sombre)', self.text)
 
     def test_existing_public_theme_and_scale_api_is_preserved(self):
         functions = {
