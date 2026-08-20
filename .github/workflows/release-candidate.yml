@@ -90,7 +90,10 @@ jobs:
       - name: Installer les dépendances de fabrication
         run: python -m pip install --upgrade pip wheel && python -m pip install -r requirements-build.txt
 
-      - name: Compiler les sources
+      - name: Appliquer les corrections runtime Python 3 validées
+        run: python scripts/apply_py3_runtime_source_fixes.py
+
+      - name: Compiler les sources corrigées
         run: python -m compileall -q noethys
 
       - name: Valider les piles fonctionnelles optionnelles
@@ -140,6 +143,7 @@ jobs:
             "Python: $pythonVersion"
             "Workflow run: $env:GITHUB_RUN_ID"
             "Portable mode: enabled (Portable/)"
+            "Python 3 source fixes: applied before PyInstaller"
             "Real DB recipe: confirmed before workflow dispatch"
             "Build UTC: $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
           ) | Set-Content -Path "dist/Noethys/BUILD-INFO.txt" -Encoding UTF8
@@ -240,6 +244,7 @@ jobs:
           - commit : $env:GITHUB_SHA
           - Python : 3.10
           - portable Windows : oui
+          - corrections runtime Python 3 appliquées avant PyInstaller
           - recette sur copie réelle : déclarée validée au déclenchement
           - CI métier/SQL/runtime rejouée avant fabrication
 
