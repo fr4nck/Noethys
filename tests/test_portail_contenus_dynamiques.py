@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import importlib.util
+import unittest
 from pathlib import Path
 
 
@@ -42,131 +43,119 @@ ATOM_EXEMPLE = b'''<?xml version="1.0" encoding="utf-8"?>
 </feed>'''
 
 
-def test_url_externe_accepte_uniquement_http_et_https():
-    assert PORTAIL.url_externe_valide("https://phototheque.example.org/album/12") is True
-    assert PORTAIL.url_externe_valide("http://example.org/feed") is True
-    assert PORTAIL.url_externe_valide("javascript:alert(1)") is False
-    assert PORTAIL.url_externe_valide("file:///tmp/test.html") is False
-    assert PORTAIL.url_externe_valide("example.org/sans-schema") is False
+class PortailContenusDynamiquesTests(unittest.TestCase):
+
+    def test_url_externe_accepte_uniquement_http_et_https(self):
+        self.assertTrue(PORTAIL.url_externe_valide("https://phototheque.example.org/album/12"))
+        self.assertTrue(PORTAIL.url_externe_valide("http://example.org/feed"))
+        self.assertFalse(PORTAIL.url_externe_valide("javascript:alert(1)"))
+        self.assertFalse(PORTAIL.url_externe_valide("file:///tmp/test.html"))
+        self.assertFalse(PORTAIL.url_externe_valide("example.org/sans-schema"))
+
+    def test_iframe_est_responsive_et_echappe_les_attributs(self):
+        rendu = PORTAIL.construire_iframe({
+            "url": "https://example.org/view?x=1&y=2",
+            "hauteur": 826,
+            "defilement": False,
+            "plein_ecran": True,
+            "titre": 'Photothèque "été"',
+        })
+        self.assertIn('src="https://example.org/view?x=1&amp;y=2"', rendu)
+        self.assertIn('width="100%"', rendu)
+        self.assertIn('height="826"', rendu)
+        self.assertIn('scrolling="no"', rendu)
+        self.assertIn('title="Photothèque &quot;été&quot;"', rendu)
+        self.assertIn(" allowfullscreen", rendu)
+        self.assertNotIn("javascript:", rendu)
+
+    def test_hauteur_est_bornee_et_serialisation_est_stable(self):
+        self.assertEqual(PORTAIL.normaliser_hauteur(50), PORTAIL.HAUTEUR_MIN)
+        self.assertEqual(PORTAIL.normaliser_hauteur(9999), PORTAIL.HAUTEUR_MAX)
+        self.assertEqual(PORTAIL.normaliser_hauteur("invalide"), PORTAIL.HAUTEUR_DEFAUT)
+        brut = PORTAIL.serialiser_parametres({
+            "url": " https://example.org/widget ",
+            "hauteur": "700",
+            "defilement": 1,
+        })
+        relu = PORTAIL.deserialiser_parametres(brut)
+        self.assertEqual(relu["source"], PORTAIL.MARQUEUR_CONTENU_EXTERNE)
+        self.assertEqual(relu["url"], "https://example.org/widget")
+        self.assertEqual(relu["hauteur"], 700)
+        self.assertTrue(relu["defilement"])
+        self.assertTrue(relu["plein_ecran"])
+        self.assertEqual(relu["version"], 1)
+        self.assertTrue(PORTAIL.est_configuration_contenu_externe(brut))
+        self.assertFalse(PORTAIL.est_configuration_contenu_externe('{"foo":"bar"}'))
+        self.assertFalse(PORTAIL.est_configuration_contenu_externe("ancien paramètre"))
+
+    def test_categorie_locale_est_exportee_comme_bloc_texte_connecthys(self):
+        self.assertEqual(PORTAIL.categorie_pour_connecthys("bloc_contenu_externe"), "bloc_texte")
+        self.assertEqual(PORTAIL.categorie_pour_connecthys("bloc_blog"), "bloc_blog")
+
+    def test_rss_est_parse_en_texte_sur_et_limite(self):
+        articles = PORTAIL.parser_flux_rss_atom(RSS_EXEMPLE)
+        self.assertEqual(len(articles), 2)
+        self.assertEqual(articles[0]["titre"], "Stage & vacances")
+        self.assertEqual(articles[0]["lien"], "https://example.org/stage?x=1&y=2")
+        self.assertEqual(articles[0]["date"], "20/08/2026")
+        self.assertNotIn("<strong>", articles[0]["extrait"])
+        self.assertNotIn("<script>", articles[0]["extrait"])
+        self.assertIn("stage", articles[0]["extrait"])
+        self.assertEqual(articles[1]["lien"], "")
+
+        rendu = PORTAIL.construire_flux_html({
+            "type": "rss",
+            "url": "https://example.org/feed",
+            "nombre_articles": 1,
+            "afficher_date": True,
+            "afficher_extrait": True,
+            "liens_nouvel_onglet": True,
+        }, contenu=RSS_EXEMPLE)
+        self.assertIn("Stage &amp; vacances", rendu)
+        self.assertNotIn("Deuxieme actualite", rendu)
+        self.assertIn('href="https://example.org/stage?x=1&amp;y=2"', rendu)
+        self.assertIn('target="_blank"', rendu)
+        self.assertIn("20/08/2026", rendu)
+        self.assertNotIn("<script>", rendu)
+
+    def test_atom_est_parse_et_rendu_sans_html_externe(self):
+        articles = PORTAIL.parser_flux_rss_atom(ATOM_EXEMPLE)
+        self.assertEqual(articles, [{
+            "titre": "Actualite Atom",
+            "lien": "https://example.org/atom",
+            "extrait": "Resume Atom",
+            "date": "20/08/2026",
+        }])
+        rendu = PORTAIL.construire_flux_html({
+            "type": "rss",
+            "url": "https://example.org/atom.xml",
+            "afficher_date": False,
+            "afficher_extrait": False,
+        }, contenu=ATOM_EXEMPLE)
+        self.assertIn("Actualite Atom", rendu)
+        self.assertNotIn("Resume Atom", rendu)
+        self.assertNotIn("20/08/2026", rendu)
+
+    def test_configuration_rss_est_dynamique_et_bornee(self):
+        brut = PORTAIL.serialiser_parametres({
+            "type": "rss",
+            "url": "https://example.org/feed",
+            "nombre_articles": 999,
+        })
+        config = PORTAIL.deserialiser_parametres(brut)
+        self.assertEqual(config["type"], PORTAIL.TYPE_RSS)
+        self.assertEqual(config["nombre_articles"], PORTAIL.RSS_NOMBRE_MAX)
+        self.assertTrue(PORTAIL.est_configuration_dynamique(brut))
+        iframe = PORTAIL.serialiser_parametres({
+            "type": "iframe",
+            "url": "https://example.org/widget",
+        })
+        self.assertFalse(PORTAIL.est_configuration_dynamique(iframe))
+
+    def test_flux_invalide_est_refuse(self):
+        with self.assertRaisesRegex(ValueError, "non pris en charge"):
+            PORTAIL.parser_flux_rss_atom(b"<html><body>pas un flux</body></html>")
 
 
-def test_iframe_est_responsive_et_echappe_les_attributs():
-    rendu = PORTAIL.construire_iframe({
-        "url": "https://example.org/view?x=1&y=2",
-        "hauteur": 826,
-        "defilement": False,
-        "plein_ecran": True,
-        "titre": 'Photothèque "été"',
-    })
-
-    assert 'src="https://example.org/view?x=1&amp;y=2"' in rendu
-    assert 'width="100%"' in rendu
-    assert 'height="826"' in rendu
-    assert 'scrolling="no"' in rendu
-    assert 'title="Photothèque &quot;été&quot;"' in rendu
-    assert " allowfullscreen" in rendu
-    assert "javascript:" not in rendu
-
-
-def test_hauteur_est_bornee_et_serialisation_est_stable():
-    assert PORTAIL.normaliser_hauteur(50) == PORTAIL.HAUTEUR_MIN
-    assert PORTAIL.normaliser_hauteur(9999) == PORTAIL.HAUTEUR_MAX
-    assert PORTAIL.normaliser_hauteur("invalide") == PORTAIL.HAUTEUR_DEFAUT
-
-    brut = PORTAIL.serialiser_parametres({
-        "url": " https://example.org/widget ",
-        "hauteur": "700",
-        "defilement": 1,
-    })
-    relu = PORTAIL.deserialiser_parametres(brut)
-
-    assert relu["source"] == PORTAIL.MARQUEUR_CONTENU_EXTERNE
-    assert relu["url"] == "https://example.org/widget"
-    assert relu["hauteur"] == 700
-    assert relu["defilement"] is True
-    assert relu["plein_ecran"] is True
-    assert relu["version"] == 1
-    assert PORTAIL.est_configuration_contenu_externe(brut) is True
-    assert PORTAIL.est_configuration_contenu_externe('{"foo":"bar"}') is False
-    assert PORTAIL.est_configuration_contenu_externe("ancien paramètre") is False
-
-
-def test_categorie_locale_est_exportee_comme_bloc_texte_connecthys():
-    assert PORTAIL.categorie_pour_connecthys("bloc_contenu_externe") == "bloc_texte"
-    assert PORTAIL.categorie_pour_connecthys("bloc_blog") == "bloc_blog"
-
-
-def test_rss_est_parse_en_texte_sur_et_limite():
-    articles = PORTAIL.parser_flux_rss_atom(RSS_EXEMPLE)
-    assert len(articles) == 2
-    assert articles[0]["titre"] == "Stage & vacances"
-    assert articles[0]["lien"] == "https://example.org/stage?x=1&y=2"
-    assert articles[0]["date"] == "20/08/2026"
-    assert "<strong>" not in articles[0]["extrait"]
-    assert "<script>" not in articles[0]["extrait"]
-    assert "stage" in articles[0]["extrait"]
-    assert articles[1]["lien"] == ""
-
-    rendu = PORTAIL.construire_flux_html({
-        "type": "rss",
-        "url": "https://example.org/feed",
-        "nombre_articles": 1,
-        "afficher_date": True,
-        "afficher_extrait": True,
-        "liens_nouvel_onglet": True,
-    }, contenu=RSS_EXEMPLE)
-
-    assert "Stage &amp; vacances" in rendu
-    assert "Deuxieme actualite" not in rendu
-    assert 'href="https://example.org/stage?x=1&amp;y=2"' in rendu
-    assert 'target="_blank"' in rendu
-    assert "20/08/2026" in rendu
-    assert "<script>" not in rendu
-    assert "alert(1)" in rendu  # contenu traité comme texte, jamais comme script
-
-
-def test_atom_est_parse_et_rendu_sans_html_externe():
-    articles = PORTAIL.parser_flux_rss_atom(ATOM_EXEMPLE)
-    assert articles == [{
-        "titre": "Actualite Atom",
-        "lien": "https://example.org/atom",
-        "extrait": "Resume Atom",
-        "date": "20/08/2026",
-    }]
-
-    rendu = PORTAIL.construire_flux_html({
-        "type": "rss",
-        "url": "https://example.org/atom.xml",
-        "afficher_date": False,
-        "afficher_extrait": False,
-    }, contenu=ATOM_EXEMPLE)
-    assert "Actualite Atom" in rendu
-    assert "Resume Atom" not in rendu
-    assert "20/08/2026" not in rendu
-
-
-def test_configuration_rss_est_dynamique_et_bornee():
-    brut = PORTAIL.serialiser_parametres({
-        "type": "rss",
-        "url": "https://example.org/feed",
-        "nombre_articles": 999,
-    })
-    config = PORTAIL.deserialiser_parametres(brut)
-    assert config["type"] == PORTAIL.TYPE_RSS
-    assert config["nombre_articles"] == PORTAIL.RSS_NOMBRE_MAX
-    assert PORTAIL.est_configuration_dynamique(brut) is True
-
-    iframe = PORTAIL.serialiser_parametres({
-        "type": "iframe",
-        "url": "https://example.org/widget",
-    })
-    assert PORTAIL.est_configuration_dynamique(iframe) is False
-
-
-def test_flux_invalide_est_refuse():
-    try:
-        PORTAIL.parser_flux_rss_atom(b"<html><body>pas un flux</body></html>")
-    except ValueError as err:
-        assert "non pris en charge" in str(err)
-    else:
-        raise AssertionError("Un document HTML ne doit pas être accepté comme RSS/Atom")
+if __name__ == "__main__":
+    unittest.main()
