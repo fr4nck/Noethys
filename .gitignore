@@ -35,6 +35,10 @@ Thumbs.db
 *.xlang
 .idea/
 
+# Recette locale Windows
+/.venv/
+/noethys/Portable/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
