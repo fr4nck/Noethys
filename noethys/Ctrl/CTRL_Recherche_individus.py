@@ -3,24 +3,25 @@
 #-----------------------------------------------------------
 # Application :    Noethys, gestion multi-activités
 # Site internet :  www.noethys.com
-# Auteur:           Ivan LUCAS
+# Auteur:          Ivan LUCAS
 # Copyright:       (c) 2010-11 Ivan LUCAS
 # Licence : Licence GNU GPL
 #-----------------------------------------------------------
 
-import Chemins
-from Utils import UTILS_Adaptations
-from Utils.UTILS_Traduction import _
 import wx
+
+from Ctrl import CTRL_ActionRepens
 from Ol import OL_Individus
-from Utils import UTILS_Aui
+from Utils import UTILS_Adaptations
 from Utils import UTILS_ColonnesResponsive
 from Utils import UTILS_Config
-from Utils import UTILS_FluentIcons
+from Utils import UTILS_IconesRepens
 from Utils import UTILS_Interface
 from Utils import UTILS_Recherche
 from Utils import UTILS_Responsive
 from Utils import UTILS_UIMetrics
+from Utils.UTILS_Traduction import _
+
 
 ID_CREER_FAMILLE = wx.Window.NewControlId()
 ID_MODIFIER_FAMILLE = wx.Window.NewControlId()
@@ -40,7 +41,7 @@ LIMITE_RESULTATS_ACCUEIL = 30
 
 
 class ListeIndividusAccueil(OL_Individus.ListView):
-    """Vue d'accueil dense sans la colonne d'avatars historique."""
+    """Vue d'accueil dense, responsive et sans colonne d'avatars."""
 
     SPECS_COLONNES = (
         (120, 1.4), (105, 1.0), (82, 0.0), (55, 0.0), (150, 2.2),
@@ -88,60 +89,58 @@ class ListeIndividusAccueil(OL_Individus.ListView):
             OL_Individus.ColumnDefn(_(u"État"), "left", 72, "etat", typeDonnee="texte", stringConverter=FormateEtat),
             OL_Individus.ColumnDefn(_(u"Recherche"), "left", 0, "champ_recherche", typeDonnee="texte"),
         ]
-
         self.SetColumns(colonnes)
         self.SetSortColumn(self.columns[0])
         self.SetObjects(self.donnees)
         wx.CallAfter(UTILS_ColonnesResponsive.Ajuster, self)
 
 
-class EtatRecherche(wx.Panel):
-    """État vide/no-result de la recherche rapide, sans carte mobile."""
+class IndicationRecherche(wx.Panel):
+    """Indication compacte : le tableau reste la surface principale."""
 
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, style=wx.TAB_TRAVERSAL)
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_low"))
 
-        taille = UTILS_Responsive.GetTailleIcone(32)
-        bitmap = UTILS_FluentIcons.GetBitmap("search", taille=taille)
+        bitmap = UTILS_IconesRepens.GetBitmap(
+            "search",
+            taille=UTILS_Responsive.GetTailleIcone(18),
+            role="on_surface_variant",
+        )
         if bitmap is None:
             bitmap = wx.NullBitmap
-
         self.ctrl_icone = wx.StaticBitmap(self, bitmap=bitmap)
-        self.ctrl_titre = wx.StaticText(self, label=_(u"Rechercher une famille ou un individu"))
+        self.ctrl_titre = wx.StaticText(self, label=_(u"Recherchez une famille ou un individu"))
         self.ctrl_detail = wx.StaticText(
             self,
             label=_(u"Nom, prénom, téléphone, email, adresse, code postal ou ville."),
         )
-        self.ctrl_detail.Wrap(560)
-
-        police = self.ctrl_titre.GetFont()
-        police.SetWeight(wx.FONTWEIGHT_BOLD)
-        police.SetPointSize(max(police.GetPointSize() + 2, 11))
-        self.ctrl_titre.SetFont(police)
-
         self.ctrl_titre.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
         self.ctrl_detail.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
 
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.AddStretchSpacer(1)
-        sizer.Add(self.ctrl_icone, 0, wx.ALIGN_CENTER | wx.BOTTOM, UTILS_UIMetrics.spacing(2))
-        sizer.Add(self.ctrl_titre, 0, wx.ALIGN_CENTER | wx.BOTTOM, UTILS_UIMetrics.spacing(1))
-        sizer.Add(self.ctrl_detail, 0, wx.ALIGN_CENTER | wx.LEFT | wx.RIGHT, UTILS_UIMetrics.spacing(3))
-        sizer.AddStretchSpacer(1)
+        police = self.ctrl_titre.GetFont()
+        police.SetWeight(wx.FONTWEIGHT_BOLD)
+        self.ctrl_titre.SetFont(police)
+
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        marge = UTILS_UIMetrics.spacing(2)
+        sizer.Add(self.ctrl_icone, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, marge)
+        textes = wx.BoxSizer(wx.VERTICAL)
+        textes.Add(self.ctrl_titre, 0)
+        textes.Add(self.ctrl_detail, 0, wx.TOP, UTILS_UIMetrics.spacing(1))
+        sizer.Add(textes, 1, wx.ALIGN_CENTER_VERTICAL)
         self.SetSizer(sizer)
+        self.SetMinSize((-1, UTILS_UIMetrics.px(54)))
 
     def AfficherRecherche(self):
-        self.ctrl_titre.SetLabel(_(u"Rechercher une famille ou un individu"))
+        self.ctrl_titre.SetLabel(_(u"Recherchez une famille ou un individu"))
         self.ctrl_detail.SetLabel(_(u"Nom, prénom, téléphone, email, adresse, code postal ou ville."))
         self.Layout()
 
     def AfficherAucunResultat(self, texte):
         self.ctrl_titre.SetLabel(_(u"Aucun résultat"))
         if texte:
-            self.ctrl_detail.SetLabel(
-                _(u"Aucune fiche ne correspond à « %s ». Essayez une autre orthographe ou un autre critère.") % texte
-            )
+            self.ctrl_detail.SetLabel(_(u"Aucune fiche ne correspond à « %s ». Essayez une autre orthographe ou un autre critère.") % texte)
         else:
             self.ctrl_detail.SetLabel(_(u"Aucune fiche ne correspond à cette recherche."))
         self.Layout()
@@ -153,7 +152,7 @@ class BarreRechercheAccueil(OL_Individus.BarreRecherche):
     def __init__(self, parent):
         OL_Individus.BarreRecherche.__init__(self, parent, historique=True)
         self.SetDescriptiveText(_(u"Rechercher une famille ou un individu…"))
-        self.SetMinSize((280, UTILS_UIMetrics.action_target("compact")))
+        self.SetMinSize((UTILS_UIMetrics.px(300), UTILS_UIMetrics.action_target("compact")))
         self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
         self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
         self._index = {}
@@ -190,7 +189,7 @@ class BarreRechercheAccueil(OL_Individus.BarreRecherche):
         elif nbre == 0:
             label = _(u"Aucun résultat")
         else:
-            suffixe = _(u" · résultats proches") if approximatif else ""
+            suffixe = _(u" · proches") if approximatif else ""
             plus = "+" if tronque else ""
             label = _(u"%s%d résultat(s)%s") % (plus, nbre, suffixe)
         self.parent.ctrl_resume.SetLabel(label)
@@ -254,63 +253,94 @@ class BarreRechercheAccueil(OL_Individus.BarreRecherche):
         self.listView.Refresh()
 
 
-class ToolBar(wx.ToolBar):
-    def __init__(self, *args, **kwds):
-        kwds["style"] = wx.TB_FLAT | wx.TB_TEXT | wx.TB_NODIVIDER
-        wx.ToolBar.__init__(self, *args, **kwds)
+class BarreCommandes(wx.Panel):
+    """Commandes quotidiennes de la sélection, sans grosse toolbar héritée."""
 
-        liste_boutons = [
-            {"ID": ID_MODIFIER_FAMILLE, "label": _(u"Modifier"), "icone": "edit", "tooltip": _(u"Modifier la fiche famille de l'individu sélectionné")},
-            {"ID": ID_SUPPRIMER_FAMILLE, "label": _(u"Supprimer"), "icone": "delete", "tooltip": _(u"Supprimer ou détacher l'individu sélectionné")},
-            None,
-            {"ID": ID_OUVRIR_GRILLE, "label": _(u"Calendrier"), "icone": "calendar", "tooltip": _(u"Ouvrir la grille des consommations de l'individu sélectionné\n(ou double-clic sur la ligne + touche CTRL enfoncée)")},
-            {"ID": ID_OUVRIR_FICHE_IND, "label": _(u"Fiche ind."), "icone": "people", "tooltip": _(u"Ouvrir la fiche individuelle de l'individu sélectionné\n(ou double-clic sur la ligne + touche SHIFT enfoncée)")},
-            None,
-            {"ID": ID_PARAMETRES, "label": _(u"Paramètres"), "icone": "settings", "tooltip": _(u"Sélectionner les paramètres d'affichage")},
-            {"ID": ID_OUTILS, "label": _(u"Outils"), "icone": "settings", "tooltip": _(u"Outils")},
-        ]
-
-        taille_bitmap = UTILS_Responsive.GetTailleIcone(20)
-        for bouton in liste_boutons:
-            if bouton is None:
-                self.AddSeparator()
-            else:
-                bitmap = UTILS_FluentIcons.GetBitmap(bouton["icone"], taille=taille_bitmap)
-                if bitmap is None:
-                    bitmap = wx.NullBitmap
-                try:
-                    self.AddTool(bouton["ID"], bouton["label"], bitmap, wx.NullBitmap, wx.ITEM_NORMAL, bouton["tooltip"], "")
-                except Exception:
-                    self.AddLabelTool(bouton["ID"], bouton["label"], bitmap, wx.NullBitmap, wx.ITEM_NORMAL, bouton["tooltip"], "")
-
-        self.Bind(wx.EVT_TOOL, self.Modifier_famille, id=ID_MODIFIER_FAMILLE)
-        self.Bind(wx.EVT_TOOL, self.Supprimer_famille, id=ID_SUPPRIMER_FAMILLE)
-        self.Bind(wx.EVT_TOOL, self.Ouvrir_grille, id=ID_OUVRIR_GRILLE)
-        self.Bind(wx.EVT_TOOL, self.Ouvrir_fiche_ind, id=ID_OUVRIR_FICHE_IND)
-        self.Bind(wx.EVT_TOOL, self.Parametres, id=ID_PARAMETRES)
-        self.Bind(wx.EVT_TOOL, self.MenuOutils, id=ID_OUTILS)
-
-        UTILS_Aui.ConfigurerToolBar(self, taille_base=20, fond_uni=True)
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent, style=wx.TAB_TRAVERSAL)
+        self.parent = parent
         self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_low"))
-        self.SetMinSize((-1, UTILS_UIMetrics.toolbar_height(avec_libelle=True, icon_px=taille_bitmap)))
-        self.Realize()
 
-    def Ajouter_famille(self, event):
-        self.GetParent().ctrl_listview.Ajouter(None)
+        self.ctrl_modifier = CTRL_ActionRepens.CTRL(
+            self, id=ID_MODIFIER_FAMILLE, label=_(u"Modifier"), icone="edit",
+            tooltip=_(u"Modifier la fiche famille de l'individu sélectionné"),
+        )
+        self.ctrl_calendrier = CTRL_ActionRepens.CTRL(
+            self, id=ID_OUVRIR_GRILLE, label=_(u"Calendrier"), icone="calendar",
+            tooltip=_(u"Ouvrir les consommations de l'individu sélectionné"),
+        )
+        self.ctrl_fiche = CTRL_ActionRepens.CTRL(
+            self, id=ID_OUVRIR_FICHE_IND, label=_(u"Fiche individuelle"), icone="people",
+            tooltip=_(u"Ouvrir la fiche individuelle"),
+        )
+        self.ctrl_plus = CTRL_ActionRepens.CTRL(
+            self, id=ID_OUTILS, label=_(u"Plus"), icone="more", variante="ghost",
+            tooltip=_(u"Supprimer, paramètres, impression, export et aide"),
+        )
 
-    def Modifier_famille(self, event):
-        self.GetParent().ctrl_listview.Modifier(None)
+        self.ctrl_modifier.Bind(wx.EVT_BUTTON, self.OnModifier)
+        self.ctrl_calendrier.Bind(wx.EVT_BUTTON, self.OnCalendrier)
+        self.ctrl_fiche.Bind(wx.EVT_BUTTON, self.OnFiche)
+        self.ctrl_plus.Bind(wx.EVT_BUTTON, self.OnPlus)
 
-    def Supprimer_famille(self, event):
-        self.GetParent().ctrl_listview.Supprimer(None)
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        marge = UTILS_UIMetrics.spacing(1)
+        sizer.Add(self.ctrl_modifier, 0, wx.RIGHT, marge)
+        sizer.Add(self.ctrl_calendrier, 0, wx.RIGHT, marge)
+        sizer.Add(self.ctrl_fiche, 0, wx.RIGHT, marge)
+        sizer.AddStretchSpacer(1)
+        sizer.Add(self.ctrl_plus, 0)
+        self.SetSizer(sizer)
+        self.ActualiserEtat()
 
-    def Ouvrir_grille(self, event):
-        self.GetParent().ctrl_listview.Modifier(event)
+    def ActualiserEtat(self):
+        actif = self.parent._GetTrackSelectionne() is not None
+        for ctrl in (self.ctrl_modifier, self.ctrl_calendrier, self.ctrl_fiche):
+            ctrl.Enable(actif)
+            ctrl.Refresh()
 
-    def Ouvrir_fiche_ind(self, event):
-        self.GetParent().ctrl_listview.Modifier(event)
+    def OnModifier(self, event=None):
+        self.parent.ctrl_listview.Modifier(None)
 
-    def Parametres(self, event):
+    def OnCalendrier(self, event=None):
+        evenement = wx.CommandEvent(wx.wxEVT_BUTTON, ID_OUVRIR_GRILLE)
+        evenement.SetEventObject(self)
+        self.parent.ctrl_listview.Modifier(evenement)
+
+    def OnFiche(self, event=None):
+        evenement = wx.CommandEvent(wx.wxEVT_BUTTON, ID_OUVRIR_FICHE_IND)
+        evenement.SetEventObject(self)
+        self.parent.ctrl_listview.Modifier(evenement)
+
+    def OnPlus(self, event=None):
+        menu = UTILS_Adaptations.Menu()
+
+        def Ajouter(label, callback):
+            identifiant = wx.Window.NewControlId()
+            menu.Append(identifiant, label)
+            self.Bind(wx.EVT_MENU, callback, id=identifiant)
+
+        selection = self.parent._GetTrackSelectionne() is not None
+        identifiant_supprimer = wx.Window.NewControlId()
+        item = menu.Append(identifiant_supprimer, _(u"Supprimer ou détacher…"))
+        item.Enable(selection)
+        self.Bind(wx.EVT_MENU, lambda evt: self.parent.ctrl_listview.Supprimer(None), id=identifiant_supprimer)
+
+        menu.AppendSeparator()
+        Ajouter(_(u"Paramètres d'affichage…"), self.OnParametres)
+        Ajouter(_(u"Actualiser"), lambda evt: self.parent.MAJ())
+        menu.AppendSeparator()
+        Ajouter(_(u"Aperçu avant impression"), lambda evt: self.parent.ctrl_listview.Apercu(None))
+        Ajouter(_(u"Imprimer"), lambda evt: self.parent.ctrl_listview.Imprimer(None))
+        Ajouter(_(u"Exporter au format Texte"), lambda evt: self.parent.ctrl_listview.ExportTexte(None))
+        Ajouter(_(u"Exporter au format Excel"), lambda evt: self.parent.ctrl_listview.ExportExcel(None))
+        menu.AppendSeparator()
+        Ajouter(_(u"Aide"), lambda evt: self.parent.Aide())
+
+        self.PopupMenu(menu)
+        menu.Destroy()
+
+    def OnParametres(self, event=None):
         parametres = UTILS_Config.GetParametre("liste_individus_parametres", defaut="")
         from Dlg import DLG_Selection_individus
         dlg = DLG_Selection_individus.Dialog(self)
@@ -318,84 +348,25 @@ class ToolBar(wx.ToolBar):
         if dlg.ShowModal() == wx.ID_OK:
             UTILS_Config.SetParametre("liste_individus_parametres", dlg.GetParametres())
         dlg.Destroy()
-        self.GetParent().ActualiseParametresAffichage()
-        self.GetParent().MAJ()
-
-    def _BitmapMenu(self, image):
-        taille = UTILS_Responsive.GetTailleIcone(16)
-        return wx.Bitmap(Chemins.GetStaticIconPath(image, taille=taille), wx.BITMAP_TYPE_PNG)
-
-    def MenuOutils(self, event):
-        menuPop = UTILS_Adaptations.Menu()
-        ID_ACTUALISER = wx.Window.NewControlId()
-        ID_IMPRIMER = wx.Window.NewControlId()
-        ID_APERCU = wx.Window.NewControlId()
-        ID_EXPORT_EXCEL = wx.Window.NewControlId()
-        ID_EXPORT_TEXTE = wx.Window.NewControlId()
-        ID_AIDE = wx.Window.NewControlId()
-
-        item = wx.MenuItem(menuPop, ID_APERCU, _(u"Aperçu avant impression"), _(u"Imprimer la liste des effectifs affichée"))
-        item.SetBitmap(self._BitmapMenu("Images/16x16/Apercu.png"))
-        menuPop.AppendItem(item)
-        self.Bind(wx.EVT_MENU, self.Apercu, id=ID_APERCU)
-
-        item = wx.MenuItem(menuPop, ID_IMPRIMER, _(u"Imprimer"), _(u"Imprimer la liste des effectifs affichée"))
-        item.SetBitmap(self._BitmapMenu("Images/16x16/Imprimante.png"))
-        menuPop.AppendItem(item)
-        self.Bind(wx.EVT_MENU, self.Imprimer, id=ID_IMPRIMER)
-
-        menuPop.AppendSeparator()
-        item = wx.MenuItem(menuPop, ID_EXPORT_TEXTE, _(u"Exporter au format Texte"), _(u"Exporter au format Texte"))
-        item.SetBitmap(self._BitmapMenu("Images/16x16/Texte2.png"))
-        menuPop.AppendItem(item)
-        self.Bind(wx.EVT_MENU, self.GetParent().ctrl_listview.ExportTexte, id=ID_EXPORT_TEXTE)
-
-        item = wx.MenuItem(menuPop, ID_EXPORT_EXCEL, _(u"Exporter au format Excel"), _(u"Exporter la liste au format Excel"))
-        item.SetBitmap(self._BitmapMenu("Images/16x16/Excel.png"))
-        menuPop.AppendItem(item)
-        self.Bind(wx.EVT_MENU, self.GetParent().ctrl_listview.ExportExcel, id=ID_EXPORT_EXCEL)
-
-        menuPop.AppendSeparator()
-        item = wx.MenuItem(menuPop, ID_ACTUALISER, _(u"Actualiser"), _(u"Actualiser l'affichage"))
-        item.SetBitmap(self._BitmapMenu("Images/16x16/Actualiser2.png"))
-        menuPop.AppendItem(item)
-        self.Bind(wx.EVT_MENU, self.Actualiser, id=ID_ACTUALISER)
-
-        menuPop.AppendSeparator()
-        item = wx.MenuItem(menuPop, ID_AIDE, _(u"Aide"), _(u"Aide"))
-        item.SetBitmap(self._BitmapMenu("Images/16x16/Aide.png"))
-        menuPop.AppendItem(item)
-        self.Bind(wx.EVT_MENU, self.Aide, id=ID_AIDE)
-
-        self.PopupMenu(menuPop)
-        menuPop.Destroy()
-
-    def Apercu(self, event):
-        self.GetParent().ctrl_listview.Apercu(None)
-
-    def Imprimer(self, event):
-        self.GetParent().ctrl_listview.Imprimer(None)
-
-    def Actualiser(self, event):
-        self.GetParent().MAJ()
-
-    def Aide(self, event):
-        self.GetParent().Aide()
+        self.parent.ActualiseParametresAffichage()
+        self.parent.MAJ()
 
 
 class Panel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, name="recherche_individus", id=-1, style=wx.TAB_TRAVERSAL)
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
 
-        self.ctrl_titre = wx.StaticText(self, label=_(u"Individus / Familles"))
-        self.ctrl_nouvelle_famille = wx.Button(self, label=_(u"Nouvelle famille"))
+        # Le titre du module appartient au pane AUI. Ici on garde uniquement
+        # l'état de la recherche et les commandes utiles au contexte courant.
+        self.ctrl_resume = wx.StaticText(self, label=_(u"Recherche rapide"))
+        self.ctrl_resume.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
+        police_resume = self.ctrl_resume.GetFont()
         try:
-            bitmap = UTILS_FluentIcons.GetBitmap("add", taille=UTILS_Responsive.GetTailleIcone(20))
-            if bitmap is not None:
-                self.ctrl_nouvelle_famille.SetBitmap(bitmap)
+            police_resume.SetWeight(wx.FONTWEIGHT_SEMIBOLD)
         except Exception:
-            pass
-        self.ctrl_nouvelle_famille.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
+            police_resume.SetWeight(wx.FONTWEIGHT_BOLD)
+        self.ctrl_resume.SetFont(police_resume)
 
         self.ctrl_listview = ListeIndividusAccueil(
             self,
@@ -403,47 +374,83 @@ class Panel(wx.Panel):
             style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.NO_BORDER,
         )
         self.ctrl_recherche = BarreRechercheAccueil(self)
-        self.ctrl_resume = wx.StaticText(self, label=_(u"Recherche rapide"))
-        self.ctrl_voir_tout = wx.Button(self, label=_(u"Voir tout"))
-        self.ctrl_voir_tout.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
 
-        self.ctrl_email = self._CreerBoutonAction("mail", "Images/16x16/Emails_exp.png", _(u"Envoyer un email"))
-        self.ctrl_sms = self._CreerBoutonAction("chat", "Images/16x16/Sms.png", _(u"Envoyer un SMS"))
+        self.ctrl_voir_tout = CTRL_ActionRepens.CTRL(
+            self, label=_(u"Voir tout"), icone="people", variante="ghost",
+            tooltip=_(u"Afficher toute la liste"),
+        )
+        self.ctrl_email = CTRL_ActionRepens.CTRL(
+            self, label=u"", icone="mail", variante="secondaire",
+            tooltip=_(u"Envoyer un email"),
+        )
+        self.ctrl_sms = CTRL_ActionRepens.CTRL(
+            self, label=u"", icone="chat", variante="secondaire",
+            tooltip=_(u"Envoyer un SMS"),
+        )
+        self.ctrl_nouvelle_famille = CTRL_ActionRepens.CTRL(
+            self, id=ID_CREER_FAMILLE, label=_(u"Nouvelle famille"), icone="add", variante="primaire",
+            tooltip=_(u"Créer une nouvelle famille"),
+        )
 
-        self.toolBar = ToolBar(self)
-        self.ctrl_etat = EtatRecherche(self)
+        self.ctrl_commandes = BarreCommandes(self)
+        self.ctrl_indication = IndicationRecherche(self)
 
-        self.ctrl_nouvelle_famille.Bind(wx.EVT_BUTTON, self.toolBar.Ajouter_famille)
         self.ctrl_voir_tout.Bind(wx.EVT_BUTTON, lambda evt: self.ctrl_recherche.AfficherTout())
         self.ctrl_email.Bind(wx.EVT_BUTTON, self.OnEmail)
         self.ctrl_sms.Bind(wx.EVT_BUTTON, self.OnSMS)
+        self.ctrl_nouvelle_famille.Bind(wx.EVT_BUTTON, lambda evt: self.ctrl_listview.Ajouter(None))
+        self.ctrl_listview.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelectionChange)
+        self.ctrl_listview.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.OnSelectionChange)
 
-        self.__set_properties()
         self.__do_layout()
         self.ActualiseParametresAffichage()
         wx.CallAfter(self.AfficherEtatVide)
         wx.CallAfter(self._ConfigurerPaneAui)
 
-    def _CreerBoutonAction(self, icone, fallback, tooltip):
-        taille_icone = UTILS_Responsive.GetTailleIcone(20)
-        bitmap = None
+    def __do_layout(self):
+        principal = wx.BoxSizer(wx.VERTICAL)
+        marge = UTILS_UIMetrics.spacing(2)
+        petit = UTILS_UIMetrics.spacing(1)
+
+        # Ligne contextuelle : statut > recherche > communication > création.
+        entete = wx.BoxSizer(wx.HORIZONTAL)
+        entete.Add(self.ctrl_resume, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, marge)
+        entete.Add(self.ctrl_recherche, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, petit)
+        entete.Add(self.ctrl_voir_tout, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, petit)
+        entete.Add(self.ctrl_email, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, petit)
+        entete.Add(self.ctrl_sms, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, petit)
+        entete.Add(self.ctrl_nouvelle_famille, 0, wx.ALIGN_CENTER_VERTICAL)
+        principal.Add(entete, 0, wx.EXPAND | wx.ALL, marge)
+
+        principal.Add(self.ctrl_commandes, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
+        principal.Add(self.ctrl_indication, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
+        principal.Add(self.ctrl_listview, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, petit)
+
+        self.SetSizer(principal)
+        self.Layout()
+
+    def _ConfigurerPaneAui(self):
         try:
-            bitmap = UTILS_FluentIcons.GetBitmap(icone, taille=taille_icone)
-        except Exception:
-            bitmap = None
-        if bitmap is None or not bitmap.IsOk():
-            try:
-                bitmap = wx.Bitmap(Chemins.GetStaticIconPath(fallback, taille=taille_icone), wx.BITMAP_TYPE_ANY)
-            except Exception:
-                bitmap = wx.NullBitmap
-        bouton = wx.Button(self, label=u"", size=(-1, UTILS_UIMetrics.action_target("compact")))
-        try:
-            bouton.SetBitmap(bitmap)
+            top = self.GetTopLevelParent()
+            manager = getattr(top, "_mgr", None)
+            if manager is None:
+                return
+            pane = manager.GetPane(self)
+            if pane is None or not pane.IsOk():
+                pane = manager.GetPane("recherche")
+            if pane is None or not pane.IsOk():
+                return
+            pane.Caption(_(u"Individus / Familles"))
+            pane.CaptionVisible(True)
+            pane.PaneBorder(True)
+            pane.CloseButton(True)
+            pane.MaximizeButton(True)
+            pane.MinimizeButton(True)
+            pane.Resizable(True)
+            pane.Movable(True)
+            manager.Update()
         except Exception:
             pass
-        bouton.SetMinSize((UTILS_UIMetrics.action_target("compact"), UTILS_UIMetrics.action_target("compact")))
-        bouton.SetToolTip(wx.ToolTip(tooltip))
-        return bouton
 
     def _GetTrackSelectionne(self):
         try:
@@ -457,8 +464,11 @@ class Panel(wx.Panel):
         except Exception:
             return None
 
+    def OnSelectionChange(self, event):
+        wx.CallAfter(self.ctrl_commandes.ActualiserEtat)
+        event.Skip()
+
     def OnEmail(self, event=None):
-        """Ouvre l'éditeur historique avec le destinataire contextuel prérempli."""
         adresses = []
         track = self._GetTrackSelectionne()
         if track is not None:
@@ -479,7 +489,6 @@ class Panel(wx.Panel):
         dlg.Destroy()
 
     def OnSMS(self, event=None):
-        """Ouvre l'assistant SMS et préremplit le mobile de la ligne sélectionnée."""
         numero = None
         track = self._GetTrackSelectionne()
         if track is not None:
@@ -504,82 +513,25 @@ class Panel(wx.Panel):
         dlg.ShowModal()
         dlg.Destroy()
 
-    def __set_properties(self):
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
-
-        police_titre = self.ctrl_titre.GetFont()
-        police_titre.SetWeight(wx.FONTWEIGHT_BOLD)
-        police_titre.SetPointSize(max(police_titre.GetPointSize() + 2, 11))
-        self.ctrl_titre.SetFont(police_titre)
-
-        self.ctrl_titre.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        self.ctrl_resume.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
-
-    def __do_layout(self):
-        principal = wx.BoxSizer(wx.VERTICAL)
-        marge = UTILS_UIMetrics.spacing(1)
-
-        # Une seule ligne fonctionnelle : titre, état, recherche, communication
-        # contextuelle et création. Les actions rapides restent toujours près de
-        # la donnée au lieu d'être cachées dans le menu général de Noethys.
-        entete = wx.BoxSizer(wx.HORIZONTAL)
-        entete.Add(self.ctrl_titre, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, UTILS_UIMetrics.spacing(2))
-        entete.Add(self.ctrl_resume, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, UTILS_UIMetrics.spacing(2))
-        entete.AddStretchSpacer(1)
-        entete.Add(self.ctrl_recherche, 2, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, marge)
-        entete.Add(self.ctrl_voir_tout, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, marge)
-        entete.Add(self.ctrl_email, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, marge)
-        entete.Add(self.ctrl_sms, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, marge)
-        entete.Add(self.ctrl_nouvelle_famille, 0, wx.ALIGN_CENTER_VERTICAL)
-        principal.Add(entete, 0, wx.EXPAND | wx.ALL, marge)
-
-        principal.Add(self.toolBar, 0, wx.EXPAND)
-        principal.Add(self.ctrl_listview, 1, wx.EXPAND)
-        principal.Add(self.ctrl_etat, 1, wx.EXPAND)
-
-        self.SetSizer(principal)
-        self.Layout()
-
-    def _ConfigurerPaneAui(self):
-        """Rend le pane Individus pleinement manipulable comme les autres panneaux."""
-        try:
-            top = self.GetTopLevelParent()
-            manager = getattr(top, "_mgr", None)
-            if manager is None:
-                return
-            pane = manager.GetPane(self)
-            if pane is None or not pane.IsOk():
-                pane = manager.GetPane("recherche")
-            if pane is None or not pane.IsOk():
-                return
-            pane.Caption(_(u"Individus / Familles"))
-            pane.CaptionVisible(True)
-            pane.PaneBorder(True)
-            pane.CloseButton(True)
-            pane.MaximizeButton(True)
-            pane.MinimizeButton(True)
-            pane.Resizable(True)
-            manager.Update()
-        except Exception:
-            pass
-
-    def _AfficherContenu(self, liste=False, etat=False):
-        self.toolBar.Show(liste)
-        self.ctrl_listview.Show(liste)
-        self.ctrl_etat.Show(etat)
-        self.Layout()
-
     def AfficherEtatVide(self):
-        self.ctrl_etat.AfficherRecherche()
-        self._AfficherContenu(liste=False, etat=True)
+        self.ctrl_indication.AfficherRecherche()
+        self.ctrl_indication.Show(True)
+        self.ctrl_commandes.Show(False)
+        self.ctrl_listview.SetObjects([])
+        self.Layout()
 
     def AfficherAucunResultat(self, texte):
-        self.ctrl_etat.AfficherAucunResultat(texte)
-        self._AfficherContenu(liste=False, etat=True)
+        self.ctrl_indication.AfficherAucunResultat(texte)
+        self.ctrl_indication.Show(True)
+        self.ctrl_commandes.Show(False)
+        self.Layout()
 
     def AfficherResultats(self):
-        self._AfficherContenu(liste=True, etat=False)
+        self.ctrl_indication.Show(False)
+        self.ctrl_commandes.Show(True)
+        self.ctrl_commandes.ActualiserEtat()
         self._ConfigurerPaneAui()
+        self.Layout()
         wx.CallAfter(UTILS_ColonnesResponsive.Ajuster, self.ctrl_listview)
 
     def MAJ(self):
@@ -601,12 +553,12 @@ class MyFrame(wx.Frame):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
         sizer_1 = wx.BoxSizer(wx.VERTICAL)
-        sizer_1.Add(panel, 1, wx.ALL | wx.EXPAND)
+        sizer_1.Add(panel, 1, wx.EXPAND)
         self.SetSizer(sizer_1)
         self.ctrl = Panel(panel)
         self.ctrl.MAJ()
         sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, 4)
+        sizer_2.Add(self.ctrl, 1, wx.EXPAND)
         panel.SetSizer(sizer_2)
         self.Layout()
         self.CentreOnScreen()
@@ -614,7 +566,7 @@ class MyFrame(wx.Frame):
 
 if __name__ == '__main__':
     app = wx.App(0)
-    frame_1 = MyFrame(None, -1, "TEST", size=(1000, 600))
+    frame_1 = MyFrame(None, -1, "TEST", size=(1200, 700))
     app.SetTopWindow(frame_1)
     frame_1.Show()
     app.MainLoop()
