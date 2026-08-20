@@ -1,5 +1,6 @@
 name: Apply structural UI refactor
 
+# One-shot migration runner. Remove once the generated source commit lands.
 on:
   workflow_dispatch:
   push:
