@@ -50,11 +50,15 @@ def test_hauteur_est_bornee_et_serialisation_est_stable():
     })
     relu = PORTAIL.deserialiser_parametres(brut)
 
+    assert relu["source"] == PORTAIL.MARQUEUR_CONTENU_EXTERNE
     assert relu["url"] == "https://example.org/widget"
     assert relu["hauteur"] == 700
     assert relu["defilement"] is True
     assert relu["plein_ecran"] is True
     assert relu["version"] == 1
+    assert PORTAIL.est_configuration_contenu_externe(brut) is True
+    assert PORTAIL.est_configuration_contenu_externe('{"foo":"bar"}') is False
+    assert PORTAIL.est_configuration_contenu_externe("ancien paramètre") is False
 
 
 def test_categorie_locale_est_exportee_comme_bloc_texte_connecthys():
