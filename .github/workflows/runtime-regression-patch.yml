@@ -31,6 +31,7 @@ jobs:
             noethys/Ctrl/CTRL_TaskBarIcon.py \
             noethys/Ol/OL_Modes_reglements.py \
             noethys/Dlg/DLG_Emetteurs.py \
+            noethys/Dlg/DLG_Utilisateurs_reseau.py \
             noethys/Utils/UTILS_Organisateur.py \
             noethys/Noethys.py
           git diff --check
@@ -44,11 +45,10 @@ jobs:
             noethys/Ctrl/CTRL_TaskBarIcon.py \
             noethys/Ol/OL_Modes_reglements.py \
             noethys/Dlg/DLG_Emetteurs.py \
+            noethys/Dlg/DLG_Utilisateurs_reseau.py \
             noethys/Utils/UTILS_Organisateur.py \
             noethys/Noethys.py
           git rm scripts/apply_runtime_regression_fixes.py
           git rm .github/workflows/runtime-regression-patch.yml
           git commit -m "Fix Python 3 wx runtime regressions"
           git push origin HEAD:master
-
-# retrigger after confirming the first push did not apply the guarded patch
