@@ -41,15 +41,15 @@ def _ConditionRepas(strict=True):
 
 def _RechercheReservations(date_debut, date_fin, strict=True):
     DB = GestionDB.DB()
-    req = """SELECT activites.IDactivite, activites.nom,
+    req = """SELECT consommations.IDactivite, activites.nom,
     consommations.IDgroupe, consommations.IDunite
     FROM consommations
     LEFT JOIN unites ON unites.IDunite = consommations.IDunite
-    LEFT JOIN activites ON activites.IDactivite = unites.IDactivite
+    LEFT JOIN activites ON activites.IDactivite = consommations.IDactivite
     WHERE consommations.date>='%s' AND consommations.date<='%s'
     AND consommations.etat IN ('reservation', 'present')
     AND %s
-    GROUP BY activites.IDactivite, activites.nom, consommations.IDgroupe, consommations.IDunite
+    GROUP BY consommations.IDactivite, activites.nom, consommations.IDgroupe, consommations.IDunite
     ORDER BY activites.nom, consommations.IDgroupe, consommations.IDunite;""" % (
         date_debut, date_fin, _ConditionRepas(strict=strict))
     DB.ExecuterReq(req)
@@ -61,8 +61,9 @@ def _RechercheReservations(date_debut, date_fin, strict=True):
 def RechercheReservationsRepas(date_debut, date_fin):
     """Retourne les couples groupe/unité de repas regroupés par activité.
 
-    Le drapeau unites.repas est la référence. Un repli sur le nom de l'unité
-    est uniquement utilisé si ce premier passage ne trouve aucune réservation.
+    L'activité sert ici de regroupement administratif, pas de notion de site
+    physique. Le drapeau unites.repas est la référence ; le nom de l'unité
+    n'est utilisé qu'en repli pour les anciennes bases incomplètement réglées.
     """
     donnees = _RechercheReservations(date_debut, date_fin, strict=True)
     if not donnees:
@@ -88,11 +89,7 @@ def RechercheReservationsRepas(date_debut, date_fin):
 
 
 def GetProchainePeriodeRepas(nb_jours=14):
-    """Cherche la prochaine réservation de repas et propose une courte période.
-
-    La période n'est qu'une valeur initiale : l'utilisateur conserve les deux
-    champs de dates historiques et peut donc l'élargir ou la réduire.
-    """
+    """Cherche la prochaine réservation de repas et propose une courte période."""
     aujourd_hui = datetime.date.today()
 
     def recherche(strict=True):
@@ -140,15 +137,11 @@ def AssureColonnesAutomatiques(IDmodele, date_debut, date_fin):
         params = _ParseParametres(parametres)
         unites = params.get("unites", [])
         if unites and not params.get(AUTO_FLAG, False):
-            # Le modèle a été configuré à la main : comportement historique.
             DB.Close()
             return False
         if params.get(AUTO_FLAG, False) and params.get(AUTO_SITE) is not None:
             colonnes_auto[params[AUTO_SITE]] = {
                 "IDcolonne": IDcolonne,
-                "nom": nom,
-                "largeur": largeur,
-                "categorie": categorie,
                 "parametres": params,
             }
 
@@ -159,13 +152,11 @@ def AssureColonnesAutomatiques(IDmodele, date_debut, date_fin):
 
     modifie = False
     prochain_ordre = ordre_max + 1
-
     for site in sites:
         IDsite = site["IDactivite"]
         unites = site["unites"]
         if not unites:
             continue
-
         if IDsite in colonnes_auto:
             colonne = colonnes_auto[IDsite]
             params = colonne["parametres"]
@@ -179,7 +170,6 @@ def AssureColonnesAutomatiques(IDmodele, date_debut, date_fin):
                 DB.ReqMAJ("modeles_commandes_colonnes", [("parametres", str(params)),], "IDcolonne", colonne["IDcolonne"])
                 modifie = True
             continue
-
         params = {
             "unites": [tuple(item) for item in unites],
             AUTO_FLAG: True,
@@ -205,4 +195,27 @@ class CTRL(CTRL_Commande_repas_legacy.CTRL):
 
     def Importation(self):
         AssureColonnesAutomatiques(self.IDmodele, self.date_debut, self.date_fin)
-        return super(CTRL, self).Importation()
+        donnees = super(CTRL, self).Importation()
+
+        # Le moteur historique compte une ligne de consommation comme une unité.
+        # Certaines bases utilisent pourtant consommations.quantite. Corrige les
+        # suggestions uniquement lorsque quantite est réellement > 1, afin de
+        # conserver strictement le comportement historique dans les autres cas.
+        if not donnees or not donnees.get("dict_conso"):
+            return donnees
+        DB = GestionDB.DB()
+        req = """SELECT date, IDgroupe, IDunite, quantite
+        FROM consommations
+        WHERE date>='%s' AND date<='%s'
+        AND consommations.etat IN ('reservation', 'present')
+        AND quantite IS NOT NULL AND quantite>1;""" % (self.date_debut, self.date_fin)
+        DB.ExecuterReq(req)
+        lignes = DB.ResultatReq()
+        DB.Close()
+        for date, IDgroupe, IDunite, quantite in lignes:
+            date = UTILS_Dates.DateEngEnDateDD(date)
+            try:
+                donnees["dict_conso"][date][IDgroupe][IDunite] += int(quantite) - 1
+            except (KeyError, TypeError, ValueError):
+                pass
+        return donnees
