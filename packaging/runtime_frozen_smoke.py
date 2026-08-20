@@ -47,6 +47,8 @@ if os.environ.get("NOETHYS_FROZEN_SMOKE") == "1":
     # Aucun de ces imports ne doit ouvrir une base, créer wx.App ou écrire la
     # configuration utilisateur. wx.richtext dépend de wx._xml : les deux sont
     # testés explicitement pour éviter un bundle PyInstaller vert mais inutilisable.
+    # Les modules Noethys ajoutés ici correspondent aux régressions réellement
+    # rencontrées sur le portable : ils valident aussi les hooks de compatibilité.
     modules = (
         "wx",
         "wx._xml",
@@ -61,6 +63,12 @@ if os.environ.get("NOETHYS_FROZEN_SMOKE") == "1":
         "Crypto.Hash.SHA256",
         "cryptography",
         "requests",
+        "Ctrl.CTRL_Saisie_transport",
+        "Ctrl.CTRL_TaskBarIcon",
+        "Dlg.DLG_Utilisateurs_reseau",
+        "Ol.OL_Modes_reglements",
+        "Dlg.DLG_Emetteurs",
+        "Utils.UTILS_Organisateur",
     )
     for module_name in modules:
         try:
