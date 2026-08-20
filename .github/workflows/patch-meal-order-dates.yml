@@ -1,0 +1,66 @@
+name: Patch meal-order dates
+
+on:
+  push:
+    branches:
+      - feat/commandes-repas-sites-livraison
+    paths:
+      - .github/workflows/patch-meal-order-dates.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/commandes-repas-sites-livraison
+          fetch-depth: 0
+
+      - name: Apply focused patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('noethys/Ctrl/CTRL_Commande_repas.py')
+          text = path.read_text(encoding='utf-8')
+
+          old = '''        dictDonnees["liste_dates"].sort()\n\n        dictDonnees["liste_dates"].append(_(u"Total"))\n\n        # Consommations\n'''
+          new = '''        # Consommations\n'''
+          if old not in text:
+              raise SystemExit('meal-order opening/date block not found')
+          text = text.replace(old, new, 1)
+
+          old = '''        for IDconso, date, IDgroupe, IDunite, IDindividu in listeDonnees :\n            date = UTILS_Dates.DateEngEnDateDD(date)\n\n            if (date in dictDonnees["dict_conso"]) == False:\n'''
+          new = '''        for IDconso, date, IDgroupe, IDunite, IDindividu in listeDonnees :\n            date = UTILS_Dates.DateEngEnDateDD(date)\n\n            if date not in dictDonnees["liste_dates"] :\n                dictDonnees["liste_dates"].append(date)\n\n            if (date in dictDonnees["dict_conso"]) == False:\n'''
+          if old not in text:
+              raise SystemExit('meal-order consumption block not found')
+          text = text.replace(old, new, 1)
+
+          old = '''            if IDgroupe not in dictDonnees["dict_dates"][date][IDindividu] :\n                dictDonnees["dict_dates"][date][IDindividu].append(IDgroupe)\n\n\n        if len(dictDonnees["liste_individus"]) == 0 :\n'''
+          new = '''            if IDgroupe not in dictDonnees["dict_dates"][date][IDindividu] :\n                dictDonnees["dict_dates"][date][IDindividu].append(IDgroupe)\n\n        dictDonnees["liste_dates"].sort()\n        dictDonnees["liste_dates"].append(_(u"Total"))\n\n\n        if len(dictDonnees["liste_individus"]) == 0 :\n'''
+          if old not in text:
+              raise SystemExit('meal-order final date block not found')
+          text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Check syntax and diff
+        shell: bash
+        run: |
+          python -m py_compile noethys/Ctrl/CTRL_Commande_repas.py
+          git diff --check
+          git diff -- noethys/Ctrl/CTRL_Commande_repas.py
+
+      - name: Commit focused patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- noethys/Ctrl/CTRL_Commande_repas.py
+          git commit -m "Fix meal-order dates from reservations"
+          git push origin HEAD:feat/commandes-repas-sites-livraison
