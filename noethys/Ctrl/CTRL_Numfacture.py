@@ -37,8 +37,6 @@ class CTRL(wx.SearchCtrl):
         except Exception:
             pass
 
-        # Une valeur de 20 px était trop petite dès 120 % de texte. Le contrôle
-        # conserve sa largeur décidée par son parent mais suit la cible desktop.
         try:
             largeur_min = max(UTILS_UIMetrics.px(120), self.GetMinSize().GetWidth())
             self.SetMinSize((largeur_min, UTILS_UIMetrics.action_target("compact")))
@@ -86,12 +84,7 @@ class CTRL(wx.SearchCtrl):
             conditionNumero = None
 
         if conditionNumero is None:
-            dlg = wx.MessageDialog(
-                self,
-                _(u"Ce numéro de facture ne semble pas valide !"),
-                _(u"Erreur de saisie"),
-                wx.OK | wx.ICON_EXCLAMATION,
-            )
+            dlg = wx.MessageDialog(self, _(u"Ce numéro de facture ne semble pas valide !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
             return
@@ -115,24 +108,14 @@ class CTRL(wx.SearchCtrl):
         DB.Close()
 
         if len(listeDonnees) == 0:
-            dlg = wx.MessageDialog(
-                self,
-                _(u"Ce numéro ne correspond à aucune facture existante %s!") % texteSupp,
-                _(u"Erreur"),
-                wx.OK | wx.ICON_EXCLAMATION,
-            )
+            dlg = wx.MessageDialog(self, _(u"Ce numéro ne correspond à aucune facture existante %s!") % texteSupp, _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
             return
 
         IDfacture, totalInitial, regleInitial, soldeInitial, regleActuel, etat, IDfamille = listeDonnees[0]
         if etat == "annulation":
-            dlg = wx.MessageDialog(
-                self,
-                _(u"La facture n°%s a été annulée !") % numFacture,
-                _(u"Facture annulée"),
-                wx.OK | wx.ICON_EXCLAMATION,
-            )
+            dlg = wx.MessageDialog(self, _(u"La facture n°%s a été annulée !") % numFacture, _(u"Facture annulée"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
             return
@@ -153,12 +136,7 @@ class CTRL(wx.SearchCtrl):
         if regleActuel is None:
             regleActuel = 0.0
         if totalActuel - regleActuel == 0.0:
-            dlg = wx.MessageDialog(
-                self,
-                _(u"La facture n°%s a déjà été réglée en intégralité !") % numFacture,
-                _(u"Erreur de saisie"),
-                wx.OK | wx.ICON_EXCLAMATION,
-            )
+            dlg = wx.MessageDialog(self, _(u"La facture n°%s a déjà été réglée en intégralité !") % numFacture, _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
             return
@@ -199,29 +177,13 @@ class Dialog(wx.Dialog):
     """Saisie d'un numéro de facture sans grille/spacer historique."""
 
     def __init__(self, parent, id=-1, title=_(u"Régler une facture"), IDfamille=None):
-        wx.Dialog.__init__(
-            self,
-            parent,
-            id,
-            title,
-            name="DLG_Regler_facture",
-            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
-        )
+        wx.Dialog.__init__(self, parent, id, title, name="DLG_Regler_facture", style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.parent = parent
         self.IDfamille = IDfamille
 
-        self.label = wx.StaticText(
-            self,
-            -1,
-            _(u"Saisissez le numéro de la facture à régler ou scannez directement son code-barres."),
-        )
+        self.label = wx.StaticText(self, -1, _(u"Saisissez le numéro de la facture à régler ou scannez directement son code-barres."))
         self.ctrl_mdp = CTRL(self, IDfamille=self.IDfamille)
-        self.bouton_annuler = CTRL_Bouton_image.CTRL(
-            self,
-            id=wx.ID_CANCEL,
-            texte=_(u"Annuler"),
-            cheminImage="Images/32x32/Annuler.png",
-        )
+        self.bouton_annuler = CTRL_Bouton_image.CTRL(self, id=wx.ID_CANCEL, texte=_(u"Annuler"), cheminImage="Images/32x32/Annuler.png")
 
         self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
         self.bouton_annuler.SetToolTip(wx.ToolTip(_(u"Annuler")))
@@ -244,13 +206,17 @@ class Dialog(wx.Dialog):
         principal.Add(actions, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
         self.SetSizer(principal)
 
+        self.SetMinSize((UTILS_UIMetrics.px(360), -1))
+        self.Fit()
+        hauteur = max(self.GetSize().GetHeight(), UTILS_UIMetrics.px(150))
         ecran = wx.GetClientDisplayRect()
         largeur = max(UTILS_UIMetrics.px(420), min(UTILS_UIMetrics.px(620), int(ecran.GetWidth() * 0.42)))
-        self.SetMinSize((UTILS_UIMetrics.px(360), -1))
-        self.SetSize((largeur, -1))
-        self.Fit()
+        self.SetSize((largeur, hauteur))
         self.Layout()
-        self.CentreOnParent() if parent_valide(self.GetParent()) else self.CentreOnScreen()
+        if parent_valide(self.GetParent()):
+            self.CentreOnParent()
+        else:
+            self.CentreOnScreen()
         wx.CallAfter(self.ctrl_mdp.SetFocus)
 
 
