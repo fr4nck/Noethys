@@ -3,6 +3,7 @@
 
 import datetime
 import sys
+import unittest
 from pathlib import Path
 
 
@@ -48,100 +49,84 @@ class FakeLog(object):
 
 
 def config_rss():
-    return UTILS_Portail_contenus.serialiser_parametres({
-        "type": "rss",
-        "url": "https://example.org/feed",
-    })
+    return UTILS_Portail_contenus.serialiser_parametres({"type": "rss", "url": "https://example.org/feed"})
 
 
 def config_iframe():
-    return UTILS_Portail_contenus.serialiser_parametres({
-        "type": "iframe",
-        "url": "https://example.org/widget",
-    })
+    return UTILS_Portail_contenus.serialiser_parametres({"type": "iframe", "url": "https://example.org/widget"})
 
 
-def test_actualisation_ne_touche_que_les_blocs_dynamiques():
-    db = FakeDB([
-        (1, config_iframe(), "iframe ancien"),
-        (2, config_rss(), "rss ancien"),
-        (3, "ancien parametre", "texte libre"),
-    ])
+class PortailContenusSynchroTests(unittest.TestCase):
 
-    etat = UTILS_Portail_contenus_synchro.actualiser(
-        db,
-        constructeur=lambda config: "rss nouveau",
-    )
+    def test_actualisation_ne_touche_que_les_blocs_dynamiques(self):
+        db = FakeDB([
+            (1, config_iframe(), "iframe ancien"),
+            (2, config_rss(), "rss ancien"),
+            (3, "ancien parametre", "texte libre"),
+        ])
+        etat = UTILS_Portail_contenus_synchro.actualiser(db, constructeur=lambda config: "rss nouveau")
+        self.assertEqual(etat, {"present": True, "modifies": 1, "erreurs": 0})
+        self.assertEqual(len(db.maj), 1)
+        self.assertEqual(db.maj[0][2:4], ("IDelement", 2))
+        self.assertEqual(db.maj[0][1], [("texte_html", "rss nouveau")])
+        self.assertFalse(db.maj[0][4])
 
-    assert etat == {"present": True, "modifies": 1, "erreurs": 0}
-    assert len(db.maj) == 1
-    assert db.maj[0][2:4] == ("IDelement", 2)
-    assert db.maj[0][1] == [("texte_html", "rss nouveau")]
-    assert db.maj[0][4] is False
+    def test_panne_flux_conserve_le_cache_existant_et_ne_bloque_pas(self):
+        db = FakeDB([(9, config_rss(), "derniere version valide")])
+        log = FakeLog()
+
+        def panne(config):
+            raise OSError("serveur indisponible")
+
+        etat = UTILS_Portail_contenus_synchro.actualiser(db, log=log, constructeur=panne)
+        self.assertEqual(etat, {"present": True, "modifies": 0, "erreurs": 1})
+        self.assertEqual(db.maj, [])
+        self.assertTrue(log.messages)
+        self.assertIn("Dernière version conservée", log.messages[0])
+
+    def test_flux_inchange_ne_declenche_pas_ecriture(self):
+        db = FakeDB([(4, config_rss(), "identique")])
+        etat = UTILS_Portail_contenus_synchro.actualiser(db, constructeur=lambda config: "identique")
+        self.assertEqual(etat, {"present": True, "modifies": 0, "erreurs": 0})
+        self.assertEqual(db.maj, [])
+
+    def test_preparation_commit_le_cache_et_force_export_des_pages(self):
+        db = FakeDB([(2, config_rss(), "rss ancien")])
+        appels_parametres = []
+        instant = datetime.datetime(2026, 8, 21, 1, 30, 0)
+
+        def setter(**kwargs):
+            appels_parametres.append(kwargs)
+
+        etat = UTILS_Portail_contenus_synchro.preparer_avant_synchro(
+            db_factory=lambda: db,
+            parametre_setter=setter,
+            constructeur=lambda config: "rss nouveau",
+            maintenant=instant,
+        )
+        self.assertEqual(etat, {"present": True, "modifies": 1, "erreurs": 0})
+        self.assertEqual(db.commits, 1)
+        self.assertTrue(db.closed)
+        self.assertEqual(appels_parametres, [{
+            "mode": "set",
+            "categorie": "portail",
+            "nom": "last_update_pages",
+            "valeur": "2026-08-21 01:30:00",
+        }])
+
+    def test_preparation_sans_flux_ne_force_pas_export(self):
+        db = FakeDB([(1, config_iframe(), "iframe")])
+        appels_parametres = []
+        etat = UTILS_Portail_contenus_synchro.preparer_avant_synchro(
+            db_factory=lambda: db,
+            parametre_setter=lambda **kwargs: appels_parametres.append(kwargs),
+            constructeur=lambda config: "inutile",
+        )
+        self.assertEqual(etat, {"present": False, "modifies": 0, "erreurs": 0})
+        self.assertEqual(db.commits, 0)
+        self.assertTrue(db.closed)
+        self.assertEqual(appels_parametres, [])
 
 
-def test_panne_flux_conserve_le_cache_existant_et_ne_bloque_pas():
-    db = FakeDB([(9, config_rss(), "derniere version valide")])
-    log = FakeLog()
-
-    def panne(config):
-        raise OSError("serveur indisponible")
-
-    etat = UTILS_Portail_contenus_synchro.actualiser(db, log=log, constructeur=panne)
-
-    assert etat == {"present": True, "modifies": 0, "erreurs": 1}
-    assert db.maj == []
-    assert log.messages
-    assert "Dernière version conservée" in log.messages[0]
-
-
-def test_flux_inchange_ne_declenche_pas_ecriture():
-    db = FakeDB([(4, config_rss(), "identique")])
-    etat = UTILS_Portail_contenus_synchro.actualiser(
-        db,
-        constructeur=lambda config: "identique",
-    )
-    assert etat == {"present": True, "modifies": 0, "erreurs": 0}
-    assert db.maj == []
-
-
-def test_preparation_commit_le_cache_et_force_export_des_pages():
-    db = FakeDB([(2, config_rss(), "rss ancien")])
-    appels_parametres = []
-    instant = datetime.datetime(2026, 8, 21, 1, 30, 0)
-
-    def setter(**kwargs):
-        appels_parametres.append(kwargs)
-
-    etat = UTILS_Portail_contenus_synchro.preparer_avant_synchro(
-        db_factory=lambda: db,
-        parametre_setter=setter,
-        constructeur=lambda config: "rss nouveau",
-        maintenant=instant,
-    )
-
-    assert etat == {"present": True, "modifies": 1, "erreurs": 0}
-    assert db.commits == 1
-    assert db.closed is True
-    assert appels_parametres == [{
-        "mode": "set",
-        "categorie": "portail",
-        "nom": "last_update_pages",
-        "valeur": "2026-08-21 01:30:00",
-    }]
-
-
-def test_preparation_sans_flux_ne_force_pas_export():
-    db = FakeDB([(1, config_iframe(), "iframe")])
-    appels_parametres = []
-
-    etat = UTILS_Portail_contenus_synchro.preparer_avant_synchro(
-        db_factory=lambda: db,
-        parametre_setter=lambda **kwargs: appels_parametres.append(kwargs),
-        constructeur=lambda config: "inutile",
-    )
-
-    assert etat == {"present": False, "modifies": 0, "erreurs": 0}
-    assert db.commits == 0
-    assert db.closed is True
-    assert appels_parametres == []
+if __name__ == "__main__":
+    unittest.main()
