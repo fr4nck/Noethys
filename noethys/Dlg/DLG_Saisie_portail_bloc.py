@@ -18,6 +18,7 @@ from Utils import UTILS_Dates
 from Ctrl import CTRL_Bouton_image
 import GestionDB
 from Ctrl import CTRL_Editeur_email
+from Ctrl import CTRL_Portail_contenu_externe
 from Ctrl.CTRL_Portail_pages import CTRL_Couleur
 from Ol import OL_Portail_bloc_onglets
 from Ol import OL_Portail_bloc_blog
@@ -369,6 +370,7 @@ class CTRL_Parametres(LB.FlatImageBook):
 
         self.listePages = [
             (_("bloc_texte"), _(u"Texte"), PAGE_Texte(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Texte_bloc.png'), wx.BITMAP_TYPE_PNG)),
+            (_("bloc_contenu_externe"), _(u"Contenu externe"), CTRL_Portail_contenu_externe.CTRL(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Apercu.png'), wx.BITMAP_TYPE_PNG)),
             (_("bloc_onglets"), _(u"Onglets"), PAGE_Onglets(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Onglets.png'), wx.BITMAP_TYPE_PNG)),
             (_("bloc_blog"), _(u"Blog"), PAGE_Blog(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Blog.png'), wx.BITMAP_TYPE_PNG)),
             (_("bloc_calendrier"), _(u"Calendrier"), PAGE_Calendrier(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Calendrier.png'), wx.BITMAP_TYPE_PNG)),
@@ -418,11 +420,17 @@ class CTRL_Parametres(LB.FlatImageBook):
 
     def GetParametres(self):
         dictParametres = self.GetPageActive().GetParametres()
-        dictParametres["categorie"] = self.GetCodePageActive()
+        categorie = self.GetCodePageActive()
+        if categorie == _("bloc_contenu_externe"):
+            categorie = _("bloc_texte")
+        dictParametres["categorie"] = categorie
         return dictParametres
 
     def SetParametres(self, dictParametres={}):
-        self.SetPageByCode(dictParametres["categorie"])
+        categorie = dictParametres["categorie"]
+        if categorie == _("bloc_texte") and CTRL_Portail_contenu_externe.EstContenuExterne(dictParametres):
+            categorie = _("bloc_contenu_externe")
+        self.SetPageByCode(categorie)
         self.GetPageActive().SetParametres(dictParametres)
 
 
