@@ -14,6 +14,7 @@ import wx
 from Utils.UTILS_Traduction import _
 from Utils import UTILS_Customize
 from Utils import UTILS_Config
+from Utils import UTILS_DesignSystem
 
 
 THEMES = [
@@ -55,56 +56,27 @@ DONNEES = {
 
 }
 
-# Palette sombre inspirée des rôles de couleur Material Design 3.
-# L'objectif n'est pas de transformer wxPython en Material, mais d'utiliser
-# la même logique : surfaces hiérarchisées, texte non blanc pur, contours
-# modérés et couleurs métier conservées comme des signaux sémantiques.
-PALETTE_SOMBRE = {
-    "surface": wx.Colour(20, 18, 24),
-    "surface_container_lowest": wx.Colour(15, 13, 19),
-    "surface_container_low": wx.Colour(29, 27, 32),
-    "surface_container": wx.Colour(33, 31, 38),
-    "surface_container_high": wx.Colour(43, 41, 48),
-    "surface_container_highest": wx.Colour(54, 52, 59),
-    "on_surface": wx.Colour(230, 224, 233),
-    "on_surface_variant": wx.Colour(202, 196, 208),
-    "outline": wx.Colour(147, 143, 153),
-    "outline_variant": wx.Colour(73, 69, 79),
-    "selection": wx.Colour(55, 74, 48),
-    "selection_texte": wx.Colour(232, 247, 225),
-    "metier_vert": wx.Colour(47, 72, 47),
-    "metier_vert_texte": wx.Colour(204, 232, 201),
-    "metier_jaune": wx.Colour(78, 68, 38),
-    "metier_jaune_texte": wx.Colour(240, 224, 174),
-    "metier_rouge": wx.Colour(82, 47, 49),
-    "metier_rouge_texte": wx.Colour(245, 197, 199),
-    "fond": wx.Colour(20, 18, 24),
-    "fond_controle": wx.Colour(33, 31, 38),
-    "texte": wx.Colour(230, 224, 233),
-    "texte_secondaire": wx.Colour(202, 196, 208),
-    "bordure": wx.Colour(73, 69, 79),
-}
-
-ACCENTS_SOMBRES = {
-    "Vert": {
-        "primary": wx.Colour(177, 214, 154),
-        "on_primary": wx.Colour(34, 57, 23),
-        "primary_container": wx.Colour(57, 81, 44),
-        "on_primary_container": wx.Colour(205, 238, 181),
-    },
-    "Bleu": {
-        "primary": wx.Colour(169, 199, 255),
-        "on_primary": wx.Colour(0, 48, 92),
-        "primary_container": wx.Colour(31, 71, 116),
-        "on_primary_container": wx.Colour(213, 227, 255),
-    },
-    "Noir": {
-        "primary": wx.Colour(202, 196, 208),
-        "on_primary": wx.Colour(50, 47, 53),
-        "primary_container": wx.Colour(73, 69, 79),
-        "on_primary_container": wx.Colour(232, 222, 237),
-    },
-}
+# Les anciens accès directs restent disponibles pendant la migration, mais la
+# source de vérité est désormais UTILS_DesignSystem. Les alias historiques
+# évitent de casser les écrans déjà migrés vers la première palette sombre.
+PALETTE_CLAIRE = dict(UTILS_DesignSystem.PALETTE_CLAIRE)
+PALETTE_SOMBRE = dict(UTILS_DesignSystem.PALETTE_SOMBRE)
+PALETTE_SOMBRE.update({
+    "selection_texte": PALETTE_SOMBRE["selection_text"],
+    "metier_vert": PALETTE_SOMBRE["success"],
+    "metier_vert_texte": PALETTE_SOMBRE["success_text"],
+    "metier_jaune": PALETTE_SOMBRE["warning"],
+    "metier_jaune_texte": PALETTE_SOMBRE["warning_text"],
+    "metier_rouge": PALETTE_SOMBRE["danger"],
+    "metier_rouge_texte": PALETTE_SOMBRE["danger_text"],
+    "fond": PALETTE_SOMBRE["surface"],
+    "fond_controle": PALETTE_SOMBRE["surface_container"],
+    "texte": PALETTE_SOMBRE["on_surface"],
+    "texte_secondaire": PALETTE_SOMBRE["on_surface_variant"],
+    "bordure": PALETTE_SOMBRE["outline_variant"],
+})
+ACCENTS_CLAIRS = UTILS_DesignSystem.ACCENTS_CLAIRS
+ACCENTS_SOMBRES = UTILS_DesignSystem.ACCENTS_SOMBRES
 
 _GESTIONNAIRE_AFFICHAGE = None
 _ID_MENU_AFFICHAGE = wx.Window.NewControlId()
@@ -199,31 +171,58 @@ def GetValeur(cle="", defaut="", theme=None):
 
 
 def GetCouleurRole(role="surface", sombre=None, theme=None, defaut=None):
-    """Retourne une couleur sémantique d'interface."""
+    """Retourne une couleur sémantique via le contrat UI/UX central."""
     if sombre is None:
         sombre = EstSombre()
     if theme is None:
         theme = UTILS_Customize.GetValeur("interface", "theme", "Vert")
 
-    if sombre:
-        if role in PALETTE_SOMBRE:
-            return PALETTE_SOMBRE[role]
-        if role in ACCENTS_SOMBRES.get(theme, {}):
-            return ACCENTS_SOMBRES[theme][role]
-
-    if role in ("primary", "primary_container"):
-        return GetValeur("couleur_claire", wx.Colour(137, 206, 27), theme=theme)
-    if role in ("on_surface", "on_surface_variant", "selection_texte"):
-        return wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT)
-    if role in ("outline", "outline_variant"):
-        return wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DSHADOW)
-    if role == "surface":
-        return wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNFACE)
-    if role.startswith("surface_container"):
-        return wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
-    if role == "selection":
-        return wx.SystemSettings.GetColour(wx.SYS_COLOUR_HIGHLIGHT)
+    # Compatibilité avec les noms introduits avant la stabilisation du contrat.
+    aliases = {
+        "selection_texte": "selection_text",
+        "metier_vert": "success",
+        "metier_vert_texte": "success_text",
+        "metier_jaune": "warning",
+        "metier_jaune_texte": "warning_text",
+        "metier_rouge": "danger",
+        "metier_rouge_texte": "danger_text",
+        "fond": "surface",
+        "fond_controle": "surface_container",
+        "texte": "on_surface",
+        "texte_secondaire": "on_surface_variant",
+        "bordure": "outline_variant",
+    }
+    role = aliases.get(role, role)
+    couleur = UTILS_DesignSystem.GetCouleur(
+        role=role,
+        sombre=sombre,
+        theme=theme,
+        defaut=None,
+    )
+    if couleur is not None:
+        return couleur
     return defaut if defaut is not None else wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
+
+
+def GetEtatCouleurs(etat="normal", sombre=None, theme=None):
+    """Expose les états Fluent aux contrôles personnalisés Noethys."""
+    if sombre is None:
+        sombre = EstSombre()
+    if theme is None:
+        theme = UTILS_Customize.GetValeur("interface", "theme", "Vert")
+    return UTILS_DesignSystem.GetEtatCouleurs(etat=etat, sombre=sombre, theme=theme)
+
+
+def GetRoleComposant(window_ou_nom=""):
+    """Retourne la surface sémantique recommandée pour un contrôle."""
+    if isinstance(window_ou_nom, str):
+        nom = window_ou_nom
+    else:
+        try:
+            nom = window_ou_nom.__class__.__name__
+        except Exception:
+            nom = ""
+    return UTILS_DesignSystem.GetRoleComposant(nom)
 
 
 def _couleur_identique(couleur1, couleur2):
@@ -328,9 +327,11 @@ def _fond_est_legacy_clair(couleur):
     return False
 
 
-def _appliquer_palette_liste(window):
-    surface_pair = PALETTE_SOMBRE["surface_container_lowest"]
-    surface_impair = PALETTE_SOMBRE["surface_container_low"]
+def _appliquer_palette_liste(window, sombre):
+    surface_pair = GetCouleurRole("surface_container_lowest", sombre=sombre)
+    surface_impair = GetCouleurRole("surface_container_low", sombre=sombre)
+    texte = GetCouleurRole("on_surface", sombre=sombre)
+    texte_secondaire = GetCouleurRole("on_surface_variant", sombre=sombre)
 
     for attribut, valeur in (
         ("evenRowsBackColor", surface_pair),
@@ -344,30 +345,37 @@ def _appliquer_palette_liste(window):
 
     try:
         window.SetBackgroundColour(surface_pair)
-        window.SetForegroundColour(PALETTE_SOMBRE["on_surface"])
+        window.SetForegroundColour(texte)
     except Exception:
         pass
 
     try:
         if hasattr(window, "stEmptyListMsg"):
             window.stEmptyListMsg.SetBackgroundColour(surface_pair)
-            window.stEmptyListMsg.SetForegroundColour(PALETTE_SOMBRE["on_surface_variant"])
+            window.stEmptyListMsg.SetForegroundColour(texte_secondaire)
             window.stEmptyListMsg.Refresh()
     except Exception:
         pass
 
-    try:
-        nbre = window.GetItemCount()
-        if nbre <= 2000:
-            for index in range(nbre):
-                couleur = window.GetItemBackgroundColour(index)
-                if not couleur.IsOk() or _fond_est_legacy_clair(couleur):
-                    window.SetItemBackgroundColour(index, surface_pair if index % 2 == 0 else surface_impair)
-    except Exception:
-        pass
+    # En sombre, remplace seulement les fonds hérités de l'ancien thème clair.
+    # En clair, le design system est disponible mais on laisse les anciennes
+    # couleurs métier/listes intactes pendant la migration progressive.
+    if sombre:
+        try:
+            nbre = window.GetItemCount()
+            if nbre <= 2000:
+                for index in range(nbre):
+                    couleur = window.GetItemBackgroundColour(index)
+                    if not couleur.IsOk() or _fond_est_legacy_clair(couleur):
+                        window.SetItemBackgroundColour(index, surface_pair if index % 2 == 0 else surface_impair)
+        except Exception:
+            pass
 
 
 def _appliquer_couleurs(window, sombre):
+    # Le thème clair historique est préservé pour ce lot : ses nouvelles
+    # couleurs sémantiques sont disponibles aux composants migrés explicitement,
+    # sans recoloration globale et brutale de l'interface existante.
     if not sombre:
         return
 
@@ -396,28 +404,31 @@ def _appliquer_couleurs(window, sombre):
     nom_classe = window.__class__.__name__.lower()
 
     if any(mot in nom_classe for mot in ("objectlistview", "listctrl", "listview")):
-        _appliquer_palette_liste(window)
+        _appliquer_palette_liste(window, sombre=True)
         return
 
-    if any(mot in nom_classe for mot in ("textctrl", "treectrl", "choice", "combobox", "spin", "checklist", "grid")):
-        role_fond = "surface_container_low"
-    elif any(mot in nom_classe for mot in ("button", "togglebutton", "bitmapbutton")):
-        role_fond = "surface_container_high"
-    elif any(mot in nom_classe for mot in ("toolbar", "auitoolbar", "notebook", "choicebook", "listbook")):
-        role_fond = "surface_container"
-    elif any(mot in nom_classe for mot in ("dialog", "frame", "panel", "scrolledwindow", "staticbox")):
-        role_fond = "surface"
-    else:
-        role_fond = "surface"
+    role_fond = GetRoleComposant(window)
+    fond_cible = GetCouleurRole(role_fond, sombre=True)
+    texte_cible = GetCouleurRole("on_surface", sombre=True)
+
+    # L'état disabled possède désormais ses propres rôles, sans les imposer aux
+    # panneaux complets pour éviter de créer de grands aplats désactivés.
+    try:
+        est_active = window.IsEnabled()
+    except Exception:
+        est_active = True
+    if not est_active and role_fond not in ("surface", "surface_container"):
+        fond_cible = GetCouleurRole("disabled", sombre=True)
+        texte_cible = GetCouleurRole("disabled_text", sombre=True)
 
     if fond_est_standard:
         try:
-            window.SetBackgroundColour(PALETTE_SOMBRE[role_fond])
+            window.SetBackgroundColour(fond_cible)
         except Exception:
             pass
     if texte_est_standard and fond_est_standard:
         try:
-            window.SetForegroundColour(PALETTE_SOMBRE["on_surface"])
+            window.SetForegroundColour(texte_cible)
         except Exception:
             pass
 
