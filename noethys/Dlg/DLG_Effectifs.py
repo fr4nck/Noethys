@@ -22,30 +22,12 @@ from Dlg import DLG_Tableau_bord_locations
 
 
 class CTRL(wx.Panel):
-    """Cockpit fréquentation de l'accueil Noethys.
-
-    La logique des quatre vues reste inchangée. Le conteneur fournit seulement
-    la hiérarchie visuelle Repens Design et laisse le notebook absorber tout
-    l'espace disponible.
-    """
+    """Cockpit fréquentation : le pane donne le contexte, les données dominent."""
 
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
         self.parent = parent
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_low"))
-
-        self.ctrl_titre = wx.StaticText(self, label=_(u"Fréquentation & activités"))
-        self.ctrl_sous_titre = wx.StaticText(
-            self,
-            label=_(u"Capacités, consommations, inscriptions et événements"),
-        )
-        self.ctrl_titre.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        self.ctrl_sous_titre.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
-
-        police = self.ctrl_titre.GetFont()
-        police.SetWeight(wx.FONTWEIGHT_BOLD)
-        police.SetPointSize(max(police.GetPointSize() + 2, 11))
-        self.ctrl_titre.SetFont(police)
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
 
         self.notebook = aui.AuiNotebook(
             self,
@@ -87,7 +69,12 @@ class CTRL(wx.Panel):
 
         UTILS_Aui.ConfigurerNotebook(self.notebook)
         self.notebook.Bind(aui.EVT_AUINOTEBOOK_PAGE_CHANGED, self.OnPageChanged)
-        self.__do_layout()
+
+        marge = UTILS_UIMetrics.spacing(1)
+        principal = wx.BoxSizer(wx.VERTICAL)
+        principal.Add(self.notebook, 1, wx.EXPAND | wx.ALL, marge)
+        self.SetSizer(principal)
+        self.Layout()
         wx.CallAfter(self._ActualisePaneAui)
 
     def _ActualisePaneAui(self):
@@ -97,23 +84,14 @@ class CTRL(wx.Panel):
         try:
             pane = gestionnaire.GetPane(self)
             if pane.IsOk():
-                pane.Caption(_(u"Pilotage"))
+                pane.Caption(_(u"Fréquentation & activités"))
+                pane.CloseButton(True)
+                pane.MinimizeButton(True)
+                pane.MaximizeButton(True)
+                pane.Resizable(True)
                 gestionnaire.Update()
         except Exception:
             pass
-
-    def __do_layout(self):
-        marge = UTILS_UIMetrics.spacing(2)
-        principal = wx.BoxSizer(wx.VERTICAL)
-
-        entete = wx.BoxSizer(wx.VERTICAL)
-        entete.Add(self.ctrl_titre, 0, wx.BOTTOM, UTILS_UIMetrics.spacing(1))
-        entete.Add(self.ctrl_sous_titre, 0)
-        principal.Add(entete, 0, wx.EXPAND | wx.ALL, marge)
-        principal.Add(self.notebook, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
-
-        self.SetSizer(principal)
-        self.Layout()
 
     def OnPageChanged(self, event):
         self.MAJ()
