@@ -15,7 +15,7 @@ from Utils.UTILS_Traduction import _
 from Utils import UTILS_Aui
 from Utils import UTILS_Interface
 from Utils import UTILS_UIMetrics
-from Ctrl import CTRL_Remplissage_Repens
+from Dlg import DLG_Remplissage_Repens as DLG_Remplissage
 from Dlg import DLG_Recap_evenements
 from Dlg import DLG_Nbre_inscrits_2 as DLG_Nbre_inscrits
 from Dlg import DLG_Tableau_bord_locations
@@ -57,9 +57,7 @@ class CTRL(wx.Panel):
         )
         self.notebook.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
 
-        # La vue Consommations garde son moteur historique mais remplace
-        # explicitement la grille wx par le renderer Repens dédié.
-        self.ctrl_remplissage = CTRL_Remplissage_Repens.CreerPanel(self.notebook)
+        self.ctrl_remplissage = DLG_Remplissage.Panel(self.notebook)
         self.notebook.AddPage(self.ctrl_remplissage, _(u"Consommations"))
         try:
             self.notebook.SetPageTooltip(0, _(u"État des consommations et des capacités."))
