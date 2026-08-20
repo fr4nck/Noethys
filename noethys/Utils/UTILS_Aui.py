@@ -6,19 +6,12 @@ ces fonctions sur leurs propres managers/toolbars afin que le comportement
 reste local, testable et prévisible.
 """
 
-# À incrémenter lorsqu'une évolution structurelle du dashboard rend les
-# perspectives précédentes impropres à la restauration.
 PERSPECTIVE_LAYOUT_VERSION = 2
 PARAMETRE_PERSPECTIVE_VERSION = "aui_perspective_layout_version"
 
 
 def VerifierVersionPerspective(manager):
-    """Invalide proprement une ancienne génération de disposition AUI.
-
-    Le manager est déjà explicitement fourni par la MainFrame : aucune classe wx
-    n'est interceptée. Lors d'une montée de version, les perspectives utilisateur
-    de l'ancienne structure sont abandonnées avant le premier chargement.
-    """
+    """Invalide proprement une ancienne génération de disposition AUI."""
     if manager is None:
         return False
     try:
@@ -35,9 +28,6 @@ def VerifierVersionPerspective(manager):
     except Exception:
         fenetre = None
 
-    # Les attributs existent sur MainFrame. Les effacer ici évite qu'une
-    # perspective ancienne soit ré-enregistrée à la fermeture après avoir été
-    # rejetée.
     if fenetre is not None:
         try:
             fenetre.perspectives = []
@@ -52,8 +42,27 @@ def VerifierVersionPerspective(manager):
     return False
 
 
+def _ConfigurerToolbarsDuManager(manager):
+    """Configure uniquement les toolbars appartenant au manager fourni.
+
+    C'est volontairement différent d'un monkey-patch : aucune classe wx n'est
+    modifiée et une fenêtre qui n'appelle pas ``ConfigurerManager`` n'est pas
+    affectée.
+    """
+    try:
+        import wx.lib.agw.aui as aui
+        panes = manager.GetAllPanes()
+    except Exception:
+        return
+
+    for pane in panes:
+        fenetre = getattr(pane, "window", None)
+        if isinstance(fenetre, aui.AuiToolBar):
+            ConfigurerToolBar(fenetre, taille_base=16, fond_uni=True)
+
+
 def ConfigurerManager(manager):
-    """Applique une séparation de panes plus lisible au manager fourni."""
+    """Structure visuellement les panes et toolbars du manager fourni."""
     if manager is None:
         return False
     try:
@@ -106,6 +115,8 @@ def ConfigurerManager(manager):
             )
         except Exception:
             pass
+
+    _ConfigurerToolbarsDuManager(manager)
 
     try:
         manager.Update()
