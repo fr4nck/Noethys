@@ -49,7 +49,6 @@ MOIS = (
     _(u"septembre"), _(u"octobre"), _(u"novembre"), _(u"décembre"),
 )
 
-# WMO weather interpretation codes utilisés par Open-Meteo.
 LIBELLES_METEO = {
     0: _(u"ciel dégagé"),
     1: _(u"plutôt dégagé"),
@@ -85,7 +84,6 @@ def _heure_iso(valeur):
     if not valeur:
         return None
     try:
-        # Open-Meteo renvoie par exemple 2026-08-20T07:03
         return valeur.split("T", 1)[1][:5]
     except Exception:
         return None
@@ -140,8 +138,6 @@ class CTRL(wx.Panel):
             ctrl.SetFont(self._Police())
 
     def _ConstruitLayout(self):
-        # Deux zones horizontales denses : informations du jour puis échéancier.
-        # La seconde absorbe toute la largeur disponible.
         sizer_principal = wx.BoxSizer(wx.HORIZONTAL)
 
         sizer_jour = wx.BoxSizer(wx.VERTICAL)
@@ -164,8 +160,26 @@ class CTRL(wx.Panel):
         self.SetSizer(sizer_principal)
         self.Layout()
 
+    def _ActualisePaneAui(self):
+        """Met à jour le pane qui héberge ce contrôle, sans le faire flotter."""
+        parent = self.GetParent()
+        gestionnaire = getattr(parent, "_mgr", None)
+        if gestionnaire is None:
+            return
+        try:
+            pane = gestionnaire.GetPane(self)
+            if not pane.IsOk():
+                return
+            pane.Caption(_(u"Aujourd'hui / Échéancier"))
+            pane.MinSize((-1, 110))
+            pane.BestSize((-1, 120))
+            gestionnaire.Update()
+        except Exception:
+            pass
+
     def Initialisation(self):
         """Charge les informations externes sans bloquer l'ouverture de Noethys."""
+        self._ActualisePaneAui()
         if self._chargement_en_cours:
             return
         self._chargement_en_cours = True
@@ -173,7 +187,6 @@ class CTRL(wx.Panel):
         thread.daemon = True
         thread.start()
 
-    # Compatibilité avec les appels historiques du panneau éphéméride.
     def StartTicker(self):
         self.Initialisation()
 
@@ -202,7 +215,6 @@ class CTRL(wx.Panel):
 
             wx.CallAfter(self._ChargeEcheancesConfigurees)
         except Exception:
-            # Le dashboard ne doit jamais empêcher l'ouverture du logiciel.
             try:
                 wx.CallAfter(self.ctrl_meteo.SetLabel, _(u"Météo : indisponible"))
             except Exception:
@@ -311,14 +323,7 @@ class CTRL(wx.Panel):
             return None
 
     def _ChargeEcheancesConfigurees(self):
-        """Affiche les prochaines échéances déjà configurées par le dossier.
-
-        Le format volontairement simple prépare l'étape suivante sans imposer de
-        table SQL avant d'avoir stabilisé le besoin : une liste de dictionnaires
-        ``{date: 'AAAA-MM-JJ', label: '…'}`` dans le paramètre
-        ``dashboard_echeances``. Les futures sources SDJES/CAF/vacances pourront
-        alimenter la même vue sans changer le contrôle.
-        """
+        """Affiche les prochaines échéances déjà configurées par le dossier."""
         donnees = UTILS_Config.GetParametre("dashboard_echeances", [])
         if not isinstance(donnees, (list, tuple)):
             donnees = []
