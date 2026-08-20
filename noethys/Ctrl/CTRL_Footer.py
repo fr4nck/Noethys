@@ -12,6 +12,8 @@ import wx
 import datetime
 import six
 
+from Utils import UTILS_Interface
+
 if 'phoenix' in wx.PlatformInfo:
     from wx import Control
 else :
@@ -19,31 +21,55 @@ else :
 
 
 class Footer(Control):
-    def __init__(self, 
-            parent, 
-            id=-1, 
-            pos=wx.DefaultPosition, 
-            size=wx.DefaultSize, 
-            style=wx.NO_BORDER, 
+    def __init__(self,
+            parent,
+            id=-1,
+            pos=wx.DefaultPosition,
+            size=wx.DefaultSize,
+            style=wx.NO_BORDER,
             name="footer",
         ):
         self.hauteur = 24
         self.afficherColonneDroite = True
-        
+
         self.listview = None
         self.dictColonnes = {}
         self.dictTotaux = {}
         self.listeImpression = []
         Control.__init__(self, parent, id=id, pos=pos, size=size, style=style, name=name)
         self.SetInitialSize(size)
-                    
+        self.AppliquerTheme()
+
         self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.Bind(wx.EVT_ERASE_BACKGROUND, self.OnErase)
         self.Bind(wx.EVT_SIZE, self.MAJ_affichage)
-    
+
+    def AppliquerTheme(self):
+        """Applique les rôles sémantiques sans remplacer le RendererNative."""
+        sombre = UTILS_Interface.EstSombre()
+        fond = UTILS_Interface.GetCouleurRole("surface_container", sombre=sombre)
+        texte = UTILS_Interface.GetCouleurRole("on_surface_variant", sombre=sombre)
+        try:
+            self.SetBackgroundColour(fond)
+            self.SetForegroundColour(texte)
+        except Exception:
+            pass
+
+    def _PoliceFooter(self):
+        """Police secondaire dérivée de la police système, compatible échelle."""
+        try:
+            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
+            if hasattr(police, "GetFractionalPointSize") and hasattr(police, "SetFractionalPointSize"):
+                police.SetFractionalPointSize(max(5.0, police.GetFractionalPointSize() * 0.92))
+            else:
+                police.SetPointSize(max(5, int(round(police.GetPointSize() * 0.92))))
+            return police
+        except Exception:
+            return self.GetFont()
+
     def MAJ_affichage(self, event=None):
-        self.Refresh() 
-    
+        self.Refresh()
+
     def MAJ_totaux(self):
         self.dictTotaux = {}
         for track in self.listview.innerList :
@@ -60,11 +86,11 @@ class Footer(Control):
                                     self.dictTotaux[nomColonne] = datetime.timedelta(0)
                         if total != None :
                             self.dictTotaux[nomColonne] += total
-    
+
     def MAJ(self):
         self.MAJ_totaux()
-        self.MAJ_affichage() 
-        
+        self.MAJ_affichage()
+
     def DrawColonne(self, dc, x, largeur, label="", alignement=None, couleur=None, font=None):
         """ Dessine une colonne """
         render = wx.RendererNative.Get()
@@ -74,19 +100,19 @@ class Footer(Control):
         if couleur : options.m_labelColour = couleur
         if font : options.m_labelFont = font
         render.DrawHeaderButton(self, dc, (x, 1, largeur, self.hauteur), params=options)
-        
+
     def Paint(self, dc):
         """Draws the ticker text at the current offset using the provided DC"""
         defaultFont = self.GetFont()
         dc.SetFont(defaultFont)
-        
-        x = 0 - self.listview.GetScrollPos(wx.HORIZONTAL) 
+
+        x = 0 - self.listview.GetScrollPos(wx.HORIZONTAL)
         self.listeImpression = []
         dernierTexte = ""
         for (indexColonne, col) in enumerate(self.listview.columns):
             texte = ""
-            font = wx.Font(8, wx.SWISS, wx.NORMAL, wx.NORMAL)
-            couleur = wx.Colour(140, 140, 140)
+            font = self._PoliceFooter()
+            couleur = UTILS_Interface.GetCouleurRole("on_surface_variant", sombre=UTILS_Interface.EstSombre())
             largeur = col.width
             #largeur = self.listview.GetColumnWidth(indexColonne)
             converter = col.stringConverter
@@ -94,13 +120,13 @@ class Footer(Control):
             if col.align == "left" : alignement = wx.ALIGN_LEFT
             if col.align == "centre" : alignement = wx.ALIGN_CENTER
             if col.align == "right" : alignement = wx.ALIGN_RIGHT
-            
+
             # Recherche infos personnalisées à afficher dans la colonne
             mode = None
             if nom in self.dictColonnes :
                 infoColonne = self.dictColonnes[nom]
                 mode = infoColonne["mode"]
-                
+
                 # Valeur : TOTAL
                 if mode == "total" :
                     if nom in self.dictTotaux :
@@ -120,7 +146,7 @@ class Footer(Control):
                         liste_types = (int, float)
                     if type(texte) in liste_types :
                         texte = str(texte)
-                
+
                 # Valeur : NOMBRE
                 if mode == "nombre" :
                     nombre = len(self.listview.innerList)
@@ -128,32 +154,33 @@ class Footer(Control):
                         texte = u"%d %s" % (nombre, infoColonne["pluriel"])
                     else :
                         texte = u"%d %s" % (nombre, infoColonne["singulier"])
-                        
+
                 # Valeur : TEXTE
                 if mode == "texte" :
                     texte = infoColonne["texte"]
 
-                # Paramètres personnalisés
+                # Paramètres personnalisés : ils gardent la priorité afin de ne
+                # pas casser les footers métier explicitement colorés/stylés.
                 if "alignement" in infoColonne : alignement = infoColonne["alignement"]
                 if "font" in infoColonne : font = infoColonne["font"]
                 if "couleur" in infoColonne : couleur = infoColonne["couleur"]
-            
+
             # Pour éviter les bords si les cases sont vides
             ajustement = 0
             if mode != "total" and dernierTexte == "" :
                 ajustement = 5
-                
+
             self.DrawColonne(dc, x-ajustement, largeur+ajustement, texte, alignement, couleur, font)
             x += largeur
-            
+
             # Mémorisation pour impression
             self.listeImpression.append({"texte" : texte, "alignement" : alignement})
-            
+
             if mode == "total" :
                 dernierTexte = texte
             else :
                 dernierTexte = ""
-        
+
         # Dernière colonne de remplissage
         if self.afficherColonneDroite :
             self.DrawColonne(dc, x, self.GetSize()[0]-x)
@@ -165,12 +192,17 @@ class Footer(Control):
         for info in self.listeImpression :
             listeDonnees.append(info[typeInfo])
         return listeDonnees[1:]
-    
+
     def OnPaint(self, evt):
+        self.AppliquerTheme()
         dc = wx.BufferedPaintDC(self)
+        try:
+            dc.SetBackground(wx.Brush(self.GetBackgroundColour()))
+        except Exception:
+            pass
         dc.Clear()
         self.Paint(dc)
-        
+
     def OnErase(self, evt):
         """Noop because of double buffering"""
         pass
@@ -178,17 +210,17 @@ class Footer(Control):
     def AcceptsFocus(self):
         """Non-interactive, so don't accept focus"""
         return False
-        
+
     def DoGetBestSize(self):
         """Width we don't care about, height is either -1, or the character
         height of our text with a little extra padding
         """
         return (100, self.hauteur-1)
 
-    def ShouldInheritColours(self): 
+    def ShouldInheritColours(self):
         """Don't get colours from our parent..."""
         return False
-        
+
 
 
 if __name__ == '__main__':
@@ -202,5 +234,5 @@ if __name__ == '__main__':
     p.SetSizer(s)
     f.Show()
     app.MainLoop()
-    
-    
+
+
