@@ -9,203 +9,180 @@
 #-----------------------------------------------------------
 
 import Chemins
-from Utils import UTILS_Adaptations
 import wx
 import datetime
 import sqlite3
 from Utils import UTILS_Interface
+from Utils import UTILS_UIMetrics
 from wx.lib.wordwrap import wordwrap
-import six
 
 
 def ConvertVersionTuple(texteVersion=""):
-    """ Convertit un numéro de version texte en tuple """
-    tupleTemp = []
-    for num in texteVersion.split(".") :
-        tupleTemp.append(int(num))
-    return tuple(tupleTemp)
+    return tuple(int(num) for num in texteVersion.split("."))
+
 
 def GetAnnonce():
-    """ Fonction de récupération de l'annonce é afficher """
+    """Récupère l'annonce locale applicable à la date du jour."""
     dateJour = datetime.date.today()
     dictAnnonce = None
     found = False
 
-    # Recherche Annonce Internet
-    # try :
-    #     fichierAnnonce = urllib2.urlopen('http://www.noethys.com/fichiers/annonce.txt', timeout=5)
-    #     texteFichier = fichierAnnonce.read()
-    #     fichierAnnonce.close()
-    #     if "404 Not Found" not in texteFichier and len(texteFichier) > 10 :
-    #         image, titre, texte_html, date_debut, date_fin, version = texteFichier.split(";")
-    #         if date_debut <= str(dateJour) and date_fin >= str(dateJour) :
-    #             if version != "" :
-    #                 versionLogiciel = ConvertVersionTuple("1.0.5.6")#FonctionsPerso.GetVersionLogiciel())
-    #                 version = ConvertVersionTuple(version)
-    #                 if versionLogiciel < version :
-    #                     dictAnnonce = {"IDannonce":None, "image":image, "titre":titre.decode("utf8"), "texte_html":texte_html.decode("utf8")}
-    #                     found = True
-    #             else :
-    #                 dictAnnonce = {"IDannonce":None, "image":image, "titre":titre.decode("utf8"), "texte_html":texte_html.decode("utf8")}
-    #                 found = True
-    # except :
-    #     pass
-
-    # Recherche Annonces stockées dans la base de données
-    if found == False :
-
-        try :
-
-            # Init base de données
+    if not found:
+        try:
             con = sqlite3.connect(Chemins.GetStaticPath("Databases/Annonces.dat"))
             cur = con.cursor()
 
             def ListeEnDict(donnees):
                 IDannonce, image, titre, texte_html = donnees
-                dictAnnonce = {"IDannonce":IDannonce, "image":image, "titre":titre, "texte_html":texte_html}
-                return dictAnnonce
+                return {
+                    "IDannonce": IDannonce,
+                    "image": image,
+                    "titre": titre,
+                    "texte_html": texte_html,
+                }
 
-            # Recherche dans les annonces DATES
-            if found == False :
-                req = """SELECT IDannonce, image, titre, texte_html FROM annonces_dates
-                WHERE date_debut<='%s' AND date_fin>='%s'
-                ORDER BY date_debut
-                ;""" % (dateJour, dateJour)
-                cur.execute(req)
-                listeAnnonces = cur.fetchall()
-                if len(listeAnnonces) > 0 :
-                    dictAnnonce = ListeEnDict(listeAnnonces[0])
-                    found = True
+            req = """SELECT IDannonce, image, titre, texte_html FROM annonces_dates
+            WHERE date_debut<='%s' AND date_fin>='%s'
+            ORDER BY date_debut;""" % (dateJour, dateJour)
+            cur.execute(req)
+            listeAnnonces = cur.fetchall()
+            if listeAnnonces:
+                dictAnnonce = ListeEnDict(listeAnnonces[0])
+                found = True
 
-            # Recherche dans les annonces PERIODES
-            if found == False :
+            if not found:
                 req = """SELECT IDannonce, image, titre, texte_html FROM annonces_periodes
                 WHERE jour_debut<=%d AND mois_debut<=%d AND jour_fin>=%d AND mois_fin>=%d
-                ORDER BY jour_debut, mois_debut
-                ;""" % (dateJour.day, dateJour.month, dateJour.day, dateJour.month)
+                ORDER BY jour_debut, mois_debut;""" % (
+                    dateJour.day,
+                    dateJour.month,
+                    dateJour.day,
+                    dateJour.month,
+                )
                 cur.execute(req)
                 listeAnnonces = cur.fetchall()
-                if len(listeAnnonces) > 0 :
+                if listeAnnonces:
                     dictAnnonce = ListeEnDict(listeAnnonces[0])
                     found = True
 
-            # Recherche dans les annonces ALEATOIRES
-            if found == False :
-                req = """SELECT IDannonce, image, titre, texte_html FROM annonces_aleatoires
-                ORDER BY RANDOM() LIMIT 1
-                ;"""
-                cur.execute(req)
+            if not found:
+                cur.execute(
+                    """SELECT IDannonce, image, titre, texte_html FROM annonces_aleatoires
+                    ORDER BY RANDOM() LIMIT 1;"""
+                )
                 listeAnnonces = cur.fetchall()
-                if len(listeAnnonces) > 0 :
+                if listeAnnonces:
                     dictAnnonce = ListeEnDict(listeAnnonces[0])
-                    found = True
 
             con.close()
-
-        except :
+        except Exception:
             return None
 
     return dictAnnonce
 
 
-
 class Panel(wx.Panel):
+    """Accueil neutre : le contenu prime sur l'ancien papier peint historique."""
+
     def __init__(self, parent, size=(-1, -1)):
         wx.Panel.__init__(self, parent, name="panel_accueil", id=-1, size=size, style=wx.TAB_TRAVERSAL)
+        self._annonce = None
+        self._annonce_chargee = False
+        self.AppliquerTheme()
 
-        # Récupération des données de l'interface
-        theme = UTILS_Interface.GetTheme()
-        nom_fichier = "Fond.jpg"
-        if six.PY3 and theme == "Vert":
-            nom_fichier = "Fond_2019.jpg"
-        self.image_fond_source = wx.Image(Chemins.GetStaticPath("Images/Interface/%s/%s" % (theme, nom_fichier)), wx.BITMAP_TYPE_ANY)
-        self.image_fond = wx.Bitmap(self.image_fond_source)
-        self.image_fond_taille = None
-        self.image_fond_position = (0, 0)
-
-        # Binds
         self.Bind(wx.EVT_PAINT, self.OnPaint)
-        self.Bind(wx.EVT_ERASE_BACKGROUND, lambda x:None)
+        self.Bind(wx.EVT_ERASE_BACKGROUND, lambda event: None)
         self.Bind(wx.EVT_SIZE, self.OnSize)
 
-    def _RedimensionneFond(self):
-        """Adapte le fond à la zone cliente sans déformation ni bande vide."""
+    def AppliquerTheme(self):
+        try:
+            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        except Exception:
+            pass
+
+    def _GetAnnonce(self):
+        # L'ancienne vue relisait SQLite à chaque paint/resize. Le contenu ne
+        # change pas pendant une session : une lecture suffit.
+        if not self._annonce_chargee:
+            self._annonce = GetAnnonce()
+            self._annonce_chargee = True
+        return self._annonce
+
+    def OnSize(self, event):
+        self.Refresh(False)
+        event.Skip()
+
+    def _Police(self, delta=0, gras=False):
+        police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
+        try:
+            base = max(8, police.GetPointSize())
+            facteur = UTILS_Interface.GetTailleTexte() / 100.0
+            police.SetPointSize(max(8, int(round((base + delta) * facteur))))
+            if gras:
+                police.SetWeight(wx.FONTWEIGHT_SEMIBOLD if hasattr(wx, "FONTWEIGHT_SEMIBOLD") else wx.FONTWEIGHT_BOLD)
+        except Exception:
+            pass
+        return police
+
+    def OnPaint(self, event):
+        self.AppliquerTheme()
+        dc = wx.AutoBufferedPaintDC(self)
+        dc.SetBackground(wx.Brush(self.GetBackgroundColour()))
+        dc.Clear()
+
         largeur, hauteur = self.GetClientSize()
         if largeur <= 0 or hauteur <= 0:
             return
-        taille = (largeur, hauteur)
-        if taille == self.image_fond_taille:
-            return
 
-        largeur_source = self.image_fond_source.GetWidth()
-        hauteur_source = self.image_fond_source.GetHeight()
-        if largeur_source <= 0 or hauteur_source <= 0:
-            return
+        fond = UTILS_Interface.GetCouleurRole("surface")
+        panneau = UTILS_Interface.GetCouleurRole("surface_container")
+        texte = UTILS_Interface.GetCouleurRole("on_surface")
+        secondaire = UTILS_Interface.GetCouleurRole("on_surface_variant")
+        accent = UTILS_Interface.GetCouleurRole("primary")
+        contour = UTILS_Interface.GetCouleurRole("outline_variant")
 
-        # Mode "cover" : conserve le ratio, remplit toute la surface et ne
-        # recadre que l'excédent nécessaire. Cela évite la zone grise qui
-        # apparaissait sur les écrans larges avec le bitmap à taille native.
-        ratio = max(float(largeur) / largeur_source, float(hauteur) / hauteur_source)
-        largeur_cible = max(1, int(round(largeur_source * ratio)))
-        hauteur_cible = max(1, int(round(hauteur_source * ratio)))
-        image = self.image_fond_source.Scale(largeur_cible, hauteur_cible, wx.IMAGE_QUALITY_HIGH)
-        self.image_fond = wx.Bitmap(image)
-        self.image_fond_position = ((largeur - largeur_cible) // 2, (hauteur - hauteur_cible) // 2)
-        self.image_fond_taille = taille
+        dc.SetBrush(wx.Brush(fond))
+        dc.SetPen(wx.Pen(fond))
+        dc.DrawRectangle(0, 0, largeur, hauteur)
 
-    def OnSize(self, event):
-        self._RedimensionneFond()
-        self.Refresh()
-        event.Skip()
+        marge = UTILS_UIMetrics.spacing(5)
+        largeur_carte = min(max(UTILS_UIMetrics.px(420), int(largeur * 0.42)), max(0, largeur - 2 * marge))
+        hauteur_carte = min(UTILS_UIMetrics.px(250), max(UTILS_UIMetrics.px(150), int(hauteur * 0.34)))
+        x = marge
+        y = marge
 
-    def OnPaint(self, event):
-        """ Préparation du DC """
-        dc = wx.BufferedPaintDC(self)
-        if wx.VERSION < (2, 9, 0, 0) :
-            self.PrepareDC(dc)
-        bg = wx.Brush(self.GetBackgroundColour())
-        dc.SetBackground(bg)
-        dc.Clear()
+        # Surface volontairement simple : une zone de contenu élevée, pas une
+        # grosse carte mobile ni un bitmap décoratif étiré.
+        dc.SetBrush(wx.Brush(panneau))
+        dc.SetPen(wx.Pen(contour, 1))
+        dc.DrawRoundedRectangle(x, y, largeur_carte, hauteur_carte, UTILS_UIMetrics.px(6))
+        dc.SetBrush(wx.Brush(accent))
+        dc.SetPen(wx.Pen(accent))
+        dc.DrawRectangle(x, y, UTILS_UIMetrics.px(4), hauteur_carte)
 
-        # Dessine le fond sur toute la zone cliente.
-        self._RedimensionneFond()
-        x_fond, y_fond = self.image_fond_position
-        dc.DrawBitmap(self.image_fond, x_fond, y_fond)
+        inset = UTILS_UIMetrics.spacing(4)
+        tx = x + inset
+        ty = y + inset
+        contenu_largeur = max(80, largeur_carte - 2 * inset)
 
-        # Récupére l'annonce
-        dictAnnonce = GetAnnonce()
-        if dictAnnonce != None :
+        annonce = self._GetAnnonce()
+        if annonce:
+            titre = annonce.get("titre") or _(u"À savoir")
+            corps = annonce.get("texte_html") or ""
+        else:
+            titre = _(u"Bienvenue dans Noethys")
+            corps = _(u"Ouvrez un fichier ou utilisez les commandes principales pour commencer.")
 
-            nomImage = dictAnnonce["image"]
-            bmp = wx.Bitmap(Chemins.GetStaticPath("Images/16x16/%s.png" % nomImage), wx.BITMAP_TYPE_ANY)
-            titre = dictAnnonce["titre"]
-            texte_html = dictAnnonce["texte_html"]
+        dc.SetFont(self._Police(delta=2, gras=True))
+        dc.SetTextForeground(texte)
+        dc.DrawText(titre, tx, ty)
 
-            # Préparation du dessin
-            x, y = 20, 20
-            taille_police = 8
-            largeurTexte = 300
-            if six.PY2:
-                dc.SetTextForeground((255, 255, 255))
-            if six.PY3:
-                dc.SetTextForeground("#6A9742")
-
-            # Dessine l'image
-            dc.DrawBitmap(bmp, int(x), int(y))
-
-            # Dessine le titre
-            dc.SetFont(wx.Font(taille_police, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, "MS Shell Dlg 2"))
-            dc.DrawText(titre, x+22, y)
-
-            # Dessine le texte
-            dc.SetFont(wx.Font(taille_police, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, "MS Shell Dlg 2"))
-            texte = wordwrap(texte_html, largeurTexte, dc, breakLongWords=True)
-            if 'phoenix' in wx.PlatformInfo:
-                largeur, hauteur, hauteurLigne = dc.GetFullMultiLineTextExtent(texte)
-            else :
-                largeur, hauteur, hauteurLigne = dc.GetMultiLineTextExtent(texte)
-            dc.DrawLabel(texte, wx.Rect(int(x), int(y + 22), int(largeurTexte), int(hauteur)))
-
+        ty += dc.GetCharHeight() + UTILS_UIMetrics.spacing(2)
+        dc.SetFont(self._Police())
+        dc.SetTextForeground(secondaire)
+        corps = wordwrap(corps, contenu_largeur, dc, breakLongWords=True)
+        dc.DrawLabel(corps, wx.Rect(tx, ty, contenu_largeur, max(0, y + hauteur_carte - ty - inset)))
 
 
 class MyFrame(wx.Frame):
@@ -213,19 +190,19 @@ class MyFrame(wx.Frame):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
         sizer_1 = wx.BoxSizer(wx.VERTICAL)
-        sizer_1.Add(panel, 1, wx.ALL|wx.EXPAND)
+        sizer_1.Add(panel, 1, wx.EXPAND)
         self.SetSizer(sizer_1)
-        self.ctrl= Panel(panel)
+        self.ctrl = Panel(panel)
         sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2.Add(self.ctrl, 1, wx.ALL|wx.EXPAND, 4)
+        sizer_2.Add(self.ctrl, 1, wx.EXPAND)
         panel.SetSizer(sizer_2)
         self.SetSize((1100, 900))
         self.Layout()
         self.CentreOnScreen()
 
+
 if __name__ == '__main__':
     app = wx.App(0)
-    #wx.InitAllImageHandlers()
     frame_1 = MyFrame(None, -1, "TEST")
     app.SetTopWindow(frame_1)
     frame_1.Show()
