@@ -6,7 +6,7 @@ n'est monkey-patché : les managers, toolbars, notebooks et grilles sont
 configurés explicitement lorsqu'ils entrent dans le shell Noethys.
 """
 
-PERSPECTIVE_LAYOUT_VERSION = 3
+PERSPECTIVE_LAYOUT_VERSION = 4
 PARAMETRE_PERSPECTIVE_VERSION = "aui_perspective_layout_version"
 
 
@@ -134,9 +134,6 @@ def ConfigurerGrille(grille):
     except Exception:
         pass
 
-    # On ne touche pas ici aux largeurs métier ni aux tailles explicitement
-    # configurées par l'utilisateur. Seules les métriques génériques sont mises
-    # à l'échelle à partir de leur valeur de référence initiale.
     try:
         if not hasattr(grille, "_noethys_default_row_base"):
             grille._noethys_default_row_base = grille.GetDefaultRowSize()
@@ -247,9 +244,71 @@ def _ConfigurerPoliceCaptions(art):
         base = max(7, police.GetPointSize())
         facteur = (UTILS_Interface.GetEchelle() / 100.0) * (UTILS_Interface.GetTailleTexte() / 100.0)
         police.SetPointSize(max(7, int(round(base * facteur))))
+        try:
+            police.SetWeight(wx.FONTWEIGHT_SEMIBOLD)
+        except Exception:
+            police.SetWeight(wx.FONTWEIGHT_BOLD)
         art.SetFont(aui.AUI_DOCKART_CAPTION_FONT, police)
     except Exception:
         pass
+
+
+def _SetArtColour(art, aui, constante, role):
+    identifiant = getattr(aui, constante, None)
+    if identifiant is None:
+        return
+    try:
+        from Utils import UTILS_Interface
+        couleur = UTILS_Interface.GetCouleurRole(role)
+    except Exception:
+        return
+    try:
+        art.SetColour(identifiant, couleur)
+    except Exception:
+        try:
+            art.SetColor(identifiant, couleur)
+        except Exception:
+            pass
+
+
+def _SetArtMetric(art, aui, constante, valeur):
+    identifiant = getattr(aui, constante, None)
+    if identifiant is None:
+        return
+    try:
+        art.SetMetric(identifiant, int(valeur))
+    except Exception:
+        pass
+
+
+def _ConfigurerArtShell(art, aui):
+    """Palette AUI plate et dense, inspirée de Fluent 2.
+
+    Début et fin de gradient reçoivent volontairement la même surface : on
+    conserve le moteur de rendu AUI mais on élimine son ancien effet 3D.
+    """
+    try:
+        from Utils import UTILS_UIMetrics
+        caption = UTILS_UIMetrics.px(30)
+    except Exception:
+        caption = 30
+
+    _SetArtMetric(art, aui, "AUI_DOCKART_CAPTION_SIZE", caption)
+    _SetArtMetric(art, aui, "AUI_DOCKART_PANE_BORDER_SIZE", 1)
+
+    for constante, role in (
+        ("AUI_DOCKART_BACKGROUND_COLOUR", "surface"),
+        ("AUI_DOCKART_SASH_COLOUR", "outline_variant"),
+        ("AUI_DOCKART_BORDER_COLOUR", "outline_variant"),
+        ("AUI_DOCKART_GRIPPER_COLOUR", "outline_variant"),
+        ("AUI_DOCKART_INACTIVE_CAPTION_COLOUR", "surface_container"),
+        ("AUI_DOCKART_INACTIVE_CAPTION_GRADIENT_COLOUR", "surface_container"),
+        ("AUI_DOCKART_INACTIVE_CAPTION_TEXT_COLOUR", "on_surface_variant"),
+        ("AUI_DOCKART_ACTIVE_CAPTION_COLOUR", "surface_container_high"),
+        ("AUI_DOCKART_ACTIVE_CAPTION_GRADIENT_COLOUR", "surface_container_high"),
+        ("AUI_DOCKART_ACTIVE_CAPTION_TEXT_COLOUR", "on_surface"),
+    ):
+        _SetArtColour(art, aui, constante, role)
 
 
 def _GetPane(manager, nom):
@@ -456,7 +515,6 @@ def ConfigurerManager(manager):
         return False
     try:
         import wx.lib.agw.aui as aui
-        from Utils import UTILS_Interface
         from Utils import UTILS_Responsive
     except Exception:
         return False
@@ -468,28 +526,12 @@ def ConfigurerManager(manager):
 
     try:
         sash = max(5, min(10, int(round(5 * max(1.0, UTILS_Responsive.GetFacteurEcran())))))
-        art.SetMetric(aui.AUI_DOCKART_SASH_SIZE, sash)
-    except Exception:
-        pass
-    try:
-        art.SetMetric(aui.AUI_DOCKART_PANE_BORDER_SIZE, 1)
+        _SetArtMetric(art, aui, "AUI_DOCKART_SASH_SIZE", sash)
     except Exception:
         pass
 
     _ConfigurerPoliceCaptions(art)
-
-    for role, constante in (
-        ("outline_variant", aui.AUI_DOCKART_SASH_COLOUR),
-        ("outline", aui.AUI_DOCKART_BORDER_COLOUR),
-    ):
-        try:
-            art.SetColour(constante, UTILS_Interface.GetCouleurRole(role))
-        except Exception:
-            try:
-                art.SetColor(constante, UTILS_Interface.GetCouleurRole(role))
-            except Exception:
-                pass
-
+    _ConfigurerArtShell(art, aui)
     _ConfigurerComposantsDuManager(manager)
     _InstallerResponsive(manager)
     _AppliquerLayoutResponsive(manager, forcer=True)
@@ -498,6 +540,7 @@ def ConfigurerManager(manager):
         manager.Update()
         fenetre = manager.GetManagedWindow()
         if fenetre is not None:
+            fenetre.SetBackgroundColour(__import__("Utils.UTILS_Interface", fromlist=["UTILS_Interface"]).GetCouleurRole("surface"))
             fenetre.Layout()
     except Exception:
         pass
@@ -541,7 +584,8 @@ def ConfigurerToolBar(toolbar, taille_base=16, fond_uni=True):
             pass
 
     try:
-        toolbar.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container"))
+        toolbar.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_low"))
+        toolbar.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
     except Exception:
         pass
 
