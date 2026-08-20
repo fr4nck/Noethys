@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
-"""Petites règles responsive pour l'interface desktop de Noethys.
+"""Règles responsive desktop pour Noethys.
 
-Le but n'est pas de transformer Noethys en interface tactile : on choisit des
-paliers discrets tenant compte du DPI et de la largeur utile de l'écran.
+Le but n'est pas de transformer Noethys en interface tactile : on utilise des
+paliers discrets tenant compte du DPI, de la largeur de l'écran et de l'échelle
+d'interface choisie par l'utilisateur.
 """
 
 
-def _facteur_ecran():
+def GetFacteurEcran():
     facteur = 1.0
+
     try:
         import wx
         ppi = wx.GetDisplayPPI()
@@ -25,7 +27,19 @@ def _facteur_ecran():
             facteur = max(facteur, 1.16)
     except Exception:
         pass
+
+    try:
+        from Utils import UTILS_Interface
+        facteur_interface = float(UTILS_Interface.GetEchelle()) / 100.0
+        facteur = max(facteur, min(1.50, facteur_interface))
+    except Exception:
+        pass
+
     return facteur
+
+
+# Alias transitoire pour les appels introduits avant la stabilisation de l'API.
+_facteur_ecran = GetFacteurEcran
 
 
 def GetTailleIcone(base=16):
@@ -35,7 +49,7 @@ def GetTailleIcone(base=16):
     except (TypeError, ValueError):
         base = 16
 
-    facteur = _facteur_ecran()
+    facteur = GetFacteurEcran()
     if base <= 16:
         if facteur >= 1.30:
             return 24
@@ -51,6 +65,12 @@ def GetTailleIcone(base=16):
             return 40
         return 32
     return min(48, max(base, int(round(base * min(facteur, 1.20)))))
+
+
+def GetTailleCibleAction(base=40):
+    """Taille de cible confortable sans basculer vers une UI tactile."""
+    facteur = min(GetFacteurEcran(), 1.35)
+    return max(36, min(56, int(round(base * facteur))))
 
 
 def AdapterTailleWx(taille):
