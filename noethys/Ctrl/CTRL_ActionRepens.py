@@ -35,7 +35,6 @@ class CTRL(wx.Control):
         self.compact = bool(compact)
         self._hover = False
         self._pressed = False
-        self._bitmap = None
 
         if tooltip:
             self.SetToolTip(wx.ToolTip(tooltip))
@@ -65,7 +64,6 @@ class CTRL(wx.Control):
 
     def SetIcone(self, icone):
         self.icone = icone
-        self._bitmap = None
         self.InvalidateBestSize()
         self.Refresh()
 
@@ -124,6 +122,16 @@ class CTRL(wx.Control):
             contour = UTILS_Interface.GetCouleurRole("focus")
         return fond, texte, contour
 
+    def _CouleurParent(self):
+        try:
+            parent = self.GetParent()
+            couleur = parent.GetBackgroundColour()
+            if couleur.IsOk():
+                return couleur
+        except Exception:
+            pass
+        return UTILS_Interface.GetCouleurRole("surface")
+
     def DoGetBestSize(self):
         hauteur = UTILS_UIMetrics.action_target("compact" if self.compact else "standard")
         padding_x = UTILS_UIMetrics.spacing(2 if self.compact else 3)
@@ -145,6 +153,7 @@ class CTRL(wx.Control):
 
     def OnPaint(self, event):
         dc = wx.AutoBufferedPaintDC(self)
+        dc.SetBackground(wx.Brush(self._CouleurParent()))
         dc.Clear()
         rect = self.GetClientRect()
         fond, texte, contour = self._GetCouleurs()
@@ -177,7 +186,8 @@ class CTRL(wx.Control):
     def _EnvoyerClick(self):
         if not self.IsEnabled():
             return
-        evenement = wx.CommandEvent(wx.wxEVT_BUTTON, self.GetId())
+        type_evt = getattr(wx.EVT_BUTTON, "typeId", getattr(wx, "wxEVT_BUTTON", 0))
+        evenement = wx.CommandEvent(type_evt, self.GetId())
         evenement.SetEventObject(self)
         wx.PostEvent(self, evenement)
 
