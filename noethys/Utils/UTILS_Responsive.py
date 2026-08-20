@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Règles responsive desktop pour Noethys.
+"""Adaptateur responsive desktop pour Noethys.
 
-Le but n'est pas de transformer Noethys en interface tactile : on utilise des
-paliers discrets tenant compte du DPI, de la largeur de l'écran et de l'échelle
-d'interface choisie par l'utilisateur.
+``UTILS_UIMetrics`` contient les métriques portables du produit. Ce module
+ajoute uniquement les contraintes propres au client desktop wxPython : DPI,
+largeur d'écran et paliers d'assets disponibles.
 """
+
+from Utils import UTILS_UIMetrics
 
 
 def GetFacteurEcran():
@@ -28,10 +30,10 @@ def GetFacteurEcran():
     except Exception:
         pass
 
+    # L'échelle utilisateur appartient au design system commun. Le client
+    # desktop ne la redéfinit plus avec sa propre clé de configuration.
     try:
-        from Utils import UTILS_Interface
-        facteur_interface = float(UTILS_Interface.GetEchelle()) / 100.0
-        facteur = max(facteur, min(1.50, facteur_interface))
+        facteur = max(facteur, min(1.50, UTILS_UIMetrics.get_scale()))
     except Exception:
         pass
 
@@ -43,7 +45,7 @@ _facteur_ecran = GetFacteurEcran
 
 
 def GetTailleIcone(base=16):
-    """Retourne une taille d'icône par paliers, avec plafond raisonnable."""
+    """Retourne une taille d'asset par paliers disponibles sur desktop."""
     try:
         base = int(base)
     except (TypeError, ValueError):
@@ -68,9 +70,11 @@ def GetTailleIcone(base=16):
 
 
 def GetTailleCibleAction(base=40):
-    """Taille de cible confortable sans basculer vers une UI tactile."""
-    facteur = min(GetFacteurEcran(), 1.35)
-    return max(36, min(56, int(round(base * facteur))))
+    """Cible desktop lisible, cohérente avec les métriques communes."""
+    facteur = min(GetFacteurEcran(), 1.45)
+    cible_desktop = int(round(base * facteur))
+    cible_design = UTILS_UIMetrics.action_target("standard")
+    return max(36, min(64, max(cible_desktop, cible_design)))
 
 
 def AdapterTailleWx(taille):
