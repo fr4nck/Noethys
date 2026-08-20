@@ -45,7 +45,12 @@ _facteur_ecran = GetFacteurEcran
 
 
 def GetTailleIcone(base=16):
-    """Retourne une taille d'asset par paliers disponibles sur desktop."""
+    """Retourne une taille d'asset lisible par paliers disponibles.
+
+    Les pictos historiques 16 px étaient trop petits sur les écrans desktop
+    actuels, même à 100 %. Ils sont désormais rendus au minimum en 20 px ; le
+    reste de la montée en taille continue de suivre DPI, largeur et échelle UI.
+    """
     try:
         base = int(base)
     except (TypeError, ValueError):
@@ -55,9 +60,7 @@ def GetTailleIcone(base=16):
     if base <= 16:
         if facteur >= 1.30:
             return 24
-        if facteur >= 1.10:
-            return 20
-        return 16
+        return 20
     if base <= 24:
         if facteur >= 1.30:
             return 32
