@@ -25,6 +25,7 @@ import ast
 DICT_LABELS_CATEGORIES = {
     "numerique_avec_suggestion" : _(u"Numérique (Avec suggestion)"),
     "numerique_sans_suggestion" : _(u"Numérique (Libre)"),
+    "numerique_animateurs" : _(u"Numérique (Animateurs)"),
     "numerique_total" : _(u"Numérique (Total)"),
     "texte_infos" : _(u"Texte (Informations)"),
     "texte_libre" : _(u"Texte (Libre)"),
@@ -306,7 +307,7 @@ class PAGE_Unites(wx.Panel):
         self.parent = parent
 
         # Contrôles
-        self.label_intro = wx.StaticText(self, -1, _(u"Cochez les unités à additionner :"))
+        self.label_intro = wx.StaticText(self, -1, _(u"Cochez les unités à regrouper pour ce point de livraison :"))
         self.ctrl_unites = CTRL_Unites(self)
         self.ctrl_unites.SetMinSize((100, 50))
         self.check_repas = wx.CheckBox(self, -1, _(u"Afficher uniquement les unités avec repas inclus"))
@@ -531,6 +532,7 @@ class CTRL_Parametres(wx.Choicebook):
         self.listePanels = [
             ("numerique_avec_suggestion", PAGE_Unites(self)),
             ("numerique_sans_suggestion", PAGE_Vide(self)),
+            ("numerique_animateurs", PAGE_Vide(self)),
             ("numerique_total", PAGE_Total(self)),
             ("texte_infos", PAGE_Informations(self)),
             ("texte_libre", PAGE_Vide(self)),
@@ -618,7 +620,7 @@ class Dialog(wx.Dialog):
 
     def __set_properties(self):
         self.SetTitle(_(u"Saisie d'une colonne"))
-        self.ctrl_nom.SetToolTip(wx.ToolTip(_(u"Saisissez ici le nom de la colonne (Ex : 'Enfants', 'Adultes'...)")))
+        self.ctrl_nom.SetToolTip(wx.ToolTip(_(u"Saisissez ici le nom de la colonne (Ex : 'Enfants', 'Animateurs', 'Total livraison'...)")))
         self.ctrl_largeur.SetToolTip(wx.ToolTip(_(u"Saisissez ici la largeur de la colonne")))
         self.bouton_aide.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour obtenir de l'aide")))
         self.bouton_ok.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour valider et fermer")))
