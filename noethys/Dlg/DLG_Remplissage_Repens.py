@@ -2,15 +2,17 @@
 # -*- coding: utf-8 -*-
 """Panneau de fréquentation Repens Design.
 
-Le métier et les boîtes de dialogue existantes restent inchangés. Le panneau
-remplace explicitement la toolbar et la grille historiques par leurs variantes
-Repens afin que toute la vue visible soit cohérente.
+Le moteur métier reste dans ``CTRL_Remplissage`` via la sous-classe Repens,
+mais aucun widget historique n'est instancié puis remplacé. Toolbar, ticker et
+grille sont construits directement dans la structure responsive moderne.
 """
 
+import datetime
 import wx
 
 from Dlg import DLG_Remplissage as Legacy
 from Ctrl import CTRL_Remplissage_Repens
+from Ctrl import CTRL_Ticker_presents
 from Utils import UTILS_Adaptations
 from Utils import UTILS_Aui
 from Utils import UTILS_FluentIcons
@@ -42,7 +44,10 @@ class ToolBar(wx.ToolBar):
         self._AjouterOutil(Legacy.ID_LISTE_ATTENTE, _(u"Liste d'attente"), "people", taille, wx.ITEM_NORMAL, _(u"Afficher la liste d'attente"))
         self.Bind(wx.EVT_TOOL, self.OnListeAttente, id=Legacy.ID_LISTE_ATTENTE)
 
-        self.AddStretchableSpace()
+        try:
+            self.AddStretchableSpace()
+        except Exception:
+            self.AddSeparator()
         self._AjouterOutil(Legacy.ID_PARAMETRES, _(u"Affichage"), "settings", taille, wx.ITEM_NORMAL, _(u"Paramètres d'affichage"))
         self._AjouterOutil(Legacy.ID_OUTILS, _(u"Plus"), "print", taille, wx.ITEM_NORMAL, _(u"Imprimer, exporter, actualiser ou obtenir de l'aide"))
         self.Bind(wx.EVT_TOOL, self.OnParametres, id=Legacy.ID_PARAMETRES)
@@ -52,14 +57,13 @@ class ToolBar(wx.ToolBar):
         self._SynchroniserMode()
 
     def _Bitmap(self, icone, taille):
-        bitmap = None
         try:
             bitmap = UTILS_FluentIcons.GetBitmap(icone, taille=taille)
+            if bitmap is not None and bitmap.IsOk():
+                return bitmap
         except Exception:
-            bitmap = None
-        if bitmap is None or not bitmap.IsOk():
-            bitmap = wx.NullBitmap
-        return bitmap
+            pass
+        return wx.NullBitmap
 
     def _AjouterOutil(self, identifiant, label, icone, taille, kind, tooltip):
         bitmap = self._Bitmap(icone, taille)
@@ -141,25 +145,103 @@ class ToolBar(wx.ToolBar):
         menu.Destroy()
 
 
-class Panel(Legacy.Panel):
-    """Conteneur compatible avec l'ancien panneau, sans ses contrôles visuels."""
+class Panel(wx.Panel):
+    """Conteneur Repens construit directement, sans sizer ou widget historique."""
 
     def __init__(self, parent):
-        Legacy.Panel.__init__(self, parent)
+        wx.Panel.__init__(self, parent, name="panel_remplissage", id=-1, style=wx.TAB_TRAVERSAL)
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
 
-        ancienne_toolbar = self.toolBar
-        ancienne_grille = self.ctrl_remplissage
-        try:
-            self.sizer_base.Detach(ancienne_toolbar)
-            self.sizer_base.Detach(ancienne_grille)
-        except Exception:
-            pass
-        ancienne_toolbar.Destroy()
-        ancienne_grille.Destroy()
+        self.dictDonnees = self.GetParametres()
+        Legacy.AFFICHE_PRESENTS = UTILS_Config.GetParametre("remplissage_affiche_presents", 1)
+        Legacy.MAJ_AUTO_REMPLISSAGE = UTILS_Config.GetParametre("remplissage_maj_auto", 0)
 
         self.toolBar = ToolBar(self)
+        self.ctrl_presents = CTRL_Ticker_presents.CTRL(self, delai=60, listeActivites=[15,])
+        self.ctrl_presents.Show(False)
         self.ctrl_remplissage = CTRL_Remplissage_Repens.CTRL(self, self.dictDonnees)
-        self.sizer_base.Insert(0, self.toolBar, 0, wx.EXPAND)
-        self.sizer_base.Insert(2, self.ctrl_remplissage, 1, wx.EXPAND)
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.toolBar, 0, wx.EXPAND)
+        sizer.Add(self.ctrl_presents, 0, wx.EXPAND)
+        sizer.Add(self.ctrl_remplissage, 1, wx.EXPAND)
+        self.SetSizer(sizer)
+        self.sizer_base = sizer
         self.Layout()
+        self.toolBar._SynchroniserMode()
+
+    def GetParametres(self):
+        defaut = {
+            "listeActivites": [],
+            "listeSelections": (),
+            "listePeriodes": [],
+            "modeAffichage": "nbrePlacesPrises",
+            "dateDebut": None,
+            "dateFin": None,
+            "annee": datetime.date.today().year,
+            "page": 0,
+        }
+        return UTILS_Config.GetParametre("dict_selection_periodes_activites", defaut)
+
+    def SetDictDonnees(self, dictDonnees=None):
+        if dictDonnees:
+            self.dictDonnees = dictDonnees
+        self.ctrl_remplissage.SetDictDonnees(self.dictDonnees)
+        UTILS_Config.SetParametre("dict_selection_periodes_activites", self.dictDonnees)
+
+    def MAJ(self):
+        self.ctrl_remplissage.MAJ()
+        self.MAJpresents()
+        if Legacy.MAJ_AUTO_REMPLISSAGE:
+            if Legacy.MAJ_AUTO_EN_ATTENTE:
+                Legacy.MAJ_AUTO_EN_ATTENTE.Stop()
+            Legacy.MAJ_AUTO_EN_ATTENTE = wx.CallLater(Legacy.MAJ_AUTO_REMPLISSAGE, self.MAJ)
+
+    def MAJpresents(self):
+        listeActivites = self.dictDonnees.get("listeActivites", [])
+        self.ctrl_presents.SetActivites(listeActivites)
+        self.ctrl_presents.MAJ()
+
+    def AffichePresents(self, etat=True):
+        if Legacy.AFFICHE_PRESENTS == 0:
+            etat = False
+        self.ctrl_presents.Show(bool(etat))
+        self.Layout()
+
+    def Imprimer(self):
+        self.ctrl_remplissage.Imprimer()
+
+    def Apercu(self):
+        self.ctrl_remplissage.Apercu()
+
+    def Aide(self):
+        from Utils import UTILS_Aide
+        UTILS_Aide.Aide("Leseffectifs")
+
+    def OuvrirListeAttente(self):
+        self.ctrl_remplissage.MAJ()
+        dict_etat_places = self.ctrl_remplissage.GetEtatPlaces()
+        dict_unites = self.ctrl_remplissage.dictUnitesRemplissage
+        from Dlg import DLG_Attente
+        dlg = DLG_Attente.Dialog(
+            self,
+            dictDonnees=self.dictDonnees,
+            dictEtatPlaces=dict_etat_places,
+            dictUnitesRemplissage=dict_unites,
+        )
+        dlg.ShowModal()
+        dlg.Destroy()
+
+    def OuvrirListeRefus(self):
+        self.ctrl_remplissage.MAJ()
+        dict_etat_places = self.ctrl_remplissage.GetEtatPlaces()
+        dict_unites = self.ctrl_remplissage.dictUnitesRemplissage
+        from Dlg import DLG_Refus
+        dlg = DLG_Refus.Dialog(
+            self,
+            dictDonnees=self.dictDonnees,
+            dictEtatPlaces=dict_etat_places,
+            dictUnitesRemplissage=dict_unites,
+        )
+        dlg.ShowModal()
+        dlg.Destroy()
