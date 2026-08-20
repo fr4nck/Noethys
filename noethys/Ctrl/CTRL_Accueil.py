@@ -27,10 +27,10 @@ def ConvertVersionTuple(texteVersion=""):
 
 def GetAnnonce():
     """ Fonction de récupération de l'annonce é afficher """
-    dateJour = datetime.date.today() 
+    dateJour = datetime.date.today()
     dictAnnonce = None
     found = False
-    
+
     # Recherche Annonce Internet
     # try :
     #     fichierAnnonce = urllib2.urlopen('http://www.noethys.com/fichiers/annonce.txt', timeout=5)
@@ -50,21 +50,21 @@ def GetAnnonce():
     #                 found = True
     # except :
     #     pass
-        
+
     # Recherche Annonces stockées dans la base de données
     if found == False :
-        
+
         try :
-            
+
             # Init base de données
             con = sqlite3.connect(Chemins.GetStaticPath("Databases/Annonces.dat"))
             cur = con.cursor()
-            
+
             def ListeEnDict(donnees):
                 IDannonce, image, titre, texte_html = donnees
                 dictAnnonce = {"IDannonce":IDannonce, "image":image, "titre":titre, "texte_html":texte_html}
                 return dictAnnonce
-                
+
             # Recherche dans les annonces DATES
             if found == False :
                 req = """SELECT IDannonce, image, titre, texte_html FROM annonces_dates
@@ -76,7 +76,7 @@ def GetAnnonce():
                 if len(listeAnnonces) > 0 :
                     dictAnnonce = ListeEnDict(listeAnnonces[0])
                     found = True
-            
+
             # Recherche dans les annonces PERIODES
             if found == False :
                 req = """SELECT IDannonce, image, titre, texte_html FROM annonces_periodes
@@ -101,12 +101,12 @@ def GetAnnonce():
                     found = True
 
             con.close()
-        
+
         except :
             return None
-    
+
     return dictAnnonce
-    
+
 
 
 class Panel(wx.Panel):
@@ -118,15 +118,45 @@ class Panel(wx.Panel):
         nom_fichier = "Fond.jpg"
         if six.PY3 and theme == "Vert":
             nom_fichier = "Fond_2019.jpg"
-        self.image_fond = wx.Bitmap(Chemins.GetStaticPath("Images/Interface/%s/%s" % (theme, nom_fichier)), wx.BITMAP_TYPE_ANY)
+        self.image_fond_source = wx.Image(Chemins.GetStaticPath("Images/Interface/%s/%s" % (theme, nom_fichier)), wx.BITMAP_TYPE_ANY)
+        self.image_fond = wx.Bitmap(self.image_fond_source)
+        self.image_fond_taille = None
+        self.image_fond_position = (0, 0)
 
         # Binds
         self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.Bind(wx.EVT_ERASE_BACKGROUND, lambda x:None)
         self.Bind(wx.EVT_SIZE, self.OnSize)
 
+    def _RedimensionneFond(self):
+        """Adapte le fond à la zone cliente sans déformation ni bande vide."""
+        largeur, hauteur = self.GetClientSize()
+        if largeur <= 0 or hauteur <= 0:
+            return
+        taille = (largeur, hauteur)
+        if taille == self.image_fond_taille:
+            return
+
+        largeur_source = self.image_fond_source.GetWidth()
+        hauteur_source = self.image_fond_source.GetHeight()
+        if largeur_source <= 0 or hauteur_source <= 0:
+            return
+
+        # Mode "cover" : conserve le ratio, remplit toute la surface et ne
+        # recadre que l'excédent nécessaire. Cela évite la zone grise qui
+        # apparaissait sur les écrans larges avec le bitmap à taille native.
+        ratio = max(float(largeur) / largeur_source, float(hauteur) / hauteur_source)
+        largeur_cible = max(1, int(round(largeur_source * ratio)))
+        hauteur_cible = max(1, int(round(hauteur_source * ratio)))
+        image = self.image_fond_source.Scale(largeur_cible, hauteur_cible, wx.IMAGE_QUALITY_HIGH)
+        self.image_fond = wx.Bitmap(image)
+        self.image_fond_position = ((largeur - largeur_cible) // 2, (hauteur - hauteur_cible) // 2)
+        self.image_fond_taille = taille
+
     def OnSize(self, event):
+        self._RedimensionneFond()
         self.Refresh()
+        event.Skip()
 
     def OnPaint(self, event):
         """ Préparation du DC """
@@ -137,8 +167,10 @@ class Panel(wx.Panel):
         dc.SetBackground(bg)
         dc.Clear()
 
-        # Dessine le fond
-        dc.DrawBitmap(self.image_fond, 0, 0)
+        # Dessine le fond sur toute la zone cliente.
+        self._RedimensionneFond()
+        x_fond, y_fond = self.image_fond_position
+        dc.DrawBitmap(self.image_fond, x_fond, y_fond)
 
         # Récupére l'annonce
         dictAnnonce = GetAnnonce()
