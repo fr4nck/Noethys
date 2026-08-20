@@ -42,6 +42,10 @@ LIBELLES_METHODES = {
     "horaire_qf": "Selon les horaires et le quotient familial",
     "duree_montant_unique": "Selon la durée",
     "duree_qf": "Selon la durée et le quotient familial",
+    "montant_unique_nbre_ind": "Selon le nombre de personnes présentes",
+    "qf_nbre_ind": "Selon le quotient familial et le nombre de personnes présentes",
+    "montant_unique_nbre_ind_degr": "Tarif dégressif selon le nombre de personnes présentes",
+    "qf_nbre_ind_degr": "Tarif dégressif selon le quotient familial et le nombre de personnes présentes",
     "duree_coeff_montant_unique": "Au prorata de la durée",
     "duree_coeff_qf": "Au prorata de la durée et du quotient familial",
     "taux_montant_unique": "Selon un taux d'effort",
@@ -49,6 +53,7 @@ LIBELLES_METHODES = {
     "taux_date": "Selon un taux d'effort et la date",
     "duree_taux_montant_unique": "Selon la durée et un taux d'effort",
     "duree_taux_qf": "Selon la durée, le quotient familial et un taux d'effort",
+    "forfait_contrat": "Selon le forfait contractuel",
 }
 
 
@@ -60,6 +65,14 @@ CONDITIONS_CONTEXTUELLES = {
     "filtres": "réponse à un questionnaire",
     "jours_scolaires": "jour scolaire",
     "jours_vacances": "période de vacances",
+    "combinaisons_unites": "combinaison d'unités consommées",
+    "condition_nbre_combi": "nombre de consommations combinées",
+    "condition_periode": "période de consommation",
+    "condition_nbre_jours": "nombre de jours consommés",
+    "condition_conso_facturees": "consommations déjà facturées",
+    "condition_dates_continues": "continuité des dates de consommation",
+    "etats": "état de la consommation",
+    "IDevenement": "événement associé",
 }
 
 
@@ -113,7 +126,7 @@ def _statut_validite(date_debut, date_fin, date_reference=None):
 
 
 def _condition_presente(valeur):
-    if valeur in (None, "", [], {}, ()):
+    if valeur in (None, "", False, 0, "0", [], {}, ()):
         return False
     return True
 
@@ -130,8 +143,14 @@ def _avertissements_contextuels(tarif):
             "Le montant exact dépend du contexte réel de réservation ou de facturation."
         )
 
-    # Les forfaits crédit et autres types de tarifs peuvent nécessiter une
-    # consommation ou un stock de crédit déjà existant.
+    # Certains champs d'options sont opaques sans le moteur métier qui les
+    # interprète. Leur seule présence suffit donc à empêcher l'affichage d'un
+    # faux prix certain.
+    if _condition_presente(tarif.get("options")):
+        avertissements.append("Ce tarif comporte des options métier supplémentaires.")
+
+    # Les forfaits crédit peuvent nécessiter une consommation ou un stock de
+    # crédit déjà existant.
     type_tarif = str(tarif.get("type") or "")
     if type_tarif == "CREDIT":
         avertissements.append(
