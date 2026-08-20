@@ -67,6 +67,9 @@ runtime_hooks = [
     # Installer d'abord le journal d'erreurs : si un hook de compatibilité casse,
     # le diagnostic est persisté au lieu de disparaître dans l'EXE sans console.
     str(ROOT / "packaging" / "runtime_crashlog.py"),
+    # Mesure localement les délais d'ouverture des fenêtres et les allers-retours
+    # MySQL, sans conserver les paramètres SQL ni les titres métier.
+    str(ROOT / "packaging" / "runtime_perf.py"),
     # Les hooks de compatibilité sont volontairement exécutés avant le smoke-test
     # afin que la qualification du bundle couvre aussi leur initialisation.
     str(ROOT / "packaging" / "runtime_wx_compat.py"),
