@@ -98,6 +98,62 @@ Les règles d'adhésion possibles sont :
 
 Cette séparation permet notamment à une même collectivité d'avoir une relation de financement où l'adhésion est non applicable et, dans un autre contexte, une mise à disposition avec une règle différente. Aucune règle du type « mairie = adhésion » n'est codée en dur.
 
+### Noe-062C — Programmation annuelle et renouvellement
+
+`Utils/UTILS_Mises_a_disposition_programmation.py` porte la programmation contractuelle sans générer de dates d'occurrence.
+
+Un créneau contient :
+
+- jour de semaine ;
+- horaires ;
+- période d'application éventuelle ;
+- groupe / section ;
+- lieu ;
+- observations ;
+- identifiant stable ;
+- filiation vers le créneau N-1 lorsque la ligne est renouvelée.
+
+Le renouvellement distingue explicitement `inchange`, `modifie`, `supprime` et `ajoute`. Les dates de l'année précédente ne sont jamais transposées implicitement.
+
+### Noe-062D — Convention, annexe et avenants
+
+`Utils/UTILS_Mises_a_disposition_documents.py` prépare la sortie documentaire sans dupliquer le moteur historique.
+
+`RegleCalendrierMiseADisposition` traduit un créneau vers **le contrat exact attendu par la récurrence Locations** :
+
+- `date_debut` / `date_fin` ;
+- `heure_debut` / `heure_fin` ;
+- `jours_scolaires` / `jours_vacances` ;
+- `semaines` ;
+- `feries`.
+
+Le module ne contient volontairement **aucun calcul de vacances, jours fériés ou fréquence**. `GenererAnnexeDepuisProgrammation()` reçoit un `calculateur_occurences` et lui transmet ces paramètres. Le calculateur historique reste donc la source de vérité des dates.
+
+L'annexe obtenue :
+
+- est triée date par date ;
+- conserve le lien vers chaque créneau ;
+- déduplique une occurrence identique retournée deux fois ;
+- totalise les durées ;
+- expose des lignes structurées et des champs de fusion ;
+- utilise des identifiants UUID5 déterministes pour qu'une même programmation et une même période produisent les mêmes identités d'annexe et d'occurrence.
+
+`DossierDocumentaireMiseADisposition` fusionne ensuite les champs de :
+
+- convention ou avenant ;
+- relation contractuelle ;
+- bénéficiaire ;
+- payeur ;
+- contact convention ;
+- programmation ;
+- annexe prévisionnelle.
+
+Le résultat est un **paquet de modèle**, pas un second moteur PDF. Il est destiné à être consommé par les modèles documentaires Noethys existants afin de conserver strictement la structure du modèle PMSL.
+
+Un avenant est identifié par sa filiation vers la convention parente. Il ne remplace pas la convention d'origine.
+
+`SnapshotDocumentContractuel` permet enfin de figer le paquet de modèle avec une empreinte SHA-256. La règle de stockage future est simple : un document validé reçoit un snapshot ; une modification contractuelle crée un nouvel avenant / snapshot au lieu de recalculer silencieusement l'ancien document.
+
 ## Cycle de vie initial
 
 Statuts techniques autorisés :
@@ -122,11 +178,28 @@ La période de validité est distincte du statut. Une convention peut couvrir un
 Le noyau expose des champs stables pour :
 
 - la convention ;
-- la structure ;
-- le contact ;
-- la relation contractuelle.
+- la structure bénéficiaire ;
+- la structure payeuse ;
+- le contact convention ;
+- la relation contractuelle ;
+- la programmation ;
+- l'annexe ;
+- le type de document.
 
 Ils ont vocation à alimenter le moteur documentaire existant afin que convention, annexe, e-mail et reporting utilisent les mêmes données. Le modèle de convention fourni par PMSL doit être conservé dans son ordre et sa structure, sans réécriture arbitraire.
+
+## Raccord au moteur historique
+
+Le raccord est volontairement défini comme une **interface de calcul**, pas comme une copie de l'algorithme.
+
+Aujourd'hui `DLG_Saisie_location.Calcule_occurences()` porte encore l'implémentation historique vacances / fériés / fréquence. Noe-062D sait déjà lui fournir exactement le dictionnaire attendu.
+
+La dernière étape de raccord desktop consistera à sortir ce calcul du dialogue `DLG_Saisie_location.py` vers une fonction réutilisable, puis à faire appeler cette même fonction par :
+
+1. le dialogue historique Locations ;
+2. la génération d'annexe des mises à disposition.
+
+Cette extraction doit préserver strictement le comportement actuel des locations. Elle n'est pas remplacée par une seconde implémentation.
 
 ## Stockage : décision reportée volontairement
 
@@ -134,21 +207,19 @@ Ce lot ne crée toujours aucune table et n'altère aucune base existante.
 
 Le dépôt contient déjà une table historique `contacts`. Avant d'introduire un stockage pour les structures et leurs contacts, il faut cartographier ses usages réels et décider explicitement si elle peut être étendue sans ambiguïté ou si un stockage additif dédié est préférable.
 
-Le même principe vaut pour la relation contractuelle : le schéma ne sera introduit qu'après validation du modèle pur et avec une migration additive testée sur copie de base réelle.
+Le même principe vaut pour la relation contractuelle, la programmation et les snapshots documentaires : le schéma ne sera introduit qu'après validation du modèle pur et avec une migration additive testée sur copie de base réelle.
 
-## Étapes suivantes
-
-### Noe-062C — Programmation annuelle
-
-Enregistrer les créneaux souhaités puis validés et permettre le renouvellement N-1 avec lignes inchangées/modifiées/supprimées/ajoutées.
-
-### Noe-062D — Convention, annexe et avenants
-
-Brancher les champs canoniques sur le moteur documentaire existant. L'annexe doit être générée date par date depuis la programmation validée ; un changement en cours d'année produit un avenant sans écraser la convention initiale.
+## Étape suivante
 
 ### Noe-062E — Réalisé, facturation et reporting
 
 Le même jeu de données doit alimenter planning, validation du réalisé, prestations, facturation et indicateurs. Aucune requête métier concurrente ne doit recalculer différemment les mêmes chiffres.
+
+Avant activation en production, il restera également à :
+
+- effectuer l'extraction technique du calculateur de récurrence hors du dialogue Locations ;
+- brancher le paquet de modèle sur le modèle de convention PMSL effectivement utilisé ;
+- introduire le stockage additif après recette sur copie de base réelle.
 
 ## Règles de compatibilité
 
@@ -157,4 +228,5 @@ Le même jeu de données doit alimenter planning, validation du réalisé, prest
 - conservation des locations actuelles ;
 - conservation du moteur prestations/facturation ;
 - conservation des questionnaires et modèles documentaires ;
+- aucun recalcul concurrent des vacances, jours fériés ou fréquences ;
 - tests sur copie de base réelle avant activation d'une future migration additive.
