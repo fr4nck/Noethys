@@ -12,6 +12,7 @@ DIALOG = ROOT / "noethys" / "Dlg" / "DLG_Echelle_interface.py"
 BANDEAU = ROOT / "noethys" / "Ctrl" / "CTRL_Bandeau.py"
 BOUTON = ROOT / "noethys" / "Ctrl" / "CTRL_Bouton_image.py"
 FOOTER = ROOT / "noethys" / "Ctrl" / "CTRL_Footer.py"
+ULTRACHOICE = ROOT / "noethys" / "Ctrl" / "CTRL_Ultrachoice.py"
 
 
 class DesignSystemIntegrationContractTests(unittest.TestCase):
@@ -22,11 +23,13 @@ class DesignSystemIntegrationContractTests(unittest.TestCase):
         cls.bandeau_text = BANDEAU.read_text(encoding="utf-8")
         cls.bouton_text = BOUTON.read_text(encoding="utf-8")
         cls.footer_text = FOOTER.read_text(encoding="utf-8")
+        cls.ultrachoice_text = ULTRACHOICE.read_text(encoding="utf-8")
         cls.tree = ast.parse(cls.text)
         ast.parse(cls.dialog_text)
         ast.parse(cls.bandeau_text)
         ast.parse(cls.bouton_text)
         ast.parse(cls.footer_text)
+        ast.parse(cls.ultrachoice_text)
 
     def test_interface_imports_single_design_system_contract(self):
         self.assertIn("from Utils import UTILS_DesignSystem", self.text)
@@ -149,6 +152,19 @@ class DesignSystemIntegrationContractTests(unittest.TestCase):
         self.assertNotIn("wx.Colour(140, 140, 140)", self.footer_text)
         # Une couleur explicitement fournie par un écran métier garde la priorité.
         self.assertIn('if "couleur" in infoColonne : couleur = infoColonne["couleur"]', self.footer_text)
+
+    def test_ultrachoice_uses_semantic_rows_and_accessible_system_fonts(self):
+        self.assertIn("from Utils import UTILS_Interface", self.ultrachoice_text)
+        self.assertIn("UTILS_Interface.GetTailleTexte()", self.ultrachoice_text)
+        self.assertIn("facteur_hauteur = max(facteur_interface, facteur_texte)", self.ultrachoice_text)
+        self.assertIn("def _Police", self.ultrachoice_text)
+        self.assertIn('GetCouleurRole("on_surface", sombre=sombre)', self.ultrachoice_text)
+        self.assertIn('GetCouleurRole("on_surface_variant", sombre=sombre)', self.ultrachoice_text)
+        self.assertIn('role = "surface_container_lowest" if item % 2 == 0 else "surface_container_low"', self.ultrachoice_text)
+        self.assertIn("ODCB_PAINTING_SELECTED", self.ultrachoice_text)
+        self.assertNotIn("wx.Font(10, wx.DEFAULT", self.ultrachoice_text)
+        self.assertNotIn("wx.Font(7, wx.DEFAULT", self.ultrachoice_text)
+        self.assertNotIn("wx.Colour(240, 240, 250)", self.ultrachoice_text)
 
     def test_existing_public_theme_and_scale_api_is_preserved(self):
         functions = {
