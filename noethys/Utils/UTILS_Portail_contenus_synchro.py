@@ -13,6 +13,8 @@ politique de cache et de panne réseau sans démarrer le moteur complet de
 synchronisation.
 """
 
+import datetime
+
 from Utils import UTILS_Portail_contenus
 
 
@@ -73,5 +75,60 @@ def actualiser(DB, log=None, constructeur=None):
             else:
                 etat["erreurs"] += 1
                 _log(log, u"[AVERTISSEMENT] Impossible de mettre à jour le cache du flux RSS/Atom %s." % IDelement)
+
+    return etat
+
+
+def preparer_avant_synchro(log=None, db_factory=None, parametre_setter=None,
+                            constructeur=None, maintenant=None):
+    """Prépare les contenus dynamiques avant le moteur Connecthys historique.
+
+    Cette fonction est volontairement appelée *avant* ``Synchro_totale`` :
+    elle actualise le cache local puis marque les pages comme modifiées afin
+    que le moteur historique les réexporte normalement. On évite ainsi toute
+    modification du protocole Connecthys ou de son schéma de données.
+    """
+    if db_factory is None:
+        import GestionDB
+        db_factory = GestionDB.DB
+    if parametre_setter is None:
+        from Utils import UTILS_Parametres
+        parametre_setter = UTILS_Parametres.Parametres
+
+    DB = db_factory()
+    etat = {"present": False, "modifies": 0, "erreurs": 0}
+    try:
+        etat = actualiser(DB, log=log, constructeur=constructeur)
+        if etat["modifies"]:
+            try:
+                DB.Commit()
+            except Exception as err:
+                etat["erreurs"] += 1
+                _log(log, u"[AVERTISSEMENT] Impossible d'enregistrer le cache RSS/Atom (%s)." % err)
+                try:
+                    DB.connexion.rollback()
+                except Exception:
+                    pass
+    finally:
+        try:
+            DB.Close()
+        except Exception:
+            pass
+
+    # Le moteur historique n'exporte les pages que si last_update_pages est
+    # postérieur à last_synchro. Un flux dynamique doit donc marquer les pages
+    # à chaque passage, même si son contenu n'a finalement pas changé.
+    if etat["present"]:
+        instant = maintenant or datetime.datetime.now()
+        try:
+            parametre_setter(
+                mode="set",
+                categorie="portail",
+                nom="last_update_pages",
+                valeur=str(instant),
+            )
+        except Exception as err:
+            etat["erreurs"] += 1
+            _log(log, u"[AVERTISSEMENT] Impossible de forcer l'export du flux RSS/Atom (%s)." % err)
 
     return etat
