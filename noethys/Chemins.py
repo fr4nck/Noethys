@@ -78,7 +78,7 @@ def _GetIconeModerne(fichier, taille=None):
 
     try:
         from Utils import UTILS_Icones_modernes
-        return UTILS_Icones_modernes.GetLegacyOverridePath(normalise)
+        return UTILS_Icones_modernes.GetLegacyOverridePath(normalise, taille=taille_cible)
     except Exception:
         return None
 
