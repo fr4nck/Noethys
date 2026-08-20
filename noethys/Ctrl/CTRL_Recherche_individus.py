@@ -153,7 +153,7 @@ class BarreRechercheAccueil(OL_Individus.BarreRecherche):
     def __init__(self, parent):
         OL_Individus.BarreRecherche.__init__(self, parent, historique=True)
         self.SetDescriptiveText(_(u"Rechercher une famille ou un individu…"))
-        self.SetMinSize((-1, UTILS_UIMetrics.action_target("standard")))
+        self.SetMinSize((280, UTILS_UIMetrics.action_target("compact")))
         self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
         self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
         self._index = {}
@@ -194,6 +194,7 @@ class BarreRechercheAccueil(OL_Individus.BarreRecherche):
             plus = "+" if tronque else ""
             label = _(u"%s%d résultat(s)%s") % (plus, nbre, suffixe)
         self.parent.ctrl_resume.SetLabel(label)
+        self.parent.Layout()
 
     def Recherche(self, event=None):
         if self.timer.IsRunning():
@@ -269,7 +270,7 @@ class ToolBar(wx.ToolBar):
             {"ID": ID_OUTILS, "label": _(u"Outils"), "icone": "settings", "tooltip": _(u"Outils")},
         ]
 
-        taille_bitmap = UTILS_Responsive.GetTailleIcone(24)
+        taille_bitmap = UTILS_Responsive.GetTailleIcone(20)
         for bouton in liste_boutons:
             if bouton is None:
                 self.AddSeparator()
@@ -289,7 +290,7 @@ class ToolBar(wx.ToolBar):
         self.Bind(wx.EVT_TOOL, self.Parametres, id=ID_PARAMETRES)
         self.Bind(wx.EVT_TOOL, self.MenuOutils, id=ID_OUTILS)
 
-        UTILS_Aui.ConfigurerToolBar(self, taille_base=24, fond_uni=True)
+        UTILS_Aui.ConfigurerToolBar(self, taille_base=20, fond_uni=True)
         self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_low"))
         self.SetMinSize((-1, UTILS_UIMetrics.toolbar_height(avec_libelle=True, icon_px=taille_bitmap)))
         self.Realize()
@@ -349,7 +350,7 @@ class ToolBar(wx.ToolBar):
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.GetParent().ctrl_listview.ExportTexte, id=ID_EXPORT_TEXTE)
 
-        item = wx.MenuItem(menuPop, ID_EXPORT_EXCEL, _(u"Exporter au format Excel"), _(u"Exporter au format Excel"))
+        item = wx.MenuItem(menuPop, ID_EXPORT_EXCEL, _(u"Exporter au format Excel"), _(u"Exporter la liste au format Excel"))
         item.SetBitmap(self._BitmapMenu("Images/16x16/Excel.png"))
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.GetParent().ctrl_listview.ExportExcel, id=ID_EXPORT_EXCEL)
@@ -387,10 +388,6 @@ class Panel(wx.Panel):
         wx.Panel.__init__(self, parent, name="recherche_individus", id=-1, style=wx.TAB_TRAVERSAL)
 
         self.ctrl_titre = wx.StaticText(self, label=_(u"Individus / Familles"))
-        self.ctrl_sous_titre = wx.StaticText(
-            self,
-            label=_(u"Recherche rapide dans les fiches et coordonnées"),
-        )
         self.ctrl_nouvelle_famille = wx.Button(self, label=_(u"Nouvelle famille"))
         try:
             bitmap = UTILS_FluentIcons.GetBitmap("add", taille=UTILS_Responsive.GetTailleIcone(20))
@@ -398,7 +395,7 @@ class Panel(wx.Panel):
                 self.ctrl_nouvelle_famille.SetBitmap(bitmap)
         except Exception:
             pass
-        self.ctrl_nouvelle_famille.SetMinSize((-1, UTILS_UIMetrics.action_target("standard")))
+        self.ctrl_nouvelle_famille.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
 
         self.ctrl_listview = ListeIndividusAccueil(
             self,
@@ -408,7 +405,7 @@ class Panel(wx.Panel):
         self.ctrl_recherche = BarreRechercheAccueil(self)
         self.ctrl_resume = wx.StaticText(self, label=_(u"Recherche rapide"))
         self.ctrl_voir_tout = wx.Button(self, label=_(u"Voir tout"))
-        self.ctrl_voir_tout.SetMinSize((-1, UTILS_UIMetrics.action_target("standard")))
+        self.ctrl_voir_tout.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
 
         self.toolBar = ToolBar(self)
         self.ctrl_etat = EtatRecherche(self)
@@ -420,6 +417,7 @@ class Panel(wx.Panel):
         self.__do_layout()
         self.ActualiseParametresAffichage()
         wx.CallAfter(self.AfficherEtatVide)
+        wx.CallAfter(self._ConfigurerPaneAui)
 
     def __set_properties(self):
         self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
@@ -430,33 +428,53 @@ class Panel(wx.Panel):
         self.ctrl_titre.SetFont(police_titre)
 
         self.ctrl_titre.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        self.ctrl_sous_titre.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
         self.ctrl_resume.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
 
     def __do_layout(self):
         principal = wx.BoxSizer(wx.VERTICAL)
-        marge = UTILS_UIMetrics.spacing(2)
+        marge = UTILS_UIMetrics.spacing(1)
 
+        # Une seule ligne fonctionnelle : titre, état, recherche et création.
+        # L'ancienne superposition titre/sous-titre/recherche/résumé consommait
+        # beaucoup de surface sans apporter d'information supplémentaire.
         entete = wx.BoxSizer(wx.HORIZONTAL)
-        textes = wx.BoxSizer(wx.VERTICAL)
-        textes.Add(self.ctrl_titre, 0, wx.BOTTOM, UTILS_UIMetrics.spacing(1))
-        textes.Add(self.ctrl_sous_titre, 0)
-        entete.Add(textes, 1, wx.ALIGN_CENTER_VERTICAL)
-        entete.Add(self.ctrl_nouvelle_famille, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, marge)
+        entete.Add(self.ctrl_titre, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, UTILS_UIMetrics.spacing(2))
+        entete.Add(self.ctrl_resume, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, UTILS_UIMetrics.spacing(2))
+        entete.AddStretchSpacer(1)
+        entete.Add(self.ctrl_recherche, 2, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, marge)
+        entete.Add(self.ctrl_voir_tout, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, marge)
+        entete.Add(self.ctrl_nouvelle_famille, 0, wx.ALIGN_CENTER_VERTICAL)
         principal.Add(entete, 0, wx.EXPAND | wx.ALL, marge)
 
-        recherche = wx.BoxSizer(wx.HORIZONTAL)
-        recherche.Add(self.ctrl_recherche, 1, wx.EXPAND | wx.RIGHT, marge)
-        recherche.Add(self.ctrl_voir_tout, 0, wx.EXPAND)
-        principal.Add(recherche, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
-
-        principal.Add(self.ctrl_resume, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
         principal.Add(self.toolBar, 0, wx.EXPAND)
         principal.Add(self.ctrl_listview, 1, wx.EXPAND)
         principal.Add(self.ctrl_etat, 1, wx.EXPAND)
 
         self.SetSizer(principal)
         self.Layout()
+
+    def _ConfigurerPaneAui(self):
+        """Rend le pane Individus pleinement manipulable comme les autres panneaux."""
+        try:
+            top = self.GetTopLevelParent()
+            manager = getattr(top, "_mgr", None)
+            if manager is None:
+                return
+            pane = manager.GetPane(self)
+            if pane is None or not pane.IsOk():
+                pane = manager.GetPane("recherche")
+            if pane is None or not pane.IsOk():
+                return
+            pane.Caption(_(u"Individus / Familles"))
+            pane.CaptionVisible(True)
+            pane.PaneBorder(True)
+            pane.CloseButton(True)
+            pane.MaximizeButton(True)
+            pane.MinimizeButton(True)
+            pane.Resizable(True)
+            manager.Update()
+        except Exception:
+            pass
 
     def _AfficherContenu(self, liste=False, etat=False):
         self.toolBar.Show(liste)
@@ -474,6 +492,7 @@ class Panel(wx.Panel):
 
     def AfficherResultats(self):
         self._AfficherContenu(liste=True, etat=False)
+        self._ConfigurerPaneAui()
         wx.CallAfter(UTILS_ColonnesResponsive.Ajuster, self.ctrl_listview)
 
     def MAJ(self):
