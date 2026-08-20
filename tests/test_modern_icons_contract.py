@@ -45,6 +45,29 @@ class ModernIconsContractTests(unittest.TestCase):
         for chemin, icone in attendus.items():
             self.assertEqual(self.icones._icone_pour_chemin(chemin), icone)
 
+    def test_agenda_navigation_has_distinct_modern_icons(self):
+        attendus = {
+            "Images/32x32/Calendrier_jour.png": "calendar_day",
+            "Images/32x32/Calendrier_semaine.png": "calendar_week",
+            "Images/32x32/Calendrier_mois.png": "calendar_month",
+            "Images/32x32/Calendrier_horizontal.png": "layout_horizontal",
+            "Images/32x32/Calendrier_vertical.png": "layout_vertical",
+            "Images/32x32/Precedent.png": "previous",
+            "Images/32x32/Suivant.png": "next",
+            "Images/32x32/zoom_moins.png": "zoom_out",
+            "Images/32x32/zoom_plus.png": "zoom_in",
+            "Images/32x32/Jour.png": "today",
+            "Images/32x32/Calendrier_zoom.png": "calendar_search",
+            "Images/32x32/Apercu.png": "preview",
+        }
+        for chemin, icone in attendus.items():
+            self.assertEqual(self.icones._icone_pour_chemin(chemin), icone)
+
+    def test_short_tokens_do_not_match_arbitrary_substrings(self):
+        self.assertIsNone(self.icones._icone_pour_chemin("Images/16x16/Hotel.png"))
+        self.assertIsNone(self.icones._icone_pour_chemin("Images/16x16/ProfilExpert.png"))
+        self.assertEqual(self.icones._icone_pour_chemin("Images/16x16/Tel.png"), "phone")
+
     def test_identity_layer_is_resolved_before_generic_icons(self):
         self.assertLess(
             self.chemins_text.index("UTILS_Icones_identites"),
