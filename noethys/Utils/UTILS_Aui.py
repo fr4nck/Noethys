@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Helpers explicites pour wxAUI et les barres de commandes Noethys.
+"""Helpers explicites pour wxAUI et les composants du shell Noethys.
 
 La géométrie AUI est dérivée du design system commun. Aucun contrôle wx/AGW
-n'est monkey-patché : les managers et toolbars sont configurés explicitement
-lorsqu'ils entrent dans le shell Noethys.
+n'est monkey-patché : les managers, toolbars, notebooks et grilles sont
+configurés explicitement lorsqu'ils entrent dans le shell Noethys.
 """
 
 PERSPECTIVE_LAYOUT_VERSION = 2
@@ -43,12 +43,7 @@ def VerifierVersionPerspective(manager):
 
 
 def ChargerBitmapToolBar(image, taille_base=24):
-    """Charge un pictogramme à la taille réellement utilisée par une toolbar.
-
-    Le chemin passe d'abord par le catalogue moderne/adaptatif. Si l'image
-    historique reste la seule ressource disponible, elle est redimensionnée ici
-    au lieu d'être rognée par l'image-list native de wx.ToolBar.
-    """
+    """Charge un pictogramme à la taille réellement utilisée par une toolbar."""
     try:
         import wx
         import Chemins
@@ -92,7 +87,6 @@ def _ToolbarAvecLibelle(toolbar):
 
 
 def _ItererDescendants(window):
-    """Itère sur un arbre wx sans dépendre du type de panneau métier."""
     if window is None:
         return
     yield window
@@ -105,10 +99,109 @@ def _ItererDescendants(window):
             yield descendant
 
 
-def _ConfigurerToolbarsDuManager(manager):
-    """Dimensionne toutes les toolbars contenues dans les panes AUI."""
+def ConfigurerGrille(grille):
+    """Applique la grammaire visuelle commune à une wx.Grid existante.
+
+    Les couleurs des cellules restent entièrement métier. Ici on ne définit que
+    le squelette commun : traits, labels, surfaces et métriques de rangée.
+    """
+    if grille is None:
+        return False
+    try:
+        import wx.grid as gridlib
+        from Utils import UTILS_Interface
+        from Utils import UTILS_UIMetrics
+        if not isinstance(grille, gridlib.Grid):
+            return False
+    except Exception:
+        return False
+
+    try:
+        grille.EnableGridLines(True)
+        grille.SetGridLineColour(UTILS_Interface.GetCouleurRole("outline_variant"))
+    except Exception:
+        pass
+
+    try:
+        grille.SetLabelBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_high"))
+        grille.SetLabelTextColour(UTILS_Interface.GetCouleurRole("on_surface"))
+    except Exception:
+        pass
+
+    try:
+        grille.SetDefaultCellBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+        grille.SetDefaultCellTextColour(UTILS_Interface.GetCouleurRole("on_surface"))
+    except Exception:
+        pass
+
+    # On ne touche pas ici aux largeurs métier ni aux tailles explicitement
+    # configurées par l'utilisateur. Seules les métriques génériques sont mises
+    # à l'échelle à partir de leur valeur de référence initiale.
+    try:
+        if not hasattr(grille, "_noethys_default_row_base"):
+            grille._noethys_default_row_base = grille.GetDefaultRowSize()
+        grille.SetDefaultRowSize(
+            max(UTILS_UIMetrics.row_height("table"), UTILS_UIMetrics.px(grille._noethys_default_row_base)),
+            True,
+        )
+    except Exception:
+        pass
+
+    for getter, setter, attribut in (
+        ("GetRowLabelSize", "SetRowLabelSize", "_noethys_row_label_base"),
+        ("GetColLabelSize", "SetColLabelSize", "_noethys_col_label_base"),
+    ):
+        try:
+            if not hasattr(grille, attribut):
+                setattr(grille, attribut, getattr(grille, getter)())
+            base = getattr(grille, attribut)
+            getattr(grille, setter)(UTILS_UIMetrics.px(base))
+        except Exception:
+            pass
+
+    try:
+        grille.ForceRefresh()
+    except Exception:
+        try:
+            grille.Refresh()
+        except Exception:
+            pass
+    return True
+
+
+def ConfigurerNotebook(notebook):
+    """Donne aux onglets AUI une hauteur lisible et cohérente."""
+    if notebook is None:
+        return False
+    try:
+        import wx.lib.agw.aui as aui
+        from Utils import UTILS_UIMetrics
+        from Utils import UTILS_Interface
+        if not isinstance(notebook, aui.AuiNotebook):
+            return False
+    except Exception:
+        return False
+
+    try:
+        notebook.SetTabCtrlHeight(UTILS_UIMetrics.px(32))
+    except Exception:
+        pass
+    try:
+        notebook.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+    except Exception:
+        pass
+    try:
+        notebook.Refresh()
+    except Exception:
+        pass
+    return True
+
+
+def _ConfigurerComposantsDuManager(manager):
+    """Configure les composants communs, y compris ceux imbriqués dans un pane."""
     try:
         import wx
+        import wx.grid as gridlib
         import wx.lib.agw.aui as aui
         panes = manager.GetAllPanes()
     except Exception:
@@ -121,25 +214,30 @@ def _ConfigurerToolbarsDuManager(manager):
             if id(fenetre) in deja_vues:
                 continue
             deja_vues.add(id(fenetre))
-            if not isinstance(fenetre, (wx.ToolBar, aui.AuiToolBar)):
+
+            if isinstance(fenetre, (wx.ToolBar, aui.AuiToolBar)):
+                taille_base = getattr(fenetre, "_noethys_toolbar_icon_base", None)
+                if taille_base is None:
+                    taille_base = _TailleBitmapExistante(fenetre, defaut=16)
+                ConfigurerToolBar(fenetre, taille_base=taille_base, fond_uni=True)
+                if fenetre is racine:
+                    try:
+                        hauteur = int(getattr(fenetre, "_noethys_toolbar_min_height", 0) or 0)
+                        if hauteur > 0:
+                            pane.MinSize((-1, hauteur)).BestSize((-1, hauteur))
+                    except Exception:
+                        pass
                 continue
 
-            taille_base = getattr(fenetre, "_noethys_toolbar_icon_base", None)
-            if taille_base is None:
-                taille_base = _TailleBitmapExistante(fenetre, defaut=16)
-            ConfigurerToolBar(fenetre, taille_base=taille_base, fond_uni=True)
+            if isinstance(fenetre, aui.AuiNotebook):
+                ConfigurerNotebook(fenetre)
+                continue
 
-            if fenetre is racine:
-                try:
-                    hauteur = int(getattr(fenetre, "_noethys_toolbar_min_height", 0) or 0)
-                    if hauteur > 0:
-                        pane.MinSize((-1, hauteur)).BestSize((-1, hauteur))
-                except Exception:
-                    pass
+            if isinstance(fenetre, gridlib.Grid):
+                ConfigurerGrille(fenetre)
 
 
 def _ConfigurerPoliceCaptions(art):
-    """Met les titres AUI à la même échelle typographique que le contenu."""
     try:
         import wx
         import wx.lib.agw.aui as aui
@@ -155,7 +253,7 @@ def _ConfigurerPoliceCaptions(art):
 
 
 def ConfigurerManager(manager):
-    """Structure visuellement les panes et toolbars du manager fourni."""
+    """Structure visuellement les panes et composants du manager fourni."""
     if manager is None:
         return False
     try:
@@ -175,7 +273,6 @@ def ConfigurerManager(manager):
         art.SetMetric(aui.AUI_DOCKART_SASH_SIZE, sash)
     except Exception:
         pass
-
     try:
         art.SetMetric(aui.AUI_DOCKART_PANE_BORDER_SIZE, 1)
     except Exception:
@@ -183,35 +280,19 @@ def ConfigurerManager(manager):
 
     _ConfigurerPoliceCaptions(art)
 
-    try:
-        art.SetColour(
-            aui.AUI_DOCKART_SASH_COLOUR,
-            UTILS_Interface.GetCouleurRole("outline_variant"),
-        )
-    except Exception:
+    for role, constante in (
+        ("outline_variant", aui.AUI_DOCKART_SASH_COLOUR),
+        ("outline", aui.AUI_DOCKART_BORDER_COLOUR),
+    ):
         try:
-            art.SetColor(
-                aui.AUI_DOCKART_SASH_COLOUR,
-                UTILS_Interface.GetCouleurRole("outline_variant"),
-            )
+            art.SetColour(constante, UTILS_Interface.GetCouleurRole(role))
         except Exception:
-            pass
+            try:
+                art.SetColor(constante, UTILS_Interface.GetCouleurRole(role))
+            except Exception:
+                pass
 
-    try:
-        art.SetColour(
-            aui.AUI_DOCKART_BORDER_COLOUR,
-            UTILS_Interface.GetCouleurRole("outline"),
-        )
-    except Exception:
-        try:
-            art.SetColor(
-                aui.AUI_DOCKART_BORDER_COLOUR,
-                UTILS_Interface.GetCouleurRole("outline"),
-            )
-        except Exception:
-            pass
-
-    _ConfigurerToolbarsDuManager(manager)
+    _ConfigurerComposantsDuManager(manager)
 
     try:
         manager.Update()
@@ -266,14 +347,14 @@ def ConfigurerToolBar(toolbar, taille_base=16, fond_uni=True):
         pass
 
     marge = UTILS_UIMetrics.spacing(1)
-    try:
-        toolbar.SetToolPacking(marge)
-    except Exception:
-        pass
-    try:
-        toolbar.SetToolSeparation(marge)
-    except Exception:
-        pass
+    for nom, args in (
+        ("SetToolPacking", (marge,)),
+        ("SetToolSeparation", (marge,)),
+    ):
+        try:
+            getattr(toolbar, nom)(*args)
+        except Exception:
+            pass
     try:
         toolbar.SetMargins(marge, marge)
     except Exception:
@@ -293,10 +374,8 @@ def ConfigurerToolBar(toolbar, taille_base=16, fond_uni=True):
         hauteur = max(hauteur, int(toolbar.GetBestSize().GetHeight()))
     except Exception:
         pass
-
     try:
-        taille_min = toolbar.GetMinSize()
-        hauteur = max(hauteur, int(taille_min.GetHeight()))
+        hauteur = max(hauteur, int(toolbar.GetMinSize().GetHeight()))
     except Exception:
         pass
 
@@ -307,15 +386,12 @@ def ConfigurerToolBar(toolbar, taille_base=16, fond_uni=True):
     except Exception:
         pass
 
-    # Le sizer parent doit recalculer sa ligne : sinon wx conserve parfois la
-    # hauteur historique malgré la nouvelle BestSize de la toolbar.
     try:
         parent = toolbar.GetParent()
         if parent is not None:
             parent.Layout()
     except Exception:
         pass
-
     return True
 
 
