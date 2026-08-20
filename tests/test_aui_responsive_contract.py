@@ -25,7 +25,7 @@ class AuiResponsiveContractTests(unittest.TestCase):
         ast.parse(cls.responsive_text)
 
     def test_layout_generation_is_bumped(self):
-        self.assertIn("PERSPECTIVE_LAYOUT_VERSION = 5", self.text)
+        self.assertIn("PERSPECTIVE_LAYOUT_VERSION = 6", self.text)
 
     def test_system_toolbars_are_fixed_and_non_floating(self):
         self.assertIn('("barre_raccourcis", 0)', self.text)
@@ -43,7 +43,7 @@ class AuiResponsiveContractTests(unittest.TestCase):
 
     def test_resize_is_debounced_and_does_not_reinject_size_events(self):
         self.assertIn("wx.EVT_SIZE", self.text)
-        self.assertIn("wx.CallAfter(_AppliquerPlusTard)", self.text)
+        self.assertIn("wx.CallAfter(_AppliquerPlusTard, forcer)", self.text)
         self.assertIn("_noethys_aui_responsive_pending", self.text)
         self.assertNotIn("SendSizeEvent", self.text)
 
@@ -69,28 +69,41 @@ class AuiResponsiveContractTests(unittest.TestCase):
     def test_old_ephemeride_caption_is_replaced_at_shell_level(self):
         self.assertIn("Aujourd'hui / Échéancier", self.text)
 
-    def test_individuals_is_converted_from_special_center_pane(self):
-        self.assertIn("def _ConfigurerPaneRecherche", self.text)
-        start = self.text.index("def _ConfigurerPaneRecherche")
-        end = self.text.index("\ndef _GetTailleClient", start)
+    def test_workspace_is_extensible_and_visibility_driven(self):
+        self.assertIn("WORKSPACE_PANES", self.text)
+        for pane in ('"recherche"', '"messagerie"', '"semaine_equipe"', '"sms"'):
+            self.assertIn(pane, self.text)
+        self.assertIn("def _ConfigurerWorkspace", self.text)
+        self.assertIn("_PaneEstVisible", self.text)
+        self.assertIn("poids_total", self.text)
+        self.assertIn("dock_proportion", self.text)
+        self.assertIn("def ReequilibrerWorkspace", self.text)
+
+    def test_workspace_does_not_force_modules_visible(self):
+        start = self.text.index("def _ConfigurerWorkspace")
+        end = self.text.index("\ndef ReequilibrerWorkspace", start)
         block = self.text[start:end]
-        self.assertIn('manager, "recherche"', block)
+        self.assertNotIn('pane.Show(', block)
+        self.assertNotIn('_AppelerPane(pane, "Show"', block)
+        self.assertNotIn('_AppelerPane(pane, "Hide"', block)
+
+    def test_individuals_is_migrated_out_of_special_center_pane(self):
+        self.assertIn("def _ConfigurerPaneWorkspace", self.text)
+        start = self.text.index("def _ConfigurerPaneWorkspace")
+        end = self.text.index("\ndef _ConfigurerWorkspace", start)
+        block = self.text[start:end]
         self.assertIn("aui.AUI_DOCK_CENTER", block)
-        self.assertIn('(\"Right\", ())', block)
+        self.assertIn('_AppelerPane(pane, "Right")', block)
         self.assertIn('(\"CloseButton\", (True,))', block)
         self.assertIn('(\"MaximizeButton\", (True,))', block)
         self.assertIn('(\"MinimizeButton\", (True,))', block)
         self.assertIn('(\"Resizable\", (True,))', block)
         self.assertIn('(\"DockFixed\", (False,))', block)
 
-    def test_individuals_layout_respects_minimized_or_maximized_state(self):
-        start = self.text.index("def _ConfigurerPaneRecherche")
-        end = self.text.index("\ndef _GetTailleClient", start)
-        block = self.text[start:end]
-        self.assertIn('("IsMaximized", "IsMinimized")', block)
-        self.assertIn("if not etat_special:", block)
-        self.assertNotIn('pane.Show(', block)
-        self.assertNotIn('_AppelerPane(pane, "Show"', block)
+    def test_workspace_respects_minimized_or_maximized_state(self):
+        self.assertIn("def _PaneEtatSpecial", self.text)
+        self.assertIn('(\"IsMaximized\", \"IsMinimized\")', self.text)
+        self.assertIn("if _PaneEtatSpecial(pane):", self.text)
 
 
 if __name__ == "__main__":
