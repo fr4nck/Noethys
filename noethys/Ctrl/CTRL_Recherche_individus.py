@@ -95,18 +95,67 @@ class ListeIndividusAccueil(OL_Individus.ListView):
         wx.CallAfter(UTILS_ColonnesResponsive.Ajuster, self)
 
 
-class BarreRechercheAccueil(OL_Individus.BarreRecherche):
-    """Recherche d'accueil orientée accès rapide à une famille.
+class EtatRecherche(wx.Panel):
+    """État vide/no-result de la recherche rapide, sans carte mobile."""
 
-    Les accents, trémas, casse, ponctuation et séparateurs de téléphone sont
-    neutralisés. Si aucune correspondance exacte normalisée n'existe, une
-    seconde passe tolère une seule petite faute sur les mots assez longs.
-    """
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent, style=wx.TAB_TRAVERSAL)
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+
+        taille = UTILS_Responsive.GetTailleIcone(32)
+        bitmap = UTILS_FluentIcons.GetBitmap("search", taille=taille)
+        if bitmap is None:
+            bitmap = wx.NullBitmap
+
+        self.ctrl_icone = wx.StaticBitmap(self, bitmap=bitmap)
+        self.ctrl_titre = wx.StaticText(self, label=_(u"Rechercher une famille ou un individu"))
+        self.ctrl_detail = wx.StaticText(
+            self,
+            label=_(u"Nom, prénom, téléphone, email, adresse, code postal ou ville."),
+        )
+        self.ctrl_detail.Wrap(560)
+
+        police = self.ctrl_titre.GetFont()
+        police.SetWeight(wx.FONTWEIGHT_BOLD)
+        police.SetPointSize(max(police.GetPointSize() + 2, 11))
+        self.ctrl_titre.SetFont(police)
+
+        self.ctrl_titre.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        self.ctrl_detail.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.AddStretchSpacer(1)
+        sizer.Add(self.ctrl_icone, 0, wx.ALIGN_CENTER | wx.BOTTOM, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl_titre, 0, wx.ALIGN_CENTER | wx.BOTTOM, UTILS_UIMetrics.spacing(1))
+        sizer.Add(self.ctrl_detail, 0, wx.ALIGN_CENTER | wx.LEFT | wx.RIGHT, UTILS_UIMetrics.spacing(3))
+        sizer.AddStretchSpacer(1)
+        self.SetSizer(sizer)
+
+    def AfficherRecherche(self):
+        self.ctrl_titre.SetLabel(_(u"Rechercher une famille ou un individu"))
+        self.ctrl_detail.SetLabel(_(u"Nom, prénom, téléphone, email, adresse, code postal ou ville."))
+        self.Layout()
+
+    def AfficherAucunResultat(self, texte):
+        self.ctrl_titre.SetLabel(_(u"Aucun résultat"))
+        if texte:
+            self.ctrl_detail.SetLabel(
+                _(u"Aucune fiche ne correspond à « %s ». Essayez une autre orthographe ou un autre critère.") % texte
+            )
+        else:
+            self.ctrl_detail.SetLabel(_(u"Aucune fiche ne correspond à cette recherche."))
+        self.Layout()
+
+
+class BarreRechercheAccueil(OL_Individus.BarreRecherche):
+    """Recherche d'accueil orientée accès rapide à une famille."""
 
     def __init__(self, parent):
         OL_Individus.BarreRecherche.__init__(self, parent, historique=True)
-        self.SetDescriptiveText(_(u"Rechercher : nom, prénom, téléphone, email, adresse, ville…"))
-        self.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
+        self.SetDescriptiveText(_(u"Rechercher une famille ou un individu…"))
+        self.SetMinSize((-1, UTILS_UIMetrics.action_target("standard")))
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+        self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
         self._index = {}
         try:
             self.listView.SetFilter(None)
@@ -137,17 +186,14 @@ class BarreRechercheAccueil(OL_Individus.BarreRecherche):
 
     def _MajResume(self, texte, nbre, approximatif=False, tronque=False):
         if not texte:
-            label = _(u"Saisissez quelques lettres, un numéro de téléphone, un email ou une adresse.")
+            label = _(u"Recherche rapide")
         elif nbre == 0:
             label = _(u"Aucun résultat")
         else:
-            suffixe = _(u" — correspondances proches") if approximatif else ""
+            suffixe = _(u" · résultats proches") if approximatif else ""
             plus = "+" if tronque else ""
             label = _(u"%s%d résultat(s)%s") % (plus, nbre, suffixe)
-        try:
-            self.parent.ctrl_resume.SetLabel(label)
-        except Exception:
-            pass
+        self.parent.ctrl_resume.SetLabel(label)
 
     def Recherche(self, event=None):
         if self.timer.IsRunning():
@@ -158,6 +204,7 @@ class BarreRechercheAccueil(OL_Individus.BarreRecherche):
         if not texte:
             self.listView.SetObjects([])
             self._MajResume("", 0)
+            self.parent.AfficherEtatVide()
             self.listView.Refresh()
             return
 
@@ -171,6 +218,11 @@ class BarreRechercheAccueil(OL_Individus.BarreRecherche):
         tronque = total > LIMITE_RESULTATS_ACCUEIL
         self.listView.SetObjects(resultats[:LIMITE_RESULTATS_ACCUEIL])
         self._MajResume(texte, min(total, LIMITE_RESULTATS_ACCUEIL), approximatif, tronque)
+
+        if total:
+            self.parent.AfficherResultats()
+        else:
+            self.parent.AfficherAucunResultat(texte)
         self.listView.Refresh()
 
         if self.ouvrir_fiche:
@@ -196,10 +248,8 @@ class BarreRechercheAccueil(OL_Individus.BarreRecherche):
             self.timer.Stop()
         self.ShowCancelButton(False)
         self.listView.SetObjects(self.listView.donnees)
-        try:
-            self.parent.ctrl_resume.SetLabel(_(u"%d individu(s) — liste complète") % len(self.listView.donnees))
-        except Exception:
-            pass
+        self.parent.ctrl_resume.SetLabel(_(u"%d individu(s) · liste complète") % len(self.listView.donnees))
+        self.parent.AfficherResultats()
         self.listView.Refresh()
 
 
@@ -209,8 +259,6 @@ class ToolBar(wx.ToolBar):
         wx.ToolBar.__init__(self, *args, **kwds)
 
         liste_boutons = [
-            {"ID": ID_CREER_FAMILLE, "label": _(u"Ajouter"), "icone": "add", "tooltip": _(u"Créer une nouvelle famille")},
-            None,
             {"ID": ID_MODIFIER_FAMILLE, "label": _(u"Modifier"), "icone": "edit", "tooltip": _(u"Modifier la fiche famille de l'individu sélectionné")},
             {"ID": ID_SUPPRIMER_FAMILLE, "label": _(u"Supprimer"), "icone": "delete", "tooltip": _(u"Supprimer ou détacher l'individu sélectionné")},
             None,
@@ -234,7 +282,6 @@ class ToolBar(wx.ToolBar):
                 except Exception:
                     self.AddLabelTool(bouton["ID"], bouton["label"], bitmap, wx.NullBitmap, wx.ITEM_NORMAL, bouton["tooltip"], "")
 
-        self.Bind(wx.EVT_TOOL, self.Ajouter_famille, id=ID_CREER_FAMILLE)
         self.Bind(wx.EVT_TOOL, self.Modifier_famille, id=ID_MODIFIER_FAMILLE)
         self.Bind(wx.EVT_TOOL, self.Supprimer_famille, id=ID_SUPPRIMER_FAMILLE)
         self.Bind(wx.EVT_TOOL, self.Ouvrir_grille, id=ID_OUVRIR_GRILLE)
@@ -339,38 +386,95 @@ class Panel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, name="recherche_individus", id=-1, style=wx.TAB_TRAVERSAL)
 
-        self.toolBar = ToolBar(self)
+        self.ctrl_titre = wx.StaticText(self, label=_(u"Individus / Familles"))
+        self.ctrl_sous_titre = wx.StaticText(
+            self,
+            label=_(u"Recherche rapide dans les fiches et coordonnées"),
+        )
+        self.ctrl_nouvelle_famille = wx.Button(self, label=_(u"Nouvelle famille"))
+        try:
+            bitmap = UTILS_FluentIcons.GetBitmap("add", taille=UTILS_Responsive.GetTailleIcone(20))
+            if bitmap is not None:
+                self.ctrl_nouvelle_famille.SetBitmap(bitmap)
+        except Exception:
+            pass
+        self.ctrl_nouvelle_famille.SetMinSize((-1, UTILS_UIMetrics.action_target("standard")))
+
         self.ctrl_listview = ListeIndividusAccueil(
             self,
             id=-1,
             style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.NO_BORDER,
         )
         self.ctrl_recherche = BarreRechercheAccueil(self)
+        self.ctrl_resume = wx.StaticText(self, label=_(u"Recherche rapide"))
         self.ctrl_voir_tout = wx.Button(self, label=_(u"Voir tout"))
-        self.ctrl_voir_tout.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
-        self.ctrl_resume = wx.StaticText(self, label=_(u"Saisissez quelques lettres, un numéro de téléphone, un email ou une adresse."))
+        self.ctrl_voir_tout.SetMinSize((-1, UTILS_UIMetrics.action_target("standard")))
+
+        self.toolBar = ToolBar(self)
+        self.ctrl_etat = EtatRecherche(self)
+
+        self.ctrl_nouvelle_famille.Bind(wx.EVT_BUTTON, self.toolBar.Ajouter_famille)
         self.ctrl_voir_tout.Bind(wx.EVT_BUTTON, lambda evt: self.ctrl_recherche.AfficherTout())
 
         self.__set_properties()
         self.__do_layout()
         self.ActualiseParametresAffichage()
+        wx.CallAfter(self.AfficherEtatVide)
 
     def __set_properties(self):
         self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+
+        police_titre = self.ctrl_titre.GetFont()
+        police_titre.SetWeight(wx.FONTWEIGHT_BOLD)
+        police_titre.SetPointSize(max(police_titre.GetPointSize() + 2, 11))
+        self.ctrl_titre.SetFont(police_titre)
+
+        self.ctrl_titre.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        self.ctrl_sous_titre.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
         self.ctrl_resume.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
 
     def __do_layout(self):
         principal = wx.BoxSizer(wx.VERTICAL)
-        recherche = wx.BoxSizer(wx.HORIZONTAL)
         marge = UTILS_UIMetrics.spacing(2)
+
+        entete = wx.BoxSizer(wx.HORIZONTAL)
+        textes = wx.BoxSizer(wx.VERTICAL)
+        textes.Add(self.ctrl_titre, 0, wx.BOTTOM, UTILS_UIMetrics.spacing(1))
+        textes.Add(self.ctrl_sous_titre, 0)
+        entete.Add(textes, 1, wx.ALIGN_CENTER_VERTICAL)
+        entete.Add(self.ctrl_nouvelle_famille, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, marge)
+        principal.Add(entete, 0, wx.EXPAND | wx.ALL, marge)
+
+        recherche = wx.BoxSizer(wx.HORIZONTAL)
         recherche.Add(self.ctrl_recherche, 1, wx.EXPAND | wx.RIGHT, marge)
         recherche.Add(self.ctrl_voir_tout, 0, wx.EXPAND)
-        principal.Add(recherche, 0, wx.EXPAND | wx.ALL, marge)
+        principal.Add(recherche, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
+
         principal.Add(self.ctrl_resume, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
         principal.Add(self.toolBar, 0, wx.EXPAND)
         principal.Add(self.ctrl_listview, 1, wx.EXPAND)
+        principal.Add(self.ctrl_etat, 1, wx.EXPAND)
+
         self.SetSizer(principal)
         self.Layout()
+
+    def _AfficherContenu(self, liste=False, etat=False):
+        self.toolBar.Show(liste)
+        self.ctrl_listview.Show(liste)
+        self.ctrl_etat.Show(etat)
+        self.Layout()
+
+    def AfficherEtatVide(self):
+        self.ctrl_etat.AfficherRecherche()
+        self._AfficherContenu(liste=False, etat=True)
+
+    def AfficherAucunResultat(self, texte):
+        self.ctrl_etat.AfficherAucunResultat(texte)
+        self._AfficherContenu(liste=False, etat=True)
+
+    def AfficherResultats(self):
+        self._AfficherContenu(liste=True, etat=False)
+        wx.CallAfter(UTILS_ColonnesResponsive.Ajuster, self.ctrl_listview)
 
     def MAJ(self):
         self.ctrl_listview.MAJ(forceActualisation=True)
