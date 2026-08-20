@@ -8,67 +8,100 @@
 # Licence:         Licence GNU GPL
 #-----------------------------------------------------------
 
-
-import Chemins
 from Utils import UTILS_Adaptations
+from Utils import UTILS_Interface
+from Utils import UTILS_UIMetrics
 from Utils.UTILS_Traduction import _
 import wx
 from Ol import OL_Messages
 
 
+ID_AJOUTER = wx.Window.NewControlId()
+ID_MODIFIER = wx.Window.NewControlId()
+ID_SUPPRIMER = wx.Window.NewControlId()
+
+
 class Panel(wx.Panel):
+    """Messages du tableau de bord : liste dense + actions horizontales."""
+
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
         self.parent = parent
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
 
-        # Messages
-        self.ctrl_messages = OL_Messages.ListView(self, -1, style=wx.LC_NO_HEADER|wx.LC_REPORT|wx.LC_HRULES|wx.LC_VRULES|wx.LC_SINGLE_SEL|wx.SUNKEN_BORDER)
-        
-        # Commandes
-        self.bouton_messages_ajouter = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Ajouter.png"), wx.BITMAP_TYPE_PNG))
-        self.bouton_messages_modifier = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Modifier.png"), wx.BITMAP_TYPE_PNG))
-        self.bouton_messages_supprimer = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Supprimer.png"), wx.BITMAP_TYPE_PNG))
-        
-        self.bouton_messages_ajouter.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour saisir un message")))
-        self.bouton_messages_modifier.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour modifier le message sélectionné dans la liste")))
-        self.bouton_messages_supprimer.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour supprimer le message sélectionné dans la liste")))
-        
+        # Les actions étaient historiquement trois BitmapButton 16x16 empilés
+        # dans une colonne à droite. Elles utilisent maintenant une vraie zone
+        # de commande lisible et ne volent plus de largeur au contenu.
+        self.barre_actions = UTILS_Adaptations.ToolBar(
+            self,
+            style=wx.TB_FLAT | wx.TB_TEXT | wx.TB_NODIVIDER,
+        )
+        self.barre_actions.SetToolBitmapSize(wx.Size(24, 24))
+        self.barre_actions.AddFluentTool(
+            ID_AJOUTER,
+            _(u"Ajouter"),
+            "add",
+            _(u"Saisir un message"),
+            role="primary",
+        )
+        self.barre_actions.AddFluentTool(
+            ID_MODIFIER,
+            _(u"Modifier"),
+            "edit",
+            _(u"Modifier le message sélectionné"),
+        )
+        self.barre_actions.AddFluentTool(
+            ID_SUPPRIMER,
+            _(u"Supprimer"),
+            "delete",
+            _(u"Supprimer le message sélectionné"),
+            role="danger",
+        )
+        self.barre_actions.Realize()
+
+        self.ctrl_messages = OL_Messages.ListView(
+            self,
+            -1,
+            style=wx.LC_NO_HEADER | wx.LC_REPORT | wx.LC_HRULES | wx.LC_SINGLE_SEL,
+        )
+        try:
+            self.ctrl_messages.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+            self.ctrl_messages.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        except Exception:
+            pass
+
         self.__do_layout()
-        
-        # Binds
-        self.Bind(wx.EVT_BUTTON, self.OnAjouterMessage, self.bouton_messages_ajouter)
-        self.Bind(wx.EVT_BUTTON, self.OnModifierMessage, self.bouton_messages_modifier)
-        self.Bind(wx.EVT_BUTTON, self.OnSupprimerMessage, self.bouton_messages_supprimer)
+
+        self.Bind(wx.EVT_TOOL, self.OnAjouterMessage, id=ID_AJOUTER)
+        self.Bind(wx.EVT_TOOL, self.OnModifierMessage, id=ID_MODIFIER)
+        self.Bind(wx.EVT_TOOL, self.OnSupprimerMessage, id=ID_SUPPRIMER)
 
     def __do_layout(self):
-        sizer_base = wx.BoxSizer(wx.VERTICAL)
-        grid_sizer_messages = wx.FlexGridSizer(rows=2, cols=2, vgap=5, hgap=5)
-        grid_sizer_boutons_messages = wx.FlexGridSizer(rows=4, cols=1, vgap=5, hgap=5)
-        grid_sizer_messages.Add(self.ctrl_messages, 1, wx.EXPAND|wx.TOP|wx.LEFT|wx.BOTTOM, 10)
-        grid_sizer_boutons_messages.Add(self.bouton_messages_ajouter, 0, 0, 0)
-        grid_sizer_boutons_messages.Add(self.bouton_messages_modifier, 0, 0, 0)
-        grid_sizer_boutons_messages.Add(self.bouton_messages_supprimer, 0, 0, 0)
-        grid_sizer_messages.Add(grid_sizer_boutons_messages, 1, wx.EXPAND|wx.TOP|wx.RIGHT|wx.BOTTOM, 10)
-        grid_sizer_messages.AddGrowableRow(0)
-        grid_sizer_messages.AddGrowableCol(0)
-        self.SetSizer(grid_sizer_messages)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.barre_actions, 0, wx.EXPAND)
+        sizer.Add(
+            self.ctrl_messages,
+            1,
+            wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM,
+            UTILS_UIMetrics.spacing(2),
+        )
+        self.SetSizer(sizer)
         self.Layout()
-    
+
     def MAJ(self):
-        self.ctrl_messages.MAJ() 
+        self.ctrl_messages.MAJ()
 
     def OnAjouterMessage(self, event):
         self.ctrl_messages.Ajouter(None)
-        
+
     def OnModifierMessage(self, event):
         self.ctrl_messages.Modifier(None)
-        
+
     def OnSupprimerMessage(self, event):
         self.ctrl_messages.Supprimer(None)
-    
+
     def GetMessages(self):
         return self.ctrl_messages.donnees
-
 
 
 class MyFrame(wx.Frame):
@@ -76,19 +109,19 @@ class MyFrame(wx.Frame):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
         sizer_1 = wx.BoxSizer(wx.VERTICAL)
-        sizer_1.Add(panel, 1, wx.ALL|wx.EXPAND)
+        sizer_1.Add(panel, 1, wx.EXPAND)
         self.SetSizer(sizer_1)
         self.ctrl = Panel(panel)
-        self.ctrl.MAJ() 
+        self.ctrl.MAJ()
         sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2.Add(self.ctrl, 1, wx.ALL|wx.EXPAND, 4)
+        sizer_2.Add(self.ctrl, 1, wx.EXPAND)
         panel.SetSizer(sizer_2)
         self.Layout()
         self.CentreOnScreen()
 
+
 if __name__ == '__main__':
     app = wx.App(0)
-    #wx.InitAllImageHandlers()
     frame_1 = MyFrame(None, -1, "TEST", size=(800, 400))
     app.SetTopWindow(frame_1)
     frame_1.Show()
