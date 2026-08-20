@@ -10,14 +10,6 @@ L'ancien éphéméride mélangeait horloge analogique, citations, fêtes et tick
 Ce contrôle conserve le point d'accroche historique ``CTRL_Ephemeride.CTRL`` afin
 que les installations existantes restent compatibles, mais remplace directement
 son contenu et son layout par un panneau opérationnel.
-
-Principes :
-- pas de surcouche runtime autour de l'ancien contrôle ;
-- layout natif ``wx.BoxSizer`` réellement extensible ;
-- aucune horloge/ticker/citation décorative ;
-- météo Open-Meteo sans clé API, chargée hors du thread UI ;
-- repli silencieux hors connexion ;
-- zone d'échéances prête à recevoir les échéances métier configurées.
 """
 
 import datetime
@@ -32,6 +24,7 @@ import GestionDB
 from Utils.UTILS_Traduction import _
 from Utils import UTILS_Config
 from Utils import UTILS_Interface
+from Utils import UTILS_VacancesScolaires
 
 try:
     from Utils.UTILS_Astral import City
@@ -50,27 +43,14 @@ MOIS = (
 )
 
 LIBELLES_METEO = {
-    0: _(u"ciel dégagé"),
-    1: _(u"plutôt dégagé"),
-    2: _(u"partiellement nuageux"),
-    3: _(u"couvert"),
-    45: _(u"brouillard"),
-    48: _(u"brouillard givrant"),
-    51: _(u"bruine faible"),
-    53: _(u"bruine"),
-    55: _(u"bruine forte"),
-    61: _(u"pluie faible"),
-    63: _(u"pluie"),
-    65: _(u"forte pluie"),
-    71: _(u"neige faible"),
-    73: _(u"neige"),
-    75: _(u"fortes chutes de neige"),
-    80: _(u"averses faibles"),
-    81: _(u"averses"),
-    82: _(u"fortes averses"),
-    95: _(u"orage"),
-    96: _(u"orage avec grêle"),
-    99: _(u"fort orage avec grêle"),
+    0: _(u"ciel dégagé"), 1: _(u"plutôt dégagé"),
+    2: _(u"partiellement nuageux"), 3: _(u"couvert"),
+    45: _(u"brouillard"), 48: _(u"brouillard givrant"),
+    51: _(u"bruine faible"), 53: _(u"bruine"), 55: _(u"bruine forte"),
+    61: _(u"pluie faible"), 63: _(u"pluie"), 65: _(u"forte pluie"),
+    71: _(u"neige faible"), 73: _(u"neige"), 75: _(u"fortes chutes de neige"),
+    80: _(u"averses faibles"), 81: _(u"averses"), 82: _(u"fortes averses"),
+    95: _(u"orage"), 96: _(u"orage avec grêle"), 99: _(u"fort orage avec grêle"),
 }
 
 
@@ -90,8 +70,6 @@ def _heure_iso(valeur):
 
 
 class CTRL(wx.Panel):
-    """Résumé opérationnel du jour, compatible avec l'ancien point d'entrée."""
-
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
 
@@ -105,11 +83,7 @@ class CTRL(wx.Panel):
         self.ctrl_soleil = wx.StaticText(self, -1, _(u"Soleil : chargement…"))
 
         self.ctrl_titre_echeances = wx.StaticText(self, -1, _(u"À venir"))
-        self.ctrl_echeances = wx.StaticText(
-            self,
-            -1,
-            _(u"Aucune échéance configurée. Les échéances métier apparaîtront ici."),
-        )
+        self.ctrl_echeances = wx.StaticText(self, -1, _(u"Chargement de l'échéancier…"))
 
         self._AppliqueApparence()
         self._ConstruitLayout()
@@ -161,7 +135,6 @@ class CTRL(wx.Panel):
         self.Layout()
 
     def _ActualisePaneAui(self):
-        """Met à jour le pane qui héberge ce contrôle, sans le faire flotter."""
         parent = self.GetParent()
         gestionnaire = getattr(parent, "_mgr", None)
         if gestionnaire is None:
@@ -178,7 +151,6 @@ class CTRL(wx.Panel):
             pass
 
     def Initialisation(self):
-        """Charge les informations externes sans bloquer l'ouverture de Noethys."""
         self._ActualisePaneAui()
         if self._chargement_en_cours:
             return
@@ -208,15 +180,16 @@ class CTRL(wx.Panel):
             else:
                 wx.CallAfter(self.ctrl_meteo.SetLabel, _(u"Météo : indisponible hors connexion"))
                 soleil = self._GetSoleilLocal(organisateur)
-                if soleil:
-                    wx.CallAfter(self.ctrl_soleil.SetLabel, soleil)
-                else:
-                    wx.CallAfter(self.ctrl_soleil.SetLabel, _(u"Soleil : horaires indisponibles"))
+                wx.CallAfter(
+                    self.ctrl_soleil.SetLabel,
+                    soleil or _(u"Soleil : horaires indisponibles"),
+                )
 
-            wx.CallAfter(self._ChargeEcheancesConfigurees)
+            wx.CallAfter(self._ChargeEcheances)
         except Exception:
             try:
                 wx.CallAfter(self.ctrl_meteo.SetLabel, _(u"Météo : indisponible"))
+                wx.CallAfter(self._ChargeEcheances)
             except Exception:
                 pass
         finally:
@@ -225,14 +198,12 @@ class CTRL(wx.Panel):
     def _GetOrganisateur(self):
         db = GestionDB.DB()
         try:
-            req = """SELECT cp, ville, gps FROM organisateur WHERE IDorganisateur=1;"""
-            db.ExecuterReq(req)
+            db.ExecuterReq("SELECT cp, ville, gps FROM organisateur WHERE IDorganisateur=1;")
             resultat = db.ResultatReq()
             if not resultat:
                 return {}
             cp, ville, gps = resultat[0]
-            cp = cp or ""
-            ville = ville or ""
+            cp, ville = cp or "", ville or ""
             lat = long = None
             if gps:
                 try:
@@ -247,8 +218,7 @@ class CTRL(wx.Panel):
     def _GetMeteoOpenMeteo(self, organisateur):
         if not organisateur:
             return None
-        lat = organisateur.get("lat")
-        long = organisateur.get("long")
+        lat, long = organisateur.get("lat"), organisateur.get("long")
         if lat is None or long is None:
             return None
 
@@ -260,8 +230,7 @@ class CTRL(wx.Panel):
             "forecast_days": 2,
             "timezone": "auto",
         })
-        url = "https://api.open-meteo.com/v1/forecast?%s" % params
-        reponse = urlopen(url, timeout=4)
+        reponse = urlopen("https://api.open-meteo.com/v1/forecast?%s" % params, timeout=4)
         try:
             donnees = json.loads(reponse.read().decode("utf-8"))
         finally:
@@ -283,73 +252,84 @@ class CTRL(wx.Panel):
         }
 
     def _AfficheMeteo(self, meteo):
-        code = meteo.get("code")
-        condition = LIBELLES_METEO.get(code, _(u"conditions variables"))
-        temperature = meteo.get("temperature")
-        vent = meteo.get("vent")
-
+        condition = LIBELLES_METEO.get(meteo.get("code"), _(u"conditions variables"))
         morceaux = [_(u"Météo : %s") % condition]
-        if temperature is not None:
-            morceaux.append(u"%s °C" % temperature)
-        if vent is not None:
-            morceaux.append(_(u"vent %s km/h") % vent)
+        if meteo.get("temperature") is not None:
+            morceaux.append(u"%s °C" % meteo["temperature"])
+        if meteo.get("vent") is not None:
+            morceaux.append(_(u"vent %s km/h") % meteo["vent"])
         self.ctrl_meteo.SetLabel(u" · ".join(morceaux))
 
-        lever = meteo.get("lever")
-        coucher = meteo.get("coucher")
+        lever, coucher = meteo.get("lever"), meteo.get("coucher")
         if lever and coucher:
             self.ctrl_soleil.SetLabel(_(u"Soleil : lever %s · coucher %s") % (lever, coucher))
         else:
-            soleil = self._GetSoleilLocal(self.dictOrganisateur)
-            self.ctrl_soleil.SetLabel(soleil or _(u"Soleil : horaires indisponibles"))
+            self.ctrl_soleil.SetLabel(
+                self._GetSoleilLocal(self.dictOrganisateur) or _(u"Soleil : horaires indisponibles")
+            )
         self.Layout()
 
     def _GetSoleilLocal(self, organisateur):
         if City is None or not organisateur:
             return None
         ville = organisateur.get("ville")
-        lat = organisateur.get("lat")
-        long = organisateur.get("long")
+        lat, long = organisateur.get("lat"), organisateur.get("long")
         if not ville or lat is None or long is None:
             return None
         try:
             city = City((ville, "France", float(lat), float(long), "Europe/Paris"))
-            lever = city.sunrise()
-            coucher = city.sunset()
+            lever, coucher = city.sunrise(), city.sunset()
             return _(u"Soleil : lever %02d:%02d · coucher %02d:%02d") % (
                 lever.hour, lever.minute, coucher.hour, coucher.minute
             )
         except Exception:
             return None
 
-    def _ChargeEcheancesConfigurees(self):
-        """Affiche les prochaines échéances déjà configurées par le dossier."""
-        donnees = UTILS_Config.GetParametre("dashboard_echeances", [])
-        if not isinstance(donnees, (list, tuple)):
-            donnees = []
-
+    def _ChargeEcheances(self):
         aujourd_hui = datetime.date.today()
         echeances = []
-        for item in donnees:
-            if not isinstance(item, dict):
-                continue
-            label = item.get("label") or item.get("titre")
-            date_texte = item.get("date")
-            if not label or not date_texte:
-                continue
-            try:
-                date_dd = datetime.datetime.strptime(date_texte[:10], "%Y-%m-%d").date()
-            except Exception:
-                continue
-            if date_dd < aujourd_hui:
-                continue
-            echeances.append((date_dd, label))
+
+        # Échéances métier configurées localement.
+        donnees = UTILS_Config.GetParametre("dashboard_echeances", [])
+        if isinstance(donnees, (list, tuple)):
+            for item in donnees:
+                if not isinstance(item, dict):
+                    continue
+                label = item.get("label") or item.get("titre")
+                date_texte = item.get("date")
+                if not label or not date_texte:
+                    continue
+                try:
+                    date_dd = datetime.datetime.strptime(date_texte[:10], "%Y-%m-%d").date()
+                except Exception:
+                    continue
+                if date_dd >= aujourd_hui:
+                    echeances.append((date_dd, label))
+
+        # Vacances scolaires : zone déduite automatiquement du code postal.
+        cp = self.dictOrganisateur.get("cp") if self.dictOrganisateur else None
+        zone = UTILS_VacancesScolaires.GetZoneDepuisCodePostal(cp)
+        periode = UTILS_VacancesScolaires.GetProchainePeriode(zone, aujourd_hui) if zone else None
+        if periode is not None:
+            debut = periode["debut"]
+            reprise = periode["reprise"]
+            if reprise is None:
+                label = _(u"Vacances zone %s : %s · fin des cours %s") % (
+                    zone, periode["nom"], debut.strftime("%d/%m")
+                )
+            else:
+                label = _(u"Vacances zone %s : %s · départ %s · reprise %s") % (
+                    zone, periode["nom"], debut.strftime("%d/%m"), reprise.strftime("%d/%m")
+                )
+            # Si la période est en cours, elle doit rester en tête de l'échéancier.
+            cle_tri = max(aujourd_hui, debut)
+            echeances.append((cle_tri, label))
 
         echeances.sort(key=lambda valeur: valeur[0])
         echeances = echeances[:4]
         if not echeances:
             self.ctrl_echeances.SetLabel(
-                _(u"Aucune échéance configurée · le calendrier métier arrive dans la prochaine tranche.")
+                _(u"Aucune échéance à venir · ajoutez les échéances métier dans la configuration du dashboard.")
             )
             return
 
