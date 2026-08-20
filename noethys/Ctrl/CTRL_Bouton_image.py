@@ -11,6 +11,7 @@
 
 import Chemins
 from Utils import UTILS_Adaptations
+from Utils import UTILS_Interface
 from Utils.UTILS_Traduction import _
 import wx
 import time
@@ -67,7 +68,26 @@ class CTRL(wx.Button):
         self.SetBitmap(bmp, self.positionImage)
         if self.cheminImage not in ("", None) :
             self.SetBitmapMargins(self.margesTexte)
-        self.SetFont(wx.Font(9, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+        # Historiquement ce contrôle imposait systématiquement une police
+        # SWISS 9pt. Cela empêchait la typographie native et l'échelle globale
+        # de fonctionner correctement. On conserve uniquement l'intention
+        # historique (libellé en gras) sur la police réellement héritée.
+        try:
+            police = wx.Font(self.GetFont())
+            if police.IsOk():
+                police.SetWeight(wx.FONTWEIGHT_BOLD)
+                self.SetFont(police)
+        except Exception:
+            pass
+
+        # Le bouton est un composant transversal : appliquer immédiatement le
+        # moteur commun évite un flash de mauvais thème et dimensionne le bouton
+        # après prise en compte de l'échelle utilisateur.
+        try:
+            UTILS_Interface.AppliquerAffichage(self, recursif=False)
+        except Exception:
+            pass
         self.SetInitialSize() 
         
     def SetImage(self, cheminImage=""):
