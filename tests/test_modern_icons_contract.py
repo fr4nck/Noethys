@@ -24,10 +24,11 @@ class ModernIconsContractTests(unittest.TestCase):
         cls.icones = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.icones)
 
-    def test_static_path_only_intercepts_common_icon_sizes(self):
-        self.assertIn('normalise.startswith("Images/16x16/")', self.chemins_text)
-        self.assertIn('normalise.startswith("Images/32x32/")', self.chemins_text)
-        self.assertIn("GetLegacyOverridePath(normalise)", self.chemins_text)
+    def test_static_path_intercepts_only_common_icon_folders(self):
+        for size in (16, 20, 24, 32, 40, 48):
+            self.assertIn('"Images/{0}x{0}/"'.format(size), self.chemins_text)
+        self.assertIn("normalise.startswith(dossiers)", self.chemins_text)
+        self.assertIn("GetStaticIconPath", self.chemins_text)
         self.assertIn("return os.path.join(chemin, fichier)", self.chemins_text)
 
     def test_legacy_escape_hatch_is_preserved(self):
@@ -40,10 +41,15 @@ class ModernIconsContractTests(unittest.TestCase):
             "Images/16x16/Badgeage.png": "badge",
             "Images/16x16/Reglement.png": "payment",
             "Images/16x16/Calculatrice.png": "calculator",
-            "Images/16x16/Homme.png": "user",
         }
         for chemin, icone in attendus.items():
             self.assertEqual(self.icones._icone_pour_chemin(chemin), icone)
+
+    def test_identity_layer_is_resolved_before_generic_icons(self):
+        self.assertLess(
+            self.chemins_text.index("UTILS_Icones_identites"),
+            self.chemins_text.index("UTILS_Icones_adaptatives"),
+        )
 
     def test_unrecognized_business_art_keeps_historical_resource(self):
         self.assertIsNone(self.icones._icone_pour_chemin("Images/32x32/LogoAssociationTresSpecifique.png"))
