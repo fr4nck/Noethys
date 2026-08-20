@@ -73,6 +73,7 @@ class ConventionMiseADispositionTests(unittest.TestCase):
 
     def test_champs_fusion_sont_stables_et_documentaires(self):
         parent = str(uuid.uuid4())
+        relation = str(uuid.uuid4())
         convention = mad.ConventionMiseADisposition(
             "2026-09-01",
             "2027-06-30",
@@ -81,6 +82,7 @@ class ConventionMiseADispositionTests(unittest.TestCase):
             mode_facturation=mad.FACTURATION_TRIMESTRIELLE,
             version=2,
             identifiant_parent=parent,
+            identifiant_relation=relation,
         )
         champs = convention.GetChampsFusion()
         self.assertEqual(champs["{CONVENTION_REFERENCE}"], "MAD-2026-001")
@@ -89,6 +91,7 @@ class ConventionMiseADispositionTests(unittest.TestCase):
         self.assertEqual(champs["{CONVENTION_DATE_FIN}"], "30/06/2027")
         self.assertEqual(champs["{CONVENTION_MODE_FACTURATION}"], "trimestrielle")
         self.assertEqual(champs["{CONVENTION_PARENT_ID_STABLE}"], parent)
+        self.assertEqual(champs["{CONVENTION_RELATION_ID_STABLE}"], relation)
         self.assertEqual(champs["{CONVENTION_EST_AVENANT}"], "1")
 
     def test_donnees_sont_serialisables_sans_objets_date(self):
@@ -96,6 +99,135 @@ class ConventionMiseADispositionTests(unittest.TestCase):
         donnees = convention.GetDonnees()
         self.assertEqual(donnees["date_debut"], "2026-09-01")
         self.assertEqual(donnees["date_fin"], "2027-06-30")
+
+
+class StructureMiseADispositionTests(unittest.TestCase):
+    def test_identifiants_administratifs_sont_facultatifs(self):
+        structure = mad.StructureMiseADisposition(
+            "Les Jongleurs Gym",
+            type_structure=mad.TYPE_ASSOCIATION,
+        )
+        self.assertEqual(structure.siret, "")
+        self.assertEqual(structure.rna, "")
+        self.assertEqual(structure.nom, "Les Jongleurs Gym")
+
+    def test_type_inconnu_et_nom_vide_sont_refuses(self):
+        with self.assertRaises(ValueError):
+            mad.StructureMiseADisposition("", mad.TYPE_ASSOCIATION)
+        with self.assertRaises(ValueError):
+            mad.StructureMiseADisposition("Test", "cabane")
+
+    def test_structure_operationnelle_et_payeur_restent_distincts(self):
+        ecole = mad.StructureMiseADisposition("École Saint-Test", mad.TYPE_ECOLE)
+        mairie = mad.StructureMiseADisposition("Mairie de Test", mad.TYPE_COLLECTIVITE)
+        relation = mad.RelationContractuelleMiseADisposition(
+            ecole.identifiant_stable,
+            "2026-2027",
+            "EPS",
+            identifiant_payeur=mairie.identifiant_stable,
+            tarif_unitaire="23.00",
+        )
+        self.assertTrue(relation.EstPayeurDistinct())
+        self.assertEqual(relation.identifiant_beneficiaire, ecole.identifiant_stable)
+        self.assertEqual(relation.identifiant_payeur, mairie.identifiant_stable)
+
+
+class ContactStructureTests(unittest.TestCase):
+    def test_contact_peut_cumuler_plusieurs_roles_sans_doublon(self):
+        structure = mad.StructureMiseADisposition("Dynamic Gym")
+        contact = mad.ContactStructure(
+            structure.identifiant_stable,
+            "Martin",
+            "Camille",
+            roles=[
+                mad.ROLE_CONTACT_PLANNING,
+                mad.ROLE_CONTACT_CONVENTION,
+                mad.ROLE_CONTACT_PLANNING,
+            ],
+        )
+        self.assertEqual(
+            contact.roles,
+            (mad.ROLE_CONTACT_PLANNING, mad.ROLE_CONTACT_CONVENTION),
+        )
+        self.assertTrue(contact.ALeRole(mad.ROLE_CONTACT_PLANNING))
+
+    def test_role_inconnu_est_refuse(self):
+        structure = mad.StructureMiseADisposition("Dynamic Gym")
+        with self.assertRaises(ValueError):
+            mad.ContactStructure(
+                structure.identifiant_stable,
+                "Martin",
+                roles=["roi_du_planning"],
+            )
+
+
+class RelationContractuelleTests(unittest.TestCase):
+    def test_adhesion_est_portee_par_relation_pas_par_type_structure(self):
+        mairie = mad.StructureMiseADisposition(
+            "Mairie partenaire ALSH",
+            mad.TYPE_COLLECTIVITE,
+        )
+        financement = mad.RelationContractuelleMiseADisposition(
+            mairie.identifiant_stable,
+            "2026-2027",
+            "Partenariat ALSH",
+            regle_adhesion=mad.ADHESION_NON_APPLICABLE,
+        )
+        mise_a_disposition = mad.RelationContractuelleMiseADisposition(
+            mairie.identifiant_stable,
+            "2026-2027",
+            "Intervention sportive",
+            regle_adhesion=mad.ADHESION_REQUISE,
+            tarif_unitaire="44",
+        )
+        self.assertEqual(financement.regle_adhesion, mad.ADHESION_NON_APPLICABLE)
+        self.assertEqual(mise_a_disposition.regle_adhesion, mad.ADHESION_REQUISE)
+
+    def test_tarif_decimal_est_serialise_sans_float(self):
+        structure = mad.StructureMiseADisposition("Atout Sport")
+        relation = mad.RelationContractuelleMiseADisposition(
+            structure.identifiant_stable,
+            "2026-2027",
+            "Fitness",
+            tarif_unitaire="33.50",
+            unite_tarif=mad.UNITE_HEURE,
+            mode_facturation=mad.FACTURATION_TRIMESTRIELLE,
+        )
+        self.assertEqual(relation.GetDonnees()["tarif_unitaire"], "33.50")
+        self.assertEqual(
+            relation.GetChampsFusion()["{RELATION_TARIF_UNITAIRE}"],
+            "33.50",
+        )
+
+    def test_tarif_negatif_et_regles_inconnues_sont_refuses(self):
+        structure = mad.StructureMiseADisposition("Atout Sport")
+        with self.assertRaises(ValueError):
+            mad.RelationContractuelleMiseADisposition(
+                structure.identifiant_stable,
+                "2026-2027",
+                "Fitness",
+                tarif_unitaire="-1",
+            )
+        with self.assertRaises(ValueError):
+            mad.RelationContractuelleMiseADisposition(
+                structure.identifiant_stable,
+                "2026-2027",
+                "Fitness",
+                regle_adhesion="toujours",
+            )
+
+    def test_payeur_par_defaut_est_le_beneficiaire(self):
+        structure = mad.StructureMiseADisposition("Cap Loisirs")
+        relation = mad.RelationContractuelleMiseADisposition(
+            structure.identifiant_stable,
+            "2026-2027",
+            "Gym",
+        )
+        self.assertFalse(relation.EstPayeurDistinct())
+        self.assertEqual(
+            relation.identifiant_payeur,
+            structure.identifiant_stable,
+        )
 
 
 if __name__ == "__main__":
