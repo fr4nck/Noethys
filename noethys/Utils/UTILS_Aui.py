@@ -6,7 +6,7 @@ n'est monkey-patché : les managers, toolbars, notebooks et grilles sont
 configurés explicitement lorsqu'ils entrent dans le shell Noethys.
 """
 
-PERSPECTIVE_LAYOUT_VERSION = 4
+PERSPECTIVE_LAYOUT_VERSION = 5
 PARAMETRE_PERSPECTIVE_VERSION = "aui_perspective_layout_version"
 
 
@@ -352,6 +352,64 @@ def _ConfigurerBarresSysteme(manager):
             _AppelerPane(pane, methode, *args)
 
 
+def _ConfigurerPaneRecherche(manager, largeur, hauteur, largeur_gauche):
+    """Convertit l'ancien CenterPane Individus en vrai pane AUI manipulable.
+
+    ``CenterPane()`` neutralise historiquement plusieurs commandes AUI. Le
+    panneau de recherche est désormais un dock droit normal : il conserve la
+    grande zone de travail mais peut être réduit, maximisé, restauré ou fermé.
+    Cette fonction ne rappelle jamais ``Show`` et respecte donc l'état choisi
+    par l'utilisateur après la conversion initiale.
+    """
+    pane = _GetPane(manager, "recherche")
+    if pane is None:
+        return
+
+    try:
+        import wx.lib.agw.aui as aui
+        est_centre = getattr(pane, "dock_direction", None) == aui.AUI_DOCK_CENTER
+    except Exception:
+        est_centre = False
+
+    if est_centre:
+        for methode, args in (
+            ("Right", ()),
+            ("Layer", (0,)),
+            ("Row", (0,)),
+            ("Position", (0,)),
+        ):
+            _AppelerPane(pane, methode, *args)
+
+    for methode, args in (
+        ("Caption", (u"Individus / Familles",)),
+        ("CaptionVisible", (True,)),
+        ("PaneBorder", (True,)),
+        ("CloseButton", (True,)),
+        ("MaximizeButton", (True,)),
+        ("MinimizeButton", (True,)),
+        ("Resizable", (True,)),
+        ("Movable", (True,)),
+        ("Floatable", (True,)),
+        ("DockFixed", (False,)),
+    ):
+        _AppelerPane(pane, methode, *args)
+
+    # Le pane occupe naturellement le reste du cockpit. On ne touche pas à sa
+    # taille pendant un état maximisé/minimisé : sinon un resize système peut
+    # annuler visuellement l'action de l'utilisateur.
+    etat_special = False
+    for methode in ("IsMaximized", "IsMinimized"):
+        try:
+            if getattr(pane, methode)():
+                etat_special = True
+        except Exception:
+            pass
+    if not etat_special:
+        largeur_recherche = max(460, largeur - largeur_gauche - 24)
+        _AppelerPane(pane, "MinSize", (420, 240))
+        _AppelerPane(pane, "BestSize", (largeur_recherche, max(360, int(hauteur * 0.72))))
+
+
 def _GetTailleClient(manager):
     try:
         fenetre = manager.GetManagedWindow()
@@ -436,9 +494,9 @@ def _AppliquerLayoutResponsive(manager, forcer=False):
     except Exception:
         pass
 
+    largeur_gauche = dimensions["largeur_gauche"]
     pane_effectifs = _GetPane(manager, "effectifs")
     if pane_effectifs is not None:
-        largeur_gauche = dimensions["largeur_gauche"]
         _AppelerPane(pane_effectifs, "MinSize", (min(largeur_gauche, 430), 190))
         _AppelerPane(pane_effectifs, "BestSize", (largeur_gauche, max(320, int(hauteur * 0.66))))
         try:
@@ -461,6 +519,8 @@ def _AppliquerLayoutResponsive(manager, forcer=False):
         _AppelerPane(pane_info, "Caption", u"Aujourd'hui / Échéancier")
         _AppelerPane(pane_info, "MinSize", (-1, max(96, int(hauteur_info * 0.80))))
         _AppelerPane(pane_info, "BestSize", (-1, hauteur_info))
+
+    _ConfigurerPaneRecherche(manager, largeur, hauteur, largeur_gauche)
 
     try:
         manager.Update()
