@@ -22,18 +22,12 @@ def _module_absent(exc, nom_module):
     """
     nom_absent = getattr(exc, "name", None)
     if nom_absent is None:
-        # Compatibilité avec d'anciens ImportError qui n'exposent pas .name.
         return True
     return nom_absent == nom_module or nom_module.startswith(nom_absent + ".")
 
 
 def Import(nom_module=""):
-    """Importe un module en conservant le fallback historique par nom court.
-
-    Le nom qualifié est toujours essayé en premier. Le nom court n'est tenté
-    que si le module qualifié lui-même est absent ; les ImportError provenant
-    d'une dépendance interne continuent à remonter immédiatement.
-    """
+    """Importe un module en conservant le fallback historique par nom court."""
     if not nom_module:
         return None
 
@@ -54,21 +48,7 @@ def Import(nom_module=""):
 
 
 def _InstallerDoubleClicObjectListView():
-    """Fiabilise l'activation par double-clic des ObjectListView sous Phoenix.
-
-    L'ancienne version embarquée d'ObjectListView laisse le double-clic au
-    contrôle natif lorsque l'édition de cellule est désactivée. Sur wxPython
-    Phoenix/Windows, ``EVT_LIST_ITEM_ACTIVATED`` peut alors ne jamais être émis
-    alors que les actions contextuelles (Modifier, Ouvrir...) fonctionnent.
-
-    Le correctif reste volontairement au niveau de la couche commune :
-    - le comportement natif est conservé ;
-    - un événement d'activation de secours est émis après un double-clic sur
-      une vraie ligne ;
-    - les listes éditables gardent leur double-clic d'édition ;
-    - si Windows émet aussi l'activation native, les handlers ne sont appelés
-      qu'une seule fois pour ce double-clic.
-    """
+    """Fiabilise l'activation par double-clic des ObjectListView sous Phoenix."""
     if "phoenix" not in wx.PlatformInfo or wx.Platform != "__WXMSW__":
         return
 
@@ -86,7 +66,6 @@ def _InstallerDoubleClicObjectListView():
     type_activation = getattr(wx.EVT_LIST_ITEM_ACTIVATED, "typeId", None)
 
     def Bind(self, event, handler, source=None, id=wx.ID_ANY, id2=wx.ID_ANY):
-        """Déduplique uniquement l'activation liée au double-clic de secours."""
         type_event = getattr(event, "typeId", None)
         if type_activation is not None and type_event == type_activation:
             compteur = getattr(self, "_noethys_compteur_handlers_activation", 0) + 1
@@ -149,15 +128,10 @@ def _InstallerDoubleClicObjectListView():
         except Exception:
             pass
 
-        # Laisse toujours ObjectListView exécuter son traitement historique
-        # (notamment l'édition de cellule lorsqu'elle est activée).
         resultat = double_clic_original(self, evt)
-
         if not est_double:
             return resultat
 
-        # Ne jamais détourner le double-clic des listes qui éditent leurs
-        # cellules : leur comportement historique reste prioritaire.
         try:
             if self.cellEditMode != self.CELLEDIT_NONE:
                 return resultat
@@ -176,9 +150,6 @@ def _InstallerDoubleClicObjectListView():
         if index is None or index == wx.NOT_FOUND or index < 0:
             return resultat
 
-        # Ouvre une courte fenêtre de déduplication : selon la version de
-        # Windows/wx, l'activation native peut arriver avant ou après celle de
-        # secours. Chaque handler n'est exécuté qu'une fois.
         self._noethys_double_clic_index = index
         self._noethys_double_clic_limite = time.monotonic() + 0.35
         self._noethys_double_clic_handlers_vus = set()
@@ -190,7 +161,8 @@ def _InstallerDoubleClicObjectListView():
     classe._noethys_double_clic_corrige = True
 
 
-# Applique la compatibilité une seule fois au chargement de la couche wx.
+# Compatibilité héritée ObjectListView ; à supprimer lorsque toutes les listes
+# auront migré vers les contrôles Noethys explicites.
 _InstallerDoubleClicObjectListView()
 
 
@@ -201,35 +173,137 @@ class Menu(wx.Menu):
     def AppendItem(self, item):
         if 'phoenix' in wx.PlatformInfo:
             super(Menu, self).Append(item)
-        else :
+        else:
             super(Menu, self).AppendItem(item)
 
     def AppendMenu(self, *args, **kwds):
         if 'phoenix' in wx.PlatformInfo:
             super(Menu, self).Append(*args, **kwds)
-        else :
+        else:
             super(Menu, self).AppendMenu(*args, **kwds)
 
 
 class ToolBar(wx.ToolBar):
+    """Toolbar native Noethys avec géométrie moderne et DPI-aware.
+
+    Ce contrôle est le point commun historique des barres d'outils Noethys :
+    on modernise donc son implémentation directement. Aucun monkey-patch de
+    ``wx.ToolBar`` n'est nécessaire. Les écrans peuvent migrer leurs icônes une
+    par une via :meth:`AddFluentTool` sans changer leur logique métier.
+    """
+
     def __init__(self, *args, **kwds):
+        style = kwds.get("style", 0)
+        style |= wx.TB_FLAT | wx.TB_NODIVIDER
+        kwds["style"] = style
         wx.ToolBar.__init__(self, *args, **kwds)
+        self._noethys_base_bitmap = None
+        self._AppliqueSurface()
+
+    def _AppliqueSurface(self):
+        try:
+            from Utils import UTILS_Interface
+            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container"))
+            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        except Exception:
+            pass
+        try:
+            police = wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)
+            self.SetFont(police)
+        except Exception:
+            pass
+
+    def SetToolBitmapSize(self, size):
+        try:
+            largeur = int(size.GetWidth()) if hasattr(size, "GetWidth") else int(size[0])
+            if largeur > 0:
+                self._noethys_base_bitmap = largeur
+        except Exception:
+            pass
+        return wx.ToolBar.SetToolBitmapSize(self, size)
+
+    def _TailleBitmapResponsive(self):
+        base = self._noethys_base_bitmap
+        if not base:
+            try:
+                size = wx.ToolBar.GetToolBitmapSize(self)
+                base = int(size.GetWidth()) if hasattr(size, "GetWidth") else int(size[0])
+            except Exception:
+                base = 24
+        if base <= 0:
+            base = 24
+        try:
+            from Utils import UTILS_Responsive
+            return UTILS_Responsive.GetTailleIcone(base)
+        except Exception:
+            return base
+
+    def AddFluentTool(self, tool_id, label, icon, tooltip="", kind=wx.ITEM_NORMAL, role="on_surface"):
+        """Ajoute explicitement une commande basée sur le catalogue Fluent."""
+        taille = self._TailleBitmapResponsive()
+        try:
+            from Utils import UTILS_FluentIcons
+            bitmap = UTILS_FluentIcons.GetBitmap(icon, taille=taille, role=role)
+        except Exception:
+            bitmap = wx.NullBitmap
+
+        try:
+            return self.AddTool(tool_id, label, bitmap, wx.NullBitmap, kind, tooltip, "")
+        except Exception:
+            return self.AddLabelTool(tool_id, label, bitmap, wx.NullBitmap, kind, tooltip, "")
 
     def AddLabelTool(self, *args, **kw):
         if 'phoenix' in wx.PlatformInfo:
             if "longHelp" in kw:
                 kw.pop("longHelp")
-            super(ToolBar, self).AddTool(*args, **kw)
-        else :
-            super(ToolBar, self).AddLabelTool(*args, **kw)
+            return super(ToolBar, self).AddTool(*args, **kw)
+        return super(ToolBar, self).AddLabelTool(*args, **kw)
 
     def AddSimpleTool(self, *args, **kw):
         if 'phoenix' in wx.PlatformInfo:
             if "longHelp" in kw:
                 kw.pop("longHelp")
-            super(ToolBar, self).AddTool(*args, **kw)
-        else :
-            super(ToolBar, self).AddSimpleTool(*args, **kw)
+            return super(ToolBar, self).AddTool(*args, **kw)
+        return super(ToolBar, self).AddSimpleTool(*args, **kw)
+
+    def Realize(self):
+        """Finalise la toolbar puis applique les métriques du design system."""
+        resultat = wx.ToolBar.Realize(self)
+        self._AppliqueSurface()
+        try:
+            from Utils import UTILS_UIMetrics
+            from Utils import UTILS_Responsive
+
+            taille = self._TailleBitmapResponsive()
+            wx.ToolBar.SetToolBitmapSize(self, wx.Size(taille, taille))
+            marge = UTILS_UIMetrics.spacing(1)
+            try:
+                self.SetMargins(marge, marge)
+            except Exception:
+                pass
+            try:
+                self.SetToolPacking(marge)
+            except Exception:
+                pass
+            try:
+                self.SetToolSeparation(max(UTILS_UIMetrics.spacing(1), 4))
+            except Exception:
+                pass
+
+            avec_libelle = bool(self.GetWindowStyleFlag() & wx.TB_TEXT)
+            hauteur = UTILS_UIMetrics.toolbar_height(avec_libelle=avec_libelle, icon_px=taille)
+            hauteur = max(hauteur, UTILS_Responsive.GetTailleCibleAction(36))
+            self.SetMinSize((-1, hauteur))
+        except Exception:
+            pass
+
+        try:
+            parent = self.GetParent()
+            if parent is not None:
+                parent.Layout()
+        except Exception:
+            pass
+        return resultat
 
 
 if __name__ == "__main__":
