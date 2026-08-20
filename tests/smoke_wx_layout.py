@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 """Smoke test d'interface wxPython sans données métier.
 
-Construit une petite fenêtre représentative (sizers, texte, toolbar, bouton,
-liste AGW), force le layout et vérifie que les métriques communes ne tronquent
-pas leurs composants. Aucun fichier utilisateur ni base n'est ouvert.
+Construit une fenêtre représentative (toolbar, formulaire, liste, grille), force
+le layout et vérifie que les métriques communes ne tronquent pas leurs
+composants. Aucun fichier utilisateur ni base n'est ouvert.
 """
 from pathlib import Path
 import sys
@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "noethys"))
 
 import wx
+import wx.grid as gridlib
 from wx.lib.agw import ultimatelistctrl as ULC
 
 from Utils import UTILS_Aui
@@ -24,9 +25,8 @@ print("wx :", wx.version())
 print("plateforme :", wx.PlatformInfo)
 assert "phoenix" in wx.PlatformInfo
 
-frame = wx.Frame(None, title="Noethys UI smoke", size=(640, 420))
+frame = wx.Frame(None, title="Noethys UI smoke", size=(720, 560))
 panel = wx.Panel(frame)
-
 root = wx.BoxSizer(wx.VERTICAL)
 
 toolbar = wx.ToolBar(panel, style=wx.TB_FLAT | wx.TB_TEXT | wx.TB_NODIVIDER)
@@ -50,7 +50,17 @@ listctrl.InsertColumn(0, "Nom", width=220)
 listctrl.InsertColumn(1, "Valeur", width=120)
 index = listctrl.InsertStringItem(0, "Ligne test")
 listctrl.SetStringItem(index, 1, "OK")
-root.Add(listctrl, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+root.Add(listctrl, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+
+grid = gridlib.Grid(panel)
+grid.CreateGrid(2, 3)
+grid.SetRowLabelSize(120)
+grid.SetColLabelSize(28)
+grid.SetCellValue(0, 0, "Disponible")
+grid.SetCellValue(0, 1, "Alerte")
+grid.SetCellValue(0, 2, "Complet")
+UTILS_Aui.ConfigurerGrille(grid)
+root.Add(grid, 1, wx.EXPAND | wx.ALL, 8)
 
 panel.SetSizer(root)
 frame.Layout()
@@ -69,6 +79,11 @@ hauteur_min = UTILS_UIMetrics.toolbar_height(avec_libelle=True, icon_px=32)
 print("toolbar :", hauteur_toolbar, "minimum design :", hauteur_min)
 assert hauteur_toolbar >= hauteur_min
 assert hauteur_toolbar > 32
+
+assert grid.GetRowLabelSize() >= 120
+assert grid.GetColLabelSize() >= 28
+assert grid.GridLinesEnabled()
+assert grid.GetDefaultRowSize() >= UTILS_UIMetrics.row_height("table")
 
 frame.Destroy()
 wx.Yield()
