@@ -8,7 +8,7 @@
 # Licence:         Licence GNU GPL
 #------------------------------------------------------------------------
 
-import os, sys
+import os, re, sys
 
 frozen = getattr(sys, 'frozen', '')
 if not frozen:
@@ -23,6 +23,24 @@ for rep in os.listdir(REP_COURANT) :
     chemin = os.path.join(REP_COURANT, rep)
     if os.path.isdir(chemin) and chemin not in sys.path :
         sys.path.insert(2, chemin)
+
+
+def _TailleIconeDemandee(fichier, taille=None):
+    if taille is not None:
+        try:
+            return int(taille)
+        except (TypeError, ValueError):
+            return None
+    normalise = (fichier or "").replace("\\", "/")
+    match = re.search(r"Images/(16|20|24|32|40|48)x\1/", normalise)
+    if not match:
+        return None
+    base = int(match.group(1))
+    try:
+        from Utils import UTILS_Responsive
+        return UTILS_Responsive.GetTailleIcone(base)
+    except Exception:
+        return base
 
 
 def _GetIconeModerne(fichier, taille=None):
@@ -40,9 +58,19 @@ def _GetIconeModerne(fichier, taille=None):
     if not normalise.startswith(dossiers):
         return None
 
+    taille_cible = _TailleIconeDemandee(normalise, taille=taille)
+
     try:
         from Utils import UTILS_Icones_identites
-        resultat = UTILS_Icones_identites.GetLegacyOverridePath(normalise, taille=taille)
+        resultat = UTILS_Icones_identites.GetLegacyOverridePath(normalise, taille=taille_cible)
+        if resultat:
+            return resultat
+    except Exception:
+        pass
+
+    try:
+        from Utils import UTILS_Icones_adaptatives
+        resultat = UTILS_Icones_adaptatives.GetOverridePath(normalise, taille_cible)
         if resultat:
             return resultat
     except Exception:
