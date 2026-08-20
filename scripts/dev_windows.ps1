@@ -67,6 +67,10 @@ else {
     Write-Host 'Dependances deja installees : aucun telechargement.'
 }
 
+Write-Host 'Application des correctifs Python 3/wxPhoenix connus...'
+& $Python (Join-Path $Root 'scripts\apply_py3_runtime_source_fixes.py')
+if ($LASTEXITCODE -ne 0) { throw 'Echec application des correctifs Python 3/wxPhoenix.' }
+
 $Portable = Join-Path $Root 'noethys\Portable'
 New-Item -ItemType Directory -Path $Portable -Force | Out-Null
 
