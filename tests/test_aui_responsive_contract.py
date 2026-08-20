@@ -25,7 +25,7 @@ class AuiResponsiveContractTests(unittest.TestCase):
         ast.parse(cls.responsive_text)
 
     def test_layout_generation_is_bumped(self):
-        self.assertIn("PERSPECTIVE_LAYOUT_VERSION = 4", self.text)
+        self.assertIn("PERSPECTIVE_LAYOUT_VERSION = 5", self.text)
 
     def test_system_toolbars_are_fixed_and_non_floating(self):
         self.assertIn('("barre_raccourcis", 0)', self.text)
@@ -68,6 +68,29 @@ class AuiResponsiveContractTests(unittest.TestCase):
 
     def test_old_ephemeride_caption_is_replaced_at_shell_level(self):
         self.assertIn("Aujourd'hui / Échéancier", self.text)
+
+    def test_individuals_is_converted_from_special_center_pane(self):
+        self.assertIn("def _ConfigurerPaneRecherche", self.text)
+        start = self.text.index("def _ConfigurerPaneRecherche")
+        end = self.text.index("\ndef _GetTailleClient", start)
+        block = self.text[start:end]
+        self.assertIn('manager, "recherche"', block)
+        self.assertIn("aui.AUI_DOCK_CENTER", block)
+        self.assertIn('(\"Right\", ())', block)
+        self.assertIn('(\"CloseButton\", (True,))', block)
+        self.assertIn('(\"MaximizeButton\", (True,))', block)
+        self.assertIn('(\"MinimizeButton\", (True,))', block)
+        self.assertIn('(\"Resizable\", (True,))', block)
+        self.assertIn('(\"DockFixed\", (False,))', block)
+
+    def test_individuals_layout_respects_minimized_or_maximized_state(self):
+        start = self.text.index("def _ConfigurerPaneRecherche")
+        end = self.text.index("\ndef _GetTailleClient", start)
+        block = self.text[start:end]
+        self.assertIn('("IsMaximized", "IsMinimized")', block)
+        self.assertIn("if not etat_special:", block)
+        self.assertNotIn('pane.Show(', block)
+        self.assertNotIn('_AppelerPane(pane, "Show"', block)
 
 
 if __name__ == "__main__":
