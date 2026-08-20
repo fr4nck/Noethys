@@ -29,7 +29,7 @@ class RechercheIndividusShellContractTests(unittest.TestCase):
         self.assertIn("entete.Add(self.ctrl_sms", self.text)
         self.assertIn("def OnEmail", self.text)
         self.assertIn("DLG_Mailer.Dialog", self.text)
-        self.assertIn("listeAdresses=adresses", self.text)
+        self.assertIn("dlg.ctrl_destinataires.SetDonneesManuelles(adresses)", self.text)
         self.assertIn("def OnSMS", self.text)
         self.assertIn("DLG_Envoi_sms.Dialog", self.text)
         self.assertIn('GetPageByCode("saisie_manuelle")', self.text)
