@@ -8,139 +8,157 @@
 # Licence:         Licence GNU GPL
 #------------------------------------------------------------------------
 
-
-import Chemins
-from Utils import UTILS_Adaptations
-from Utils.UTILS_Traduction import _
-import wx
-from Ctrl import CTRL_Bouton_image
-from Ctrl import CTRL_Choix_modele
-import GestionDB
 import os
 
-from Utils import UTILS_Identification
-from Utils import UTILS_Config
-from Dlg import DLG_Filtres_cotisations
+import wx
 
+from Ctrl import CTRL_Bouton_image
+from Ctrl import CTRL_Choix_modele
+from Utils import UTILS_Config
+from Utils import UTILS_Interface
+from Utils import UTILS_UIMetrics
+from Utils.UTILS_Traduction import _
 
 
 class CTRL(wx.Panel):
+    """Options d'édition des cotisations, compactes et compatibles DPI."""
+
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
         self.parent = parent
-        
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+
         self.label_modele = wx.StaticText(self, -1, _(u"Modèle :"))
         self.ctrl_modele = CTRL_Choix_modele.CTRL_Choice(self, categorie="cotisation")
-        self.bouton_modele = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Mecanisme.png"), wx.BITMAP_TYPE_ANY))
-        
-##        self.checkbox_coupon = wx.CheckBox(self, -1, _(u"Insérer le coupon-réponse"))
+        self.bouton_modele = CTRL_Bouton_image.CTRL(
+            self,
+            texte=_(u"Gérer"),
+            cheminImage="Images/16x16/Mecanisme.png",
+            tailleImage=(20, 20),
+        )
 
         self.label_repertoire = wx.StaticText(self, -1, _(u"Copie :"))
-        self.checkbox_repertoire = wx.CheckBox(self, -1, _(u"Enregistrer une copie unique dans le répertoire :"))
+        self.checkbox_repertoire = wx.CheckBox(self, -1, _(u"Enregistrer une copie PDF dans"))
         self.ctrl_repertoire = wx.TextCtrl(self, -1, u"")
-        self.ctrl_repertoire.SetMinSize((270, -1))
-        self.bouton_repertoire = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Repertoire.png"), wx.BITMAP_TYPE_ANY))
+        self.bouton_repertoire = CTRL_Bouton_image.CTRL(
+            self,
+            texte=_(u"Parcourir"),
+            cheminImage="Images/16x16/Repertoire.png",
+            tailleImage=(20, 20),
+        )
 
-        self.__set_properties()
+        self._AppliquerStyle()
         self.__do_layout()
-        
+
         self.Bind(wx.EVT_BUTTON, self.OnBoutonModele, self.bouton_modele)
         self.Bind(wx.EVT_CHECKBOX, self.OnCheckRepertoire, self.checkbox_repertoire)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonRepertoire, self.bouton_repertoire)
-        
-        # Récupération des paramètres dans le CONFIG
-##        self.checkbox_coupon.SetValue(UTILS_Config.GetParametre("impression_rappels_coupon", defaut=1))
+
         param = UTILS_Config.GetParametre("impression_cotisations_repertoire", defaut="")
-        if param != "" :
+        if param != "":
             self.checkbox_repertoire.SetValue(True)
             self.ctrl_repertoire.SetValue(param)
-
-        # Init contrôles
         self.OnCheckRepertoire(None)
 
-    def __set_properties(self):
+    def _AppliquerStyle(self):
         self.ctrl_modele.SetToolTip(wx.ToolTip(_(u"Sélectionnez le modèle")))
-        self.bouton_modele.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour accéder à la gestion des modèles")))
-##        self.checkbox_coupon.SetToolTip(wx.ToolTip(_(u"Cochez cette case pour insérer un coupon à découper")))
-        self.checkbox_repertoire.SetToolTip(wx.ToolTip(_(u"Cochez cette case pour enregistrer un exemplaire de chaque cotisation au format PDF dans le répertoire indiqué")))
-        self.bouton_repertoire.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour sélectionner un répertoire de destination")))
+        self.bouton_modele.SetToolTip(wx.ToolTip(_(u"Accéder à la gestion des modèles")))
+        self.checkbox_repertoire.SetToolTip(wx.ToolTip(_(u"Enregistrer un exemplaire de chaque cotisation au format PDF dans le répertoire indiqué")))
+        self.bouton_repertoire.SetToolTip(wx.ToolTip(_(u"Sélectionner un répertoire de destination")))
+        self.ctrl_repertoire.SetToolTip(wx.ToolTip(_(u"Répertoire où enregistrer la copie PDF")))
+
+        try:
+            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
+            facteur = UTILS_Interface.GetTailleTexte() / 100.0
+            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
+            for controle in (
+                self.label_modele,
+                self.ctrl_modele,
+                self.label_repertoire,
+                self.checkbox_repertoire,
+                self.ctrl_repertoire,
+            ):
+                controle.SetFont(police)
+        except Exception:
+            pass
+
+        hauteur = UTILS_UIMetrics.action_target("compact")
+        self.ctrl_modele.SetMinSize((UTILS_UIMetrics.px(180), hauteur))
+        self.ctrl_repertoire.SetMinSize((UTILS_UIMetrics.px(260), hauteur))
+        try:
+            self.ctrl_repertoire.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+            self.ctrl_repertoire.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        except Exception:
+            pass
+
+    def _Ligne(self, label, contenu):
+        ligne = wx.BoxSizer(wx.HORIZONTAL)
+        label.SetMinSize((UTILS_UIMetrics.px(72), -1))
+        ligne.Add(label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, UTILS_UIMetrics.spacing(2))
+        ligne.Add(contenu, 1, wx.EXPAND)
+        return ligne
 
     def __do_layout(self):
-        grid_sizer_base = wx.FlexGridSizer(rows=2, cols=2, vgap=5, hgap=5)
+        espace = UTILS_UIMetrics.spacing(2)
 
-        # Modèle + Coupon + Codebarre
-        grid_sizer_base.Add(self.label_modele, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 0)
-        
-        grid_sizer_modele = wx.FlexGridSizer(rows=1, cols=7, vgap=5, hgap=5)
-        grid_sizer_modele.Add(self.ctrl_modele, 0, wx.EXPAND|wx.ALIGN_CENTER_VERTICAL, 0)
-        grid_sizer_modele.Add(self.bouton_modele, 0, 0, 0)
-##        grid_sizer_modele.Add( (10, 10), 0, 0, 0)
-##        grid_sizer_modele.Add(self.checkbox_coupon, 0, wx.ALIGN_CENTER_VERTICAL, 0)
-##        grid_sizer_modele.Add( (10, 10), 0, 0, 0)
-##        grid_sizer_modele.Add(self.checkbox_codeBarre, 0, wx.ALIGN_CENTER_VERTICAL, 0)
-        grid_sizer_modele.AddGrowableCol(0)
-        
-        grid_sizer_base.Add(grid_sizer_modele, 1, wx.EXPAND, 0)
+        modele = wx.BoxSizer(wx.HORIZONTAL)
+        modele.Add(self.ctrl_modele, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, espace)
+        modele.Add(self.bouton_modele, 0, wx.ALIGN_CENTER_VERTICAL)
 
-        # Répertoire
-        grid_sizer_base.Add(self.label_repertoire, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 0)
-        grid_sizer_repertoire = wx.FlexGridSizer(rows=1, cols=3, vgap=5, hgap=5)
-        grid_sizer_repertoire.Add(self.checkbox_repertoire, 0, wx.EXPAND, 0)
-        grid_sizer_repertoire.Add(self.ctrl_repertoire, 0, wx.EXPAND, 0)
-        grid_sizer_repertoire.Add(self.bouton_repertoire, 0, 0, 0)
-        grid_sizer_repertoire.AddGrowableCol(1)
-        grid_sizer_base.Add(grid_sizer_repertoire, 1, wx.EXPAND, 0)
-        
-        grid_sizer_base.AddGrowableCol(1)
-        self.SetSizer(grid_sizer_base)
-        grid_sizer_base.Fit(self)
-                    
-    def OnBoutonModele(self, event): 
+        repertoire = wx.BoxSizer(wx.HORIZONTAL)
+        repertoire.Add(self.checkbox_repertoire, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, espace)
+        repertoire.Add(self.ctrl_repertoire, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, espace)
+        repertoire.Add(self.bouton_repertoire, 0, wx.ALIGN_CENTER_VERTICAL)
+
+        principal = wx.BoxSizer(wx.VERTICAL)
+        principal.Add(self._Ligne(self.label_modele, modele), 0, wx.EXPAND | wx.BOTTOM, espace)
+        principal.Add(self._Ligne(self.label_repertoire, repertoire), 0, wx.EXPAND)
+        self.SetSizer(principal)
+        self.SetMinSize((UTILS_UIMetrics.px(560), -1))
+        self.Layout()
+
+    def OnBoutonModele(self, event):
         from Dlg import DLG_Modeles_docs
         dlg = DLG_Modeles_docs.Dialog(self, categorie="cotisation")
-        dlg.ShowModal() 
+        dlg.ShowModal()
         dlg.Destroy()
-        self.ctrl_modele.MAJ() 
+        self.ctrl_modele.MAJ()
 
     def OnCheckRepertoire(self, event):
         etat = self.checkbox_repertoire.GetValue()
         self.ctrl_repertoire.Enable(etat)
         self.bouton_repertoire.Enable(etat)
-        
-    def OnBoutonRepertoire(self, event): 
-        if self.ctrl_repertoire.GetValue != "" : 
-            cheminDefaut = self.ctrl_repertoire.GetValue()
-            if os.path.isdir(cheminDefaut) == False :
-                cheminDefaut = ""
-        else:
+
+    def OnBoutonRepertoire(self, event):
+        cheminDefaut = self.ctrl_repertoire.GetValue().strip()
+        if not os.path.isdir(cheminDefaut):
             cheminDefaut = ""
-        dlg = wx.DirDialog(self, _(u"Veuillez sélectionner un répertoire de destination :"), defaultPath=cheminDefaut, style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
+        dlg = wx.DirDialog(
+            self,
+            _(u"Veuillez sélectionner un répertoire de destination :"),
+            defaultPath=cheminDefaut,
+            style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST,
+        )
         if dlg.ShowModal() == wx.ID_OK:
             self.ctrl_repertoire.SetValue(dlg.GetPath())
         dlg.Destroy()
-                
+
     def MemoriserParametres(self):
-##        UTILS_Config.SetParametre("impression_rappels_coupon", int(self.checkbox_coupon.GetValue()))
-        if self.checkbox_repertoire.GetValue() == True :
+        if self.checkbox_repertoire.GetValue() is True:
             UTILS_Config.SetParametre("impression_cotisations_repertoire", self.ctrl_repertoire.GetValue())
-        else :
+        else:
             UTILS_Config.SetParametre("impression_cotisations_repertoire", "")
-    
+
     def GetOptions(self):
-        dictOptions = {} 
-        
-        # Répertoire
-        if self.checkbox_repertoire.GetValue() == True :
-            repertoire = self.ctrl_repertoire.GetValue() 
-            # Vérifie qu'un répertoire a été saisie
-            if repertoire == "" :
+        if self.checkbox_repertoire.GetValue() is True:
+            repertoire = self.ctrl_repertoire.GetValue().strip()
+            if repertoire == "":
                 dlg = wx.MessageDialog(self, _(u"Vous devez obligatoirement sélectionner un répertoire de destination !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
                 dlg.ShowModal()
                 dlg.Destroy()
                 self.ctrl_repertoire.SetFocus()
                 return False
-            # Vérifie que le répertoire existe
-            if os.path.isdir(repertoire) == False :
+            if os.path.isdir(repertoire) is False:
                 dlg = wx.MessageDialog(self, _(u"Le répertoire de destination que vous avez saisi n'existe pas !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
                 dlg.ShowModal()
                 dlg.Destroy()
@@ -148,57 +166,35 @@ class CTRL(wx.Panel):
                 return False
         else:
             repertoire = None
-                
-        # Récupération du modèle
-        IDmodele = self.ctrl_modele.GetID() 
-        if IDmodele == None :
+
+        IDmodele = self.ctrl_modele.GetID()
+        if IDmodele is None:
             dlg = wx.MessageDialog(self, _(u"Vous devez obligatoirement sélectionner un modèle !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
             return False
-        
-        # Constitution du dictOptions
-##        dictOptions["coupon"] = self.checkbox_coupon.GetValue()
-        dictOptions["IDmodele"] = IDmodele
-        dictOptions["repertoire"] = repertoire
-        
-        return dictOptions
 
-
-# -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-
+        return {"IDmodele": IDmodele, "repertoire": repertoire}
 
 
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
-        sizer_1 = wx.BoxSizer(wx.VERTICAL)
-        sizer_1.Add(panel, 1, wx.ALL|wx.EXPAND)
-        self.SetSizer(sizer_1)        
         self.ctrl = CTRL(panel)
-        self.boutonTest = wx.Button(panel, -1, _(u"Bouton de test"))
-        sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2.Add(self.ctrl, 1, wx.ALL|wx.EXPAND, 4)
-        sizer_2.Add(self.boutonTest, 0, wx.ALL|wx.EXPAND, 4)
-        panel.SetSizer(sizer_2)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.ctrl, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        panel.SetSizer(sizer)
+        principal = wx.BoxSizer(wx.VERTICAL)
+        principal.Add(panel, 1, wx.EXPAND)
+        self.SetSizer(principal)
         self.Layout()
         self.CentreOnScreen()
-        self.Bind(wx.EVT_BUTTON, self.OnBoutonTest, self.boutonTest)
-        
-    def OnBoutonTest(self, event):
-        """ Bouton Test """
-        print(self.ctrl.GetOptions()) 
+
 
 if __name__ == '__main__':
     app = wx.App(0)
-    #wx.InitAllImageHandlers()
-    frame_1 = MyFrame(None, -1, _(u"TEST"), size=(700, 500))
+    frame_1 = MyFrame(None, -1, _(u"TEST"), size=(800, 300))
     app.SetTopWindow(frame_1)
     frame_1.Show()
     app.MainLoop()
-
-
