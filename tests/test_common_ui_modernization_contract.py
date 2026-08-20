@@ -71,6 +71,31 @@ class CommonUIModernizationContractTests(unittest.TestCase):
             self.assertNotIn("FlexGridSizer", text)
             self.assertNotIn("GridSizer", text)
 
+    def test_common_entry_controls_follow_theme_text_and_dpi_metrics(self):
+        for relative_path in (
+            "noethys/Ctrl/CTRL_Saisie_heure.py",
+            "noethys/Ctrl/CTRL_Saisie_mail.py",
+            "noethys/Ctrl/CTRL_Saisie_tel.py",
+            "noethys/Ctrl/CTRL_Saisie_euros.py",
+            "noethys/Ctrl/CTRL_Saisie_compte.py",
+        ):
+            text = self._read(relative_path)
+            self.assertIn("UTILS_Interface", text)
+            self.assertIn("UTILS_UIMetrics", text)
+            self.assertIn('action_target("compact")', text)
+            self.assertIn('GetCouleurRole("on_surface")', text)
+
+    def test_modern_entry_controls_drop_unused_historical_image_dependencies(self):
+        for relative_path in (
+            "noethys/Ctrl/CTRL_Saisie_mail.py",
+            "noethys/Ctrl/CTRL_Saisie_tel.py",
+            "noethys/Ctrl/CTRL_Saisie_euros.py",
+            "noethys/Ctrl/CTRL_Saisie_compte.py",
+        ):
+            text = self._read(relative_path)
+            self.assertNotIn("CTRL_Bouton_image", text)
+            self.assertNotIn("import Chemins", text)
+
 
 if __name__ == "__main__":
     unittest.main()
