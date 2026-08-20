@@ -23,10 +23,8 @@ def ConfigurerManager(manager):
     except Exception:
         return False
 
-    # Un séparateur suffisamment présent structure l'écran bien mieux qu'une
-    # colonne de pictogrammes décoratifs. La valeur reste dense et suit le DPI.
     try:
-        sash = max(5, min(9, int(round(5 * max(1.0, UTILS_Responsive._facteur_ecran())))))
+        sash = max(5, min(9, int(round(5 * max(1.0, UTILS_Responsive.GetFacteurEcran())))))
         art.SetMetric(aui.AUI_DOCKART_SASH_SIZE, sash)
     except Exception:
         pass
@@ -72,11 +70,7 @@ def ConfigurerManager(manager):
 
 
 def ConfigurerToolBar(toolbar, taille_base=16, fond_uni=True):
-    """Configure explicitement une toolbar déjà construite.
-
-    Cette fonction n'intercepte jamais ``__init__`` ni ``SetToolBitmapSize`` :
-    l'écran propriétaire choisit de l'appeler.
-    """
+    """Configure explicitement une toolbar déjà construite."""
     if toolbar is None:
         return False
     try:
