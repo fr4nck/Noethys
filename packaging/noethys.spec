@@ -64,18 +64,20 @@ datas += collect_data_files("pytz")
 datas += collect_data_files("reportlab")
 
 runtime_hooks = [
-    # Le smoke figé doit être premier : en mode de qualification il valide le
-    # bundle puis quitte avant tout accès à la configuration/base utilisateur.
-    str(ROOT / "packaging" / "runtime_frozen_smoke.py"),
-    # Le build Windows est sans console : journalise stderr et les exceptions wx
-    # avant le chargement du code applicatif pour éviter les crashes silencieux.
+    # Installer d'abord le journal d'erreurs : si un hook de compatibilité casse,
+    # le diagnostic est persisté au lieu de disparaître dans l'EXE sans console.
     str(ROOT / "packaging" / "runtime_crashlog.py"),
+    # Les hooks de compatibilité sont volontairement exécutés avant le smoke-test
+    # afin que la qualification du bundle couvre aussi leur initialisation.
     str(ROOT / "packaging" / "runtime_wx_compat.py"),
     str(ROOT / "packaging" / "runtime_wx_text_compat.py"),
     str(ROOT / "packaging" / "runtime_wx_list_width_compat.py"),
     str(ROOT / "packaging" / "runtime_objectlistview_value_compat.py"),
     str(ROOT / "packaging" / "runtime_objectlistview_date_compat.py"),
     str(ROOT / "packaging" / "runtime_pillow_compat.py"),
+    # En mode de qualification, le smoke valide ensuite le bundle puis quitte
+    # avant tout accès à la configuration ou à la base utilisateur.
+    str(ROOT / "packaging" / "runtime_frozen_smoke.py"),
 ]
 
 analysis = Analysis(
