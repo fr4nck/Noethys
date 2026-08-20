@@ -64,30 +64,56 @@ def _ToolbarAvecLibelle(toolbar):
         return True
 
 
-def _ConfigurerToolbarsDuManager(manager):
-    """Dimensionne les toolbars du manager à partir de leur contenu réel."""
+def _ItererDescendants(window):
+    """Itère sur un arbre wx sans dépendre du type de panneau métier."""
+    if window is None:
+        return
+    yield window
     try:
+        enfants = window.GetChildren()
+    except Exception:
+        enfants = []
+    for enfant in enfants:
+        for descendant in _ItererDescendants(enfant):
+            yield descendant
+
+
+def _ConfigurerToolbarsDuManager(manager):
+    """Dimensionne toutes les toolbars contenues dans les panes AUI.
+
+    Les toolbars métier historiques sont souvent des ``wx.ToolBar`` imbriquées
+    dans un notebook ou un panel. Se limiter aux seuls ``AuiToolBar`` du manager
+    laissait donc précisément les textes et icônes rognés dans le dashboard.
+    """
+    try:
+        import wx
         import wx.lib.agw.aui as aui
         panes = manager.GetAllPanes()
     except Exception:
         return
 
+    deja_vues = set()
     for pane in panes:
-        fenetre = getattr(pane, "window", None)
-        if not isinstance(fenetre, aui.AuiToolBar):
-            continue
+        racine = getattr(pane, "window", None)
+        for fenetre in _ItererDescendants(racine):
+            if id(fenetre) in deja_vues:
+                continue
+            deja_vues.add(id(fenetre))
+            if not isinstance(fenetre, (wx.ToolBar, aui.AuiToolBar)):
+                continue
 
-        taille_base = _TailleBitmapExistante(fenetre, defaut=16)
-        ConfigurerToolBar(fenetre, taille_base=taille_base, fond_uni=True)
+            taille_base = _TailleBitmapExistante(fenetre, defaut=16)
+            ConfigurerToolBar(fenetre, taille_base=taille_base, fond_uni=True)
 
-        # AUI mémorise sa propre taille de pane : agrandir seulement le widget
-        # ne suffit pas et produisait les libellés rognés observés à 120 %.
-        try:
-            hauteur = int(getattr(fenetre, "_noethys_toolbar_min_height", 0) or 0)
-            if hauteur > 0:
-                pane.MinSize((-1, hauteur)).BestSize((-1, hauteur))
-        except Exception:
-            pass
+            # Pour une toolbar directement gérée par AUI, le pane possède sa
+            # propre géométrie et doit recevoir la même hauteur minimale.
+            if fenetre is racine:
+                try:
+                    hauteur = int(getattr(fenetre, "_noethys_toolbar_min_height", 0) or 0)
+                    if hauteur > 0:
+                        pane.MinSize((-1, hauteur)).BestSize((-1, hauteur))
+                except Exception:
+                    pass
 
 
 def _ConfigurerPoliceCaptions(art):
@@ -207,7 +233,6 @@ def ConfigurerToolBar(toolbar, taille_base=16, fond_uni=True):
     except Exception:
         pass
 
-    # Les marges font partie de la métrique de composant, pas de chaque écran.
     marge = UTILS_UIMetrics.spacing(1)
     try:
         toolbar.SetToolPacking(marge)
