@@ -81,6 +81,8 @@ class CommonUIModernizationContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Saisie_civilite.py",
             "noethys/Ctrl/CTRL_Saisie_duree.py",
             "noethys/Ctrl/CTRL_Saisie_releve_bancaire.py",
+            "noethys/Ctrl/CTRL_Combobox_autocomplete.py",
+            "noethys/Ctrl/CTRL_Choix_modele.py",
         ):
             text = self._read(relative_path)
             self.assertIn("UTILS_Interface", text)
@@ -96,6 +98,8 @@ class CommonUIModernizationContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Saisie_compte.py",
             "noethys/Ctrl/CTRL_Saisie_civilite.py",
             "noethys/Ctrl/CTRL_Saisie_duree.py",
+            "noethys/Ctrl/CTRL_Combobox_autocomplete.py",
+            "noethys/Ctrl/CTRL_Choix_modele.py",
         ):
             text = self._read(relative_path)
             self.assertNotIn("CTRL_Bouton_image", text)
@@ -120,6 +124,15 @@ class CommonUIModernizationContractTests(unittest.TestCase):
             self.assertIn("wx.BoxSizer(wx.HORIZONTAL)", text)
             self.assertNotIn("wx.BitmapButton", text)
             self.assertNotIn("FlexGridSizer", text)
+
+    def test_checklist_replaces_tiny_bitmap_actions_with_text_commands(self):
+        text = self._read("noethys/Ctrl/CTRL_CheckListBox.py")
+        self.assertIn("CTRL_Bouton_image.CTRL", text)
+        self.assertIn('texte=_(u"Tout")', text)
+        self.assertIn('texte=_(u"Aucun")', text)
+        self.assertIn('GetCouleurRole("surface_container_lowest")', text)
+        self.assertNotIn("wx.BitmapButton", text)
+        self.assertNotIn("FlexGridSizer", text)
 
 
 if __name__ == "__main__":
