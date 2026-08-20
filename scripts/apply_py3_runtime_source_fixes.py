@@ -4,6 +4,7 @@
 
 from importlib.util import find_spec
 from pathlib import Path
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -126,15 +127,22 @@ def patch_redirect():
 
 
 def patch_wx_agw_aui():
-    """Fix Python-3 float coordinates still present in AGW AUI dockart.
+    """Fix wxMSW/Phoenix float caption coordinates in AGW AUI dockart.
 
-    wxPython 4.2.5 / wxWidgets 3.2.9 still computes caption coordinates with
-    ``/ 2`` in ``wx.lib.agw.aui.dockart``. Under Phoenix this yields floats,
-    while ``wx.DC.DrawText`` and ``DrawRotatedText`` require integer pixel
-    coordinates. The resulting paint exception can eventually end in a native
-    Windows access violation, so patch the installed wxPython source used by
-    both local development and PyInstaller packaging.
+    wxPython 4.2.5 / wxWidgets 3.2.9 on Windows still computes caption
+    coordinates with ``/ 2`` in ``wx.lib.agw.aui.dockart``. Under Phoenix this
+    yields floats, while ``wx.DC.DrawText`` and ``DrawRotatedText`` require
+    integer pixel coordinates. The resulting paint exception can eventually
+    end in a native Windows access violation.
+
+    Linux distribution packages can live in read-only system paths and did not
+    produce the reported wxMSW failure, so this source patch is intentionally
+    Windows-only.
     """
+    if not sys.platform.startswith("win"):
+        print("skip wx AGW AUI Windows-only patch on %s" % sys.platform)
+        return
+
     spec = find_spec("wx")
     if spec is None or not spec.origin:
         raise RuntimeError("wxPython package not found: cannot patch AGW AUI")
@@ -152,7 +160,7 @@ def patch_wx_agw_aui():
     _replace_target(target, label, old_rotated, new_rotated)
     _replace_target(target, label, old_text, new_text)
 
-    # Contract check: fail the bootstrap/build immediately if the unsafe forms
+    # Contract check: fail bootstrap/build immediately if the unsafe forms
     # survived because a future wxPython release changed the source layout.
     patched = target.read_text(encoding="utf-8")
     if old_rotated in patched or old_text in patched:
