@@ -65,7 +65,6 @@ class CTRL(wx.Button):
         self.Bind(wx.EVT_KILL_FOCUS, self._OnFocus)
         self.Bind(wx.EVT_LEFT_DOWN, self._OnPress)
         self.Bind(wx.EVT_LEFT_UP, self._OnRelease)
-        self.Bind(wx.EVT_ENABLE, self._OnEnable)
 
         self.MAJ() 
     
@@ -179,9 +178,14 @@ class CTRL(wx.Button):
         self._AppliquerEtat()
         event.Skip()
 
-    def _OnEnable(self, event):
+    def Enable(self, enable=True):
+        """Conserve l'état visuel sans dépendre d'un EVT_ENABLE absent de Phoenix."""
+        resultat = wx.Button.Enable(self, enable)
         self._AppliquerEtat()
-        event.Skip()
+        return resultat
+
+    def Disable(self):
+        return self.Enable(False)
         
     def SetImage(self, cheminImage=""):
         self.SetBitmap(wx.NullBitmap)
