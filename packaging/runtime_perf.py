@@ -10,6 +10,10 @@ Mesures produites dans ``noethys_perf.log`` :
   de premier niveau est visible ;
 - temps des connexions MySQL ;
 - temps des requêtes MySQL avec littéraux anonymisés.
+
+Ce hook protège aussi le watchdog de ``runtime_crashlog`` contre un faux gel
+pendant ``wx.App.OnInit()`` : avant l'entrée dans la vraie MainLoop, le thread
+NoethysHangWatchdog voit volontairement ``wx.GetApp()`` comme indisponible.
 """
 
 import datetime
@@ -85,7 +89,7 @@ def _sanitize_sql(query):
     if isinstance(query, bytes):
         query = query.decode("utf-8", errors="replace")
     text = str(query)
-    text = re.sub(r"'(?:''|\\'|[^'])*'", "'? '".rstrip(), text)
+    text = re.sub(r"'(?:''|\\'|[^'])*'", "'?'", text)
     text = re.sub(r'"(?:""|\\"|[^"])*"', '"?"', text)
     text = re.sub(r"\b0x[0-9a-fA-F]+\b", "?", text)
     text = re.sub(r"\b\d+(?:\.\d+)?\b", "?", text)
@@ -116,7 +120,10 @@ def _wrap_connect(module, attr="connect", label="CONNECT"):
             _log_mysql(label, time.perf_counter() - start)
 
     wrapped.__noethys_perf__ = True
-    setattr(module, attr, wrapped)
+    try:
+        setattr(module, attr, wrapped)
+    except Exception as exc:
+        _append("%s PERF_PATCH_FAIL target=%s.%s error=%s" % (_stamp(), getattr(module, "__name__", "?"), attr, type(exc).__name__))
 
 
 def _wrap_cursor_class(cls, method_name, label):
@@ -144,6 +151,7 @@ def _install_mysql_instrumentation():
         from MySQLdb import cursors as mysql_cursors
 
         _wrap_connect(MySQLdb, "connect", "CONNECT_MYSQLDB")
+        _wrap_connect(MySQLdb, "Connect", "CONNECT_MYSQLDB")
         for cls_name in ("BaseCursor", "Cursor", "DictCursor", "SSCursor", "SSDictCursor"):
             cls = getattr(mysql_cursors, cls_name, None)
             if cls is not None:
@@ -192,7 +200,23 @@ def _install_wx_instrumentation():
         "last_action": "startup",
         "known_windows": set(),
         "mainloop_start": None,
+        "mainloop_started": False,
     }
+
+    # runtime_crashlog démarre son watchdog avant la création de wx.App. Une
+    # fenêtre modale affichée dans OnInit() peut alors durer >30 s alors que la
+    # vraie MainLoop n'a pas encore commencé. On ne modifie le comportement de
+    # wx.GetApp() que pour CE thread de diagnostic et uniquement avant MainLoop.
+    original_get_app = wx.GetApp
+    if not getattr(original_get_app, "__noethys_watchdog_guard__", False):
+        def guarded_get_app(*args, **kwargs):
+            app = original_get_app(*args, **kwargs)
+            if threading.current_thread().name == "NoethysHangWatchdog" and not state["mainloop_started"]:
+                return None
+            return app
+
+        guarded_get_app.__noethys_watchdog_guard__ = True
+        wx.GetApp = guarded_get_app
 
     def trace_action(event):
         try:
@@ -247,6 +271,7 @@ def _install_wx_instrumentation():
 
     def main_loop_with_perf(self, *args, **kwargs):
         state["mainloop_start"] = time.perf_counter()
+        state["mainloop_started"] = True
         state["known_windows"] = set()
         try:
             for binder in (
@@ -260,7 +285,10 @@ def _install_wx_instrumentation():
             self.Bind(wx.EVT_IDLE, inspect_idle)
         except Exception as exc:
             _append("%s PERF_WX_BIND_FAIL error=%s" % (_stamp(), type(exc).__name__))
-        return original_main_loop(self, *args, **kwargs)
+        try:
+            return original_main_loop(self, *args, **kwargs)
+        finally:
+            state["mainloop_started"] = False
 
     main_loop_with_perf.__noethys_perf__ = True
     wx.App.MainLoop = main_loop_with_perf
