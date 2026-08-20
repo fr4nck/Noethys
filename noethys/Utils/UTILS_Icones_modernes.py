@@ -14,7 +14,7 @@ import tempfile
 import unicodedata
 
 
-_CACHE_VERSION = "v1"
+_CACHE_VERSION = "v2"
 _COULEUR = (61, 78, 72, 255)
 _ACCENT = (55, 126, 91, 255)
 
@@ -25,7 +25,34 @@ def _normaliser(texte):
     return re.sub(r"[^a-z0-9]+", "_", texte.lower()).strip("_")
 
 
-_MAPPINGS = (
+# Les noms composés très courants sont associés explicitement avant l'analyse
+# par tokens. Cela évite de transformer par hasard un pictogramme métier dont
+# le nom contiendrait simplement une courte sous-chaîne connue.
+_MAPPINGS_EXACTS = {
+    "calendrier_jour": "calendar_day",
+    "calendrier_semaine": "calendar_week",
+    "calendrier_mois": "calendar_month",
+    "calendrier_horizontal": "layout_horizontal",
+    "calendrier_vertical": "layout_vertical",
+    "calendrier_zoom": "calendar_search",
+    "date_actuelle": "today",
+    "date_precedente": "previous",
+    "date_suivante": "next",
+    "jour": "today",
+    "precedent": "previous",
+    "precedente": "previous",
+    "suivant": "next",
+    "suivante": "next",
+    "zoom_moins": "zoom_out",
+    "zoom_plus": "zoom_in",
+    "apercu": "preview",
+    "mecanisme": "settings",
+    "cocher": "check",
+    "decocher": "close",
+    "interdit": "warning",
+}
+
+_MAPPINGS_TOKENS = (
     (("calendrier", "calendar", "agenda", "date"), "calendar"),
     (("imprimante", "imprimer", "printer", "print"), "printer"),
     (("badgeage", "badge"), "badge"),
@@ -60,11 +87,15 @@ def _icone_pour_chemin(chemin):
     nom = _normaliser(os.path.splitext(os.path.basename(chemin or ""))[0])
     if not nom:
         return None
+
+    icone = _MAPPINGS_EXACTS.get(nom)
+    if icone is not None:
+        return icone
+
     morceaux = set(nom.split("_"))
-    for mots, icone in _MAPPINGS:
+    for mots, icone in _MAPPINGS_TOKENS:
         for mot in mots:
-            mot_normalise = _normaliser(mot)
-            if mot_normalise in morceaux or mot_normalise in nom:
+            if _normaliser(mot) in morceaux:
                 return icone
     return None
 
@@ -83,8 +114,6 @@ def _dessiner(icone, taille, destination):
     except Exception:
         return False
 
-    # Dessin en haute définition puis réduction LANCZOS : les traits restent
-    # propres même dans les petites barres d'outils 16 px historiques.
     base = 96
     image = Image.new("RGBA", (base, base), (0, 0, 0, 0))
     d = ImageDraw.Draw(image)
@@ -105,13 +134,58 @@ def _dessiner(icone, taille, destination):
     def rr(coords, radius=2.0, outline=fg, fill=None, width=w):
         d.rounded_rectangle(box(*coords), radius=p(radius), outline=outline, fill=fill, width=width)
 
-    if icone == "calendar":
+    def calendar_frame():
         rr((4, 5, 20, 20), 2.2)
         line(((4, 9), (20, 9)))
         line(((8, 3.5), (8, 7)), accent)
         line(((16, 3.5), (16, 7)), accent)
+
+    if icone == "calendar":
+        calendar_frame()
         for x, y in ((8, 13), (12, 13), (16, 13), (8, 17), (12, 17)):
             d.ellipse(box(x - .7, y - .7, x + .7, y + .7), fill=accent)
+    elif icone == "calendar_day":
+        calendar_frame()
+        rr((8, 12, 16, 17), 1.0, outline=accent)
+    elif icone == "calendar_week":
+        calendar_frame()
+        for x in (8, 12, 16):
+            line(((x, 12), (x, 17)), accent)
+    elif icone == "calendar_month":
+        calendar_frame()
+        for x in (8, 12, 16):
+            for y in (12.5, 16.5):
+                d.ellipse(box(x - .55, y - .55, x + .55, y + .55), fill=accent)
+    elif icone == "layout_horizontal":
+        rr((4, 5, 20, 19), 1.8)
+        line(((5, 12), (19, 12)), accent)
+    elif icone == "layout_vertical":
+        rr((4, 5, 20, 19), 1.8)
+        line(((12, 6), (12, 18)), accent)
+    elif icone == "previous":
+        line(((15, 5), (8, 12), (15, 19)), accent, max(w, p(2.0)))
+    elif icone == "next":
+        line(((9, 5), (16, 12), (9, 19)), accent, max(w, p(2.0)))
+    elif icone == "zoom_out":
+        d.ellipse(box(4, 4, 15, 15), outline=fg, width=w)
+        line(((7, 9.5), (12, 9.5)), accent)
+        line(((14, 14), (20, 20)), fg)
+    elif icone == "zoom_in":
+        d.ellipse(box(4, 4, 15, 15), outline=fg, width=w)
+        line(((7, 9.5), (12, 9.5)), accent)
+        line(((9.5, 7), (9.5, 12)), accent)
+        line(((14, 14), (20, 20)), fg)
+    elif icone == "today":
+        calendar_frame()
+        d.ellipse(box(10, 12, 14, 16), fill=accent)
+    elif icone == "calendar_search":
+        calendar_frame()
+        d.ellipse(box(11.5, 12, 17.5, 18), outline=accent, width=max(4, w - 1))
+        line(((17, 17.5), (20, 20.5)), accent, max(4, w - 1))
+    elif icone == "preview":
+        d.ellipse(box(3, 7, 21, 17), outline=fg, width=w)
+        d.ellipse(box(9, 9, 15, 15), outline=accent, width=w)
+        d.ellipse(box(11.2, 11.2, 12.8, 12.8), fill=accent)
     elif icone == "printer":
         rr((6, 3, 18, 10), 1.2)
         rr((3, 8, 21, 17), 2.0)
@@ -176,7 +250,8 @@ def _dessiner(icone, taille, destination):
         line(((8, 11), (12, 15), (16, 11)), accent)
         line(((5, 18), (5, 20), (19, 20), (19, 18)), fg)
     elif icone == "folder":
-        d.polygon([(p(3), p(7)), (p(9), p(7)), (p(11), p(9)), (p(21), p(9)), (p(20), p(19)), (p(4), p(19))], outline=fg)
+        points = ((3, 7), (9, 7), (11, 9), (21, 9), (20, 19), (4, 19), (3, 7))
+        line(points, fg)
         line(((4, 10), (20, 10)), accent)
     elif icone == "home":
         line(((4, 11), (12, 4), (20, 11)), accent)
@@ -199,7 +274,8 @@ def _dessiner(icone, taille, destination):
         rr((6, 10, 18, 20), 1.7)
         d.arc(box(8, 4, 16, 14), 180, 360, fill=accent, width=w)
     elif icone == "warning":
-        d.polygon([(p(12), p(3)), (p(21), p(20)), (p(3), p(20))], outline=fg)
+        points = ((12, 3), (21, 20), (3, 20), (12, 3))
+        line(points, fg)
         line(((12, 8), (12, 14)), accent)
         d.ellipse(box(11.2, 16.2, 12.8, 17.8), fill=accent)
     elif icone == "info":
@@ -207,7 +283,8 @@ def _dessiner(icone, taille, destination):
         line(((12, 10), (12, 17)), accent)
         d.ellipse(box(11.2, 6.5, 12.8, 8.1), fill=accent)
     elif icone == "document":
-        d.polygon([(p(6), p(3)), (p(15), p(3)), (p(19), p(7)), (p(19), p(21)), (p(6), p(21))], outline=fg)
+        points = ((6, 3), (15, 3), (19, 7), (19, 21), (6, 21), (6, 3))
+        line(points, fg)
         line(((15, 3), (15, 8), (19, 8)), accent)
         line(((9, 12), (16, 12)))
         line(((9, 16), (16, 16)))
