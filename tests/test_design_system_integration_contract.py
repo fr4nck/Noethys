@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 INTERFACE = ROOT / "noethys" / "Utils" / "UTILS_Interface.py"
 DIALOG = ROOT / "noethys" / "Dlg" / "DLG_Echelle_interface.py"
+BANDEAU = ROOT / "noethys" / "Ctrl" / "CTRL_Bandeau.py"
 
 
 class DesignSystemIntegrationContractTests(unittest.TestCase):
@@ -16,8 +17,10 @@ class DesignSystemIntegrationContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.text = INTERFACE.read_text(encoding="utf-8")
         cls.dialog_text = DIALOG.read_text(encoding="utf-8")
+        cls.bandeau_text = BANDEAU.read_text(encoding="utf-8")
         cls.tree = ast.parse(cls.text)
         ast.parse(cls.dialog_text)
+        ast.parse(cls.bandeau_text)
 
     def test_interface_imports_single_design_system_contract(self):
         self.assertIn("from Utils import UTILS_DesignSystem", self.text)
@@ -100,6 +103,20 @@ class DesignSystemIntegrationContractTests(unittest.TestCase):
         self.assertIn('_(u"Valeurs par défaut")', self.dialog_text)
         self.assertIn("def OnValeursDefaut", self.dialog_text)
         self.assertIn('UTILS_Interface.SetTailleTexte(valeurs["taille_texte"])', self.dialog_text)
+
+    def test_common_dialog_header_uses_semantic_theme(self):
+        self.assertIn("from Utils import UTILS_Interface", self.bandeau_text)
+        for role in (
+            "surface_container_lowest",
+            "on_surface",
+            "on_surface_variant",
+            "outline_variant",
+        ):
+            self.assertIn('GetCouleurRole("%s"' % role, self.bandeau_text)
+        self.assertIn("def AppliquerTheme", self.bandeau_text)
+        self.assertIn("wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)", self.bandeau_text)
+        self.assertNotIn("self.SetBackgroundColour(wx.Colour(255, 255, 255))", self.bandeau_text)
+        self.assertNotIn("wx.Font(10, wx.DEFAULT", self.bandeau_text)
 
     def test_existing_public_theme_and_scale_api_is_preserved(self):
         functions = {
