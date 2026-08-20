@@ -4,10 +4,10 @@
 # Application :    Noethys, gestion multi-activités
 # Licence :        GNU GPL
 #------------------------------------------------------------------------
-"""Panneau d'accueil « Aujourd'hui ».
+"""Panneau d'accueil « Aujourd'hui / Échéancier ».
 
 Le contrôle conserve le point d'accroche historique ``CTRL_Ephemeride.CTRL``
-mais suit désormais les métriques du design system. La météo ne dépend plus de
+mais sa présentation suit le cockpit Repens Design. La météo ne dépend plus de
 coordonnées GPS déjà saisies : ville/code postal peuvent être géocodés et mis en
 cache localement sans modifier la base métier.
 """
@@ -80,13 +80,20 @@ class CTRL(wx.Panel):
         self.dictOrganisateur = None
         self._chargement_en_cours = False
 
-        self.ctrl_date = wx.StaticText(self, -1, DateDDEnDateFR(self.dateJour))
-        self.ctrl_lieu = wx.StaticText(self, -1, _(u"Localisation de l'organisateur"))
-        self.ctrl_meteo = wx.StaticText(self, -1, _(u"Météo : chargement…"))
-        self.ctrl_soleil = wx.StaticText(self, -1, _(u"Soleil : chargement…"))
+        # Deux surfaces fonctionnelles remplacent l'ancienne ligne de texte
+        # séparée par un trait vertical. Elles restent compactes et desktop.
+        self.panel_jour = wx.Panel(self, style=wx.TAB_TRAVERSAL)
+        self.panel_echeances = wx.Panel(self, style=wx.TAB_TRAVERSAL)
 
-        self.ctrl_titre_echeances = wx.StaticText(self, -1, _(u"À venir"))
-        self.ctrl_echeances = wx.StaticText(self, -1, _(u"Chargement de l'échéancier…"))
+        self.ctrl_sur_titre = wx.StaticText(self.panel_jour, -1, _(u"AUJOURD'HUI"))
+        self.ctrl_date = wx.StaticText(self.panel_jour, -1, DateDDEnDateFR(self.dateJour))
+        self.ctrl_lieu = wx.StaticText(self.panel_jour, -1, _(u"Localisation de l'organisateur"))
+        self.ctrl_meteo = wx.StaticText(self.panel_jour, -1, _(u"Météo : chargement…"))
+        self.ctrl_soleil = wx.StaticText(self.panel_jour, -1, _(u"Soleil : chargement…"))
+
+        self.ctrl_sur_titre_echeances = wx.StaticText(self.panel_echeances, -1, _(u"ÉCHÉANCIER"))
+        self.ctrl_titre_echeances = wx.StaticText(self.panel_echeances, -1, _(u"À venir"))
+        self.ctrl_echeances = wx.StaticText(self.panel_echeances, -1, _(u"Chargement de l'échéancier…"))
 
         self._AppliqueApparence()
         self._ConstruitLayout()
@@ -99,41 +106,70 @@ class CTRL(wx.Panel):
         return police
 
     def _AppliqueApparence(self):
-        fond = UTILS_Interface.GetCouleurRole("surface_container_low")
+        fond = UTILS_Interface.GetCouleurRole("surface")
+        fond_jour = UTILS_Interface.GetCouleurRole("surface_container_low")
+        fond_echeances = UTILS_Interface.GetCouleurRole("surface_container")
         texte = UTILS_Interface.GetCouleurRole("on_surface")
         secondaire = UTILS_Interface.GetCouleurRole("on_surface_variant")
+        accent = UTILS_Interface.GetCouleurRole("primary")
 
         self.SetBackgroundColour(fond)
-        for ctrl in (self.ctrl_date, self.ctrl_titre_echeances):
-            ctrl.SetForegroundColour(texte)
-            ctrl.SetBackgroundColour(fond)
-            ctrl.SetFont(self._Police(wx.FONTWEIGHT_BOLD, 1))
+        self.panel_jour.SetBackgroundColour(fond_jour)
+        self.panel_echeances.SetBackgroundColour(fond_echeances)
+
+        for ctrl, fond_ctrl in (
+            (self.ctrl_sur_titre, fond_jour),
+            (self.ctrl_date, fond_jour),
+            (self.ctrl_lieu, fond_jour),
+            (self.ctrl_meteo, fond_jour),
+            (self.ctrl_soleil, fond_jour),
+            (self.ctrl_sur_titre_echeances, fond_echeances),
+            (self.ctrl_titre_echeances, fond_echeances),
+            (self.ctrl_echeances, fond_echeances),
+        ):
+            ctrl.SetBackgroundColour(fond_ctrl)
+
+        for ctrl in (self.ctrl_sur_titre, self.ctrl_sur_titre_echeances):
+            ctrl.SetForegroundColour(accent)
+            ctrl.SetFont(self._Police(wx.FONTWEIGHT_BOLD, -1))
+
+        self.ctrl_date.SetForegroundColour(texte)
+        self.ctrl_date.SetFont(self._Police(wx.FONTWEIGHT_BOLD, 2))
+        self.ctrl_titre_echeances.SetForegroundColour(texte)
+        self.ctrl_titre_echeances.SetFont(self._Police(wx.FONTWEIGHT_BOLD, 2))
 
         for ctrl in (self.ctrl_lieu, self.ctrl_meteo, self.ctrl_soleil, self.ctrl_echeances):
             ctrl.SetForegroundColour(secondaire)
-            ctrl.SetBackgroundColour(fond)
             ctrl.SetFont(self._Police())
 
     def _ConstruitLayout(self):
-        sizer_principal = wx.BoxSizer(wx.HORIZONTAL)
+        marge = UTILS_UIMetrics.spacing(2)
+        espace = UTILS_UIMetrics.spacing(1)
 
         sizer_jour = wx.BoxSizer(wx.VERTICAL)
-        sizer_jour.Add(self.ctrl_date, 0, wx.BOTTOM, UTILS_UIMetrics.spacing(1))
+        sizer_jour.Add(self.ctrl_sur_titre, 0, wx.BOTTOM, espace)
+        sizer_jour.Add(self.ctrl_date, 0, wx.BOTTOM, espace)
         sizer_jour.Add(self.ctrl_lieu, 0, wx.BOTTOM, UTILS_UIMetrics.px(2))
         sizer_jour.Add(self.ctrl_meteo, 0, wx.BOTTOM, UTILS_UIMetrics.px(2))
         sizer_jour.Add(self.ctrl_soleil, 0)
-
-        separation = wx.StaticLine(self, style=wx.LI_VERTICAL)
+        self.panel_jour.SetSizer(sizer_jour)
 
         sizer_echeances = wx.BoxSizer(wx.VERTICAL)
-        sizer_echeances.Add(self.ctrl_titre_echeances, 0, wx.BOTTOM, UTILS_UIMetrics.spacing(1))
+        sizer_echeances.Add(self.ctrl_sur_titre_echeances, 0, wx.BOTTOM, espace)
+        sizer_echeances.Add(self.ctrl_titre_echeances, 0, wx.BOTTOM, espace)
         sizer_echeances.Add(self.ctrl_echeances, 1, wx.EXPAND)
+        self.panel_echeances.SetSizer(sizer_echeances)
 
-        marge = UTILS_UIMetrics.spacing(2)
-        sizer_principal.Add(sizer_jour, 0, wx.EXPAND | wx.ALL, marge)
-        sizer_principal.Add(separation, 0, wx.EXPAND | wx.TOP | wx.BOTTOM, marge)
-        sizer_principal.Add(sizer_echeances, 1, wx.EXPAND | wx.ALL, marge)
-
+        # La partie échéancier absorbe davantage de largeur : elle porte le
+        # contenu variable. La partie journée conserve seulement sa taille utile.
+        sizer_principal = wx.BoxSizer(wx.HORIZONTAL)
+        sizer_principal.Add(self.panel_jour, 2, wx.EXPAND | wx.ALL, marge)
+        sizer_principal.Add(
+            self.panel_echeances,
+            3,
+            wx.EXPAND | wx.TOP | wx.RIGHT | wx.BOTTOM,
+            marge,
+        )
         self.SetSizer(sizer_principal)
         self.Layout()
 
@@ -146,8 +182,8 @@ class CTRL(wx.Panel):
             pane = gestionnaire.GetPane(self)
             if not pane.IsOk():
                 return
-            hauteur_min = UTILS_UIMetrics.panel_min_height("compact")
-            hauteur_ideale = max(hauteur_min, UTILS_UIMetrics.px(88))
+            hauteur_min = UTILS_UIMetrics.panel_min_height("secondary")
+            hauteur_ideale = max(hauteur_min, UTILS_UIMetrics.px(118))
             pane.Caption(_(u"Aujourd'hui / Échéancier"))
             pane.MinSize((-1, hauteur_min))
             pane.BestSize((-1, hauteur_ideale))
@@ -179,9 +215,6 @@ class CTRL(wx.Panel):
             if ville:
                 wx.CallAfter(self.ctrl_lieu.SetLabel, ville)
 
-            # Résolution locale/GPS/cache puis géocodage réseau seulement si
-            # nécessaire. L'absence de GPS n'est donc plus confondue avec une
-            # absence de connexion Internet.
             self._ResoudreCoordonnees(organisateur)
 
             meteo = None
@@ -296,8 +329,6 @@ class CTRL(wx.Panel):
         if not resultats:
             return None
 
-        # Noethys est historiquement centré sur les structures françaises : à
-        # nom égal on privilégie donc FR, sans empêcher un résultat étranger.
         resultat = resultats[0]
         for candidat in resultats:
             if candidat.get("country_code") == "FR":
@@ -446,7 +477,7 @@ class MyFrame(wx.Frame):
         self.ctrl = CTRL(panel)
         sizer.Add(self.ctrl, 1, wx.EXPAND | wx.ALL, 8)
         panel.SetSizer(sizer)
-        self.SetSize((1000, 180))
+        self.SetSize((1000, 220))
         self.CentreOnScreen()
         self.ctrl.Initialisation()
 
