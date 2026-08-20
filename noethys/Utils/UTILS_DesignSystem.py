@@ -14,7 +14,7 @@ Principes :
 - Fluent 2 pour la grammaire desktop et les états interactifs ;
 - Material Design 3 pour les rôles sémantiques et la hiérarchie des surfaces ;
 - effets de profondeur réservés aux couches fonctionnelles ;
-- palette Repens Design plus sourde et plus adulte en sombre.
+- palette Repens Design issue directement du mockup de référence.
 """
 
 import wx
@@ -61,102 +61,105 @@ ETATS_INTERACTIFS = (
 )
 
 
+# Version claire : les teintes sont celles du concept Repens, avec des fonds
+# très neutres pour que les tables métier restent prioritaires.
 PALETTE_CLAIRE = {
-    "surface": wx.Colour(248, 249, 250),
+    "surface": wx.Colour(248, 249, 248),
     "surface_container_lowest": wx.Colour(255, 255, 255),
-    "surface_container_low": wx.Colour(246, 247, 248),
-    "surface_container": wx.Colour(240, 242, 244),
-    "surface_container_high": wx.Colour(233, 235, 238),
-    "surface_container_highest": wx.Colour(225, 228, 232),
-    "on_surface": wx.Colour(31, 31, 31),
-    "on_surface_variant": wx.Colour(82, 82, 82),
-    "outline": wx.Colour(124, 124, 124),
-    "outline_variant": wx.Colour(207, 207, 207),
-    "selection": wx.Colour(226, 230, 210),
-    "selection_text": wx.Colour(48, 53, 35),
-    "disabled": wx.Colour(235, 235, 235),
-    "disabled_text": wx.Colour(145, 145, 145),
-    "focus": wx.Colour(112, 96, 154),
-    "success": wx.Colour(228, 232, 210),
-    "success_text": wx.Colour(70, 77, 42),
-    "warning": wx.Colour(246, 228, 201),
-    "warning_text": wx.Colour(117, 75, 29),
-    "danger": wx.Colour(235, 224, 239),
-    "danger_text": wx.Colour(93, 63, 103),
-    "info": wx.Colour(228, 224, 238),
-    "info_text": wx.Colour(78, 65, 111),
+    "surface_container_low": wx.Colour(246, 247, 246),
+    "surface_container": wx.Colour(240, 242, 240),
+    "surface_container_high": wx.Colour(233, 236, 233),
+    "surface_container_highest": wx.Colour(224, 228, 224),
+    "on_surface": wx.Colour(31, 34, 31),
+    "on_surface_variant": wx.Colour(83, 87, 82),
+    "outline": wx.Colour(124, 130, 123),
+    "outline_variant": wx.Colour(207, 212, 206),
+    "selection": wx.Colour(221, 231, 200),
+    "selection_text": wx.Colour(47, 58, 35),
+    "disabled": wx.Colour(235, 236, 234),
+    "disabled_text": wx.Colour(145, 148, 143),
+    "focus": wx.Colour(54, 137, 55),
+    "success": wx.Colour(221, 231, 200),
+    "success_text": wx.Colour(62, 83, 45),
+    "warning": wx.Colour(250, 239, 209),
+    "warning_text": wx.Colour(126, 85, 35),
+    "danger": wx.Colour(239, 224, 241),
+    "danger_text": wx.Colour(112, 63, 119),
+    "info": wx.Colour(222, 235, 244),
+    "info_text": wx.Colour(35, 91, 130),
 }
 
 
-# Repens Design sombre : graphite chaud, kaki/olive, ambre brûlé et prune.
-# La profondeur vient d'abord de surfaces distinctes ; les accents restent
-# suffisamment sourds pour cohabiter avec des tableaux très denses.
+# Repens sombre : mêmes familles chromatiques que le mockup, simplement
+# assourdies pour une interface dense. Pas de noir pur ni de couleurs fluo.
 PALETTE_SOMBRE = {
-    "surface": wx.Colour(22, 24, 26),
-    "surface_container_lowest": wx.Colour(15, 17, 19),
-    "surface_container_low": wx.Colour(28, 31, 33),
-    "surface_container": wx.Colour(34, 38, 41),
-    "surface_container_high": wx.Colour(43, 47, 51),
-    "surface_container_highest": wx.Colour(53, 58, 63),
-    "on_surface": wx.Colour(236, 234, 228),
-    "on_surface_variant": wx.Colour(181, 178, 169),
-    "outline": wx.Colour(94, 96, 93),
-    "outline_variant": wx.Colour(55, 58, 57),
-    "selection": wx.Colour(67, 74, 48),
-    "selection_text": wx.Colour(240, 239, 222),
-    "disabled": wx.Colour(42, 45, 47),
-    "disabled_text": wx.Colour(122, 124, 121),
-    "focus": wx.Colour(151, 137, 196),
-    "success": wx.Colour(74, 82, 55),
-    "success_text": wx.Colour(211, 219, 177),
-    "warning": wx.Colour(104, 72, 35),
-    "warning_text": wx.Colour(235, 181, 96),
-    "danger": wx.Colour(84, 58, 87),
-    "danger_text": wx.Colour(216, 190, 224),
-    "info": wx.Colour(66, 59, 86),
-    "info_text": wx.Colour(203, 191, 229),
+    "surface": wx.Colour(23, 25, 25),
+    "surface_container_lowest": wx.Colour(16, 18, 18),
+    "surface_container_low": wx.Colour(29, 32, 31),
+    "surface_container": wx.Colour(35, 39, 38),
+    "surface_container_high": wx.Colour(44, 49, 47),
+    "surface_container_highest": wx.Colour(54, 60, 57),
+    "on_surface": wx.Colour(236, 237, 233),
+    "on_surface_variant": wx.Colour(181, 185, 177),
+    "outline": wx.Colour(94, 101, 94),
+    "outline_variant": wx.Colour(55, 61, 57),
+    "selection": wx.Colour(70, 79, 49),
+    "selection_text": wx.Colour(240, 242, 224),
+    "disabled": wx.Colour(42, 46, 44),
+    "disabled_text": wx.Colour(123, 127, 121),
+    "focus": wx.Colour(108, 164, 111),
+    "success": wx.Colour(73, 82, 53),
+    "success_text": wx.Colour(210, 221, 177),
+    "warning": wx.Colour(104, 78, 45),
+    "warning_text": wx.Colour(222, 177, 108),
+    "danger": wx.Colour(82, 53, 87),
+    "danger_text": wx.Colour(215, 188, 221),
+    "info": wx.Colour(37, 70, 90),
+    "info_text": wx.Colour(181, 207, 226),
 }
 
 
+# Les noms historiques de thèmes restent compatibles, mais leurs teintes sont
+# désormais celles de Repens Design.
 ACCENTS_CLAIRS = {
     "Vert": {
-        "primary": wx.Colour(104, 116, 66),
+        "primary": wx.Colour(54, 137, 55),
         "on_primary": wx.Colour(255, 255, 255),
-        "primary_container": wx.Colour(230, 234, 214),
-        "on_primary_container": wx.Colour(53, 61, 32),
+        "primary_container": wx.Colour(221, 231, 200),
+        "on_primary_container": wx.Colour(45, 74, 39),
     },
     "Bleu": {
-        "primary": wx.Colour(88, 78, 128),
+        "primary": wx.Colour(28, 98, 146),
         "on_primary": wx.Colour(255, 255, 255),
-        "primary_container": wx.Colour(232, 228, 241),
-        "on_primary_container": wx.Colour(58, 49, 91),
+        "primary_container": wx.Colour(222, 235, 244),
+        "on_primary_container": wx.Colour(27, 72, 104),
     },
     "Noir": {
-        "primary": wx.Colour(78, 78, 78),
+        "primary": wx.Colour(136, 52, 143),
         "on_primary": wx.Colour(255, 255, 255),
-        "primary_container": wx.Colour(231, 231, 231),
-        "on_primary_container": wx.Colour(47, 47, 47),
+        "primary_container": wx.Colour(239, 224, 241),
+        "on_primary_container": wx.Colour(92, 49, 98),
     },
 }
 
 ACCENTS_SOMBRES = {
     "Vert": {
-        "primary": wx.Colour(164, 176, 113),
-        "on_primary": wx.Colour(35, 40, 22),
-        "primary_container": wx.Colour(67, 74, 48),
-        "on_primary_container": wx.Colour(226, 231, 198),
+        "primary": wx.Colour(108, 164, 111),
+        "on_primary": wx.Colour(21, 48, 27),
+        "primary_container": wx.Colour(62, 89, 61),
+        "on_primary_container": wx.Colour(218, 233, 202),
     },
     "Bleu": {
-        "primary": wx.Colour(161, 146, 205),
-        "on_primary": wx.Colour(39, 32, 58),
-        "primary_container": wx.Colour(71, 61, 94),
-        "on_primary_container": wx.Colour(225, 216, 242),
+        "primary": wx.Colour(93, 151, 188),
+        "on_primary": wx.Colour(20, 44, 60),
+        "primary_container": wx.Colour(37, 70, 90),
+        "on_primary_container": wx.Colour(205, 226, 239),
     },
     "Noir": {
-        "primary": wx.Colour(198, 199, 194),
-        "on_primary": wx.Colour(43, 45, 46),
-        "primary_container": wx.Colour(67, 70, 72),
-        "on_primary_container": wx.Colour(236, 235, 231),
+        "primary": wx.Colour(169, 126, 174),
+        "on_primary": wx.Colour(52, 31, 55),
+        "primary_container": wx.Colour(82, 53, 87),
+        "on_primary_container": wx.Colour(231, 210, 234),
     },
 }
 
