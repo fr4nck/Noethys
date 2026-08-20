@@ -72,8 +72,13 @@ class ListeIndividusAccueil(OL_Individus.ListView):
                 return _(u"Effacé")
             return ""
 
-        self.oddRowsBackColor = UTILS_Interface.GetCouleurRole("surface_container_lowest")
-        self.evenRowsBackColor = UTILS_Interface.GetCouleurRole("surface")
+        # En sombre, l'information est structurée par une alternance très légère
+        # de surfaces graphite. Les règles H/V historiques ne sont pas utilisées :
+        # elles produisent des traits blancs beaucoup trop présents sous Windows.
+        self.evenRowsBackColor = UTILS_Interface.GetCouleurRole("surface_container_lowest")
+        self.oddRowsBackColor = UTILS_Interface.GetCouleurRole("surface_container_low")
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
+        self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
         self.useExpansionColumn = False
 
         # Pas de colonne d'icône : les civilités restent une donnée métier mais
@@ -246,7 +251,7 @@ class Panel(wx.Panel):
         self.ctrl_listview = ListeIndividusAccueil(
             self,
             id=-1,
-            style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.LC_HRULES | wx.LC_VRULES,
+            style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.NO_BORDER,
         )
         self.ctrl_recherche = OL_Individus.BarreRecherche(self, historique=True)
 
