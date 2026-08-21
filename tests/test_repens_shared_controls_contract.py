@@ -26,6 +26,7 @@ class RepensSharedControlsContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Logo.py",
             "noethys/Ctrl/CTRL_Newsticker.py",
             "noethys/Ctrl/CTRL_Assistant_base.py",
+            "noethys/Ctrl/CTRL_Propertygrid.py",
         ):
             text = self._read(relative_path)
             self.assertIn("UTILS_StyleRepens as Style", text)
@@ -94,6 +95,18 @@ class RepensSharedControlsContractTests(unittest.TestCase):
         self.assertNotIn("(120, 120, 120)", text)
         self.assertNotIn("UTILS_Interface", text)
         self.assertNotIn("UTILS_UIMetrics", text)
+
+    def test_propertygrid_keeps_editors_but_delegates_visuals_to_repens(self):
+        text = self._read("noethys/Ctrl/CTRL_Propertygrid.py")
+        self.assertIn('Style.couleur("surface_container_low")', text)
+        self.assertIn('Style.taille_icone("compact")', text)
+        self.assertIn('_BitmapRepens("settings")', text)
+        self.assertIn("CTRL_Bouton_image.CTRL", text)
+        self.assertIn("size=size", text)
+        self.assertNotIn('couleurFond = "#e5ecf3"', text)
+        self.assertNotIn("class Bouton_reinitialisation(wx.BitmapButton)", text)
+        self.assertNotIn("class Bouton_sauvegarde(wx.BitmapButton)", text)
+        self.assertNotIn('size=(-1, 25)', text)
 
     def test_semantic_trees_keep_business_icons_but_scale_them(self):
         for relative_path in (
