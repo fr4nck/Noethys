@@ -5,33 +5,25 @@
 # Site internet :  www.noethys.com
 # Auteur:          Ivan LUCAS
 # Copyright:       (c) 2010-18 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 import wx
 
 from Utils import UTILS_Internet
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
 class CTRL(wx.Panel):
-    """Résumé natif du compte internet.
-
-    L'ancien ``HtmlWindow`` n'apportait aucune fonction web : il servait
-    uniquement à mettre en page un statut, un identifiant et un mot de passe.
-    Des contrôles wx natifs donnent désormais un vrai reflow, une meilleure
-    accessibilité et un rendu cohérent clair/sombre tout en conservant l'API
-    métier historique de ce contrôle.
-    """
+    """Résumé natif du compte internet, consommateur du CSS Repens."""
 
     def __init__(self, parent, IDfamille=None, IDutilisateur=None, couleurFond=None):
         wx.Panel.__init__(self, parent, -1, style=wx.BORDER_NONE | wx.TAB_TRAVERSAL)
         self.parent = parent
         self.IDfamille = IDfamille
         self.IDutilisateur = IDutilisateur
-        self.couleurFond = couleurFond or UTILS_Interface.GetCouleurRole("surface_container_lowest")
+        self.couleurFond = couleurFond or Style.couleur("surface_container_lowest")
         self.dictDonnees = {}
 
         self.indicateur_statut = wx.StaticText(self, -1, u"●")
@@ -44,40 +36,36 @@ class CTRL(wx.Panel):
 
         self._ConfigurerStyle()
         self._ConstruireLayout()
-        self.SetMinSize((UTILS_UIMetrics.px(220), UTILS_UIMetrics.panel_min_height("dashboard")))
+        self.SetMinSize((Style.px(220), Style.px(104)))
         self.Bind(wx.EVT_SIZE, self.OnSize)
 
     def _ConfigurerStyle(self):
         self.SetBackgroundColour(self.couleurFond)
-        texte = UTILS_Interface.GetCouleurRole("on_surface")
-        secondaire = UTILS_Interface.GetCouleurRole("on_surface_variant")
-
-        police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-        try:
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-        except Exception:
-            pass
-
-        police_statut = wx.Font(police)
-        try:
-            police_statut.SetWeight(wx.FONTWEIGHT_SEMIBOLD)
-        except Exception:
-            police_statut.SetWeight(wx.FONTWEIGHT_BOLD)
+        self.SetForegroundColour(Style.couleur("on_surface"))
+        self.SetFont(Style.police("body"))
 
         for controle in (self.label_identifiant, self.label_mdp, self.note_mdp):
-            controle.SetForegroundColour(secondaire)
-            controle.SetFont(police)
+            Style.appliquer_texte(
+                controle,
+                role="body",
+                role_texte="on_surface_variant",
+                role_fond="surface_container_lowest",
+            )
         for controle in (self.valeur_identifiant, self.valeur_mdp):
-            controle.SetForegroundColour(texte)
-            controle.SetFont(police)
-        self.label_statut.SetFont(police_statut)
-        self.indicateur_statut.SetFont(police_statut)
+            Style.appliquer_texte(
+                controle,
+                role="body",
+                role_texte="on_surface",
+                role_fond="surface_container_lowest",
+            )
+        for controle in (self.label_statut, self.indicateur_statut):
+            controle.SetFont(Style.police("body_emphasis"))
+            controle.SetBackgroundColour(self.couleurFond)
         self.note_mdp.Hide()
 
     def _ConstruireLayout(self):
-        espace = UTILS_UIMetrics.spacing(1)
-        marge = UTILS_UIMetrics.spacing(2)
+        espace = Style.espace(1)
+        marge = Style.espace(2)
 
         statut = wx.BoxSizer(wx.HORIZONTAL)
         statut.Add(self.indicateur_statut, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, espace)
@@ -98,7 +86,7 @@ class CTRL(wx.Panel):
 
     def _WrapValeurs(self):
         try:
-            largeur = max(UTILS_UIMetrics.px(120), self.GetClientSize().GetWidth() - UTILS_UIMetrics.spacing(4))
+            largeur = max(Style.px(120), self.GetClientSize().GetWidth() - Style.espace(4))
         except Exception:
             return
         for controle in (self.label_statut, self.valeur_identifiant, self.valeur_mdp, self.note_mdp):
@@ -138,15 +126,15 @@ class CTRL(wx.Panel):
         actif = self.dictDonnees.get("internet_actif") == 1
         if actif:
             activation = _(u"Compte internet activé")
-            role_statut = "success"
+            role_statut = "success_text"
         else:
             activation = _(u"Compte internet désactivé")
-            role_statut = "danger"
+            role_statut = "danger_text"
 
         identifiant = self.dictDonnees.get("internet_identifiant") or ""
         mdp, personnalise = self._LireMdp()
 
-        couleur_statut = UTILS_Interface.GetCouleurRole(role_statut)
+        couleur_statut = Style.couleur(role_statut)
         self.indicateur_statut.SetForegroundColour(couleur_statut)
         self.label_statut.SetForegroundColour(couleur_statut)
         self.indicateur_statut.Show()
@@ -202,10 +190,11 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1, name="test1")
+        Style.appliquer_fenetre(panel)
         self.ctrl = CTRL(panel, IDfamille=14)
         self.ctrl.SetDonnees({"internet_actif": 1, "internet_identifiant": "test1", "internet_mdp": "test2"})
         contenu = wx.BoxSizer(wx.VERTICAL)
-        contenu.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        contenu.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(contenu)
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(panel, 1, wx.EXPAND)
