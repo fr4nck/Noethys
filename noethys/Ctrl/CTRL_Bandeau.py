@@ -50,7 +50,7 @@ class TexteIntro(wx.StaticText):
 
     def __init__(self, parent, texte=u""):
         self.texte_original = _texte_simple(texte)
-        wx.StaticText.__init__(self, parent, -1, self.texte_original, style=wx.ST_NO_AUTORESIZE)
+        wx.StaticText.__init__(self, parent, -1, self.texte_original)
         self.SetMinSize((-1, UTILS_UIMetrics.row_height("compact")))
         self.Bind(wx.EVT_SIZE, self.OnSize)
         self.AppliquerTheme()
@@ -156,7 +156,6 @@ class Bandeau(wx.Panel):
     def __do_layout(self):
         """Le texte récupère toute la largeur libre, sans hauteur HTML fixe."""
         marge_x = UTILS_UIMetrics.spacing(3)
-        marge_y = UTILS_UIMetrics.spacing(2)
 
         contenu = wx.BoxSizer(wx.HORIZONTAL)
         if self.image is not None:
