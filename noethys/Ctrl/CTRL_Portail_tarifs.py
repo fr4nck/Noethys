@@ -130,28 +130,27 @@ class CTRL(wx.Panel):
         return resultat
 
     def GetPolitique(self):
-        IDs_coches = self.GetIDsCoches()
-        IDs_catalogue = [IDactivite for IDactivite, nom in self.catalogue]
-        if self.radio_selection.GetValue():
-            return {
-                "mode": "selection",
-                "IDsactivites": IDs_coches,
-                "IDsactivites_exclues": [],
-            }
-        return {
-            "mode": "automatique",
-            "IDsactivites": [],
-            "IDsactivites_exclues": [IDactivite for IDactivite in IDs_catalogue if IDactivite not in IDs_coches],
-        }
+        mode = (
+            UTILS_Portail_tarifs_bloc.MODE_SELECTION
+            if self.radio_selection.GetValue()
+            else UTILS_Portail_tarifs_bloc.MODE_AUTOMATIQUE
+        )
+        return UTILS_Portail_tarifs_bloc.fusionner_choix_catalogue(
+            self.config,
+            [IDactivite for IDactivite, nom in self.catalogue],
+            self.GetIDsCoches(),
+            mode=mode,
+        )
 
     def GetConfiguration(self):
         politique = self.GetPolitique()
-        return UTILS_Portail_tarifs_bloc.normaliser_configuration({
+        self.config = UTILS_Portail_tarifs_bloc.normaliser_configuration({
             "mode": politique["mode"],
             "IDsactivites": politique["IDsactivites"],
             "IDsactivites_exclues": politique["IDsactivites_exclues"],
             "titre": self.ctrl_titre.GetValue(),
         })
+        return self.config
 
     def AppliquerConfiguration(self, config):
         self.config = UTILS_Portail_tarifs_bloc.normaliser_configuration(config)
@@ -213,7 +212,7 @@ class CTRL(wx.Panel):
         event.Skip()
 
     def GetParametres(self):
-        publication = self.RafraichirApercu(silencieux=True)
+        self.RafraichirApercu(silencieux=True)
         config = self.GetConfiguration()
         return {"elements": [{
             "IDelement": self.IDelement,
@@ -249,7 +248,7 @@ class CTRL(wx.Panel):
             dlg.Destroy()
             self.ctrl_titre.SetFocus()
             return False
-        if self.radio_selection.GetValue() and not self.GetIDsCoches():
+        if self.radio_selection.GetValue() and not self.GetPolitique()["IDsactivites"]:
             dlg = wx.MessageDialog(
                 self,
                 _(u"En sélection manuelle, cochez au moins une activité."),
