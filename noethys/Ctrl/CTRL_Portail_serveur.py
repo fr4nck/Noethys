@@ -22,6 +22,7 @@ from Utils import UTILS_Parametres
 from Utils import UTILS_Fichiers
 from Utils import UTILS_Customize
 from Utils import UTILS_Portail_synchro
+from Utils import UTILS_Portail_tarifs_synchro
 from Dlg.DLG_Portail_config import LISTE_DELAIS_SYNCHRO
 import six
 CUSTOMIZE = UTILS_Customize.Customize()
@@ -98,6 +99,16 @@ class Serveur(Thread):
                         # Effectue la synchro
                         self.parent.SetImage("upload")
                         self.synchro_en_cours = True
+
+                        # Les tarifs du portail sont reconstruits depuis les
+                        # barèmes Noethys juste avant l'export. Une erreur de
+                        # publication ne doit jamais bloquer Connecthys : le
+                        # dernier HTML valide reste alors en cache.
+                        try:
+                            UTILS_Portail_tarifs_synchro.preparer_avant_synchro(log=self.parent)
+                        except Exception as err:
+                            self.parent.EcritLog(_(u"[AVERTISSEMENT] Actualisation des tarifs du portail impossible : %s") % err)
+
                         synchro = UTILS_Portail_synchro.Synchro(log=self.parent)
                         synchro.Synchro_totale()
                         self.synchro_en_cours = False
