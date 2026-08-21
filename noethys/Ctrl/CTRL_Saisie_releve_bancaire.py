@@ -5,15 +5,14 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-11 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 import wx
 import GestionDB
 
 from Utils.UTILS_Traduction import _
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Ctrl import CTRL_Bouton_image
 
 
@@ -22,23 +21,8 @@ class CTRL_Choix(wx.Choice):
         wx.Choice.__init__(self, parent, -1)
         self.parent = parent
         self.IDcompte_bancaire = IDcompte_bancaire
-        self._AppliqueStyle()
+        Style.appliquer_saisie(self)
         self.MAJ()
-
-    def _AppliqueStyle(self):
-        try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            self.SetFont(police)
-        except Exception:
-            pass
-        try:
-            self.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        except Exception:
-            pass
 
     def MAJ(self):
         listeItems = self.GetListeDonnees()
@@ -80,30 +64,26 @@ class CTRL(wx.Panel):
         wx.Panel.__init__(self, parent, id=-1, name="ctrl_saisie_releve_bancaire", style=wx.TAB_TRAVERSAL)
         self.parent = parent
         self.afficherBouton = afficherBouton
+        Style.appliquer_fenetre(self, "surface")
         self.ctrl_releve = CTRL_Choix(self, IDcompte_bancaire=IDcompte_bancaire)
 
         self.bouton_releve = None
         if self.afficherBouton is True:
+            taille = Style.taille_icone("inline")
             self.bouton_releve = CTRL_Bouton_image.CTRL(
                 self,
                 texte="",
                 iconeFluent="edit",
-                tailleImage=(UTILS_UIMetrics.icon_size("inline"), UTILS_UIMetrics.icon_size("inline")),
+                tailleImage=(taille, taille),
             )
             self.Bind(wx.EVT_BUTTON, self.OnBoutonReleve, self.bouton_releve)
             self.bouton_releve.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour accéder à la gestion des relevés bancaires")))
 
-        try:
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
-        except Exception:
-            pass
-
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(self.ctrl_releve, 1, wx.EXPAND)
         if self.bouton_releve is not None:
-            sizer.Add(self.bouton_releve, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
+            sizer.Add(self.bouton_releve, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
         self.SetSizer(sizer)
-        self.Fit()
         self.Layout()
 
     def OnBoutonReleve(self, event):
@@ -134,11 +114,12 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1, name="panel_test")
+        Style.appliquer_fenetre(panel)
         self.ctrl1 = CTRL(panel)
         self.ctrl2 = CTRL(panel, afficherBouton=False)
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl1, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
-        sizer.Add(self.ctrl2, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl1, 0, wx.ALL | wx.EXPAND, Style.espace(2))
+        sizer.Add(self.ctrl2, 0, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
