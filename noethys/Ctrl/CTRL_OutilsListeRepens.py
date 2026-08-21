@@ -208,7 +208,7 @@ class CTRL(wx.Panel):
         self.bouton_filtrer = CTRL_ActionRepens.CTRL(
             self,
             label=_(u"Filtrer"),
-            icone="settings",
+            icone="filter",
             variante="ghost",
             tooltip=_(u"Gérer les filtres avancés de cette liste"),
         )
