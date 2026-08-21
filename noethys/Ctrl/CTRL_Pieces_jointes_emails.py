@@ -15,8 +15,7 @@ import wx
 import Chemins
 from Utils import UTILS_Adaptations
 from Utils import UTILS_IconesRepens
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 if wx.VERSION < (2, 9, 0, 0):
@@ -41,18 +40,10 @@ class CTRL(ULC.UltimateListCtrl):
         )
         self.parent = parent
         self.listePieces = listePieces or []
-        self._taille_icone = UTILS_UIMetrics.icon_size("inline")
+        self._taille_icone = Style.taille_icone("inline")
 
-        try:
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            self.SetFont(police)
-        except Exception:
-            pass
-        self.SetMinSize((UTILS_UIMetrics.px(260), UTILS_UIMetrics.panel_min_height("secondary")))
+        Style.appliquer_liste(self)
+        self.SetMinSize((Style.px(260), Style.hauteur_panneau("secondary")))
         self.SetToolTip(wx.ToolTip(_(u"Pièces jointes. Clic droit pour ajouter ou supprimer un fichier.")))
 
         # Les pictogrammes d'extension portent une information métier et sont
@@ -99,7 +90,7 @@ class CTRL(ULC.UltimateListCtrl):
 
             if obligatoire is True:
                 self.EnableItem(index, enable=False)
-                self.SetItemTextColour(index, UTILS_Interface.GetCouleurRole("on_surface_variant"))
+                self.SetItemTextColour(index, Style.couleur("on_surface_variant"))
 
         try:
             if len(self.listePieces) > 0:
@@ -123,7 +114,7 @@ class CTRL(ULC.UltimateListCtrl):
         try:
             bitmap = UTILS_IconesRepens.GetBitmap(
                 nom,
-                taille=UTILS_UIMetrics.icon_size("compact"),
+                taille=Style.taille_icone("compact"),
                 role=role,
             )
             if bitmap is not None and bitmap.IsOk():
@@ -241,10 +232,11 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel, "surface")
         listePieces = [{"nom": _(u"Facture"), "extension": "pdf", "taille": None, "obligatoire": True}]
         self.ctrl = CTRL(panel, listePieces=listePieces)
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(panel, 1, wx.EXPAND)
