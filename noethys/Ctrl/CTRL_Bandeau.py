@@ -13,6 +13,7 @@ import re
 
 import Chemins
 import wx
+from Ctrl import CTRL_TexteRepens
 from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
@@ -44,108 +45,75 @@ def _bitmap_adapte(chemin, taille):
         return wx.NullBitmap
 
 
-class TexteIntro(wx.StaticText):
-    """Texte de bandeau natif qui se recompose avec la largeur disponible."""
+class TexteIntro(CTRL_TexteRepens.CTRL):
+    """Texte d'introduction sémantique, reflow automatique."""
 
     def __init__(self, parent, texte=u""):
         self.texte_original = _texte_simple(texte)
-        wx.StaticText.__init__(self, parent, -1, self.texte_original)
-        self.SetMinSize((-1, Style.hauteur_ligne("compact")))
-        self.Bind(wx.EVT_SIZE, self.OnSize)
-        self.AppliquerTheme()
-        wx.CallAfter(self.Reflow)
-
-    def AppliquerTheme(self):
-        Style.appliquer_texte(
+        CTRL_TexteRepens.CTRL.__init__(
             self,
+            parent,
+            label=self.texte_original,
             role="body",
             role_texte="on_surface_variant",
             role_fond="surface_container",
+            wrap=True,
         )
+        self.SetMinSize((-1, Style.hauteur_ligne("compact")))
+
+    def AppliquerTheme(self):
+        self.AppliquerStyle()
 
     def SetTexte(self, texte):
         self.texte_original = _texte_simple(texte)
-        self.Reflow()
-
-    def Reflow(self):
-        try:
-            largeur = int(self.GetClientSize().GetWidth())
-        except Exception:
-            largeur = 0
         self.SetLabel(self.texte_original)
-        if largeur > Style.px(120):
-            try:
-                self.Wrap(max(Style.px(120), largeur - Style.espace(1)))
-            except Exception:
-                pass
-        try:
-            self.InvalidateBestSize()
-            parent = self.GetParent()
-            if parent is not None:
-                parent.Layout()
-        except Exception:
-            pass
-
-    def OnSize(self, event):
-        event.Skip()
-        wx.CallAfter(self.Reflow)
 
 
 class Bandeau(wx.Panel):
-    """En-tête commun des dialogues Noethys, compact et réellement responsive."""
+    """En-tête commun : illustration, H1 et introduction reflow."""
 
     def __init__(self, parent, titre="", texte="", hauteurHtml=25, nomImage=None):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.nomImage = nomImage
         self.image = None
-        # ``hauteurHtml`` reste accepté pour compatibilité API, mais aucune
-        # hauteur de texte n'est désormais figée par cette valeur.
+        # Compatibilité API historique uniquement : aucune hauteur n'est figée.
         self.hauteurHtml = hauteurHtml
 
         if self.nomImage is not None:
             taille = Style.taille_icone("hero")
             self.image = wx.StaticBitmap(self, -1, _bitmap_adapte(self.nomImage, taille))
 
-        self.ctrl_titre = wx.StaticText(self, -1, titre)
+        self.ctrl_titre = CTRL_TexteRepens.H1(
+            self,
+            label=titre,
+            role_texte="on_surface",
+            role_fond="surface_container",
+            wrap=True,
+        )
         self.ctrl_intro = TexteIntro(self, texte)
         self.ligne = wx.StaticLine(self, -1)
 
-        self.__set_properties()
+        self.AppliquerTheme()
         self.__do_layout()
         self.Bind(wx.EVT_SIZE, self.OnSize)
 
-    def __set_properties(self):
-        self.AppliquerTheme()
-        self.ctrl_titre.SetFont(Style.police("title"))
-
     def AppliquerTheme(self):
         Style.appliquer_fenetre(self, "surface_container")
-        Style.appliquer_texte(
-            self.ctrl_titre,
-            role="title",
-            role_texte="on_surface",
-            role_fond="surface_container",
-        )
+        self.ctrl_titre.AppliquerStyle()
+        self.ctrl_intro.AppliquerTheme()
         bordure = Style.couleur("outline_variant")
         try:
             self.ligne.SetForegroundColour(bordure)
             self.ligne.SetBackgroundColour(bordure)
         except Exception:
             pass
-
         if self.image is not None:
             try:
                 self.image.SetBackgroundColour(Style.couleur("surface_container"))
             except Exception:
                 pass
 
-        try:
-            self.ctrl_intro.AppliquerTheme()
-        except Exception:
-            pass
-
     def __do_layout(self):
-        """Le texte récupère toute la largeur libre, sans hauteur HTML fixe."""
         marge_x = Style.espace(3)
 
         contenu = wx.BoxSizer(wx.HORIZONTAL)
@@ -158,15 +126,15 @@ class Bandeau(wx.Panel):
         contenu.Add(textes, 1, wx.EXPAND)
 
         principal = wx.BoxSizer(wx.VERTICAL)
-        principal.Add(contenu, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP | wx.BOTTOM, marge_x)
+        principal.Add(contenu, 1, wx.EXPAND | wx.ALL, marge_x)
         principal.Add(self.ligne, 0, wx.EXPAND)
-
         self.SetSizer(principal)
-        self.SetMinSize((-1, Style.px(72)))
+        self.SetMinSize((-1, Style.px(76)))
         self.Layout()
 
     def OnSize(self, event):
         event.Skip()
+        wx.CallAfter(self.ctrl_titre.Reflow)
         wx.CallAfter(self.ctrl_intro.Reflow)
 
 
