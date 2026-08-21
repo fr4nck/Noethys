@@ -15,6 +15,7 @@ class Apercu(wx.Panel):
     """Petit aperçu sans effet sur l'interface en cours."""
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, -1, style=wx.BORDER_SIMPLE)
+        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
         self.SetMinSize((500, 205))
         self.echelle = 100
         self.taille_texte = 100
