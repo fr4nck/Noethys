@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 """Texte sémantique de Repens Design.
 
-Équivalent desktop d'une hiérarchie HTML : un écran choisit ``h1``, ``h2``,
-``h3``, ``body`` ou ``caption`` sans fixer lui-même une taille de police.
-Le rendu réel vient exclusivement de ``UTILS_StyleRepens``.
+Équivalent desktop d'une hiérarchie HTML enrichie : un écran choisit un rôle
+(Display, H1..H6, Lead, BodyLarge, Body, BodySmall, Label, Caption, Micro ou
+DataLarge) sans fixer lui-même une taille de police. Le rendu réel vient
+exclusivement de ``UTILS_StyleRepens``.
 """
 
 import wx
@@ -13,9 +14,18 @@ from Utils import UTILS_StyleRepens as Style
 
 
 ROLES_TEXTE = (
+    "display",
     "h1", "h2", "h3", "h4", "h5", "h6",
-    "body", "body_emphasis", "caption", "overline",
+    "lead",
+    "body_large", "body", "body_small", "body_emphasis",
+    "label", "caption", "micro", "overline",
+    "data_large",
 )
+
+
+def _role(role):
+    role = Style.normaliser_role_typographie(role)
+    return role if role in ROLES_TEXTE or role in ("title", "section") else "body"
 
 
 class CTRL(wx.StaticText):
@@ -29,7 +39,7 @@ class CTRL(wx.StaticText):
         wrap=True,
     ):
         wx.StaticText.__init__(self, parent, -1, label or u"")
-        self.role = role if role in ROLES_TEXTE else "body"
+        self.role = _role(role)
         self.role_texte = role_texte
         self.role_fond = role_fond
         self.wrap_actif = bool(wrap)
@@ -49,9 +59,7 @@ class CTRL(wx.StaticText):
         self.Refresh()
 
     def SetRole(self, role):
-        if role not in ROLES_TEXTE:
-            role = "body"
-        self.role = role
+        self.role = _role(role)
         self.AppliquerStyle()
         self.InvalidateBestSize()
         if self.wrap_actif:
@@ -92,19 +100,69 @@ class CTRL(wx.StaticText):
         wx.CallAfter(self.Reflow)
 
 
-class H1(CTRL):
+class _RoleTexte(CTRL):
+    ROLE = "body"
+
     def __init__(self, parent, label=u"", **kwargs):
-        kwargs["role"] = "h1"
+        kwargs["role"] = self.ROLE
         CTRL.__init__(self, parent, label=label, **kwargs)
 
 
-class H2(CTRL):
-    def __init__(self, parent, label=u"", **kwargs):
-        kwargs["role"] = "h2"
-        CTRL.__init__(self, parent, label=label, **kwargs)
+class Display(_RoleTexte):
+    ROLE = "display"
 
 
-class H3(CTRL):
-    def __init__(self, parent, label=u"", **kwargs):
-        kwargs["role"] = "h3"
-        CTRL.__init__(self, parent, label=label, **kwargs)
+class H1(_RoleTexte):
+    ROLE = "h1"
+
+
+class H2(_RoleTexte):
+    ROLE = "h2"
+
+
+class H3(_RoleTexte):
+    ROLE = "h3"
+
+
+class H4(_RoleTexte):
+    ROLE = "h4"
+
+
+class H5(_RoleTexte):
+    ROLE = "h5"
+
+
+class H6(_RoleTexte):
+    ROLE = "h6"
+
+
+class Lead(_RoleTexte):
+    ROLE = "lead"
+
+
+class BodyLarge(_RoleTexte):
+    ROLE = "body_large"
+
+
+class Body(_RoleTexte):
+    ROLE = "body"
+
+
+class BodySmall(_RoleTexte):
+    ROLE = "body_small"
+
+
+class Label(_RoleTexte):
+    ROLE = "label"
+
+
+class Caption(_RoleTexte):
+    ROLE = "caption"
+
+
+class Micro(_RoleTexte):
+    ROLE = "micro"
+
+
+class DataLarge(_RoleTexte):
+    ROLE = "data_large"
