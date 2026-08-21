@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contrats du sas de chargement de la liste des consommations."""
+"""Contrats des shells différés/stables des dialogues historiques."""
 
 import ast
 import unittest
@@ -15,12 +15,13 @@ class ImpressionConsoDeferredContractTests(unittest.TestCase):
         ast.parse(text)
         return text
 
-    def test_dlg_package_routes_only_the_heavy_dialog_lazily(self):
+    def test_dlg_package_routes_only_selected_dialogs_lazily(self):
         text = self._read("noethys/Dlg/__init__.py")
         self.assertIn("def __getattr__(name):", text)
-        self.assertIn('name == "DLG_Impression_conso"', text)
-        self.assertIn("DLG_Impression_conso_differe", text)
+        self.assertIn('"DLG_Impression_conso": ".DLG_Impression_conso_differe"', text)
+        self.assertIn('"DLG_Preferences": ".DLG_Preferences_stable"', text)
         self.assertNotIn("from .DLG_Impression_conso", text)
+        self.assertNotIn("from .DLG_Preferences", text)
 
     def test_deferred_dialog_reuses_legacy_business_engine(self):
         text = self._read("noethys/Dlg/DLG_Impression_conso_differe.py")
@@ -46,6 +47,16 @@ class ImpressionConsoDeferredContractTests(unittest.TestCase):
         self.assertIn("ctrl_evenements.listeActivites = sorted(liste_activites)", text)
         self.assertIn("ctrl_evenements.SetDates(listeDates=self._dates_initiales)", text)
         self.assertNotIn("ctrl_evenements.SetActivites(liste_activites)", text)
+
+    def test_preferences_adapter_is_one_full_width_scroll_column(self):
+        text = self._read("noethys/Dlg/DLG_Preferences_stable.py")
+        self.assertIn("class Dialog(Legacy.Dialog):", text)
+        self.assertIn("colonne = wx.BoxSizer(wx.VERTICAL)", text)
+        self.assertIn("self.contenu.FitInside()", text)
+        self.assertIn("colonne.Add(ctrl, 0, wx.EXPAND", text)
+        self.assertNotIn("wx.BoxSizer(wx.HORIZONTAL)", text)
+        self.assertNotIn("colonne_gauche", text)
+        self.assertNotIn("colonne_droite", text)
 
 
 if __name__ == "__main__":
