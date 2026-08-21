@@ -15,8 +15,7 @@ import PIL.ImageOps as ImageOps
 
 import Chemins
 from Utils import UTILS_IconesRepens
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 
 
 # Migration locale au contrôle commun Noethys. Il ne s'agit pas d'une
@@ -94,13 +93,9 @@ class CTRL(wx.Button):
             largeur, hauteur = self.tailleImage
         except Exception:
             largeur = hauteur = 20
-        try:
-            facteur = max(1.0, UTILS_UIMetrics.get_scale())
-        except Exception:
-            facteur = 1.0
         return (
-            max(12, int(round(float(largeur) * facteur))),
-            max(12, int(round(float(hauteur) * facteur))),
+            Style.px(largeur, minimum=12),
+            Style.px(hauteur, minimum=12),
         )
 
     def _BitmapSemantique(self, nom, role="on_surface"):
@@ -163,15 +158,12 @@ class CTRL(wx.Button):
             pass
 
         try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            self.SetFont(police)
+            self.SetFont(Style.police("body"))
         except Exception:
             pass
 
         try:
-            cible = UTILS_UIMetrics.action_target("standard")
+            cible = Style.cible_action("standard")
             self.SetMinSize((max(cible, self.GetBestSize().GetWidth()), cible))
         except Exception:
             pass
@@ -189,35 +181,31 @@ class CTRL(wx.Button):
             pass
 
     def _AppliquerEtat(self):
-        """Même grammaire d'état en clair et en sombre.
-
-        Le bouton reste un ``wx.Button`` natif pour conserver les comportements
-        de dialogue (ID_CANCEL, bouton par défaut, tabulation, accessibilité).
-        """
+        """Même grammaire d'état en clair et en sombre via le CSS Repens."""
         try:
             actif = self.IsEnabled()
         except Exception:
             actif = True
 
         if not actif:
-            fond = UTILS_Interface.GetCouleurRole("disabled")
-            try:
-                texte = UTILS_Interface.GetCouleurRole("disabled_text")
-            except Exception:
-                texte = UTILS_Interface.GetCouleurRole("on_surface_variant")
+            etat = Style.etat("disabled")
+            fond = etat["background"]
+            texte = etat["foreground"]
         elif self._presse:
-            etat = UTILS_Interface.GetEtatCouleurs("pressed")
+            etat = Style.etat("pressed")
             fond = etat["background"]
             texte = etat["foreground"]
         elif self._survole:
-            fond = UTILS_Interface.GetCouleurRole("surface_container_highest")
-            texte = UTILS_Interface.GetCouleurRole("on_surface")
+            etat = Style.etat("hover")
+            fond = etat["background"]
+            texte = etat["foreground"]
         elif self.HasFocus():
-            fond = UTILS_Interface.GetCouleurRole("surface_container_high")
-            texte = UTILS_Interface.GetCouleurRole("on_surface")
+            etat = Style.etat("focus")
+            fond = etat["background"]
+            texte = etat["foreground"]
         else:
-            fond = UTILS_Interface.GetCouleurRole("surface_container_high")
-            texte = UTILS_Interface.GetCouleurRole("on_surface")
+            fond = Style.couleur("surface_container_high")
+            texte = Style.couleur("on_surface")
 
         try:
             self.SetBackgroundColour(fond)
@@ -295,9 +283,10 @@ if __name__ == '__main__':
     app = wx.App(0)
     frame = wx.Frame(None, -1, "Bouton Noethys", size=(480, 180))
     panel = wx.Panel(frame)
+    Style.appliquer_fenetre(panel, "surface")
     bouton = CTRL(panel, texte="Paramètres", iconeFluent="settings", tailleImage=(24, 24))
     sizer = wx.BoxSizer(wx.VERTICAL)
-    sizer.Add(bouton, 0, wx.ALL, UTILS_UIMetrics.spacing(4))
+    sizer.Add(bouton, 0, wx.ALL, Style.espace(4))
     panel.SetSizer(sizer)
     frame.Show()
     app.MainLoop()
