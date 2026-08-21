@@ -3,7 +3,7 @@
 #------------------------------------------------------------------------
 # Application :    Noethys, gestion multi-activités
 # Site internet :  www.noethys.com
-# Auteur:          Ivan LUCAS
+# Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-17 Ivan LUCAS
 # Licence:         Licence GNU GPL
 #------------------------------------------------------------------------
@@ -11,6 +11,7 @@
 import wx
 
 from Ctrl import CTRL_Bouton_image
+from Ctrl import CTRL_OutilsListeRepens
 from Ol import OL_Locations
 from Utils import UTILS_Interface
 from Utils import UTILS_UIMetrics
@@ -36,7 +37,11 @@ class CTRL(wx.Panel):
         self.bouton_liste_export_texte = self._CreerBouton(_(u"Texte"), "Images/16x16/Texte2.png", _(u"Exporter cette liste au format Texte"))
         self.bouton_liste_export_excel = self._CreerBouton(_(u"Excel"), "Images/16x16/Excel.png", _(u"Exporter cette liste au format Excel"))
 
-        self.ctrl_recherche = OL_Locations.CTRL_Outils(self, listview=self.ctrl_locations, afficherCocher=True)
+        self.ctrl_recherche = CTRL_OutilsListeRepens.CTRL(
+            self,
+            listview=self.ctrl_locations,
+            afficherCocher=True,
+        )
         self.check_locations_actives = wx.CheckBox(self, -1, _(u"Locations en cours uniquement"))
         self.check_locations_actives.SetValue(True)
         self.check_locations_actives.SetToolTip(wx.ToolTip(_(u"Afficher uniquement les locations actives")))
