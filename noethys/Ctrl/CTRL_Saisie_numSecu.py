@@ -12,8 +12,7 @@ import wx
 import wx.lib.masked as masked
 
 from Utils.UTILS_Traduction import _
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 
 
 class NumSecu(wx.Panel):
@@ -54,30 +53,22 @@ GG : Clé
         """
         self.ctrl_numsecu.SetToolTip(wx.ToolTip(texteNumSecu))
 
+        Style.appliquer_fenetre(self, "surface")
+        Style.appliquer_saisie(self.ctrl_numsecu)
         try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            self.ctrl_numsecu.SetFont(police)
-
-            police_etat = wx.Font(police)
-            police_etat.SetWeight(wx.FONTWEIGHT_BOLD)
-            police_etat.SetPointSize(max(police.GetPointSize() + 2, 10))
-            self.indicateur.SetFont(police_etat)
+            self.indicateur.SetFont(Style.police("h4"))
+            self.indicateur.SetBackgroundColour(Style.couleur("surface"))
         except Exception:
             pass
 
         try:
             largeur = max(
-                UTILS_UIMetrics.px(196),
-                self.ctrl_numsecu.GetTextExtent("1 99 99 99 999 999 99")[0] + UTILS_UIMetrics.spacing(4),
+                Style.px(196),
+                self.ctrl_numsecu.GetTextExtent("1 99 99 99 999 999 99")[0] + Style.espace(4),
             )
-            hauteur = UTILS_UIMetrics.action_target("compact")
+            hauteur = Style.cible_action("compact")
             self.ctrl_numsecu.SetMinSize((largeur, hauteur))
             self.indicateur.SetMinSize((hauteur, hauteur))
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
-            self.ctrl_numsecu.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.ctrl_numsecu.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
         except Exception:
             pass
 
@@ -86,7 +77,7 @@ GG : Clé
     def __do_layout(self):
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(self.ctrl_numsecu, 1, wx.EXPAND)
-        sizer.Add(self.indicateur, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
+        sizer.Add(self.indicateur, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
         self.SetSizer(sizer)
         self.Fit()
         self.Layout()
@@ -95,15 +86,15 @@ GG : Clé
         try:
             if validation is True:
                 self.indicateur.SetLabel(u"✓")
-                self.indicateur.SetForegroundColour(UTILS_Interface.GetCouleurRole("success"))
+                self.indicateur.SetForegroundColour(Style.couleur("success"))
                 self.indicateur.SetToolTip(wx.ToolTip(_(u"Numéro de sécurité sociale cohérent")))
             elif validation is False:
                 self.indicateur.SetLabel(u"!")
-                self.indicateur.SetForegroundColour(UTILS_Interface.GetCouleurRole("danger"))
+                self.indicateur.SetForegroundColour(Style.couleur("danger"))
                 self.indicateur.SetToolTip(wx.ToolTip(_(u"Numéro de sécurité sociale à vérifier")))
             else:
                 self.indicateur.SetLabel(u"–")
-                self.indicateur.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
+                self.indicateur.SetForegroundColour(Style.couleur("on_surface_variant"))
                 self.indicateur.SetToolTip(wx.ToolTip(_(u"Aucun numéro renseigné")))
             self.indicateur.Refresh()
             self.Layout()
@@ -194,11 +185,13 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(self, "surface")
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = NumSecu(panel)
         self.bouton = wx.Button(panel, -1, _(u"Test"))
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
-        sizer.Add(self.bouton, 0, wx.ALL, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 0, wx.ALL | wx.EXPAND, Style.espace(2))
+        sizer.Add(self.bouton, 0, wx.ALL, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
