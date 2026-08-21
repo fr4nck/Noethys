@@ -27,6 +27,13 @@ print("wx :", wx.version())
 print("plateforme :", wx.PlatformInfo)
 assert "phoenix" in wx.PlatformInfo
 
+# Les imports historiques doivent arriver sur les shells stabilisés, sans que
+# Noethys.py ait besoin de connaître leur implémentation.
+from Dlg import DLG_Impression_conso
+from Dlg import DLG_Preferences
+assert DLG_Impression_conso.__name__ == "Dlg.DLG_Impression_conso_differe"
+assert DLG_Preferences.__name__ == "Dlg.DLG_Preferences_stable"
+
 frame = wx.Frame(None, title="Noethys UI smoke", size=(720, 560))
 panel = wx.Panel(frame)
 root = wx.BoxSizer(wx.VERTICAL)
