@@ -59,6 +59,10 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         text = self._read("noethys/Ctrl/CTRL_Assistants_liste.py")
         self.assertIn("wx.EVT_SIZE", text)
         self.assertIn("GetClientSize().GetWidth()", text)
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_liste(self)", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
         self.assertNotIn("SendSizeEvent", text)
         self.assertNotIn("SetSize((400", text)
 
