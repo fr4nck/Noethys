@@ -5,6 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 STYLE = ROOT / "noethys" / "Utils" / "UTILS_StyleRepens.py"
 SHELL = ROOT / "noethys" / "Ctrl" / "CTRL_FenetreRepens.py"
+TEXT = ROOT / "noethys" / "Ctrl" / "CTRL_TexteRepens.py"
 ACTION = ROOT / "noethys" / "Ctrl" / "CTRL_ActionRepens.py"
 SURFACE = ROOT / "noethys" / "Ctrl" / "CTRL_SurfaceRepens.py"
 BADGE = ROOT / "noethys" / "Ctrl" / "CTRL_BadgeRepens.py"
@@ -35,13 +36,28 @@ def test_style_repens_est_le_point_entree_css_de_noethys():
         assert api in texte
 
 
+def test_style_repens_expose_une_hierarchie_html_h1_a_h6():
+    style = STYLE.read_text(encoding="utf-8")
+    texte = TEXT.read_text(encoding="utf-8")
+    for role in ("h1", "h2", "h3", "h4", "h5", "h6"):
+        assert '"%s"' % role in style
+        assert '"%s"' % role in texte
+    assert '"title": {"alias": "h1"}' in style
+    assert '"section": {"alias": "h2"}' in style
+    assert "class H1(CTRL)" in texte
+    assert "class H2(CTRL)" in texte
+    assert "class H3(CTRL)" in texte
+    assert "SetRole" in texte
+    assert "UTILS_StyleRepens as Style" in texte
+
+
 def test_composants_repens_communs_passent_par_la_facade_de_style():
-    for fichier in (ACTION, SURFACE, BADGE, BANDEAU, SHELL):
+    for fichier in (TEXT, ACTION, SURFACE, BADGE, BANDEAU, SHELL):
         texte = fichier.read_text(encoding="utf-8")
         assert "UTILS_StyleRepens as Style" in texte
         assert "wx.Colour(" not in texte
 
-    for fichier in (ACTION, SURFACE, BADGE, BANDEAU):
+    for fichier in (TEXT, ACTION, SURFACE, BADGE, BANDEAU):
         texte = fichier.read_text(encoding="utf-8")
         assert "UTILS_Interface" not in texte
         assert "UTILS_UIMetrics" not in texte
@@ -66,6 +82,8 @@ def test_shell_repens_centralise_dialogue_frame_sections_et_footer():
         "class Frame(wx.Frame)",
     ):
         assert classe in texte
+    assert "CTRL_TexteRepens.H2" in texte
+    assert 'niveau="h3"' in texte
     assert "wx.RESIZE_BORDER" in texte
     assert "wx.MAXIMIZE_BOX" in texte
     assert "wx.MINIMIZE_BOX" in texte
