@@ -1,17 +1,24 @@
 # -*- coding: utf-8 -*-
-"""Chargements spécialisés de quelques dialogues lourds.
+"""Chargements spécialisés de quelques dialogues lourds ou historiques.
 
-Le paquet reste vide pour les imports ordinaires. Seule la liste des
-consommations utilise un attribut de module différé afin de conserver tous les
-imports historiques sans imposer son gros moteur PDF au démarrage de Noethys.
+Le paquet reste paresseux pour les imports ordinaires. Les adaptateurs ci-dessous
+préservent les imports historiques tout en remplaçant uniquement le shell des
+fenêtres qui nécessitent une stabilisation Windows.
 """
 
 import importlib
 
 
+_ADAPTATEURS = {
+    "DLG_Impression_conso": ".DLG_Impression_conso_differe",
+    "DLG_Preferences": ".DLG_Preferences_stable",
+}
+
+
 def __getattr__(name):
-    if name == "DLG_Impression_conso":
-        module = importlib.import_module(".DLG_Impression_conso_differe", __name__)
+    module_name = _ADAPTATEURS.get(name)
+    if module_name is not None:
+        module = importlib.import_module(module_name, __name__)
         globals()[name] = module
         return module
     raise AttributeError(name)
