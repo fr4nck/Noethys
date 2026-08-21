@@ -39,7 +39,8 @@ class DashboardRepensContractTests(unittest.TestCase):
         self.assertIn('role_fond="surface_container_low"', self.aujourdhui)
         self.assertIn('role_fond="surface_container"', self.aujourdhui)
         self.assertIn("DrawRoundedRectangle", self.surface)
-        self.assertIn('GetCouleurRole("surface")', self.surface)
+        self.assertIn("UTILS_StyleRepens as Style", self.surface)
+        self.assertIn('Style.couleur("surface")', self.surface)
 
     def test_today_reflows_when_workspace_becomes_narrow(self):
         self.assertIn("def _AppliquerResponsive", self.aujourdhui)
@@ -57,8 +58,9 @@ class DashboardRepensContractTests(unittest.TestCase):
 
     def test_repens_action_has_semantic_primary_and_focus_states(self):
         self.assertIn('variante == "primaire"', self.action)
-        self.assertIn('GetCouleurRole("focus")', self.action)
+        self.assertIn('Style.couleur("focus")', self.action)
         self.assertIn("DrawRoundedRectangle", self.action)
+        self.assertIn("UTILS_StyleRepens as Style", self.action)
 
 
 if __name__ == "__main__":
