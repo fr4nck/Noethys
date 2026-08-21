@@ -21,10 +21,27 @@ except Exception:
     from Cryptodome.Hash import SHA256
 
 
+def _ConfigurerBarreShell(parent):
+    """Annonce explicitement la métrique Repens à la toolbar utilisateur."""
+    try:
+        import wx.lib.agw.aui as aui
+        if not isinstance(parent, aui.AuiToolBar):
+            return
+        parent._noethys_toolbar_icon_base = 24
+        taille = UTILS_UIMetrics.icon_size("toolbar")
+        parent.SetToolBitmapSize(wx.Size(taille, taille))
+        hauteur = UTILS_UIMetrics.toolbar_height(avec_libelle=True, icon_px=taille)
+        parent.SetMinSize((-1, hauteur))
+        parent._noethys_toolbar_min_height = hauteur
+    except Exception:
+        pass
+
+
 class CTRL(wx.SearchCtrl):
     """Champ d'identification utilisable dans le shell et dans le dialogue."""
 
     def __init__(self, parent, listeUtilisateurs=None, size=wx.DefaultSize, modeDLG=False):
+        _ConfigurerBarreShell(parent)
         wx.SearchCtrl.__init__(self, parent, size=size, style=wx.TE_PROCESS_ENTER | wx.TE_PASSWORD)
         self.parent = parent
         self.listeUtilisateurs = listeUtilisateurs or []
@@ -150,7 +167,7 @@ class Dialog(wx.Dialog):
             self,
             id=wx.ID_CANCEL,
             texte=_(u"Annuler"),
-            cheminImage="Images/32x32/Annuler.png",
+            iconeFluent="dismiss",
         )
         self.bouton_annuler.SetToolTip(wx.ToolTip(_(u"Annuler")))
 
