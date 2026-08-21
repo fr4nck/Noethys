@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contrats statiques des listes arborescentes migrées vers Repens Design."""
+"""Contrats statiques des listes arborescentes et rendues migrées vers Repens Design."""
 
 import ast
 import unittest
@@ -25,6 +25,18 @@ class RepensTreeListsContractTests(unittest.TestCase):
         self.assertNotIn("SetBackgroundColour(wx.WHITE)", text)
         self.assertNotIn("UTILS_Linux.AdaptePolice", text)
         self.assertNotIn("CTRL_Bouton_image", text)
+
+    def test_file_list_keeps_custom_renderer_but_uses_repens_tokens(self):
+        text = self._read("noethys/Ctrl/CTRL_Liste_fichiers.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_liste(self)", text)
+        self.assertIn('Style.police("body_emphasis")', text)
+        self.assertIn('Style.police("body_small")', text)
+        self.assertIn('Style.couleur("on_surface_variant")', text)
+        self.assertIn('Style.taille_icone("hero")', text)
+        self.assertNotIn("wx.SystemSettings.GetFont", text)
+        self.assertNotIn("wx.SystemSettings.GetColour", text)
+        self.assertNotIn("wx.BLACK", text)
 
 
 if __name__ == "__main__":
