@@ -36,6 +36,17 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertNotIn("FlexGridSizer", text)
         self.assertNotIn("GridSizer", text)
 
+    def test_home_is_flat_semantic_and_drops_decorative_card(self):
+        text = self._read("noethys/Ctrl/CTRL_Accueil.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn('Style.police("h2")', text)
+        self.assertIn('Style.couleur("primary")', text)
+        self.assertIn('Style.hauteur_ligne("compact")', text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+        self.assertNotIn("DrawRoundedRectangle", text)
+        self.assertNotIn("surface_container", text)
+
     def test_messages_no_longer_use_tiny_vertical_bitmap_buttons(self):
         text = self._read("noethys/Ctrl/CTRL_Messages.py")
         self.assertIn("AddFluentTool", text)
