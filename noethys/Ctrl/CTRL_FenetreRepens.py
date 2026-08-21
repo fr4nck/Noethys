@@ -12,6 +12,7 @@ import wx
 from Ctrl import CTRL_ActionRepens
 from Ctrl import CTRL_Bandeau
 from Ctrl import CTRL_SurfaceRepens
+from Ctrl import CTRL_TexteRepens
 from Utils import UTILS_StyleRepens as Style
 
 
@@ -42,7 +43,7 @@ def _taille_bornee(fenetre, taille, marge=0.92):
 
 
 class Section(CTRL_SurfaceRepens.CTRL):
-    """Section métier commune : titre, sous-titre optionnel et contenu libre."""
+    """Section métier commune : H2, sous-titre optionnel et contenu libre."""
 
     def __init__(self, parent, titre=u"", sous_titre=u"", role_fond="surface_container_low"):
         CTRL_SurfaceRepens.CTRL.__init__(
@@ -59,20 +60,21 @@ class Section(CTRL_SurfaceRepens.CTRL):
         self.label_titre = None
         self.label_sous_titre = None
         if self.titre:
-            self.label_titre = wx.StaticText(self, -1, self.titre)
-            Style.appliquer_texte(
-                self.label_titre,
-                role="section",
+            self.label_titre = CTRL_TexteRepens.H2(
+                self,
+                label=self.titre,
                 role_texte="on_surface",
                 role_fond=role_fond,
+                wrap=True,
             )
         if self.sous_titre:
-            self.label_sous_titre = wx.StaticText(self, -1, self.sous_titre)
-            Style.appliquer_texte(
-                self.label_sous_titre,
+            self.label_sous_titre = CTRL_TexteRepens.CTRL(
+                self,
+                label=self.sous_titre,
                 role="caption",
                 role_texte="on_surface_variant",
                 role_fond=role_fond,
+                wrap=True,
             )
 
         self.panel_contenu = wx.Panel(self, -1, style=wx.BORDER_NONE | wx.TAB_TRAVERSAL)
@@ -102,6 +104,24 @@ class Section(CTRL_SurfaceRepens.CTRL):
 
     def Ajouter(self, ctrl, proportion=0, flag=wx.EXPAND, border=0):
         self.sizer_contenu.Add(ctrl, proportion, flag, border)
+        self.Layout()
+        return ctrl
+
+    def AjouterTitre(self, titre, niveau="h3", role_texte="on_surface"):
+        """Ajoute un titre sémantique interne, H3 par défaut."""
+        if niveau not in CTRL_TexteRepens.ROLES_TEXTE:
+            niveau = "h3"
+        ctrl = CTRL_TexteRepens.CTRL(
+            self.panel_contenu,
+            label=titre,
+            role=niveau,
+            role_texte=role_texte,
+            role_fond=self.role_fond,
+            wrap=True,
+        )
+        if self.sizer_contenu.GetItemCount() > 0:
+            self.sizer_contenu.AddSpacer(Style.espace(2))
+        self.sizer_contenu.Add(ctrl, 0, wx.EXPAND | wx.BOTTOM, Style.espace(1))
         self.Layout()
         return ctrl
 
@@ -154,7 +174,7 @@ class BarreActions(wx.Panel):
 
 
 class Dialog(wx.Dialog):
-    """Dialogue Repens standard avec header, contenu et footer partagés."""
+    """Dialogue Repens standard avec H1, sections H2 et footer partagés."""
 
     def __init__(
         self,
