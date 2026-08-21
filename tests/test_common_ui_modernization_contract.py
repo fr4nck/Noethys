@@ -67,6 +67,12 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertNotIn("UTILS_Interface", text)
         self.assertNotIn("UTILS_UIMetrics", text)
 
+    def test_repens_facade_exposes_panel_height(self):
+        text = self._read("noethys/Utils/UTILS_StyleRepens.py")
+        self.assertIn("def hauteur_panneau", text)
+        self.assertIn("UTILS_UIMetrics.panel_min_height", text)
+        self.assertIn('"panel_secondary": hauteur_panneau("secondary")', text)
+
     def test_list_tools_consume_repens_facade_only(self):
         text = self._read("noethys/Ctrl/CTRL_OutilsListeRepens.py")
         self.assertIn("UTILS_StyleRepens as Style", text)
@@ -85,6 +91,65 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertNotIn("UTILS_Interface", text)
         self.assertNotIn("UTILS_UIMetrics", text)
         self.assertNotIn("_PoliceSysteme", text)
+
+    def test_taskbar_badge_uses_semantic_repens_roles(self):
+        text = self._read("noethys/Ctrl/CTRL_TaskBarIcon.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn('Style.couleur("danger")', text)
+        self.assertIn('Style.couleur("danger_text")', text)
+        self.assertIn('Style.police("caption")', text)
+        self.assertNotIn("wx.RED", text)
+        self.assertNotIn("wx.WHITE", text)
+
+    def test_profile_selector_consumes_repens_facade_only(self):
+        text = self._read("noethys/Ctrl/CTRL_Profil.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_saisie(self)", text)
+        self.assertIn('Style.appliquer_fenetre(self, "surface_container_low")', text)
+        self.assertIn("CTRL_ActionRepens.CTRL", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+
+    def test_image_control_consumes_repens_facade_only(self):
+        text = self._read("noethys/Ctrl/CTRL_Image_mode.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn('Style.couleur("surface_container_low")', text)
+        self.assertIn('Style.appliquer_fenetre(self, "surface")', text)
+        self.assertIn("CTRL_ActionRepens.CTRL", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+
+    def test_ultrachoice_uses_semantic_typography_and_surfaces(self):
+        text = self._read("noethys/Ctrl/CTRL_Ultrachoice.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn('Style.police("body_emphasis")', text)
+        self.assertIn('Style.police("body_small")', text)
+        self.assertIn('Style.couleur("surface_container_lowest")', text)
+        self.assertIn('Style.couleur("surface_container_low")', text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("_Police", text)
+
+    def test_email_attachments_use_repens_list_metrics(self):
+        text = self._read("noethys/Ctrl/CTRL_Pieces_jointes_emails.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_liste(self)", text)
+        self.assertIn('Style.hauteur_panneau("secondary")', text)
+        self.assertIn('Style.taille_icone("inline")', text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+
+    def test_period_selector_uses_repens_actions_and_icons(self):
+        text = self._read("noethys/Ctrl/CTRL_Selection_periode_simple.py")
+        self.assertIn("CTRL_ActionRepens", text)
+        self.assertIn("UTILS_IconesRepens", text)
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn('"icone": "calendar_month"', text)
+        self.assertIn('"icone": "calendar_week"', text)
+        self.assertIn('"icone": "calendar_day"', text)
+        self.assertNotIn("CTRL_Bouton_image", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+        self.assertNotIn("_PoliceInterface", text)
 
     def test_business_lists_share_repens_actions_and_metrics(self):
         for relative_path in (
