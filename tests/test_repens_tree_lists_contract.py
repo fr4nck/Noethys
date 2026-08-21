@@ -80,6 +80,17 @@ class RepensTreeListsContractTests(unittest.TestCase):
         self.assertNotIn("CTRL_Bouton_image", text)
         self.assertNotIn("UTILS_UIMetrics", text)
 
+    def test_payment_allocation_tree_uses_repens_facade(self):
+        text = self._read("noethys/Ctrl/CTRL_Repartition.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_liste(self)", text)
+        self.assertIn('Style.taille_icone("inline")', text)
+        self.assertIn('Style.hauteur_ligne("compact")', text)
+        self.assertIn("Style.espace(3)", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+        self.assertNotIn("wx.SystemSettings.GetFont", text)
+
 
 if __name__ == "__main__":
     unittest.main()
