@@ -112,14 +112,17 @@ class RepensSharedControlsContractTests(unittest.TestCase):
         self.assertNotIn("class Bouton_sauvegarde(wx.BitmapButton)", text)
         self.assertNotIn('size=(-1, 25)', text)
 
-    def test_shell_search_controls_only_use_public_repens_metrics(self):
+    def test_shell_search_controls_do_not_resize_their_toolbar_parent(self):
         identification = self._read("noethys/Ctrl/CTRL_Identification.py")
         facture = self._read("noethys/Ctrl/CTRL_Numfacture.py")
         for text in (identification, facture):
             self.assertIn("Style.appliquer_saisie(self)", text)
-            self.assertIn('Style.taille_icone("toolbar")', text)
-            self.assertIn('Style.hauteur_toolbar(avec_libelle=True)', text)
+            self.assertIn('Style.taille_icone("compact")', text)
             self.assertIn('Style.cible_action("compact")', text)
+            self.assertIn("self.GetBestSize()", text)
+            self.assertNotIn("_ConfigurerBarreShell", text)
+            self.assertNotIn("SetToolBitmapSize", text)
+            self.assertNotIn("hauteur_toolbar", text)
             self.assertNotIn("UTILS_Interface", text)
             self.assertNotIn("UTILS_UIMetrics", text)
         self.assertIn('Style.appliquer_texte(\n            self.label_exemple', identification)
