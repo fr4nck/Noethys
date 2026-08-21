@@ -27,6 +27,8 @@ class RepensSharedControlsContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Newsticker.py",
             "noethys/Ctrl/CTRL_Assistant_base.py",
             "noethys/Ctrl/CTRL_Propertygrid.py",
+            "noethys/Ctrl/CTRL_Identification.py",
+            "noethys/Ctrl/CTRL_Numfacture.py",
         ):
             text = self._read(relative_path)
             self.assertIn("UTILS_StyleRepens as Style", text)
@@ -107,6 +109,20 @@ class RepensSharedControlsContractTests(unittest.TestCase):
         self.assertNotIn("class Bouton_reinitialisation(wx.BitmapButton)", text)
         self.assertNotIn("class Bouton_sauvegarde(wx.BitmapButton)", text)
         self.assertNotIn('size=(-1, 25)', text)
+
+    def test_shell_search_controls_only_use_public_repens_metrics(self):
+        identification = self._read("noethys/Ctrl/CTRL_Identification.py")
+        facture = self._read("noethys/Ctrl/CTRL_Numfacture.py")
+        for text in (identification, facture):
+            self.assertIn("Style.appliquer_saisie(self)", text)
+            self.assertIn('Style.taille_icone("toolbar")', text)
+            self.assertIn('Style.hauteur_toolbar(avec_libelle=True)', text)
+            self.assertIn('Style.cible_action("compact")', text)
+            self.assertNotIn("UTILS_Interface", text)
+            self.assertNotIn("UTILS_UIMetrics", text)
+        self.assertIn('Style.appliquer_texte(\n            self.label_exemple', identification)
+        self.assertIn("UTILS_IconesRepens.GetBitmap", facture)
+        self.assertNotIn("UTILS_FluentIcons", facture)
 
     def test_semantic_trees_keep_business_icons_but_scale_them(self):
         for relative_path in (
