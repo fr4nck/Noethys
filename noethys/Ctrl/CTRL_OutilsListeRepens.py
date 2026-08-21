@@ -95,6 +95,8 @@ class BarreRecherche(wx.SearchCtrl):
             self.timer.Stop()
         texte = self.GetValue()
         self.ShowCancelButton(bool(texte))
+        if self.listview is None:
+            return
         try:
             self.listview.Filtrer(texte)
         except TypeError:
@@ -153,8 +155,7 @@ class CTRL_Regroupement(wx.Choice):
         except Exception:
             colonnes = []
         for colonne in colonnes:
-            titre = getattr(colonne, "title", "")
-            titres.append(titre)
+            titres.append(getattr(colonne, "title", ""))
         if titres:
             return titres
         try:
@@ -244,7 +245,12 @@ class CTRL(wx.Panel):
             sizer.Add(self.ctrl_regroupement, 0, wx.ALIGN_CENTER_VERTICAL)
         self.SetSizer(sizer)
         self.Layout()
+
         self.Bind(wx.EVT_SIZE, self.OnSize)
+        self.Bind(wx.EVT_MENU, self.OnMenu, id=ID_FILTRES_GERER)
+        self.Bind(wx.EVT_MENU, self.OnMenu, id=ID_FILTRES_EFFACER)
+        self.Bind(wx.EVT_MENU, self.OnMenu, id=ID_COCHER_TOUT)
+        self.Bind(wx.EVT_MENU, self.OnMenu, id=ID_DECOCHER_TOUT)
         self.MAJ_ctrl_filtrer()
 
     def OnSize(self, event):
@@ -254,16 +260,12 @@ class CTRL(wx.Panel):
         menu = UTILS_Adaptations.Menu()
         menu.Append(ID_FILTRES_GERER, _(u"Gérer les filtres…"))
         menu.Append(ID_FILTRES_EFFACER, _(u"Supprimer tous les filtres"))
-        self.Bind(wx.EVT_MENU, self.OnMenu, id=ID_FILTRES_GERER)
-        self.Bind(wx.EVT_MENU, self.OnMenu, id=ID_FILTRES_EFFACER)
         return menu
 
     def _MenuCocher(self):
         menu = UTILS_Adaptations.Menu()
         menu.Append(ID_COCHER_TOUT, _(u"Tout cocher"))
         menu.Append(ID_DECOCHER_TOUT, _(u"Tout décocher"))
-        self.Bind(wx.EVT_MENU, self.OnMenu, id=ID_COCHER_TOUT)
-        self.Bind(wx.EVT_MENU, self.OnMenu, id=ID_DECOCHER_TOUT)
         return menu
 
     def MAJFiltre(self):
@@ -286,7 +288,8 @@ class CTRL(wx.Panel):
     def OnBoutonFiltrer(self, event=None):
         menu = self._MenuFiltres()
         try:
-            self.PopupMenu(menu, self.bouton_filtrer.GetPosition() + wx.Point(0, self.bouton_filtrer.GetSize().GetHeight()))
+            position = self.bouton_filtrer.GetPosition() + wx.Point(0, self.bouton_filtrer.GetSize().GetHeight())
+            self.PopupMenu(menu, position)
         except Exception:
             self.PopupMenu(menu)
         menu.Destroy()
@@ -296,7 +299,8 @@ class CTRL(wx.Panel):
             return
         menu = self._MenuCocher()
         try:
-            self.PopupMenu(menu, self.bouton_cocher.GetPosition() + wx.Point(0, self.bouton_cocher.GetSize().GetHeight()))
+            position = self.bouton_cocher.GetPosition() + wx.Point(0, self.bouton_cocher.GetSize().GetHeight())
+            self.PopupMenu(menu, position)
         except Exception:
             self.PopupMenu(menu)
         menu.Destroy()
@@ -329,6 +333,8 @@ class CTRL(wx.Panel):
                 pass
 
     def SetFiltres(self, listeFiltres=None):
+        if self.listview is None:
+            return
         self.listview.SetFiltresColonnes(listeFiltres or [])
         self.listview.Filtrer()
         self.MAJ_ctrl_filtrer()
