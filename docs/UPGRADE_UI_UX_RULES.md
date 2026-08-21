@@ -36,20 +36,28 @@ Repens Design doit fonctionner comme un design system web centralisé : une règ
 
 ## Hiérarchie typographique sémantique
 
-La typographie suit volontairement une logique proche de l'HTML : le code décrit le **niveau de sens**, jamais une taille de police locale.
+La typographie suit volontairement une logique proche de l'HTML : le code décrit le **niveau de sens**, jamais une taille de police locale. Noethys et Teamworks doivent employer la même gamme :
 
-- `h1` : titre principal d'une fenêtre ou d'un écran.
-- `h2` : grande section métier.
-- `h3` : sous-section dans une section.
-- `h4`, `h5`, `h6` : niveaux plus fins lorsqu'une interface dense le nécessite.
-- `body` : texte courant.
-- `body_emphasis` : texte courant à forte importance.
-- `caption` : aide, précision, métadonnée secondaire.
-- `overline` : petit libellé structurant ou catégorie.
+`Display → H1 → H2 → H3 → H4 → H5 → H6 → Lead → BodyLarge → Body → BodySmall → Label → Caption → Micro`, avec `DataLarge` pour les valeurs métier importantes.
 
-`CTRL_TexteRepens.py` est l'équivalent d'un élément texte HTML stylé par le CSS Repens : il expose directement `H1`, `H2`, `H3` et le rôle générique pour les autres niveaux. Le bandeau commun utilise `H1`, les sections communes utilisent `H2`, et `Section.AjouterTitre()` crée un `H3` par défaut.
+À 100 %, la gamme couvre environ 7 à 18 points. Les tailles sont définies dans `UTILS_StyleRepens.py`, utilisent la fonte système native de Windows/Linux/macOS et suivent ensuite uniformément le réglage de texte 120/150/200 %.
 
-Les alias historiques `title` et `section` restent temporairement acceptés par `UTILS_StyleRepens.py`, mais les nouveaux écrans doivent utiliser les rôles `h1`, `h2`, `h3`, etc.
+- `Display` : exceptionnel, gros indicateur ou information dominante de tableau de bord.
+- `H1` : titre principal d'une fenêtre ou d'un écran.
+- `H2` : grande section métier.
+- `H3` et `H4` : sous-sections.
+- `H5` et `H6` : petits titres de groupes dans les interfaces denses.
+- `Lead` : introduction ou texte d'accroche d'un écran.
+- `BodyLarge`, `Body`, `BodySmall` : texte courant selon la densité nécessaire.
+- `Label` : libellé court de contrôle, colonne ou groupe.
+- `Caption` et `Micro` : informations secondaires très compactes.
+- `DataLarge` : heures, compteurs, montants et valeurs métier importantes (`08:30`, `35 h`, `1 245 €`, etc.).
+
+`CTRL_TexteRepens.py` est l'équivalent d'un élément texte HTML stylé par le CSS Repens : il expose directement les helpers `Display`, `H1` à `H6`, `Lead`, `BodyLarge`, `Body`, `BodySmall`, `Label`, `Caption`, `Micro` et `DataLarge`.
+
+Le bandeau commun utilise `H1` puis `Lead`, les sections communes utilisent `H2`, et `Section.AjouterTitre()` crée un `H3` par défaut.
+
+Les alias historiques `title`, `section`, `body_emphasis` et `overline` restent acceptés pour la compatibilité, mais les nouveaux écrans doivent utiliser la gamme sémantique commune.
 
 ## Règle générale
 
@@ -57,4 +65,4 @@ Les alias historiques `title` et `section` restent temporairement acceptés par 
 
 > Si un écran métier choisit lui-même son apparence, le design system n'est pas terminé : l'apparence doit remonter vers le socle Repens.
 
-> Si un titre est défini par sa taille ou son gras plutôt que par son niveau `h1` à `h6`, il n'est pas encore intégré au design system.
+> Si un titre est défini par sa taille ou son gras plutôt que par son niveau sémantique, il n'est pas encore intégré au design system.
