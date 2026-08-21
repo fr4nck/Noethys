@@ -204,6 +204,10 @@ class CTRL(wx.Panel):
     def SelectJours(self, listeDates=None):
         self.calendrier.SelectJours(listeDates or [])
 
+    def SetSelectionDates(self, listeDates=None):
+        """Alias historique conservé pour les écrans de planning."""
+        self.SelectJours(listeDates or [])
+
     def MAJselectionDates(self, listeDates):
         self.SetSelectionDates(listeDates)
         self.GetGrandParent().GetParent().MAJpanelPlanning()
