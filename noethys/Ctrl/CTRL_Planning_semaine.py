@@ -12,12 +12,12 @@ import threading
 import wx
 import wx.grid as gridlib
 
-from Utils.UTILS_Traduction import _
+from Ctrl import CTRL_ActionRepens
 from Utils import UTILS_Aui
-from Utils import UTILS_Interface
 from Utils import UTILS_Responsive
+from Utils import UTILS_StyleRepens as Style
 from Utils import UTILS_Teamworks_Planning
-from Utils import UTILS_UIMetrics
+from Utils.UTILS_Traduction import _
 
 
 JOURS_COURTS = (_(u"Lun"), _(u"Mar"), _(u"Mer"), _(u"Jeu"), _(u"Ven"), _(u"Sam"), _(u"Dim"))
@@ -25,18 +25,47 @@ JOURS_COURTS = (_(u"Lun"), _(u"Mar"), _(u"Mer"), _(u"Jeu"), _(u"Ven"), _(u"Sam")
 
 class Panel(wx.Panel):
     def __init__(self, parent):
-        wx.Panel.__init__(self, parent, id=-1, name="planning_semaine", style=wx.TAB_TRAVERSAL)
+        wx.Panel.__init__(self, parent, id=-1, name="planning_semaine", style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
+        Style.appliquer_fenetre(self, "surface")
 
         self.date_reference = datetime.date.today()
         self.lundi = self._GetLundi(self.date_reference)
         self._chargement = False
 
-        self.btn_precedent = wx.Button(self, -1, u"‹", style=wx.BU_EXACTFIT)
-        self.btn_aujourdhui = wx.Button(self, -1, _(u"Aujourd'hui"))
-        self.btn_suivant = wx.Button(self, -1, u"›", style=wx.BU_EXACTFIT)
+        self.btn_precedent = CTRL_ActionRepens.CTRL(
+            self,
+            label=u"",
+            icone="arrow_left",
+            variante="ghost",
+            tooltip=_(u"Afficher la semaine précédente"),
+            compact=True,
+        )
+        self.btn_aujourdhui = CTRL_ActionRepens.CTRL(
+            self,
+            label=_(u"Aujourd'hui"),
+            icone="calendar",
+            variante="secondaire",
+            tooltip=_(u"Revenir à la semaine en cours"),
+            compact=True,
+        )
+        self.btn_suivant = CTRL_ActionRepens.CTRL(
+            self,
+            label=u"",
+            icone="arrow_right",
+            variante="ghost",
+            tooltip=_(u"Afficher la semaine suivante"),
+            compact=True,
+        )
         self.label_semaine = wx.StaticText(self, -1, "")
         self.label_source = wx.StaticText(self, -1, "")
-        self.btn_source = wx.Button(self, -1, _(u"Source Teamworks…"))
+        self.btn_source = CTRL_ActionRepens.CTRL(
+            self,
+            label=_(u"Source Teamworks…"),
+            icone="settings",
+            variante="ghost",
+            tooltip=_(u"Choisir la base Teamworks utilisée en lecture seule"),
+            compact=True,
+        )
 
         self.grid = gridlib.Grid(self, -1)
         self.grid.CreateGrid(0, 8)
@@ -64,53 +93,39 @@ class Panel(wx.Panel):
             self.grid.SetColLabelValue(index + 1, JOURS_COURTS[index])
 
     def _AppliqueApparence(self):
-        fond = UTILS_Interface.GetCouleurRole("surface")
-        fond_donnees = UTILS_Interface.GetCouleurRole("surface_container_lowest")
-        texte = UTILS_Interface.GetCouleurRole("on_surface")
-        contour = UTILS_Interface.GetCouleurRole("outline_variant")
-        selection = UTILS_Interface.GetCouleurRole("selection")
-        selection_texte = UTILS_Interface.GetCouleurRole("selection_text")
+        fond = Style.couleur("surface")
+        fond_donnees = Style.couleur("surface_container_lowest")
+        texte = Style.couleur("on_surface")
 
-        self.SetBackgroundColour(fond)
-        self.label_semaine.SetBackgroundColour(fond)
-        self.label_source.SetBackgroundColour(fond)
-        self.label_semaine.SetForegroundColour(texte)
-        self.label_source.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
+        Style.appliquer_texte(
+            self.label_semaine,
+            role="h4",
+            role_texte="on_surface",
+            role_fond="surface",
+        )
+        Style.appliquer_texte(
+            self.label_source,
+            role="body_small",
+            role_texte="on_surface_variant",
+            role_fond="surface",
+        )
 
-        police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-        facteur_texte = UTILS_Interface.GetTailleTexte() / 100.0
-        police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur_texte))))
-        police_titre = wx.Font(police)
-        try:
-            police_titre.SetWeight(wx.FONTWEIGHT_SEMIBOLD)
-        except Exception:
-            police_titre.SetWeight(wx.FONTWEIGHT_BOLD)
-        self.label_semaine.SetFont(police_titre)
-        self.label_source.SetFont(police)
-        self.grid.SetDefaultCellFont(police)
-        self.grid.SetLabelFont(police_titre)
-
+        self.grid.SetDefaultCellFont(Style.police("body"))
+        self.grid.SetLabelFont(Style.police("label"))
         self.grid.SetDefaultCellBackgroundColour(fond_donnees)
         self.grid.SetDefaultCellTextColour(texte)
-        self.grid.SetGridLineColour(contour)
-        self.grid.SetSelectionBackground(selection)
-        self.grid.SetSelectionForeground(selection_texte)
-        self.grid.SetLabelBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container"))
+        self.grid.SetGridLineColour(Style.couleur("outline_variant"))
+        self.grid.SetSelectionBackground(Style.couleur("selection"))
+        self.grid.SetSelectionForeground(Style.couleur("selection_text"))
+        self.grid.SetLabelBackgroundColour(Style.couleur("surface_container"))
         self.grid.SetLabelTextColour(texte)
+        self.grid.SetBackgroundColour(fond)
         UTILS_Aui.ConfigurerGrille(self.grid)
 
-        cible = UTILS_UIMetrics.action_target("compact")
-        for bouton in (self.btn_precedent, self.btn_aujourdhui, self.btn_suivant, self.btn_source):
-            bouton.SetFont(police)
-            meilleur = bouton.GetBestSize()
-            bouton.SetMinSize((max(cible, meilleur.GetWidth()), cible))
-        self.btn_precedent.SetMinSize((cible, cible))
-        self.btn_suivant.SetMinSize((cible, cible))
-
     def _ConstruitLayout(self):
-        petit = UTILS_UIMetrics.spacing(1)
-        moyen = UTILS_UIMetrics.spacing(2)
-        grand = UTILS_UIMetrics.spacing(3)
+        petit = Style.espace(1)
+        moyen = Style.espace(2)
+        grand = Style.espace(3)
 
         barre = wx.BoxSizer(wx.HORIZONTAL)
         barre.Add(self.btn_precedent, 0, wx.RIGHT, petit)
@@ -207,9 +222,9 @@ class Panel(wx.Panel):
             return
 
         facteur = min(UTILS_Responsive.GetFacteurEcran(), 1.35)
-        largeur_nom = max(UTILS_UIMetrics.px(155), int(round(155 * facteur)))
-        min_jour = max(UTILS_UIMetrics.px(112), int(round(112 * facteur)))
-        marge = UTILS_UIMetrics.spacing(7)
+        largeur_nom = max(Style.px(155), int(round(155 * facteur)))
+        min_jour = max(Style.px(112), int(round(112 * facteur)))
+        marge = Style.espace(7)
         restant = largeur - largeur_nom - marge
         largeur_jour = max(min_jour, restant // 7 if restant > 0 else min_jour)
 
@@ -259,7 +274,7 @@ class Panel(wx.Panel):
         self._RedimensionneLignes(len(lignes))
 
         facteur = min(UTILS_Responsive.GetFacteurEcran(), 1.35)
-        hauteur_ligne = max(UTILS_UIMetrics.row_height("table"), int(round(27 * facteur)))
+        hauteur_ligne = max(Style.hauteur_ligne("table"), int(round(27 * facteur)))
         for row, personne in enumerate(lignes):
             self.grid.SetCellValue(row, 0, personne["nom"])
             self.grid.SetCellAlignment(row, 0, wx.ALIGN_LEFT, wx.ALIGN_TOP)
@@ -271,7 +286,7 @@ class Panel(wx.Panel):
                 textes = [self._FormatePresence(presence) for presence in evenements]
                 self.grid.SetCellValue(row, index + 1, u"\n".join(textes))
                 self.grid.SetCellAlignment(row, index + 1, wx.ALIGN_LEFT, wx.ALIGN_TOP)
-            hauteur_contenu = int(round((18 * max_evenements + 8) * facteur))
+            hauteur_contenu = max(Style.hauteur_ligne("table"), int(round((18 * max_evenements + 8) * facteur)))
             self.grid.SetRowSize(row, max(hauteur_ligne, hauteur_contenu))
 
         self._AjusteColonnes()
