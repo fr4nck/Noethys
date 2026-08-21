@@ -1,0 +1,31 @@
+# -*- coding: utf-8 -*-
+"""Contrats statiques des listes arborescentes migrées vers Repens Design."""
+
+import ast
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class RepensTreeListsContractTests(unittest.TestCase):
+    def _read(self, relative_path):
+        path = ROOT / relative_path
+        text = path.read_text(encoding="utf-8")
+        ast.parse(text)
+        return text
+
+    def test_present_consumption_tree_uses_repens_stylesheet(self):
+        text = self._read("noethys/Ctrl/CTRL_Liste_presents.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_liste(self)", text)
+        self.assertIn('Style.couleur("surface_container")', text)
+        self.assertIn("Style.px(250)", text)
+        self.assertNotIn("SetBackgroundColour(wx.WHITE)", text)
+        self.assertNotIn("UTILS_Linux.AdaptePolice", text)
+        self.assertNotIn("CTRL_Bouton_image", text)
+
+
+if __name__ == "__main__":
+    unittest.main()
