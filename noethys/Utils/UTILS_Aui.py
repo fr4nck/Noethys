@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
 """Helpers explicites pour wxAUI et les composants du shell Noethys.
 
-La géométrie AUI est dérivée du design system commun. Aucun contrôle wx/AGW
-n'est monkey-patché : les managers, toolbars, notebooks et grilles sont
-configurés explicitement lorsqu'ils entrent dans le shell Noethys.
+Repens peut styliser le shell, ses toolbars, notebooks et grilles, mais il ne
+pilote pas la géométrie des panes. Le docking, les sash, le flottement et les
+perspectives restent sous la responsabilité native de wxAUI. Cette séparation
+évite qu'un recalcul responsive ne lutte contre un déplacement utilisateur.
 """
 
-PERSPECTIVE_LAYOUT_VERSION = 6
+PERSPECTIVE_LAYOUT_VERSION = 7
 PARAMETRE_PERSPECTIVE_VERSION = "aui_perspective_layout_version"
 
-# Modules qui peuvent se partager la grande zone de travail. La présence dans
-# ce registre ne crée ni n'affiche aucun module : un pane absent ou masqué ne
-# consomme strictement aucune place. Ajouter un futur tableau consiste donc à
-# lui donner un nom AUI et à l'inscrire ici, sans réécrire le responsive.
+# Registre documentaire des modules susceptibles de partager la zone de travail.
+# Il ne sert volontairement plus à réécrire leur position ou leur taille.
 WORKSPACE_PANES = (
     {"nom": "recherche", "caption": u"Individus / Familles", "poids": 1.00, "minimum": 300},
     {"nom": "messagerie", "caption": u"Messagerie", "poids": 0.72, "minimum": 300},
@@ -128,13 +127,11 @@ def ConfigurerGrille(grille):
         grille.SetGridLineColour(UTILS_Interface.GetCouleurRole("outline_variant"))
     except Exception:
         pass
-
     try:
         grille.SetLabelBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_high"))
         grille.SetLabelTextColour(UTILS_Interface.GetCouleurRole("on_surface"))
     except Exception:
         pass
-
     try:
         grille.SetDefaultCellBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
         grille.SetDefaultCellTextColour(UTILS_Interface.GetCouleurRole("on_surface"))
@@ -158,8 +155,7 @@ def ConfigurerGrille(grille):
         try:
             if not hasattr(grille, attribut):
                 setattr(grille, attribut, getattr(grille, getter)())
-            base = getattr(grille, attribut)
-            getattr(grille, setter)(UTILS_UIMetrics.px(base))
+            getattr(grille, setter)(UTILS_UIMetrics.px(getattr(grille, attribut)))
         except Exception:
             pass
 
@@ -202,7 +198,7 @@ def ConfigurerNotebook(notebook):
 
 
 def _ConfigurerComposantsDuManager(manager):
-    """Configure les composants communs, y compris ceux imbriqués dans un pane."""
+    """Configure les composants communs sans modifier la géométrie des panes."""
     try:
         import wx
         import wx.grid as gridlib
@@ -224,19 +220,10 @@ def _ConfigurerComposantsDuManager(manager):
                 if taille_base is None:
                     taille_base = _TailleBitmapExistante(fenetre, defaut=16)
                 ConfigurerToolBar(fenetre, taille_base=taille_base, fond_uni=True)
-                if fenetre is racine:
-                    try:
-                        hauteur = int(getattr(fenetre, "_noethys_toolbar_min_height", 0) or 0)
-                        if hauteur > 0:
-                            pane.MinSize((-1, hauteur)).BestSize((-1, hauteur))
-                    except Exception:
-                        pass
                 continue
-
             if isinstance(fenetre, aui.AuiNotebook):
                 ConfigurerNotebook(fenetre)
                 continue
-
             if isinstance(fenetre, gridlib.Grid):
                 ConfigurerGrille(fenetre)
 
@@ -289,7 +276,7 @@ def _SetArtMetric(art, aui, constante, valeur):
 
 
 def _ConfigurerArtShell(art, aui):
-    """Palette AUI plate et dense, inspirée de Fluent 2."""
+    """Palette AUI plate et dense, sans intervenir sur la géométrie."""
     try:
         from Utils import UTILS_UIMetrics
         caption = UTILS_UIMetrics.px(30)
@@ -298,6 +285,12 @@ def _ConfigurerArtShell(art, aui):
 
     _SetArtMetric(art, aui, "AUI_DOCKART_CAPTION_SIZE", caption)
     _SetArtMetric(art, aui, "AUI_DOCKART_PANE_BORDER_SIZE", 1)
+    try:
+        from Utils import UTILS_Responsive
+        sash = max(5, min(10, int(round(5 * max(1.0, UTILS_Responsive.GetFacteurEcran())))))
+        _SetArtMetric(art, aui, "AUI_DOCKART_SASH_SIZE", sash)
+    except Exception:
+        pass
 
     for constante, role in (
         ("AUI_DOCKART_BACKGROUND_COLOUR", "surface"),
@@ -334,7 +327,7 @@ def _AppelerPane(pane, nom, *args):
 
 
 def _ConfigurerBarresSysteme(manager):
-    """Fige les barres structurelles du shell sans interdire les barres perso."""
+    """Fige uniquement les deux barres structurelles du shell."""
     for nom, position in (("barre_raccourcis", 0), ("barre_utilisateur", 1)):
         pane = _GetPane(manager, nom)
         if pane is None:
@@ -355,335 +348,41 @@ def _ConfigurerBarresSysteme(manager):
             _AppelerPane(pane, methode, *args)
 
 
-def _PaneEstVisible(pane):
-    if pane is None:
-        return False
-    try:
-        return bool(pane.IsShown())
-    except Exception:
-        return False
-
-
-def _PaneEtatSpecial(pane):
-    if pane is None:
-        return False
-    for methode in ("IsMaximized", "IsMinimized"):
-        try:
-            if getattr(pane, methode)():
-                return True
-        except Exception:
-            pass
-    return False
-
-
-def _ConfigurerPaneWorkspace(pane, spec, layer):
-    """Applique uniquement les capacités d'une pane de travail existante."""
-    if pane is None:
-        return
-
-    try:
-        import wx.lib.agw.aui as aui
-        est_centre = getattr(pane, "dock_direction", None) == aui.AUI_DOCK_CENTER
-    except Exception:
-        est_centre = False
-
-    # Migration de l'ancien CenterPane Individus. Les futurs modules sont
-    # normalement créés directement comme panes dockables, mais cette
-    # normalisation permet de rester compatible avec l'ancien Noethys.py.
-    if est_centre:
-        _AppelerPane(pane, "Right")
-
-    for methode, args in (
-        ("Layer", (layer,)),
-        ("Row", (0,)),
-        ("Position", (0,)),
-        ("Caption", (spec["caption"],)),
-        ("CaptionVisible", (True,)),
-        ("PaneBorder", (True,)),
-        ("CloseButton", (True,)),
-        ("MaximizeButton", (True,)),
-        ("MinimizeButton", (True,)),
-        ("Resizable", (True,)),
-        ("Movable", (True,)),
-        ("Floatable", (True,)),
-        ("DockFixed", (False,)),
-    ):
-        _AppelerPane(pane, methode, *args)
-
-
-def _ConfigurerWorkspace(manager, largeur, hauteur, largeur_gauche):
-    """Répartit la surface restante entre les modules de travail visibles.
-
-    Il n'existe volontairement aucune largeur réservée à Individus. S'il est
-    seul, il prend presque toute la zone libre. Dès qu'un client mail, une vue
-    semaine ou un autre module est affiché, les panes visibles se partagent la
-    surface selon leurs poids et l'utilisateur conserve les sash AUI pour
-    ajuster la répartition à sa convenance.
-    """
-    existants = []
-    for spec in WORKSPACE_PANES:
-        pane = _GetPane(manager, spec["nom"])
-        if pane is not None:
-            existants.append((spec, pane))
-
-    visibles = [(spec, pane) for spec, pane in existants if _PaneEstVisible(pane)]
-    if not existants:
-        return
-
-    # Les couches droites forment des colonnes adjacentes. On ne touche jamais
-    # à Show()/Hide() : l'apparition d'un module reste du ressort du module ou
-    # du menu Affichage, et la fermeture rend automatiquement sa place.
-    for layer, (spec, pane) in enumerate(reversed(existants)):
-        _ConfigurerPaneWorkspace(pane, spec, layer)
-
-    if not visibles:
-        return
-
-    largeur_disponible = max(520, largeur - largeur_gauche - 24)
-    poids_total = sum(max(0.1, float(spec["poids"])) for spec, pane in visibles)
-    nb_visibles = len(visibles)
-
-    for spec, pane in visibles:
-        if _PaneEtatSpecial(pane):
-            continue
-        part = max(0.1, float(spec["poids"])) / poids_total
-        cible = int(round(largeur_disponible * part))
-        minimum = int(spec["minimum"])
-
-        # Avec plusieurs panes, le minimum doit pouvoir céder sur un écran
-        # étroit. Sur grand écran on garde des modules confortables.
-        if nb_visibles > 1:
-            minimum = min(minimum, max(240, int(largeur_disponible / nb_visibles * 0.58)))
-        cible = max(minimum, cible)
-
-        _AppelerPane(pane, "MinSize", (minimum, 240))
-        _AppelerPane(pane, "BestSize", (cible, max(360, int(hauteur * 0.72))))
-        try:
-            pane.dock_proportion = max(1000, int(round(part * 100000)))
-        except Exception:
-            pass
-
-
 def ReequilibrerWorkspace(manager):
-    """API publique à appeler après ouverture/fermeture d'un module."""
-    return _AppliquerLayoutResponsive(manager, forcer=True)
-
-
-def _GetTailleClient(manager):
-    try:
-        fenetre = manager.GetManagedWindow()
-        taille = fenetre.GetClientSize()
-        largeur = int(taille.GetWidth())
-        hauteur = int(taille.GetHeight())
-        return fenetre, largeur, hauteur
-    except Exception:
-        return None, 0, 0
-
-
-def _GetDimensionsResponsive(largeur, hauteur):
-    """Retourne les métriques du cockpit à partir de la place réellement disponible."""
-    try:
-        from Utils import UTILS_Responsive
-        facteur = min(1.30, max(1.0, float(UTILS_Responsive.GetFacteurEcran())))
-    except Exception:
-        facteur = 1.0
-
-    if largeur >= 1800:
-        ratio_gauche = 0.32
-    elif largeur >= 1450:
-        ratio_gauche = 0.34
-    elif largeur >= 1150:
-        ratio_gauche = 0.37
-    else:
-        ratio_gauche = 0.40
-
-    minimum_gauche = int(round(390 * facteur))
-    maximum_gauche = int(round(760 * facteur))
-    largeur_gauche = max(minimum_gauche, min(maximum_gauche, int(round(largeur * ratio_gauche))))
-
-    hauteur_info = max(
-        int(round(104 * facteur)),
-        min(int(round(176 * facteur)), int(round(hauteur * 0.15))),
-    )
-    hauteur_messages_min = max(96, int(round(110 * facteur)))
-
-    return {
-        "largeur_gauche": largeur_gauche,
-        "hauteur_info": hauteur_info,
-        "hauteur_messages_min": hauteur_messages_min,
-    }
-
-
-def _AjusterDocksLateraux(manager, largeur_gauche):
-    """Ajuste la largeur du dock gauche existant sans imposer de pixels aux enfants."""
-    try:
-        import wx.lib.agw.aui as aui
-        docks = manager.GetAllDocks()
-    except Exception:
-        return
-
-    for dock in docks:
-        try:
-            if dock.dock_direction == aui.AUI_DOCK_LEFT:
-                dock.size = largeur_gauche
-        except Exception:
-            pass
-
-
-def _AppliquerLayoutResponsive(manager, forcer=False):
-    """Recalcule uniquement la géométrie structurelle du cockpit."""
+    """Rafraîchit AUI sans déplacer ni redimensionner les panes utilisateur."""
     if manager is None:
         return False
-
-    fenetre, largeur, hauteur = _GetTailleClient(manager)
-    if fenetre is None or largeur < 500 or hauteur < 400:
-        return False
-
-    precedent = getattr(fenetre, "_noethys_aui_responsive_size", None)
-    if not forcer and precedent is not None:
-        if abs(largeur - precedent[0]) < 28 and abs(hauteur - precedent[1]) < 22:
-            return False
-    fenetre._noethys_aui_responsive_size = (largeur, hauteur)
-
-    dimensions = _GetDimensionsResponsive(largeur, hauteur)
-    _ConfigurerBarresSysteme(manager)
-
-    try:
-        manager.SetDockSizeConstraint(0.46, 0.32)
-    except Exception:
-        pass
-
-    largeur_gauche = dimensions["largeur_gauche"]
-    pane_effectifs = _GetPane(manager, "effectifs")
-    if pane_effectifs is not None:
-        _AppelerPane(pane_effectifs, "MinSize", (min(largeur_gauche, 430), 190))
-        _AppelerPane(pane_effectifs, "BestSize", (largeur_gauche, max(320, int(hauteur * 0.66))))
-        try:
-            pane_effectifs.dock_proportion = 72000
-        except Exception:
-            pass
-        _AjusterDocksLateraux(manager, largeur_gauche)
-
-    pane_messages = _GetPane(manager, "messages")
-    if pane_messages is not None:
-        _AppelerPane(pane_messages, "MinSize", (260, dimensions["hauteur_messages_min"]))
-        try:
-            pane_messages.dock_proportion = 28000
-        except Exception:
-            pass
-
-    pane_info = _GetPane(manager, "ephemeride")
-    if pane_info is not None:
-        hauteur_info = dimensions["hauteur_info"]
-        _AppelerPane(pane_info, "Caption", u"Aujourd'hui / Échéancier")
-        _AppelerPane(pane_info, "MinSize", (-1, max(96, int(hauteur_info * 0.80))))
-        _AppelerPane(pane_info, "BestSize", (-1, hauteur_info))
-
-    _ConfigurerWorkspace(manager, largeur, hauteur, largeur_gauche)
-
     try:
         manager.Update()
-    except Exception:
-        pass
-    try:
-        fenetre.Layout()
-    except Exception:
-        pass
-    return True
-
-
-def _InstallerResponsive(manager):
-    """Installe les écoutes nécessaires au responsive, sans reconstruire le dashboard."""
-    try:
-        import wx
-        import wx.lib.agw.aui as aui
         fenetre = manager.GetManagedWindow()
-    except Exception:
-        return False
-    if fenetre is None:
-        return False
-    if getattr(fenetre, "_noethys_aui_responsive_installe", False):
+        if fenetre is not None:
+            fenetre.Layout()
         return True
-
-    fenetre._noethys_aui_responsive_installe = True
-    fenetre._noethys_aui_responsive_pending = False
-
-    def _AppliquerPlusTard(forcer=False):
-        try:
-            fenetre._noethys_aui_responsive_pending = False
-            _AppliquerLayoutResponsive(manager, forcer=forcer)
-        except Exception:
-            fenetre._noethys_aui_responsive_pending = False
-
-    def _Programmer(forcer=False):
-        if getattr(fenetre, "_noethys_aui_responsive_pending", False):
-            return
-        fenetre._noethys_aui_responsive_pending = True
-        wx.CallAfter(_AppliquerPlusTard, forcer)
-
-    def _OnSize(event):
-        event.Skip()
-        _Programmer(False)
-
-    def _OnPaneChange(event):
-        event.Skip()
-        _Programmer(True)
-
-    try:
-        fenetre.Bind(wx.EVT_SIZE, _OnSize)
     except Exception:
         return False
-
-    # L'ouverture/fermeture/maximisation d'un module change elle aussi la
-    # surface disponible. Les constantes diffèrent selon les versions AGW :
-    # on les branche seulement lorsqu'elles existent.
-    for nom_evt in (
-        "EVT_AUI_PANE_CLOSE",
-        "EVT_AUI_PANE_MAXIMIZE",
-        "EVT_AUI_PANE_RESTORE",
-        "EVT_AUI_PANE_ACTIVATED",
-    ):
-        evt = getattr(aui, nom_evt, None)
-        if evt is not None:
-            try:
-                fenetre.Bind(evt, _OnPaneChange)
-            except Exception:
-                pass
-    return True
 
 
 def ConfigurerManager(manager):
-    """Structure visuellement les panes et composants du manager fourni."""
+    """Applique le langage visuel Repens au manager, sans piloter son layout."""
     if manager is None:
         return False
     try:
         import wx.lib.agw.aui as aui
-        from Utils import UTILS_Responsive
-    except Exception:
-        return False
-
-    try:
         art = manager.GetArtProvider()
     except Exception:
         return False
 
-    try:
-        sash = max(5, min(10, int(round(5 * max(1.0, UTILS_Responsive.GetFacteurEcran())))))
-        _SetArtMetric(art, aui, "AUI_DOCKART_SASH_SIZE", sash)
-    except Exception:
-        pass
-
     _ConfigurerPoliceCaptions(art)
     _ConfigurerArtShell(art, aui)
     _ConfigurerComposantsDuManager(manager)
-    _InstallerResponsive(manager)
-    _AppliquerLayoutResponsive(manager, forcer=True)
+    _ConfigurerBarresSysteme(manager)
 
     try:
         manager.Update()
         fenetre = manager.GetManagedWindow()
         if fenetre is not None:
-            fenetre.SetBackgroundColour(__import__("Utils.UTILS_Interface", fromlist=["UTILS_Interface"]).GetCouleurRole("surface"))
+            from Utils import UTILS_Interface
+            fenetre.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
             fenetre.Layout()
     except Exception:
         pass
@@ -782,14 +481,12 @@ def ConfigurerToolBar(toolbar, taille_base=16, fond_uni=True):
 
 
 def ChargerPerspective(manager, perspective, fallback=None):
-    """Charge une perspective AUI avec repli sûr sur ``fallback``."""
-    ConfigurerManager(manager)
-    version_valide = VerifierVersionPerspective(manager)
+    """Charge une perspective AUI sans la réécrire après son chargement."""
+    if manager is None:
+        return False
 
-    if version_valide:
-        sources = (perspective, fallback)
-    else:
-        sources = (fallback,)
+    version_valide = VerifierVersionPerspective(manager)
+    sources = (perspective, fallback) if version_valide else (fallback,)
 
     candidates = []
     for candidate in sources:
