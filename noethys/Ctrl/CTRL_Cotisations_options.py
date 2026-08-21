@@ -12,39 +12,42 @@ import os
 
 import wx
 
-from Ctrl import CTRL_Bouton_image
+from Ctrl import CTRL_ActionRepens
 from Ctrl import CTRL_Choix_modele
 from Utils import UTILS_Config
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
 class CTRL(wx.Panel):
-    """Options d'édition des cotisations, compactes et compatibles DPI."""
+    """Options d'édition des cotisations, compactes et pilotées par Repens."""
 
     def __init__(self, parent):
-        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
+        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        Style.appliquer_fenetre(self, "surface")
 
         self.label_modele = wx.StaticText(self, -1, _(u"Modèle :"))
         self.ctrl_modele = CTRL_Choix_modele.CTRL_Choice(self, categorie="cotisation")
-        self.bouton_modele = CTRL_Bouton_image.CTRL(
+        self.bouton_modele = CTRL_ActionRepens.CTRL(
             self,
-            texte=_(u"Gérer"),
-            cheminImage="Images/16x16/Mecanisme.png",
-            tailleImage=(20, 20),
+            label=_(u"Gérer"),
+            icone="settings",
+            variante="ghost",
+            tooltip=_(u"Accéder à la gestion des modèles"),
+            compact=True,
         )
 
         self.label_repertoire = wx.StaticText(self, -1, _(u"Copie :"))
         self.checkbox_repertoire = wx.CheckBox(self, -1, _(u"Enregistrer une copie PDF dans"))
         self.ctrl_repertoire = wx.TextCtrl(self, -1, u"")
-        self.bouton_repertoire = CTRL_Bouton_image.CTRL(
+        self.bouton_repertoire = CTRL_ActionRepens.CTRL(
             self,
-            texte=_(u"Parcourir"),
-            cheminImage="Images/16x16/Repertoire.png",
-            tailleImage=(20, 20),
+            label=_(u"Parcourir…"),
+            icone="more",
+            variante="ghost",
+            tooltip=_(u"Sélectionner un répertoire de destination"),
+            compact=True,
         )
 
         self._AppliquerStyle()
@@ -62,59 +65,43 @@ class CTRL(wx.Panel):
 
     def _AppliquerStyle(self):
         self.ctrl_modele.SetToolTip(wx.ToolTip(_(u"Sélectionnez le modèle")))
-        self.bouton_modele.SetToolTip(wx.ToolTip(_(u"Accéder à la gestion des modèles")))
         self.checkbox_repertoire.SetToolTip(wx.ToolTip(_(u"Enregistrer un exemplaire de chaque cotisation au format PDF dans le répertoire indiqué")))
-        self.bouton_repertoire.SetToolTip(wx.ToolTip(_(u"Sélectionner un répertoire de destination")))
         self.ctrl_repertoire.SetToolTip(wx.ToolTip(_(u"Répertoire où enregistrer la copie PDF")))
 
-        try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            for controle in (
-                self.label_modele,
-                self.ctrl_modele,
-                self.label_repertoire,
-                self.checkbox_repertoire,
-                self.ctrl_repertoire,
-            ):
-                controle.SetFont(police)
-        except Exception:
-            pass
+        for label in (self.label_modele, self.label_repertoire):
+            Style.appliquer_texte(label, role="label", role_texte="on_surface_variant", role_fond="surface")
+        Style.appliquer_texte(self.checkbox_repertoire, role="body", role_texte="on_surface", role_fond="surface")
+        Style.appliquer_saisie(self.ctrl_modele)
+        Style.appliquer_saisie(self.ctrl_repertoire)
 
-        hauteur = UTILS_UIMetrics.action_target("compact")
-        self.ctrl_modele.SetMinSize((UTILS_UIMetrics.px(180), hauteur))
-        self.ctrl_repertoire.SetMinSize((UTILS_UIMetrics.px(260), hauteur))
-        try:
-            self.ctrl_repertoire.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.ctrl_repertoire.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        except Exception:
-            pass
+        hauteur = Style.cible_action("compact")
+        self.ctrl_modele.SetMinSize((Style.px(180), hauteur))
+        self.ctrl_repertoire.SetMinSize((Style.px(260), hauteur))
 
     def _Ligne(self, label, contenu):
         ligne = wx.BoxSizer(wx.HORIZONTAL)
-        label.SetMinSize((UTILS_UIMetrics.px(72), -1))
-        ligne.Add(label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, UTILS_UIMetrics.spacing(2))
+        label.SetMinSize((Style.px(72), -1))
+        ligne.Add(label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, Style.espace(2))
         ligne.Add(contenu, 1, wx.EXPAND)
         return ligne
 
     def __do_layout(self):
-        espace = UTILS_UIMetrics.spacing(2)
+        espace = Style.espace(2)
 
         modele = wx.BoxSizer(wx.HORIZONTAL)
-        modele.Add(self.ctrl_modele, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, espace)
+        modele.Add(self.ctrl_modele, 1, wx.EXPAND | wx.RIGHT, espace)
         modele.Add(self.bouton_modele, 0, wx.ALIGN_CENTER_VERTICAL)
 
         repertoire = wx.BoxSizer(wx.HORIZONTAL)
         repertoire.Add(self.checkbox_repertoire, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, espace)
-        repertoire.Add(self.ctrl_repertoire, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, espace)
+        repertoire.Add(self.ctrl_repertoire, 1, wx.EXPAND | wx.RIGHT, espace)
         repertoire.Add(self.bouton_repertoire, 0, wx.ALIGN_CENTER_VERTICAL)
 
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(self._Ligne(self.label_modele, modele), 0, wx.EXPAND | wx.BOTTOM, espace)
         principal.Add(self._Ligne(self.label_repertoire, repertoire), 0, wx.EXPAND)
         self.SetSizer(principal)
-        self.SetMinSize((UTILS_UIMetrics.px(560), -1))
+        self.SetMinSize((Style.px(560), -1))
         self.Layout()
 
     def OnBoutonModele(self, event):
@@ -181,9 +168,10 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = CTRL(panel)
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 0, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(panel, 1, wx.EXPAND)
