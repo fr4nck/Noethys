@@ -49,7 +49,11 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         text = self._read("noethys/Ctrl/CTRL_Footer.py")
         self.assertIn("GetColumnWidth(index)", text)
         self.assertIn("GetScrollPos(wx.HORIZONTAL)", text)
-        self.assertIn("UTILS_UIMetrics.row_height", text)
+        self.assertIn('Style.hauteur_ligne("table")', text)
+        self.assertIn('Style.couleur("on_surface_variant")', text)
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
 
     def test_assistant_list_uses_available_width_without_recursive_resize(self):
         text = self._read("noethys/Ctrl/CTRL_Assistants_liste.py")
