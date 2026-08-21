@@ -30,6 +30,7 @@ class RepensSharedControlsContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Identification.py",
             "noethys/Ctrl/CTRL_Numfacture.py",
             "noethys/Ctrl/CTRL_Agenda.py",
+            "noethys/Ctrl/CTRL_Messages.py",
         ):
             text = self._read(relative_path)
             self.assertIn("UTILS_StyleRepens as Style", text)
@@ -137,6 +138,15 @@ class RepensSharedControlsContractTests(unittest.TestCase):
         self.assertNotIn("UTILS_Interface", text)
         self.assertNotIn("UTILS_UIMetrics", text)
         self.assertNotIn("self.SetToolBitmapSize(wx.Size(24, 24))", text)
+
+    def test_home_messages_use_repens_for_list_surface_and_counter(self):
+        text = self._read("noethys/Ctrl/CTRL_Messages.py")
+        self.assertIn("Style.appliquer_liste(self)", text)
+        self.assertIn('role="body_emphasis"', text)
+        self.assertIn('Style.couleur("surface_container_low")', text)
+        self.assertIn("CTRL_ActionRepens", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
 
     def test_semantic_trees_keep_business_icons_but_scale_them(self):
         for relative_path in (
