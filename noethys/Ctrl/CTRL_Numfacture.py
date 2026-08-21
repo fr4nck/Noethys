@@ -16,27 +16,14 @@ from Ctrl import CTRL_Bouton_image
 import GestionDB
 
 
-def _ConfigurerBarreShell(parent):
-    """Aligne la toolbar hôte sur les métriques publiques de Repens."""
-    try:
-        import wx.lib.agw.aui as aui
-        if not isinstance(parent, aui.AuiToolBar):
-            return
-        parent._noethys_toolbar_icon_base = 24
-        taille = Style.taille_icone("toolbar")
-        parent.SetToolBitmapSize(wx.Size(taille, taille))
-        hauteur = Style.hauteur_toolbar(avec_libelle=True)
-        parent.SetMinSize((-1, hauteur))
-        parent._noethys_toolbar_min_height = hauteur
-    except Exception:
-        pass
-
-
 class CTRL(wx.SearchCtrl):
-    """Recherche de facture compacte, thémée et compatible DPI."""
+    """Recherche de facture compacte, thémée et compatible DPI.
+
+    Comme le contrôle d'identification, il ne modifie jamais la géométrie de
+    sa toolbar parente : le shell reste propriétaire de son alignement.
+    """
 
     def __init__(self, parent, size=wx.DefaultSize, IDfamille=None):
-        _ConfigurerBarreShell(parent)
         wx.SearchCtrl.__init__(self, parent, size=size, style=wx.TE_PROCESS_ENTER)
         self.parent = parent
         self.IDfamille = IDfamille
@@ -49,7 +36,7 @@ class CTRL(wx.SearchCtrl):
         try:
             bitmap = UTILS_IconesRepens.GetBitmap(
                 "search",
-                taille=Style.taille_icone("inline"),
+                taille=Style.taille_icone("compact"),
                 role="on_surface_variant",
             )
             if bitmap is not None and bitmap.IsOk():
@@ -58,8 +45,10 @@ class CTRL(wx.SearchCtrl):
             pass
 
         try:
-            largeur_min = max(Style.px(120), self.GetMinSize().GetWidth())
-            self.SetMinSize((largeur_min, Style.cible_action("compact")))
+            best = self.GetBestSize()
+            largeur_min = max(Style.px(120), self.GetMinSize().GetWidth(), best.GetWidth())
+            hauteur = max(Style.cible_action("compact"), best.GetHeight())
+            self.SetMinSize((largeur_min, hauteur))
         except Exception:
             pass
 
