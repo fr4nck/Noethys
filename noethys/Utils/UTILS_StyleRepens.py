@@ -29,23 +29,44 @@ RAYONS = {
     "dialogue": 12,
 }
 
-# Hiérarchie typographique sémantique, volontairement proche du vocabulaire
-# HTML. Les écrans choisissent un niveau de sens (h1, h2, h3...) et jamais une
-# taille en points. Les anciens noms restent des alias de compatibilité.
+# Gamme typographique commune avec Teamworks.
+# Les écrans choisissent un rôle sémantique et jamais une taille locale.
+# Les tailles de référence sont exprimées en points à 100 %. wx conserve la
+# fonte système native de la plateforme et la préférence d'échelle utilisateur
+# est appliquée ensuite de façon uniforme à toute la hiérarchie.
 TYPOGRAPHIES = {
-    "h1": {"delta": 4, "weight": wx.FONTWEIGHT_BOLD},
-    "h2": {"delta": 2, "weight": wx.FONTWEIGHT_BOLD},
-    "h3": {"delta": 1, "weight": wx.FONTWEIGHT_BOLD},
-    "h4": {"delta": 0, "weight": wx.FONTWEIGHT_BOLD},
-    "h5": {"delta": 0, "weight": wx.FONTWEIGHT_NORMAL, "semibold": True},
-    "h6": {"delta": -1, "weight": wx.FONTWEIGHT_BOLD},
-    "body": {"delta": 0, "weight": wx.FONTWEIGHT_NORMAL},
-    "body_emphasis": {"delta": 0, "weight": wx.FONTWEIGHT_BOLD},
-    "caption": {"delta": -1, "weight": wx.FONTWEIGHT_NORMAL},
-    "overline": {"delta": -1, "weight": wx.FONTWEIGHT_NORMAL, "semibold": True},
-    # Alias historiques : ne pas les utiliser dans les nouveaux écrans.
+    "display": {"points": 18, "weight": wx.FONTWEIGHT_BOLD},
+    "h1": {"points": 16, "weight": wx.FONTWEIGHT_BOLD},
+    "h2": {"points": 14, "weight": wx.FONTWEIGHT_BOLD},
+    "h3": {"points": 12, "weight": wx.FONTWEIGHT_BOLD},
+    "h4": {"points": 11, "weight": wx.FONTWEIGHT_BOLD},
+    "h5": {"points": 10, "weight": wx.FONTWEIGHT_NORMAL, "semibold": True},
+    "h6": {"points": 9, "weight": wx.FONTWEIGHT_NORMAL, "semibold": True},
+    "lead": {"points": 11, "weight": wx.FONTWEIGHT_NORMAL},
+    "body_large": {"points": 10, "weight": wx.FONTWEIGHT_NORMAL},
+    "body": {"points": 9, "weight": wx.FONTWEIGHT_NORMAL},
+    "body_small": {"points": 8, "weight": wx.FONTWEIGHT_NORMAL},
+    "label": {"points": 8, "weight": wx.FONTWEIGHT_NORMAL, "semibold": True},
+    "caption": {"points": 7, "weight": wx.FONTWEIGHT_NORMAL},
+    "micro": {"points": 7, "weight": wx.FONTWEIGHT_NORMAL},
+    "data_large": {"points": 16, "weight": wx.FONTWEIGHT_NORMAL, "semibold": True},
+    "body_emphasis": {"points": 9, "weight": wx.FONTWEIGHT_BOLD},
+    "overline": {"alias": "label"},
+    # Alias historiques : conservés pour compatibilité, à ne plus utiliser
+    # dans les nouveaux écrans.
     "title": {"alias": "h1"},
     "section": {"alias": "h2"},
+}
+
+# Accepte les noms utilisés dans la documentation/Teamworks sans imposer la
+# convention interne snake_case aux appelants.
+ALIASES_TYPOGRAPHIE = {
+    "bodylarge": "body_large",
+    "body-large": "body_large",
+    "bodysmall": "body_small",
+    "body-small": "body_small",
+    "datalarge": "data_large",
+    "data-large": "data_large",
 }
 
 
@@ -87,7 +108,18 @@ def hauteur_toolbar(avec_libelle=True):
     return UTILS_UIMetrics.toolbar_height(avec_libelle=avec_libelle)
 
 
+def normaliser_role_typographie(role):
+    if role is None:
+        return "body"
+    role = str(role).strip().lower().replace(" ", "_")
+    role = ALIASES_TYPOGRAPHIE.get(role, role)
+    if role not in TYPOGRAPHIES:
+        return "body"
+    return role
+
+
 def _definition_typographie(role):
+    role = normaliser_role_typographie(role)
     definition = TYPOGRAPHIES.get(role, TYPOGRAPHIES["body"])
     alias = definition.get("alias")
     if alias:
@@ -96,7 +128,11 @@ def _definition_typographie(role):
 
 
 def police(role="body"):
-    """Construit une fonte système à partir d'un rôle typographique."""
+    """Construit une fonte système à partir d'un rôle typographique.
+
+    La famille reste celle de l'OS ; seule la hiérarchie sémantique de taille
+    et de graisse est pilotée par Repens Design.
+    """
     definition = _definition_typographie(role)
     try:
         fonte = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
@@ -105,8 +141,8 @@ def police(role="body"):
 
     try:
         facteur_texte = UTILS_Interface.GetTailleTexte() / 100.0
-        base = max(8, fonte.GetPointSize())
-        taille = max(8, int(round((base + definition.get("delta", 0)) * facteur_texte)))
+        points = max(7, int(definition.get("points", 9)))
+        taille = max(7, int(round(points * facteur_texte)))
         fonte.SetPointSize(taille)
         poids = definition.get("weight", wx.FONTWEIGHT_NORMAL)
         if definition.get("semibold") and hasattr(wx, "FONTWEIGHT_SEMIBOLD"):
@@ -130,7 +166,7 @@ def appliquer_fenetre(fenetre, role_fond="surface"):
 
 def appliquer_texte(ctrl, role="body", role_texte="on_surface", role_fond=None):
     try:
-        ctrl.SetFont(police(role))
+        ctrl.SetFont(police(normaliser_role_typographie(role)))
         ctrl.SetForegroundColour(couleur(role_texte))
         if role_fond is not None:
             ctrl.SetBackgroundColour(couleur(role_fond))
@@ -179,7 +215,10 @@ def tokens():
         "action_compact": cible_action("compact"),
         "action_standard": cible_action("standard"),
         "icon_toolbar": taille_icone("toolbar"),
+        "font_display": police("display"),
         "font_h1": police("h1"),
         "font_h2": police("h2"),
         "font_h3": police("h3"),
+        "font_body": police("body"),
+        "font_data_large": police("data_large"),
     }
