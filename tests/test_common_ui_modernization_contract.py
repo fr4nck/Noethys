@@ -95,6 +95,17 @@ class CommonUIModernizationContractTests(unittest.TestCase):
             self.assertNotIn("UTILS_Interface", text)
             self.assertNotIn("UTILS_UIMetrics", text)
 
+    def test_common_information_and_selection_panels_consume_repens_stylesheet(self):
+        for relative_path in (
+            "noethys/Ctrl/CTRL_Compte_internet.py",
+            "noethys/Ctrl/CTRL_CheckListBox.py",
+            "noethys/Ctrl/CTRL_Selection_depots.py",
+        ):
+            text = self._read(relative_path)
+            self.assertIn("UTILS_StyleRepens as Style", text)
+            self.assertNotIn("UTILS_Interface", text)
+            self.assertNotIn("UTILS_UIMetrics", text)
+
     def test_date_control_remains_theme_dpi_aware_until_its_full_migration(self):
         text = self._read("noethys/Ctrl/CTRL_Saisie_date.py")
         self.assertIn("UTILS_Interface", text)
@@ -137,12 +148,12 @@ class CommonUIModernizationContractTests(unittest.TestCase):
             self.assertNotIn("wx.BitmapButton", text)
             self.assertNotIn("FlexGridSizer", text)
 
-    def test_checklist_replaces_tiny_bitmap_actions_with_text_commands(self):
+    def test_checklist_uses_repens_actions_and_no_side_bitmap_column(self):
         text = self._read("noethys/Ctrl/CTRL_CheckListBox.py")
-        self.assertIn("CTRL_Bouton_image.CTRL", text)
-        self.assertIn('texte=_(u"Tout")', text)
-        self.assertIn('texte=_(u"Aucun")', text)
-        self.assertIn('GetCouleurRole("surface_container_lowest")', text)
+        self.assertIn("CTRL_ActionRepens.CTRL", text)
+        self.assertIn('label=_(u"Tout cocher")', text)
+        self.assertIn('label=_(u"Tout décocher")', text)
+        self.assertIn("UTILS_StyleRepens as Style", text)
         self.assertNotIn("wx.BitmapButton", text)
         self.assertNotIn("FlexGridSizer", text)
 
