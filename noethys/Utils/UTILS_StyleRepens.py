@@ -43,6 +43,11 @@ def couleur(role="surface"):
     return UTILS_Interface.GetCouleurRole(role)
 
 
+def etat(nom="normal"):
+    """Retourne background/foreground/outline pour un état interactif."""
+    return UTILS_Interface.GetEtatCouleurs(nom)
+
+
 def espace(niveau=2):
     return UTILS_UIMetrics.spacing(niveau)
 
