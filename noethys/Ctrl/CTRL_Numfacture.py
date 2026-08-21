@@ -5,28 +5,27 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-11 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 from Utils.UTILS_Traduction import _
-from Utils import UTILS_FluentIcons
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_IconesRepens
+from Utils import UTILS_StyleRepens as Style
 import wx
 from Ctrl import CTRL_Bouton_image
 import GestionDB
 
 
 def _ConfigurerBarreShell(parent):
-    """Annonce explicitement la métrique Repens à la toolbar qui nous héberge."""
+    """Aligne la toolbar hôte sur les métriques publiques de Repens."""
     try:
         import wx.lib.agw.aui as aui
         if not isinstance(parent, aui.AuiToolBar):
             return
         parent._noethys_toolbar_icon_base = 24
-        taille = UTILS_UIMetrics.icon_size("toolbar")
+        taille = Style.taille_icone("toolbar")
         parent.SetToolBitmapSize(wx.Size(taille, taille))
-        hauteur = UTILS_UIMetrics.toolbar_height(avec_libelle=True, icon_px=taille)
+        hauteur = Style.hauteur_toolbar(avec_libelle=True)
         parent.SetMinSize((-1, hauteur))
         parent._noethys_toolbar_min_height = hauteur
     except Exception:
@@ -34,7 +33,7 @@ def _ConfigurerBarreShell(parent):
 
 
 class CTRL(wx.SearchCtrl):
-    """Recherche de facture compacte mais compatible DPI et grosse police."""
+    """Recherche de facture compacte, thémée et compatible DPI."""
 
     def __init__(self, parent, size=wx.DefaultSize, IDfamille=None):
         _ConfigurerBarreShell(parent)
@@ -43,22 +42,24 @@ class CTRL(wx.SearchCtrl):
         self.IDfamille = IDfamille
         self.IDutilisateurActif = None
         self.SetDescriptiveText(_(u"N° de facture"))
+        Style.appliquer_saisie(self)
 
         self.ShowSearchButton(True)
         self.ShowCancelButton(False)
         try:
-            taille = UTILS_UIMetrics.icon_size("inline")
-            bitmap = UTILS_FluentIcons.GetBitmap("search", taille=taille, role="on_surface_variant")
+            bitmap = UTILS_IconesRepens.GetBitmap(
+                "search",
+                taille=Style.taille_icone("inline"),
+                role="on_surface_variant",
+            )
             if bitmap is not None and bitmap.IsOk():
                 self.SetSearchBitmap(bitmap)
         except Exception:
             pass
 
         try:
-            largeur_min = max(UTILS_UIMetrics.px(120), self.GetMinSize().GetWidth())
-            self.SetMinSize((largeur_min, UTILS_UIMetrics.action_target("compact")))
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+            largeur_min = max(Style.px(120), self.GetMinSize().GetWidth())
+            self.SetMinSize((largeur_min, Style.cible_action("compact")))
         except Exception:
             pass
 
@@ -176,14 +177,17 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(self, "surface")
+        Style.appliquer_fenetre(panel, "surface")
         sizer_1 = wx.BoxSizer(wx.VERTICAL)
         sizer_1.Add(panel, 1, wx.EXPAND)
         self.SetSizer(sizer_1)
         self.myOlv = CTRL(panel)
         self.myOlv2 = wx.TextCtrl(panel, -1, "test")
+        Style.appliquer_saisie(self.myOlv2)
         sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2.Add(self.myOlv, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
-        sizer_2.Add(self.myOlv2, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer_2.Add(self.myOlv, 0, wx.ALL | wx.EXPAND, Style.espace(2))
+        sizer_2.Add(self.myOlv2, 0, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer_2)
         self.SetSize((500, 150))
         self.Layout()
@@ -197,18 +201,19 @@ class Dialog(wx.Dialog):
         wx.Dialog.__init__(self, parent, id, title, name="DLG_Regler_facture", style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.parent = parent
         self.IDfamille = IDfamille
+        Style.appliquer_fenetre(self, "surface")
 
         self.label = wx.StaticText(self, -1, _(u"Saisissez le numéro de la facture à régler ou scannez directement son code-barres."))
+        Style.appliquer_texte(self.label, role="body", role_texte="on_surface", role_fond="surface")
         self.ctrl_mdp = CTRL(self, IDfamille=self.IDfamille)
         self.bouton_annuler = CTRL_Bouton_image.CTRL(self, id=wx.ID_CANCEL, texte=_(u"Annuler"), iconeFluent="dismiss")
 
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
         self.bouton_annuler.SetToolTip(wx.ToolTip(_(u"Annuler")))
         self.__do_layout()
 
     def __do_layout(self):
-        marge = UTILS_UIMetrics.spacing(4)
-        espace = UTILS_UIMetrics.spacing(3)
+        marge = Style.espace(4)
+        espace = Style.espace(3)
 
         contenu = wx.BoxSizer(wx.VERTICAL)
         contenu.Add(self.label, 0, wx.EXPAND | wx.BOTTOM, espace)
@@ -223,11 +228,11 @@ class Dialog(wx.Dialog):
         principal.Add(actions, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
         self.SetSizer(principal)
 
-        self.SetMinSize((UTILS_UIMetrics.px(360), -1))
+        self.SetMinSize((Style.px(360), -1))
         self.Fit()
-        hauteur = max(self.GetSize().GetHeight(), UTILS_UIMetrics.px(150))
+        hauteur = max(self.GetSize().GetHeight(), Style.px(150))
         ecran = wx.GetClientDisplayRect()
-        largeur = max(UTILS_UIMetrics.px(420), min(UTILS_UIMetrics.px(620), int(ecran.GetWidth() * 0.42)))
+        largeur = max(Style.px(420), min(Style.px(620), int(ecran.GetWidth() * 0.42)))
         self.SetSize((largeur, hauteur))
         self.Layout()
         if parent_valide(self.GetParent()):
