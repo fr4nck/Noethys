@@ -21,7 +21,7 @@ from dateutil.parser import parse, parserinfo
 import Chemins
 from Ctrl import CTRL_Bouton_image, CTRL_Saisie_heure
 from Utils import UTILS_Adaptations, UTILS_Config, UTILS_Dates
-from Utils import UTILS_Interface, UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
@@ -76,7 +76,7 @@ def _MessageErreur(parent, message, titre=_(u"Erreur de date")):
 
 
 def _BitmapMenu(image):
-    taille = UTILS_UIMetrics.icon_size("compact")
+    taille = Style.taille_icone("compact")
     bitmap = wx.Bitmap(Chemins.GetStaticIconPath(image, taille=taille), wx.BITMAP_TYPE_ANY)
     if bitmap.IsOk() and (bitmap.GetWidth() != taille or bitmap.GetHeight() != taille):
         source = bitmap.ConvertToImage().Scale(taille, taille, wx.IMAGE_QUALITY_HIGH)
@@ -84,15 +84,8 @@ def _BitmapMenu(image):
     return bitmap
 
 
-def _PoliceInterface():
-    police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-    facteur = UTILS_Interface.GetTailleTexte() / 100.0
-    police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-    return police
-
-
 class Date(masked.TextCtrl):
-    """Contrôle date compact, DPI-aware et compatible avec le thème."""
+    """Contrôle date compact, DPI-aware et compatible avec Repens Design."""
 
     def __init__(self, parent, date_min="01/01/1900", date_max="01/01/2999", size=(-1, -1), pos=wx.DefaultPosition):
         self.mask_date = UTILS_Config.GetParametre("mask_date", "##/##/####")
@@ -111,11 +104,9 @@ class Date(masked.TextCtrl):
 
     def _AppliqueStyle(self):
         try:
-            self.SetFont(_PoliceInterface())
-            largeur = max(UTILS_UIMetrics.px(108), self.GetTextExtent("00/00/0000")[0] + UTILS_UIMetrics.spacing(4))
-            self.SetMinSize((largeur, UTILS_UIMetrics.action_target("compact")))
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+            Style.appliquer_saisie(self)
+            largeur = max(Style.px(108), self.GetTextExtent("00/00/0000")[0] + Style.espace(4))
+            self.SetMinSize((largeur, Style.cible_action("compact")))
         except Exception:
             pass
 
@@ -339,23 +330,21 @@ class Date2(wx.Panel):
         self.activeCallback = activeCallback
         self.heure = heure
         self.ctrl_date = Date(self, date_min, date_max)
+        taille_icone = Style.taille_icone("inline")
         self.bouton_calendrier = CTRL_Bouton_image.CTRL(
             self,
             texte="",
             iconeFluent="calendar",
-            tailleImage=(UTILS_UIMetrics.icon_size("inline"), UTILS_UIMetrics.icon_size("inline")),
+            tailleImage=(taille_icone, taille_icone),
         )
         self.bouton_calendrier.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour sélectionner la date dans le calendrier")))
         self.ctrl_heure = CTRL_Saisie_heure.Heure(self) if heure else None
-        try:
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
-        except Exception:
-            pass
+        Style.appliquer_fenetre(self, "surface")
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(self.ctrl_date, 0, wx.ALIGN_CENTER_VERTICAL)
-        sizer.Add(self.bouton_calendrier, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
+        sizer.Add(self.bouton_calendrier, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
         if self.ctrl_heure is not None:
-            sizer.Add(self.ctrl_heure, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
+            sizer.Add(self.ctrl_heure, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
         self.SetSizer(sizer)
         self.Fit()
         self.Layout()
@@ -429,12 +418,14 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1, name="panel_test")
+        Style.appliquer_fenetre(self, "surface")
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl1 = Date2(panel, heure=True)
         self.ctrl2 = Date2(panel)
         self.bouton1 = wx.Button(panel, -1, u"Tester la validité du ctrl 1")
         sizer = wx.BoxSizer(wx.VERTICAL)
         for controle in (self.ctrl1, self.ctrl2, self.bouton1):
-            sizer.Add(controle, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+            sizer.Add(controle, 0, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
