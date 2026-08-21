@@ -1,0 +1,115 @@
+name: Noe063 consolidation helper
+
+on:
+  push:
+    branches:
+      - feature/noe-063-portail-consolide
+    paths:
+      - .github/workflows/noe063-consolidation-helper.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/noe-063-portail-consolide
+          fetch-depth: 0
+
+      - name: Raccorder les blocs enrichis
+        shell: python
+        run: |
+          from pathlib import Path
+
+          dlg_path = Path("noethys/Dlg/DLG_Saisie_portail_bloc.py")
+          dlg = dlg_path.read_text(encoding="utf-8")
+
+          ancien = "from Ctrl import CTRL_Editeur_email\nfrom Ctrl.CTRL_Portail_pages import CTRL_Couleur"
+          nouveau = (
+              "from Ctrl import CTRL_Editeur_email\n"
+              "from Ctrl import CTRL_Portail_contenu_externe\n"
+              "from Ctrl import CTRL_Portail_tarifs\n"
+              "from Utils import UTILS_Portail_blocs\n"
+              "from Ctrl.CTRL_Portail_pages import CTRL_Couleur"
+          )
+          assert ancien in dlg, "point d'insertion imports introuvable"
+          dlg = dlg.replace(ancien, nouveau, 1)
+
+          ancien = '''        self.listePages = [
+              (_("bloc_texte"), _(u"Texte"), PAGE_Texte(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Texte_bloc.png'), wx.BITMAP_TYPE_PNG)),
+              (_("bloc_onglets"), _(u"Onglets"), PAGE_Onglets(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Onglets.png'), wx.BITMAP_TYPE_PNG)),'''
+          nouveau = '''        self.listePages = [
+              (_("bloc_texte"), _(u"Texte"), PAGE_Texte(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Texte_bloc.png'), wx.BITMAP_TYPE_PNG)),
+              (UTILS_Portail_blocs.CODE_CONTENU_EXTERNE, _(u"Contenu externe"), CTRL_Portail_contenu_externe.CTRL(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Apercu.png'), wx.BITMAP_TYPE_PNG)),
+              (UTILS_Portail_blocs.CODE_TARIFS, _(u"Tarifs Noethys"), CTRL_Portail_tarifs.CTRL(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Euro.png'), wx.BITMAP_TYPE_PNG)),
+              (_("bloc_onglets"), _(u"Onglets"), PAGE_Onglets(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Onglets.png'), wx.BITMAP_TYPE_PNG)),'''
+          assert ancien in dlg, "liste des blocs introuvable"
+          dlg = dlg.replace(ancien, nouveau, 1)
+
+          ancien = '''    def GetParametres(self):
+          dictParametres = self.GetPageActive().GetParametres()
+          dictParametres["categorie"] = self.GetCodePageActive()
+          return dictParametres
+
+      def SetParametres(self, dictParametres={}):
+          self.SetPageByCode(dictParametres["categorie"])
+          self.GetPageActive().SetParametres(dictParametres)'''
+          nouveau = '''    def GetParametres(self):
+          dictParametres = self.GetPageActive().GetParametres()
+          code = self.GetCodePageActive()
+          dictParametres["categorie"] = UTILS_Portail_blocs.categorie_persistante(code)
+          return dictParametres
+
+      def SetParametres(self, dictParametres={}):
+          code = UTILS_Portail_blocs.detecter_code(dictParametres)
+          self.SetPageByCode(code)
+          self.GetPageActive().SetParametres(dictParametres)'''
+          assert ancien in dlg, "routage des catégories introuvable"
+          dlg = dlg.replace(ancien, nouveau, 1)
+          dlg_path.write_text(dlg, encoding="utf-8")
+
+          serveur_path = Path("noethys/Ctrl/CTRL_Portail_serveur.py")
+          serveur = serveur_path.read_text(encoding="utf-8")
+          ancien = "from Utils import UTILS_Portail_synchro\nfrom Dlg.DLG_Portail_config import LISTE_DELAIS_SYNCHRO"
+          nouveau = (
+              "from Utils import UTILS_Portail_synchro\n"
+              "from Utils import UTILS_Portail_tarifs_synchro\n"
+              "from Dlg.DLG_Portail_config import LISTE_DELAIS_SYNCHRO"
+          )
+          assert ancien in serveur, "import synchro portail introuvable"
+          serveur = serveur.replace(ancien, nouveau, 1)
+
+          ancien = '''                        self.synchro_en_cours = True
+                      synchro = UTILS_Portail_synchro.Synchro(log=self.parent)
+                      synchro.Synchro_totale()'''
+          nouveau = '''                        self.synchro_en_cours = True
+
+                      # Les blocs Tarifs Noethys sont régénérés localement puis
+                      # exportés par le moteur Connecthys historique comme des
+                      # blocs texte. Une erreur ne bloque jamais la synchro.
+                      try:
+                          UTILS_Portail_tarifs_synchro.preparer_avant_synchro(log=self.parent)
+                      except Exception as err:
+                          self.parent.EcritLog(_(u"[AVERTISSEMENT] Actualisation des tarifs portail impossible : %s") % err)
+
+                      synchro = UTILS_Portail_synchro.Synchro(log=self.parent)
+                      synchro.Synchro_totale()'''
+          assert ancien in serveur, "appel Synchro_totale introuvable"
+          serveur = serveur.replace(ancien, nouveau, 1)
+          serveur_path.write_text(serveur, encoding="utf-8")
+
+          # Le helper est volontairement auto-supprimé : il ne doit pas faire
+          # partie du produit ni des workflows permanents.
+          Path(".github/workflows/noe063-consolidation-helper.yml").unlink()
+
+      - name: Commit de consolidation
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Dlg/DLG_Saisie_portail_bloc.py noethys/Ctrl/CTRL_Portail_serveur.py .github/workflows/noe063-consolidation-helper.yml
+          git commit -m "Portail: raccorde les blocs indépendants à Connecthys"
+          git push origin HEAD:feature/noe-063-portail-consolide
