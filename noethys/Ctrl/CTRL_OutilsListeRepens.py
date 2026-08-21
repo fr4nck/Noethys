@@ -23,6 +23,18 @@ ID_COCHER_TOUT = 20
 ID_DECOCHER_TOUT = 21
 
 
+def _AppelerPremiere(objet, noms):
+    """Appelle la première variante historique disponible."""
+    if objet is None:
+        return False
+    for nom in noms:
+        methode = getattr(objet, nom, None)
+        if callable(methode):
+            methode()
+            return True
+    return False
+
+
 class BarreRecherche(wx.SearchCtrl):
     """Recherche différée, compatible avec le contrat historique."""
 
@@ -322,15 +334,9 @@ class CTRL(wx.Panel):
         elif identifiant == ID_FILTRES_EFFACER:
             self.SetFiltres([])
         elif identifiant == ID_COCHER_TOUT:
-            try:
-                self.listview.CocheListeTout()
-            except Exception:
-                pass
+            _AppelerPremiere(self.listview, ("CocheListeTout", "CocheTout"))
         elif identifiant == ID_DECOCHER_TOUT:
-            try:
-                self.listview.CocheListeRien()
-            except Exception:
-                pass
+            _AppelerPremiere(self.listview, ("CocheListeRien", "CocheRien"))
 
     def SetFiltres(self, listeFiltres=None):
         if self.listview is None:
