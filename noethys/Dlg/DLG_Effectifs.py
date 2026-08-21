@@ -16,9 +16,9 @@ from Utils import UTILS_Aui
 from Utils import UTILS_Interface
 from Utils import UTILS_UIMetrics
 from Dlg import DLG_Remplissage_Repens as DLG_Remplissage
-from Dlg import DLG_Recap_evenements
-from Dlg import DLG_Nbre_inscrits_2 as DLG_Nbre_inscrits
-from Dlg import DLG_Tableau_bord_locations
+from Dlg import DLG_Recap_evenements_Repens as DLG_Recap_evenements
+from Dlg import DLG_Nbre_inscrits_Repens as DLG_Nbre_inscrits
+from Dlg import DLG_Tableau_bord_locations_Repens as DLG_Tableau_bord_locations
 
 
 class CTRL(wx.Panel):
