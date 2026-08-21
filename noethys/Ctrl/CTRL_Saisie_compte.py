@@ -5,42 +5,25 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-14 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 import wx
 import GestionDB
 
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 
 
 class CTRL(wx.Choice):
-    """Sélecteur de compte bancaire cohérent avec les contrôles de saisie."""
+    """Sélecteur de compte bancaire aligné sur le CSS Repens."""
 
     def __init__(self, parent, IDcompte_bancaire=None, size=(-1, -1)):
         wx.Choice.__init__(self, parent, -1, size=size)
         self.parent = parent
         self.IDdefaut = None
-        self._AppliqueStyle()
+        Style.appliquer_saisie(self)
         self.MAJ()
         self.SetID(IDcompte_bancaire)
-
-    def _AppliqueStyle(self):
-        try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            self.SetFont(police)
-        except Exception:
-            pass
-
-        try:
-            self.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        except Exception:
-            pass
 
     def MAJ(self):
         listeItems = self.GetListeDonnees()
@@ -81,11 +64,12 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1, name="panel_test")
+        Style.appliquer_fenetre(panel)
         self.ctrl1 = CTRL(panel)
         self.ctrl2 = CTRL(panel)
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl1, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
-        sizer.Add(self.ctrl2, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl1, 0, wx.ALL | wx.EXPAND, Style.espace(2))
+        sizer.Add(self.ctrl2, 0, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
