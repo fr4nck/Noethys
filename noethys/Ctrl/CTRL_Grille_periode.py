@@ -14,8 +14,7 @@ import datetime
 import wx
 
 import GestionDB
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 if 'phoenix' in wx.PlatformInfo:
@@ -24,33 +23,15 @@ else:
     from wx import DatePickerCtrl, DP_DROPDOWN, EVT_DATE_CHANGED
 
 
-def _AppliquerStyleControle(ctrl, fond_donnees=True):
-    try:
-        if fond_donnees:
-            ctrl.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-        ctrl.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-    except Exception:
-        pass
-    try:
-        police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-        facteur = UTILS_Interface.GetTailleTexte() / 100.0
-        police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-        ctrl.SetFont(police)
-    except Exception:
-        pass
-
-
 def _PreparerPage(panel):
-    try:
-        panel.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
-    except Exception:
-        pass
+    Style.appliquer_fenetre(panel, "surface")
 
 
 def _LigneFormulaire(label, ctrl):
-    label.SetMinSize((UTILS_UIMetrics.px(68), -1))
+    Style.appliquer_texte(label, role="label", role_texte="on_surface", role_fond="surface")
+    label.SetMinSize((Style.px(68), -1))
     ligne = wx.BoxSizer(wx.HORIZONTAL)
-    ligne.Add(label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, UTILS_UIMetrics.spacing(2))
+    ligne.Add(label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, Style.espace(2))
     ligne.Add(ctrl, 1, wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
     return ligne
 
@@ -59,8 +40,8 @@ class MyDatePickerCtrl(DatePickerCtrl):
     def __init__(self, parent):
         DatePickerCtrl.__init__(self, parent, -1, style=DP_DROPDOWN)
         self.parent = parent
-        _AppliquerStyleControle(self)
-        self.SetMinSize((UTILS_UIMetrics.px(132), UTILS_UIMetrics.action_target("compact")))
+        Style.appliquer_saisie(self)
+        self.SetMinSize((Style.px(132), Style.cible_action("compact")))
         self.Bind(EVT_DATE_CHANGED, self.OnDateChanged)
         self.Bind(wx.EVT_CHILD_FOCUS, self.OnFocus)
 
@@ -86,8 +67,8 @@ class CTRL_Annee(wx.SpinCtrl):
     def __init__(self, parent):
         wx.SpinCtrl.__init__(self, parent, -1, min=1977, max=2999)
         self.parent = parent
-        _AppliquerStyleControle(self)
-        self.SetMinSize((UTILS_UIMetrics.px(92), UTILS_UIMetrics.action_target("compact")))
+        Style.appliquer_saisie(self)
+        self.SetMinSize((Style.px(92), Style.cible_action("compact")))
         self.SetToolTip(wx.ToolTip(_(u"Sélectionnez une année")))
         self.SetAnnee(datetime.date.today().year)
 
@@ -109,8 +90,8 @@ class CTRL_ListBox(wx.ListBox):
         self.parent = parent
         self.SetToolTip(wx.ToolTip(_(u"Sélectionnez une ou plusieurs périodes avec les touches SHIFT ou CTRL")))
         self.listeChoix = []
-        _AppliquerStyleControle(self)
-        self.SetMinSize((UTILS_UIMetrics.px(150), UTILS_UIMetrics.px(116)))
+        Style.appliquer_liste(self)
+        self.SetMinSize((Style.px(150), Style.px(116)))
 
     def SetListeChoix(self, listeChoix=[], conserveSelections=False):
         self.listeChoix = listeChoix
@@ -150,7 +131,7 @@ class CTRL_ListBox(wx.ListBox):
 
 class Mois(wx.Panel):
     def __init__(self, parent):
-        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
+        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
         _PreparerPage(self)
         self.listeMois = [_(u"Janvier"), _(u"Février"), _(u"Mars"), _(u"Avril"), _(u"Mai"), _(u"Juin"), _(u"Juillet"), _(u"Août"), _(u"Septembre"), _(u"Octobre"), _(u"Novembre"), _(u"Décembre")]
@@ -158,10 +139,11 @@ class Mois(wx.Panel):
         self.label_annee = wx.StaticText(self, -1, _(u"Année :"))
         self.ctrl_annee = CTRL_Annee(self)
         self.label_mois = wx.StaticText(self, -1, _(u"Mois :"))
+        Style.appliquer_texte(self.label_mois, role="label", role_texte="on_surface", role_fond="surface")
         self.ctrl_mois = CTRL_ListBox(self)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        marge = UTILS_UIMetrics.spacing(2)
+        marge = Style.espace(2)
         sizer.Add(_LigneFormulaire(self.label_annee, self.ctrl_annee), 0, wx.EXPAND | wx.ALL, marge)
         sizer.Add(self.label_mois, 0, wx.LEFT | wx.RIGHT | wx.TOP, marge)
         sizer.Add(self.ctrl_mois, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
@@ -201,14 +183,14 @@ class Mois(wx.Panel):
 
 class Annee(wx.Panel):
     def __init__(self, parent):
-        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
+        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
         _PreparerPage(self)
         self.label_annee = wx.StaticText(self, -1, _(u"Année :"))
         self.ctrl_annee = CTRL_Annee(self)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(_LigneFormulaire(self.label_annee, self.ctrl_annee), 0, wx.EXPAND | wx.ALL, UTILS_UIMetrics.spacing(2))
+        sizer.Add(_LigneFormulaire(self.label_annee, self.ctrl_annee), 0, wx.EXPAND | wx.ALL, Style.espace(2))
         sizer.AddStretchSpacer(1)
         self.SetSizer(sizer)
         self.ctrl_annee.Bind(wx.EVT_SPINCTRL, self.OnSelectionAnnee)
@@ -222,16 +204,17 @@ class Annee(wx.Panel):
 
 class Vacances(wx.Panel):
     def __init__(self, parent):
-        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
+        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
         _PreparerPage(self)
         self.label_annee = wx.StaticText(self, -1, _(u"Année :"))
         self.ctrl_annee = CTRL_Annee(self)
         self.label_periode = wx.StaticText(self, -1, _(u"Période :"))
+        Style.appliquer_texte(self.label_periode, role="label", role_texte="on_surface", role_fond="surface")
         self.ctrl_periode = CTRL_ListBox(self)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        marge = UTILS_UIMetrics.spacing(2)
+        marge = Style.espace(2)
         sizer.Add(_LigneFormulaire(self.label_annee, self.ctrl_annee), 0, wx.EXPAND | wx.ALL, marge)
         sizer.Add(self.label_periode, 0, wx.LEFT | wx.RIGHT | wx.TOP, marge)
         sizer.Add(self.ctrl_periode, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
@@ -274,7 +257,7 @@ class Vacances(wx.Panel):
 
 class Dates(wx.Panel):
     def __init__(self, parent):
-        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
+        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
         _PreparerPage(self)
         self.label_date_debut = wx.StaticText(self, -1, _(u"Du :"))
@@ -285,7 +268,7 @@ class Dates(wx.Panel):
         self.ctrl_date_fin.SetToolTip(wx.ToolTip(_(u"Saisissez une date de fin")))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        marge = UTILS_UIMetrics.spacing(2)
+        marge = Style.espace(2)
         sizer.Add(_LigneFormulaire(self.label_date_debut, self.ctrl_date_debut), 0, wx.EXPAND | wx.ALL, marge)
         sizer.Add(_LigneFormulaire(self.label_date_fin, self.ctrl_date_fin), 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
         sizer.AddStretchSpacer(1)
@@ -305,15 +288,14 @@ class CTRL(wx.Panel):
     """Sélection d'une période pour la grille de saisie des consommations."""
 
     def __init__(self, parent):
-        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
+        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
         self.nomParent = self.GetParent().GetName()
         self.evtActif = True
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        Style.appliquer_fenetre(self, "surface")
 
         self.notebook = wx.Notebook(self, -1, style=wx.BK_TOP)
-        _AppliquerStyleControle(self.notebook, fond_donnees=False)
-        self.notebook.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        Style.appliquer_fenetre(self.notebook, "surface")
 
         self.page_dates = Dates(self.notebook)
         self.page_annee = Annee(self.notebook)
@@ -328,7 +310,7 @@ class CTRL(wx.Panel):
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.notebook, 1, wx.EXPAND)
         self.SetSizer(sizer)
-        self.SetMinSize((UTILS_UIMetrics.px(260), UTILS_UIMetrics.px(190)))
+        self.SetMinSize((Style.px(260), Style.px(190)))
         self.notebook.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnPageChanged)
 
     def OnSelection(self):
@@ -457,9 +439,10 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = CTRL(panel)
         contenu = wx.BoxSizer(wx.VERTICAL)
-        contenu.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        contenu.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(contenu)
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(panel, 1, wx.EXPAND)
