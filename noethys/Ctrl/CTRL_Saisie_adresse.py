@@ -18,6 +18,7 @@ import Chemins
 import GestionDB
 from Ctrl import CTRL_ActionRepens
 from Utils import UTILS_Config
+from Utils import UTILS_Villes
 from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
@@ -92,11 +93,9 @@ class TextCtrlCp(masked.TextCtrl):
             return
         textCode = self.GetValue()
         villeSelect = self.ctrlVille.GetValue()
-        if villeSelect != '':
-            for ville, cp in self.listeVilles:
-                if ville == villeSelect and cp == textCode:
-                    event.Skip()
-                    return
+        if villeSelect != '' and UTILS_Villes.CoupleExiste(self.listeVilles, villeSelect, textCode):
+            event.Skip()
+            return
 
         reponses = [ville for ville, cp in self.listeVilles if cp == textCode]
         if not reponses:
@@ -160,13 +159,20 @@ class TextCtrlVille(wx.TextCtrl):
             event.Skip()
             return
 
-        nbreCodes = self.listeNomsVilles.count(villeSelect)
-        if nbreCodes > 1:
-            listeCodes = [cp for ville, cp in self.listeVilles if villeSelect == ville]
+        # Un couple explicitement sélectionné est atomique : perdre le focus ne
+        # doit jamais remplacer silencieusement son code postal par un homonyme.
+        if UTILS_Villes.CoupleExiste(self.listeVilles, villeSelect, self.ctrlCp.GetValue()):
+            event.Skip()
+            return
+
+        listeCodes = UTILS_Villes.CodesPourVille(self.listeVilles, villeSelect)
+        if len(listeCodes) > 1:
             resultat = self.ChoixCodes(villeSelect, listeCodes)
             if resultat:
                 self.ctrlCp.SetValue(resultat)
-        elif nbreCodes == 0:
+        elif len(listeCodes) == 1:
+            self.ctrlCp.SetValue(listeCodes[0])
+        else:
             dlg = wx.MessageDialog(self, _(u"Cette ville n'est pas répertoriée dans la base de données. \nVérifiez que vous n'avez pas fait d'erreur de saisie."), _(u"Information"), wx.OK | wx.ICON_INFORMATION)
             dlg.ShowModal()
             dlg.Destroy()
@@ -186,15 +192,25 @@ class TextCtrlVille(wx.TextCtrl):
             event.Skip()
             return
 
-        currentText = event.GetString().upper()
-        for ville, cp in self.listeVilles:
-            if ville.startswith(currentText):
-                self.ignoreEvtText = True
-                self.SetValue(ville)
-                self.SetInsertionPoint(len(currentText))
-                self.SetSelection(len(currentText), len(ville))
-                self.ctrlCp.SetValue(cp)
-                return
+        currentText = event.GetString()
+
+        # Préserve un couple déjà choisi, notamment lorsque la ville est
+        # homonyme. L'autocomplétion ne réécrit le CP que si le préfixe ne
+        # correspond qu'à un seul couple ville + code postal.
+        if UTILS_Villes.CoupleExiste(self.listeVilles, currentText, self.ctrlCp.GetValue()):
+            event.Skip()
+            return
+
+        resultat = UTILS_Villes.AutocompletionUnique(self.listeVilles, currentText)
+        if resultat is not None:
+            ville, cp = resultat
+            self.ignoreEvtText = True
+            self.SetValue(ville)
+            self.SetInsertionPoint(len(currentText))
+            self.SetSelection(len(currentText), len(ville))
+            self.ctrlCp.SetValue(cp)
+            return
+
         self.ctrlCp.SetValue('')
         event.Skip()
 

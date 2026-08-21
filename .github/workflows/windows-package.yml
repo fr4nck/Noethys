@@ -6,6 +6,7 @@ on:
     branches:
       - master
     paths:
+      - 'noethys/**'
       - 'packaging/**'
       - 'requirements-build.txt'
       - 'requirements.txt'
@@ -16,6 +17,7 @@ on:
       - '.github/workflows/windows-package.yml'
   pull_request:
     paths:
+      - 'noethys/**'
       - 'packaging/**'
       - 'requirements-build.txt'
       - 'requirements.txt'
