@@ -31,6 +31,8 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertIn("UTILS_StyleRepens as Style", text)
         self.assertNotIn("UTILS_Interface", text)
         self.assertNotIn("UTILS_UIMetrics", text)
+        self.assertNotIn("Style.px(76)", text)
+        self.assertNotIn("principal.Add(contenu, 1", text)
         self.assertNotIn("FlexGridSizer", text)
         self.assertNotIn("GridSizer", text)
 
