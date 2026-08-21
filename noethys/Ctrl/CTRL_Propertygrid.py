@@ -562,7 +562,7 @@ class Bouton_reinitialisation(CTRL_Bouton_image.CTRL):
             parent,
             texte="",
             cheminImage="Images/16x16/Actualiser.png",
-            tailleImage=(Style.taille_icone("compact"), Style.taille_icone("compact")),
+            tailleImage=(16, 16),
         )
         self.ctrl_parametres = ctrl_parametres
         self.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour réinitialiser tous les paramêtres")))
@@ -578,7 +578,7 @@ class Bouton_sauvegarde(CTRL_Bouton_image.CTRL):
             parent,
             texte="",
             cheminImage="Images/16x16/Sauvegarder.png",
-            tailleImage=(Style.taille_icone("compact"), Style.taille_icone("compact")),
+            tailleImage=(16, 16),
         )
         self.ctrl_parametres = ctrl_parametres
         self.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour mémoriser tous les paramêtres")))
