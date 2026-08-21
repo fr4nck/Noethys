@@ -67,6 +67,25 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertNotIn("UTILS_Interface", text)
         self.assertNotIn("UTILS_UIMetrics", text)
 
+    def test_list_tools_consume_repens_facade_only(self):
+        text = self._read("noethys/Ctrl/CTRL_OutilsListeRepens.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_saisie(self)", text)
+        self.assertIn('Style.appliquer_fenetre(self, "surface")', text)
+        self.assertIn('icone="filter"', text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+
+    def test_toaster_consumes_repens_typography_and_metrics(self):
+        text = self._read("noethys/Ctrl/CTRL_Toaster.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn('Style.couleur("surface_container_highest")', text)
+        self.assertIn('Style.police("h2")', text)
+        self.assertIn("Style.espace(10)", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+        self.assertNotIn("_PoliceSysteme", text)
+
     def test_business_lists_share_repens_actions_and_metrics(self):
         for relative_path in (
             "noethys/Ctrl/CTRL_Liste_inscriptions.py",
