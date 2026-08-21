@@ -54,7 +54,7 @@ class TexteIntro(CTRL_TexteRepens.CTRL):
             self,
             parent,
             label=self.texte_original,
-            role="body",
+            role="lead",
             role_texte="on_surface_variant",
             role_fond="surface_container",
             wrap=True,
@@ -70,7 +70,7 @@ class TexteIntro(CTRL_TexteRepens.CTRL):
 
 
 class Bandeau(wx.Panel):
-    """En-tête commun : illustration, H1 et introduction reflow."""
+    """En-tête commun : illustration, H1 et introduction Lead reflow."""
 
     def __init__(self, parent, titre="", texte="", hauteurHtml=25, nomImage=None):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
