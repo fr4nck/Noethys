@@ -87,3 +87,36 @@ def politique_depuis_configuration(configuration=None):
         "IDsactivites": list(config["IDsactivites"]),
         "IDsactivites_exclues": list(config["IDsactivites_exclues"]),
     }
+
+
+def fusionner_choix_catalogue(configuration, IDs_catalogue, IDs_coches, mode=None):
+    """Fusionne les choix visibles sans perdre ceux temporairement invisibles.
+
+    Une activité peut sortir momentanément du catalogue parce qu'elle n'a plus
+    de tarif courant/futur, puis redevenir publiable plus tard. Réenregistrer
+    le bloc pendant cette période ne doit ni effacer une exclusion explicite,
+    ni oublier une sélection manuelle historique.
+    """
+    config = normaliser_configuration(configuration)
+    mode = str(mode or config["mode"]).strip().lower()
+    if mode not in (MODE_AUTOMATIQUE, MODE_SELECTION):
+        mode = MODE_AUTOMATIQUE
+
+    catalogue = set(_liste_ids(IDs_catalogue))
+    coches = set(_liste_ids(IDs_coches))
+
+    if mode == MODE_SELECTION:
+        invisibles = set(config["IDsactivites"]) - catalogue
+        return {
+            "mode": MODE_SELECTION,
+            "IDsactivites": sorted(coches | invisibles),
+            "IDsactivites_exclues": [],
+        }
+
+    exclusions_invisibles = set(config["IDsactivites_exclues"]) - catalogue
+    exclusions_visibles = catalogue - coches
+    return {
+        "mode": MODE_AUTOMATIQUE,
+        "IDsactivites": [],
+        "IDsactivites_exclues": sorted(exclusions_invisibles | exclusions_visibles),
+    }
