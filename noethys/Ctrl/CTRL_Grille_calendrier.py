@@ -11,20 +11,19 @@
 import wx
 
 from Ctrl import CTRL_Calendrier
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
 class CTRL(wx.Panel):
-    """Wrapper compact du calendrier commun, sans grille de layout historique."""
+    """Wrapper compact du calendrier commun, sans géométrie locale."""
 
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, -1)
         self.parent = parent
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        Style.appliquer_fenetre(self, "surface")
 
-        bord = UTILS_UIMetrics.spacing(1)
+        bord = Style.espace(1)
         self.ctrl_calendrier = CTRL_Calendrier.CTRL(
             self,
             afficheBoutonAnnuel=False,
@@ -37,7 +36,7 @@ class CTRL(wx.Panel):
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.ctrl_calendrier, 1, wx.EXPAND)
         self.SetSizer(sizer)
-        self.SetMinSize((UTILS_UIMetrics.px(240), UTILS_UIMetrics.px(190)))
+        self.SetMinSize((Style.px(240), Style.px(190)))
         self.Layout()
 
         self.ctrl_calendrier.Bind(CTRL_Calendrier.EVT_SELECT_DATES, self.OnDateSelected)
@@ -61,9 +60,10 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = CTRL(panel)
         contenu = wx.BoxSizer(wx.VERTICAL)
-        contenu.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        contenu.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(contenu)
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(panel, 1, wx.EXPAND)
