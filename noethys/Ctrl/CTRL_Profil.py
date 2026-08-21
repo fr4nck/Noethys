@@ -14,8 +14,7 @@ import wx
 
 import GestionDB
 from Ctrl import CTRL_ActionRepens
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
@@ -25,12 +24,8 @@ class CTRL_Choix_profil(wx.Choice):
         self.parent = parent
         self.categorie = categorie
         self.defaut = None
-        try:
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-            self.SetMinSize((UTILS_UIMetrics.px(110), UTILS_UIMetrics.action_target("compact")))
-        except Exception:
-            pass
+        Style.appliquer_saisie(self)
+        self.SetMinSize((Style.px(110), Style.cible_action("compact")))
         self.MAJ()
         if len(self.dictDonnees) > 0:
             self.Select(0)
@@ -89,7 +84,7 @@ class CTRL(wx.Panel):
         wx.Panel.__init__(self, parent, id=-1, name="ctrl_profil", style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
         self.categorie = categorie
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_low"))
+        Style.appliquer_fenetre(self, "surface_container_low")
 
         self.ctrl_choix_profil = CTRL_Choix_profil(self, categorie=categorie)
         self.bouton_gestion = CTRL_ActionRepens.CTRL(
@@ -113,9 +108,9 @@ class CTRL(wx.Panel):
         self.ctrl_choix_profil.SetToolTip(wx.ToolTip(_(u"Sélectionner un profil de configuration")))
 
         sizer = wx.WrapSizer(wx.HORIZONTAL)
-        sizer.Add(self.ctrl_choix_profil, 1, wx.EXPAND | wx.RIGHT | wx.BOTTOM, UTILS_UIMetrics.spacing(1))
-        sizer.Add(self.bouton_gestion, 0, wx.RIGHT | wx.BOTTOM, UTILS_UIMetrics.spacing(1))
-        sizer.Add(self.bouton_enregistrer, 0, wx.BOTTOM, UTILS_UIMetrics.spacing(1))
+        sizer.Add(self.ctrl_choix_profil, 1, wx.EXPAND | wx.RIGHT | wx.BOTTOM, Style.espace(1))
+        sizer.Add(self.bouton_gestion, 0, wx.RIGHT | wx.BOTTOM, Style.espace(1))
+        sizer.Add(self.bouton_enregistrer, 0, wx.BOTTOM, Style.espace(1))
         self.SetSizer(sizer)
         self.Layout()
 
@@ -284,9 +279,10 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1, name="panel_test")
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = CTRL(panel)
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
