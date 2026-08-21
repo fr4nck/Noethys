@@ -83,6 +83,7 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         for relative_path in (
             "noethys/Ctrl/CTRL_Saisie_date.py",
             "noethys/Ctrl/CTRL_Saisie_heure.py",
+            "noethys/Ctrl/CTRL_Saisie_numSecu.py",
             "noethys/Ctrl/CTRL_Saisie_mail.py",
             "noethys/Ctrl/CTRL_Saisie_tel.py",
             "noethys/Ctrl/CTRL_Saisie_euros.py",
@@ -134,8 +135,10 @@ class CommonUIModernizationContractTests(unittest.TestCase):
 
     def test_identity_status_control_is_semantic_and_scalable(self):
         text = self._read("noethys/Ctrl/CTRL_Saisie_numSecu.py")
-        self.assertIn('GetCouleurRole("success")', text)
-        self.assertIn('GetCouleurRole("danger")', text)
+        self.assertIn('Style.couleur("success")', text)
+        self.assertIn('Style.couleur("danger")', text)
+        self.assertIn('Style.police("h4")', text)
+        self.assertIn("Style.appliquer_saisie(self.ctrl_numsecu)", text)
         self.assertIn("wx.StaticText", text)
         self.assertNotIn("wx.StaticBitmap", text)
         self.assertNotIn("FlexGridSizer", text)
