@@ -24,11 +24,13 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertIn("UTILS_UIMetrics.toolbar_height", text)
         self.assertNotIn("setattr(wx.ToolBar", text)
 
-    def test_common_banner_reflows_with_box_sizer(self):
+    def test_common_banner_reflows_with_box_sizer_and_central_style(self):
         text = self._read("noethys/Ctrl/CTRL_Bandeau.py")
         self.assertIn("wx.BoxSizer(wx.HORIZONTAL)", text)
         self.assertIn("wx.BoxSizer(wx.VERTICAL)", text)
-        self.assertIn("UTILS_UIMetrics", text)
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
         self.assertNotIn("FlexGridSizer", text)
         self.assertNotIn("GridSizer", text)
 
