@@ -6,6 +6,16 @@ Noethys doit rester la source de vérité des tarifs. Le portail ne doit pas con
 
 Le premier composant technique est un **descripteur pur de barèmes** : il transforme les dictionnaires tarifaires déjà utilisés par le moteur de facturation en une représentation publiable, sans recalculer les factures.
 
+## Découverte automatique des activités
+
+La publication est **automatique par défaut**. Elle ne mémorise pas une liste figée d'IDs d'activités.
+
+Conséquence : si une nouvelle activité est créée ultérieurement dans Noethys et qu'elle possède un barème courant ou futur, elle est découverte au prochain rafraîchissement et prend automatiquement sa place dans la publication. Les tarifs expirés restent masqués par défaut.
+
+Une liste d'exclusions explicites reste possible pour les activités que l'on ne souhaite jamais publier. Un mode de sélection manuelle est également conservé pour les usages particuliers, mais il n'est pas le comportement par défaut.
+
+Cette règle évite un défaut classique des tableaux configurés « une fois pour toutes » : devoir penser à modifier le portail à chaque nouvelle activité ou nouvelle saison.
+
 ## Ce que le descripteur peut publier directement
 
 - montant fixe ;
@@ -32,6 +42,7 @@ Les règles dépendant du contexte réel restent signalées comme telles :
 - cotisation ;
 - caisse ;
 - période scolaire/vacances ;
+- état ou combinaison de consommations ;
 - filtre de questionnaire ;
 - autres conditions utilisées par le moteur de facturation.
 
@@ -51,4 +62,4 @@ La personnalisation fine nécessitera donc un point d'intégration authentifié 
 
 ## Règle de développement
 
-Le descripteur reste indépendant de wxPython et de la base. La lecture SQL et l'interface viendront dans des couches séparées afin que la logique de publication soit testable sans base réelle et puisse être réutilisée dans d'autres sorties (site, documents ou rapports).
+Le descripteur reste indépendant de wxPython et de la base. La lecture SQL et l'interface viennent dans des couches séparées afin que la logique de publication soit testable sans base réelle et puisse être réutilisée dans d'autres sorties (site, documents ou rapports).
