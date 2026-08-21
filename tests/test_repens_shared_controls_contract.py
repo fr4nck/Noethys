@@ -29,6 +29,7 @@ class RepensSharedControlsContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Propertygrid.py",
             "noethys/Ctrl/CTRL_Identification.py",
             "noethys/Ctrl/CTRL_Numfacture.py",
+            "noethys/Ctrl/CTRL_Agenda.py",
         ):
             text = self._read(relative_path)
             self.assertIn("UTILS_StyleRepens as Style", text)
@@ -123,6 +124,19 @@ class RepensSharedControlsContractTests(unittest.TestCase):
         self.assertIn('Style.appliquer_texte(\n            self.label_exemple', identification)
         self.assertIn("UTILS_IconesRepens.GetBitmap", facture)
         self.assertNotIn("UTILS_FluentIcons", facture)
+
+    def test_agenda_uses_repens_facade_without_touching_scheduler_contract(self):
+        text = self._read("noethys/Ctrl/CTRL_Agenda.py")
+        self.assertIn('Style.taille_icone("toolbar")', text)
+        self.assertIn('Style.hauteur_toolbar(avec_libelle=True)', text)
+        self.assertIn('Style.appliquer_fenetre(self, "surface")', text)
+        self.assertIn("UTILS_IconesRepens.GetBitmap", text)
+        self.assertIn("wxScheduler.wxScheduler", text)
+        self.assertIn("wxReportScheduler.wxReportScheduler", text)
+        self.assertNotIn("UTILS_FluentIcons", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+        self.assertNotIn("self.SetToolBitmapSize(wx.Size(24, 24))", text)
 
     def test_semantic_trees_keep_business_icons_but_scale_them(self):
         for relative_path in (
