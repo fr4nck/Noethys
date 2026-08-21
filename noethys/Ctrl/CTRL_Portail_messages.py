@@ -11,7 +11,7 @@
 import wx
 
 import GestionDB
-from Ctrl import CTRL_Bouton_image
+from Ctrl import CTRL_ActionRepens
 from Utils import UTILS_Interface
 from Utils import UTILS_UIMetrics
 from Utils.UTILS_Traduction import _
@@ -104,27 +104,40 @@ class ListBox_Messages(wx.ListBox):
 
 
 class CTRL(wx.Panel):
-    """Gestion des messages du portail avec barre d'actions explicite."""
+    """Gestion des messages du portail avec barre d'actions Repens."""
 
     def __init__(self, parent):
-        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
+        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
         self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
 
         self.ctrl_messages = ListBox_Messages(self)
-        self.bouton_ajouter_message = self._CreerBouton(_(u"Ajouter"), "Images/16x16/Ajouter.png", _(u"Ajouter un message sur la page d'accueil du portail"))
-        self.bouton_modifier_message = self._CreerBouton(_(u"Modifier"), "Images/16x16/Modifier.png", _(u"Modifier le message sélectionné"))
-        self.bouton_supprimer_message = self._CreerBouton(_(u"Supprimer"), "Images/16x16/Supprimer.png", _(u"Supprimer le message sélectionné"))
+        self.bouton_ajouter_message = CTRL_ActionRepens.CTRL(
+            self,
+            label=_(u"Ajouter"),
+            icone="add",
+            variante="primaire",
+            tooltip=_(u"Ajouter un message sur la page d'accueil du portail"),
+        )
+        self.bouton_modifier_message = CTRL_ActionRepens.CTRL(
+            self,
+            label=_(u"Modifier"),
+            icone="edit",
+            variante="secondaire",
+            tooltip=_(u"Modifier le message sélectionné"),
+        )
+        self.bouton_supprimer_message = CTRL_ActionRepens.CTRL(
+            self,
+            label=_(u"Supprimer"),
+            icone="delete",
+            variante="danger",
+            tooltip=_(u"Supprimer le message sélectionné"),
+        )
 
         self.__do_layout()
         self.Bind(wx.EVT_BUTTON, self.OnAjouterMessage, self.bouton_ajouter_message)
         self.Bind(wx.EVT_BUTTON, self.OnModifierMessage, self.bouton_modifier_message)
         self.Bind(wx.EVT_BUTTON, self.OnSupprimerMessage, self.bouton_supprimer_message)
-
-    def _CreerBouton(self, texte, image, tooltip):
-        bouton = CTRL_Bouton_image.CTRL(self, texte=texte, cheminImage=image, tailleImage=(20, 20))
-        bouton.SetToolTip(wx.ToolTip(tooltip))
-        return bouton
 
     def __do_layout(self):
         marge = UTILS_UIMetrics.spacing(2)
