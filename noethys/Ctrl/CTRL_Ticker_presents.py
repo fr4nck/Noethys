@@ -14,39 +14,41 @@ import wx
 from wx.lib.ticker import Ticker
 
 import GestionDB
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
 def _CouleurTexteLisible(fond):
-    """Choisit noir/blanc uniquement pour un fond explicitement personnalisé."""
+    """Choisit un contraste lisible pour un fond explicitement personnalisé."""
     try:
         luminance = 0.2126 * fond.Red() + 0.7152 * fond.Green() + 0.0722 * fond.Blue()
+        # Cas exceptionnel : le fond est fourni par le métier et n'appartient
+        # donc pas nécessairement à la palette sémantique active.
         return wx.Colour(24, 24, 24) if luminance >= 150 else wx.Colour(248, 248, 248)
     except Exception:
-        return UTILS_Interface.GetCouleurRole("on_surface")
+        return Style.couleur("on_surface")
 
 
 class CTRL(wx.Panel):
-    """Ticker des présents, actualisé périodiquement et aligné sur le thème."""
+    """Ticker des présents, actualisé périodiquement et aligné sur Repens."""
 
     def __init__(self, parent, delai=60, listeActivites=[], fps=20, ppf=2, couleurFond=None):
-        wx.Panel.__init__(self, parent, id=-1)
+        wx.Panel.__init__(self, parent, id=-1, style=wx.BORDER_NONE)
         self.parent = parent
         self.delai = delai
         self.listeActivites = listeActivites
 
         if couleurFond is None:
-            fond = UTILS_Interface.GetCouleurRole("surface_container")
-            texte = UTILS_Interface.GetCouleurRole("on_surface")
+            fond = Style.couleur("surface_container")
+            texte = Style.couleur("on_surface")
+            Style.appliquer_fenetre(self, "surface_container")
         else:
             fond = couleurFond
             texte = _CouleurTexteLisible(fond)
+            self.SetBackgroundColour(fond)
+            self.SetForegroundColour(texte)
 
-        self.SetBackgroundColour(fond)
-        self.SetForegroundColour(texte)
-        self.SetMinSize((-1, UTILS_UIMetrics.panel_min_height("compact")))
+        self.SetMinSize((-1, Style.hauteur_panneau("compact")))
 
         self.timer = wx.Timer(self, -1)
         self.ticker = Ticker(self)
@@ -54,21 +56,10 @@ class CTRL(wx.Panel):
         self.ticker.SetForegroundColour(texte)
         self.ticker.SetFPS(fps)
         self.ticker.SetPPF(ppf)
-
-        try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            try:
-                police.SetWeight(wx.FONTWEIGHT_SEMIBOLD)
-            except Exception:
-                pass
-            self.ticker.SetFont(police)
-        except Exception:
-            pass
+        self.ticker.SetFont(Style.police("label"))
 
         sizer_base = wx.BoxSizer(wx.VERTICAL)
-        sizer_base.Add(self.ticker, 1, wx.EXPAND | wx.ALL, UTILS_UIMetrics.spacing(2))
+        sizer_base.Add(self.ticker, 1, wx.EXPAND | wx.ALL, Style.espace(2))
         self.SetSizer(sizer_base)
         self.Layout()
 
@@ -184,9 +175,10 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1, name="test1")
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = CTRL(panel, delai=60, listeActivites=[1])
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(panel, 1, wx.EXPAND)
