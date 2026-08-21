@@ -17,6 +17,7 @@ import wx.grid as gridlib
 from wx.lib.agw import ultimatelistctrl as ULC
 
 from Ctrl import CTRL_Accueil
+from Dlg import DLG_Echelle_interface
 from Utils import UTILS_Aui
 from Utils import UTILS_UIMetrics
 
@@ -101,6 +102,19 @@ wx.Yield()
 assert accueil.GetBackgroundStyle() == wx.BG_STYLE_PAINT
 assert accueil.GetSize().width > 0 and accueil.GetSize().height > 0
 accueil_frame.Destroy()
+wx.Yield()
+
+# Même contrat pour l'aperçu Apparence/échelle. Ce contrôle utilise lui aussi
+# AutoBufferedPaintDC et avait la même assertion native sous wxMSW/Phoenix.
+echelle_frame = wx.Frame(None, title="Noethys échelle smoke", size=(560, 280))
+apercu_echelle = DLG_Echelle_interface.Apercu(echelle_frame)
+echelle_frame.Show()
+apercu_echelle.Refresh()
+apercu_echelle.Update()
+wx.Yield()
+assert apercu_echelle.GetBackgroundStyle() == wx.BG_STYLE_PAINT
+assert apercu_echelle.GetSize().width > 0 and apercu_echelle.GetSize().height > 0
+echelle_frame.Destroy()
 wx.Yield()
 
 app.Destroy()
