@@ -5,7 +5,7 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-11 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 import datetime
@@ -15,12 +15,10 @@ import wx.lib.agw.hypertreelist as HTL
 
 import GestionDB
 from Utils.UTILS_Traduction import _
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 
 
 def DateComplete(dateDD):
-    """Transforme une date DD en date complète : ex. lundi 15 janvier 2008."""
     listeJours = (_(u"Lundi"), _(u"Mardi"), _(u"Mercredi"), _(u"Jeudi"), _(u"Vendredi"), _(u"Samedi"), _(u"Dimanche"))
     listeMois = (_(u"janvier"), _(u"février"), _(u"mars"), _(u"avril"), _(u"mai"), _(u"juin"), _(u"juillet"), _(u"août"), _(u"septembre"), _(u"octobre"), _(u"novembre"), _(u"décembre"))
     return listeJours[dateDD.weekday()] + " " + str(dateDD.day) + " " + listeMois[dateDD.month - 1] + " " + str(dateDD.year)
@@ -31,7 +29,7 @@ def DateEngEnDateDD(dateEng):
 
 
 class CTRL(HTL.HyperTreeList):
-    """Sélection hiérarchique des dépôts, responsive et compatible thèmes."""
+    """Sélection hiérarchique des dépôts alignée sur le CSS Repens."""
 
     def __init__(self, parent):
         HTL.HyperTreeList.__init__(self, parent, -1)
@@ -50,7 +48,6 @@ class CTRL(HTL.HyperTreeList):
         )
         self.EnableSelectionVista(True)
         self.SetToolTip(wx.ToolTip(_(u"Cochez les dépôts à afficher")))
-
         self.AddColumn(_(u"Dépôts"))
         self._AppliquerStyle()
         self.Bind(wx.EVT_SIZE, self.OnSize)
@@ -58,35 +55,18 @@ class CTRL(HTL.HyperTreeList):
 
     def _AppliquerStyle(self):
         try:
-            fond = UTILS_Interface.GetCouleurRole("surface_container_lowest")
-            texte = UTILS_Interface.GetCouleurRole("on_surface")
+            fond = Style.couleur("surface_container_lowest")
+            texte = Style.couleur("on_surface")
             self.SetBackgroundColour(fond)
             self.SetForegroundColour(texte)
-            try:
-                main = self.GetMainWindow()
-                main.SetBackgroundColour(fond)
-                main.SetForegroundColour(texte)
-            except Exception:
-                pass
+            self.SetFont(Style.police("body"))
+            main = self.GetMainWindow()
+            main.SetBackgroundColour(fond)
+            main.SetForegroundColour(texte)
+            main.SetFont(Style.police("body"))
         except Exception:
             pass
-
-        try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            self.SetFont(police)
-            try:
-                self.GetMainWindow().SetFont(police)
-            except Exception:
-                pass
-        except Exception:
-            pass
-
-        try:
-            self.SetMinSize((UTILS_UIMetrics.px(240), UTILS_UIMetrics.panel_min_height("secondary")))
-        except Exception:
-            pass
+        self.SetMinSize((Style.px(240), Style.px(92)))
 
     def OnSize(self, event):
         event.Skip()
@@ -99,8 +79,7 @@ class CTRL(HTL.HyperTreeList):
         self._noethys_resize_pending = False
         try:
             largeur = self.GetClientSize().GetWidth()
-            marge = UTILS_UIMetrics.spacing(2)
-            self.SetColumnWidth(0, max(UTILS_UIMetrics.px(220), largeur - marge))
+            self.SetColumnWidth(0, max(Style.px(220), largeur - Style.espace(2)))
         except Exception:
             pass
 
@@ -125,23 +104,19 @@ class CTRL(HTL.HyperTreeList):
             item, cookie = self.GetFirstChild(parent)
             for _index in range(0, self.GetChildrenCount(parent)):
                 if self.IsItemChecked(item):
-                    IDdepot = self.GetPyData(item)["ID"]
-                    listeDepots.append(IDdepot)
+                    listeDepots.append(self.GetPyData(item)["ID"])
                 item = self.GetNext(item)
-            if len(listeDepots) > 0:
+            if listeDepots:
                 dictCoches[annee] = listeDepots
         return dictCoches
 
     def GetDepots(self):
-        dictCoches = self.GetCoches()
         listeDepots = []
-        for _annee, listeDepotsTemp in dictCoches.items():
-            for IDdepot in listeDepotsTemp:
-                listeDepots.append(IDdepot)
+        for _annee, listeDepotsTemp in self.GetCoches().items():
+            listeDepots.extend(listeDepotsTemp)
         return listeDepots
 
     def MAJ(self):
-        """Met à jour (redessine) tout le contrôle."""
         self.listeDepots = self.Importation()
         self.MAJenCours = True
         self.DeleteAllItems()
@@ -155,14 +130,9 @@ class CTRL(HTL.HyperTreeList):
         for dictDepot in self.listeDepots:
             date = dictDepot["date"]
             annee = None if date is None else date.year
-            if annee not in dictDepots:
-                dictDepots[annee] = []
-            dictDepots[annee].append(dictDepot)
+            dictDepots.setdefault(annee, []).append(dictDepot)
 
-        # Python 3 ne compare pas directement None et int : les dépôts sans
-        # date restent groupés en fin de liste sans modifier la logique métier.
         listeAnnees = sorted(dictDepots.keys(), key=lambda annee: (annee is None, annee or 0))
-
         for annee in listeAnnees:
             label = _(u"Sans date de dépôt") if annee is None else str(annee)
             niveauAnnee = self.AppendItem(self.root, label, ct_type=1)
@@ -211,10 +181,11 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel)
         self.ctrl = CTRL(panel)
         self.ctrl.MAJ()
         contenu = wx.BoxSizer(wx.VERTICAL)
-        contenu.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        contenu.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(contenu)
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(panel, 1, wx.EXPAND)
