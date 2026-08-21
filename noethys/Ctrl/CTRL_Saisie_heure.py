@@ -5,7 +5,7 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-11 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 import wx
@@ -13,12 +13,11 @@ import wx.lib.masked as masked
 import datetime
 
 from Utils.UTILS_Traduction import _
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 
 
 class Heure(masked.TextCtrl):
-    """Saisie d'heure compacte, lisible et compatible grosse police/DPI."""
+    """Saisie d'heure compacte alignée sur le CSS Repens."""
 
     def __init__(self, parent, heure_max=24, id=wx.ID_ANY, pos=wx.DefaultPosition,
                  size=wx.DefaultSize, style=wx.TE_CENTRE):
@@ -35,21 +34,11 @@ class Heure(masked.TextCtrl):
         )
         self.parent = parent
         self.heure_max = heure_max
+        Style.appliquer_saisie(self)
 
         try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            self.SetFont(police)
-        except Exception:
-            pass
-
-        try:
-            largeur = max(UTILS_UIMetrics.px(68), self.GetTextExtent("00:00")[0] + UTILS_UIMetrics.spacing(4))
-            hauteur = UTILS_UIMetrics.action_target("compact")
-            self.SetMinSize((largeur, hauteur))
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+            largeur = max(Style.px(68), self.GetTextExtent("00:00")[0] + Style.espace(4))
+            self.SetMinSize((largeur, Style.cible_action("compact")))
         except Exception:
             pass
 
@@ -104,11 +93,12 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel)
         self.ctrl1 = Heure(panel)
         self.ctrl2 = Heure(panel)
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl1, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
-        sizer.Add(self.ctrl2, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl1, 0, wx.ALL | wx.EXPAND, Style.espace(2))
+        sizer.Add(self.ctrl2, 0, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
