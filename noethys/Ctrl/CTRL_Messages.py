@@ -5,7 +5,7 @@
 # Site internet :  www.noethys.com
 # Auteur:          Ivan LUCAS
 # Copyright:       (c) 2010-11 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 import wx
@@ -14,8 +14,7 @@ from Ctrl import CTRL_ActionRepens
 from Ol import OL_Messages
 from Utils import UTILS_Adaptations
 from Utils import UTILS_ColonnesResponsive
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
@@ -36,6 +35,7 @@ class ListeMessagesAccueil(OL_Messages.ListView):
 
     def __init__(self, *args, **kwds):
         OL_Messages.ListView.__init__(self, *args, **kwds)
+        Style.appliquer_liste(self)
         UTILS_ColonnesResponsive.Installer(self, self.SPECS_COLONNES)
 
     def InitObjectListView(self):
@@ -47,10 +47,11 @@ class ListeMessagesAccueil(OL_Messages.ListView):
         def FormatePriorite(priorite):
             return _(u"Prioritaire") if priorite == "HAUTE" else ""
 
-        self.oddRowsBackColor = UTILS_Interface.GetCouleurRole("surface_container_low")
-        self.evenRowsBackColor = UTILS_Interface.GetCouleurRole("surface_container_lowest")
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-        self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        self.oddRowsBackColor = Style.couleur("surface_container_low")
+        self.evenRowsBackColor = Style.couleur("surface_container_lowest")
+        self.SetBackgroundColour(Style.couleur("surface_container_lowest"))
+        self.SetForegroundColour(Style.couleur("on_surface"))
+        self.SetFont(Style.police("body"))
         self.useExpansionColumn = False
 
         colonnes = [
@@ -72,16 +73,15 @@ class Panel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
         self.parent = parent
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        Style.appliquer_fenetre(self, "surface")
 
         self.ctrl_compteur = wx.StaticText(self, label=_(u"Aucun message"))
-        self.ctrl_compteur.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
-        police = self.ctrl_compteur.GetFont()
-        try:
-            police.SetWeight(wx.FONTWEIGHT_SEMIBOLD)
-        except Exception:
-            police.SetWeight(wx.FONTWEIGHT_BOLD)
-        self.ctrl_compteur.SetFont(police)
+        Style.appliquer_texte(
+            self.ctrl_compteur,
+            role="body_emphasis",
+            role_texte="on_surface_variant",
+            role_fond="surface",
+        )
 
         self.ctrl_ajouter = CTRL_ActionRepens.CTRL(
             self,
@@ -140,8 +140,8 @@ class Panel(wx.Panel):
             pass
 
     def __do_layout(self):
-        marge = UTILS_UIMetrics.spacing(2)
-        petit = UTILS_UIMetrics.spacing(1)
+        marge = Style.espace(2)
+        petit = Style.espace(1)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         commandes = wx.BoxSizer(wx.HORIZONTAL)
@@ -214,6 +214,8 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(self, "surface")
+        Style.appliquer_fenetre(panel, "surface")
         sizer_1 = wx.BoxSizer(wx.VERTICAL)
         sizer_1.Add(panel, 1, wx.EXPAND)
         self.SetSizer(sizer_1)
