@@ -1,3 +1,4 @@
+# Déclenchement explicite après installation du workflow sur la branche.
 name: Noe063 consolidation helper
 
 on:
@@ -38,26 +39,29 @@ jobs:
           assert ancien in dlg, "point d'insertion imports introuvable"
           dlg = dlg.replace(ancien, nouveau, 1)
 
-          ancien = '''        self.listePages = [
+          ancien = """        self.listePages = [
               (_("bloc_texte"), _(u"Texte"), PAGE_Texte(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Texte_bloc.png'), wx.BITMAP_TYPE_PNG)),
-              (_("bloc_onglets"), _(u"Onglets"), PAGE_Onglets(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Onglets.png'), wx.BITMAP_TYPE_PNG)),'''
-          nouveau = '''        self.listePages = [
+              (_("bloc_onglets"), _(u"Onglets"), PAGE_Onglets(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Onglets.png'), wx.BITMAP_TYPE_PNG)),"""
+          nouveau = """        self.listePages = [
               (_("bloc_texte"), _(u"Texte"), PAGE_Texte(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Texte_bloc.png'), wx.BITMAP_TYPE_PNG)),
               (UTILS_Portail_blocs.CODE_CONTENU_EXTERNE, _(u"Contenu externe"), CTRL_Portail_contenu_externe.CTRL(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Apercu.png'), wx.BITMAP_TYPE_PNG)),
               (UTILS_Portail_blocs.CODE_TARIFS, _(u"Tarifs Noethys"), CTRL_Portail_tarifs.CTRL(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Euro.png'), wx.BITMAP_TYPE_PNG)),
-              (_("bloc_onglets"), _(u"Onglets"), PAGE_Onglets(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Onglets.png'), wx.BITMAP_TYPE_PNG)),'''
+              (_("bloc_onglets"), _(u"Onglets"), PAGE_Onglets(self), wx.Bitmap(Chemins.GetStaticPath('Images/32x32/Onglets.png'), wx.BITMAP_TYPE_PNG)),"""
           assert ancien in dlg, "liste des blocs introuvable"
           dlg = dlg.replace(ancien, nouveau, 1)
 
-          ancien = '''    def GetParametres(self):
+          ancien = """    def GetParametres(self):
           dictParametres = self.GetPageActive().GetParametres()
           dictParametres["categorie"] = self.GetCodePageActive()
           return dictParametres
 
       def SetParametres(self, dictParametres={}):
           self.SetPageByCode(dictParametres["categorie"])
-          self.GetPageActive().SetParametres(dictParametres)'''
-          nouveau = '''    def GetParametres(self):
+          self.GetPageActive().SetParametres(dictParametres)"""
+          # Le texte ci-dessus est normalisé ci-dessous pour éviter que
+          # l'indentation du bloc YAML n'influence la chaîne recherchée.
+          ancien = ancien.replace("\n          ", "\n        ").replace("\n      def SetParametres", "\n    def SetParametres")
+          nouveau = """    def GetParametres(self):
           dictParametres = self.GetPageActive().GetParametres()
           code = self.GetCodePageActive()
           dictParametres["categorie"] = UTILS_Portail_blocs.categorie_persistante(code)
@@ -66,7 +70,8 @@ jobs:
       def SetParametres(self, dictParametres={}):
           code = UTILS_Portail_blocs.detecter_code(dictParametres)
           self.SetPageByCode(code)
-          self.GetPageActive().SetParametres(dictParametres)'''
+          self.GetPageActive().SetParametres(dictParametres)"""
+          nouveau = nouveau.replace("\n          ", "\n        ").replace("\n      def SetParametres", "\n    def SetParametres")
           assert ancien in dlg, "routage des catégories introuvable"
           dlg = dlg.replace(ancien, nouveau, 1)
           dlg_path.write_text(dlg, encoding="utf-8")
@@ -82,10 +87,11 @@ jobs:
           assert ancien in serveur, "import synchro portail introuvable"
           serveur = serveur.replace(ancien, nouveau, 1)
 
-          ancien = '''                        self.synchro_en_cours = True
+          ancien = """                        self.synchro_en_cours = True
                       synchro = UTILS_Portail_synchro.Synchro(log=self.parent)
-                      synchro.Synchro_totale()'''
-          nouveau = '''                        self.synchro_en_cours = True
+                      synchro.Synchro_totale()"""
+          ancien = ancien.replace("\n                      ", "\n                        ")
+          nouveau = """                        self.synchro_en_cours = True
 
                       # Les blocs Tarifs Noethys sont régénérés localement puis
                       # exportés par le moteur Connecthys historique comme des
@@ -96,13 +102,12 @@ jobs:
                           self.parent.EcritLog(_(u"[AVERTISSEMENT] Actualisation des tarifs portail impossible : %s") % err)
 
                       synchro = UTILS_Portail_synchro.Synchro(log=self.parent)
-                      synchro.Synchro_totale()'''
+                      synchro.Synchro_totale()"""
+          nouveau = nouveau.replace("\n                      ", "\n                        ")
           assert ancien in serveur, "appel Synchro_totale introuvable"
           serveur = serveur.replace(ancien, nouveau, 1)
           serveur_path.write_text(serveur, encoding="utf-8")
 
-          # Le helper est volontairement auto-supprimé : il ne doit pas faire
-          # partie du produit ni des workflows permanents.
           Path(".github/workflows/noe063-consolidation-helper.yml").unlink()
 
       - name: Commit de consolidation
