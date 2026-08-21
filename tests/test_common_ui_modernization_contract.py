@@ -92,6 +92,8 @@ class CommonUIModernizationContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Liste_cotisations.py",
             "noethys/Ctrl/CTRL_Liste_rappels.py",
             "noethys/Ctrl/CTRL_Liste_locations.py",
+            "noethys/Ctrl/CTRL_Liste_factures.py",
+            "noethys/Ctrl/CTRL_Liste_locations_demandes.py",
         ):
             text = self._read(relative_path)
             self.assertIn("CTRL_ActionRepens", text)
@@ -103,6 +105,13 @@ class CommonUIModernizationContractTests(unittest.TestCase):
             self.assertNotIn("UTILS_Interface", text)
             self.assertNotIn("UTILS_UIMetrics", text)
             self.assertNotIn("tailleImage=(20, 20)", text)
+
+    def test_factures_reuse_common_repens_search_without_breaking_aliases(self):
+        text = self._read("noethys/Ctrl/CTRL_Liste_factures.py")
+        self.assertIn("CTRL_OutilsListeRepens.BarreRecherche", text)
+        self.assertIn("self.hyper_tout = self.bouton_tout", text)
+        self.assertIn("self.hyper_rien = self.bouton_rien", text)
+        self.assertNotIn("OL_Factures.BarreRecherche", text)
 
     def test_messages_no_longer_use_tiny_vertical_bitmap_buttons(self):
         text = self._read("noethys/Ctrl/CTRL_Messages.py")
