@@ -10,10 +10,16 @@ import wx
 
 from Utils.UTILS_Traduction import _
 from Utils import UTILS_Portail_contenus
+from Utils import UTILS_Portail_tarifs_bloc
+from Ctrl import CTRL_Portail_tarifs
 
 
-class CTRL(wx.Panel):
-    """Editeur d'un contenu externe rendu comme bloc texte Connecthys."""
+TYPE_IFRAME = 0
+TYPE_TARIFS = 1
+
+
+class PAGE_Iframe(wx.Panel):
+    """Editeur historique d'une page/widget web embarqué."""
 
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
@@ -86,21 +92,19 @@ class CTRL(wx.Panel):
 
         sizer_base.AddStretchSpacer(1)
         sizer_base.Add(self.label_aide, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
-
         self.SetSizer(sizer_base)
         self.Layout()
 
     def GetParametres(self):
-        config = {
+        config = UTILS_Portail_contenus.normaliser_parametres({
             "type": "iframe",
             "url": self.ctrl_url.GetValue(),
             "hauteur": self.ctrl_hauteur.GetValue(),
             "defilement": self.ctrl_defilement.GetValue(),
             "plein_ecran": self.ctrl_plein_ecran.GetValue(),
             "titre": self.ctrl_titre.GetValue(),
-        }
-        config = UTILS_Portail_contenus.normaliser_parametres(config)
-        dictElement = {
+        })
+        return {"elements": [{
             "IDelement": self.IDelement,
             "titre": "",
             "date_debut": None,
@@ -108,15 +112,13 @@ class CTRL(wx.Panel):
             "parametres": UTILS_Portail_contenus.serialiser_parametres(config),
             "texte_xml": None,
             "texte_html": UTILS_Portail_contenus.construire_iframe(config),
-        }
-        return {"elements": [dictElement]}
+        }]}
 
     def SetParametres(self, dictParametres=None):
         dictParametres = dictParametres or {}
         elements = dictParametres.get("elements", [])
         if not elements:
             return
-
         dictElement = elements[0]
         self.IDelement = dictElement.get("IDelement")
         config = UTILS_Portail_contenus.deserialiser_parametres(dictElement.get("parametres"))
@@ -142,10 +144,79 @@ class CTRL(wx.Panel):
         return True
 
 
+class CTRL(wx.Panel):
+    """Point d'entrée unique des contenus publiés dynamiquement dans Connecthys."""
+
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
+        self.parent = parent
+
+        self.label_type = wx.StaticText(self, -1, _(u"Source :"))
+        self.ctrl_type = wx.Choice(
+            self,
+            -1,
+            choices=[_(u"Page / widget web"), _(u"Tarifs Noethys")],
+        )
+        self.ctrl_type.SetSelection(TYPE_IFRAME)
+
+        self.book = wx.Simplebook(self, -1)
+        self.page_iframe = PAGE_Iframe(self.book)
+        self.page_tarifs = CTRL_Portail_tarifs.CTRL(self.book)
+        self.book.AddPage(self.page_iframe, "iframe")
+        self.book.AddPage(self.page_tarifs, "tarifs")
+
+        ligne_source = wx.BoxSizer(wx.HORIZONTAL)
+        ligne_source.Add(self.label_type, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        ligne_source.Add(self.ctrl_type, 1, wx.EXPAND)
+
+        principal = wx.BoxSizer(wx.VERTICAL)
+        principal.Add(ligne_source, 0, wx.ALL | wx.EXPAND, 10)
+        principal.Add(self.book, 1, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 5)
+        self.SetSizer(principal)
+        self.Layout()
+
+        self.Bind(wx.EVT_CHOICE, self.OnType, self.ctrl_type)
+        self.OnType()
+
+    def OnType(self, event=None):
+        index = self.ctrl_type.GetSelection()
+        if index not in (TYPE_IFRAME, TYPE_TARIFS):
+            index = TYPE_IFRAME
+        self.book.SetSelection(index)
+        self.Layout()
+        if event is not None:
+            event.Skip()
+
+    def GetPageActive(self):
+        return self.page_tarifs if self.ctrl_type.GetSelection() == TYPE_TARIFS else self.page_iframe
+
+    def GetParametres(self):
+        return self.GetPageActive().GetParametres()
+
+    def SetParametres(self, dictParametres=None):
+        dictParametres = dictParametres or {}
+        elements = dictParametres.get("elements", [])
+        parametres = elements[0].get("parametres") if elements else None
+        if UTILS_Portail_tarifs_bloc.est_configuration_bloc_tarifs(parametres):
+            self.ctrl_type.SetSelection(TYPE_TARIFS)
+            self.page_tarifs.SetParametres(dictParametres)
+        else:
+            self.ctrl_type.SetSelection(TYPE_IFRAME)
+            self.page_iframe.SetParametres(dictParametres)
+        self.OnType()
+
+    def Validation(self):
+        return self.GetPageActive().Validation()
+
+
 def EstContenuExterne(dictParametres=None):
-    """Indique si un bloc texte existant a été créé par cet éditeur."""
+    """Détecte les contenus gérés par cet éditeur enrichi."""
     dictParametres = dictParametres or {}
     elements = dictParametres.get("elements", [])
     if not elements:
         return False
-    return UTILS_Portail_contenus.est_configuration_contenu_externe(elements[0].get("parametres"))
+    parametres = elements[0].get("parametres")
+    return (
+        UTILS_Portail_contenus.est_configuration_contenu_externe(parametres)
+        or UTILS_Portail_tarifs_bloc.est_configuration_bloc_tarifs(parametres)
+    )
