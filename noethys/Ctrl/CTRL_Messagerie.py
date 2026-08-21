@@ -13,8 +13,8 @@ est vrai.
 
 import wx
 
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
-from Utils import UTILS_Interface
 
 
 class Panel(wx.Panel):
@@ -23,14 +23,9 @@ class Panel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, name="messagerie", style=wx.TAB_TRAVERSAL)
 
-        self.splitter_principal = wx.SplitterWindow(
-            self,
-            style=wx.SP_LIVE_UPDATE | wx.SP_3D,
-        )
-        self.splitter_contenu = wx.SplitterWindow(
-            self.splitter_principal,
-            style=wx.SP_LIVE_UPDATE | wx.SP_3D,
-        )
+        style_splitter = wx.SP_LIVE_UPDATE | wx.SP_NOBORDER
+        self.splitter_principal = wx.SplitterWindow(self, style=style_splitter)
+        self.splitter_contenu = wx.SplitterWindow(self.splitter_principal, style=style_splitter)
 
         self.panel_dossiers = wx.Panel(self.splitter_principal)
         self.panel_liste = wx.Panel(self.splitter_contenu)
@@ -53,9 +48,9 @@ class Panel(wx.Panel):
             self.panel_liste,
             style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.LC_HRULES,
         )
-        self.ctrl_messages.AppendColumn(_(u"Correspondant"), width=180)
-        self.ctrl_messages.AppendColumn(_(u"Objet"), width=320)
-        self.ctrl_messages.AppendColumn(_(u"Date"), width=120)
+        self.ctrl_messages.AppendColumn(_(u"Correspondant"), width=Style.px(180))
+        self.ctrl_messages.AppendColumn(_(u"Objet"), width=Style.px(320))
+        self.ctrl_messages.AppendColumn(_(u"Date"), width=Style.px(120))
 
         self.ctrl_entete = wx.StaticText(
             self.panel_apercu,
@@ -69,24 +64,26 @@ class Panel(wx.Panel):
 
         self._AppliqueApparence()
         self._ConstruitLayout()
+        self.ctrl_messages.Bind(wx.EVT_SIZE, self._OnMessagesSize)
 
     def _AppliqueApparence(self):
-        fond = UTILS_Interface.GetCouleurRole("surface")
-        fond_donnees = UTILS_Interface.GetCouleurRole("surface_container_lowest")
-        texte = UTILS_Interface.GetCouleurRole("on_surface")
-
-        self.SetBackgroundColour(fond)
+        Style.appliquer_fenetre(self, "surface")
         for panel in (self.panel_dossiers, self.panel_liste, self.panel_apercu):
-            panel.SetBackgroundColour(fond)
+            Style.appliquer_fenetre(panel, "surface")
         for ctrl in (self.ctrl_dossiers, self.ctrl_messages, self.ctrl_apercu):
-            ctrl.SetBackgroundColour(fond_donnees)
-            ctrl.SetForegroundColour(texte)
-        self.ctrl_entete.SetForegroundColour(texte)
-        self.ctrl_entete.SetBackgroundColour(fond)
+            Style.appliquer_liste(ctrl)
+        Style.appliquer_texte(
+            self.ctrl_entete,
+            role="body_emphasis",
+            role_texte="on_surface",
+            role_fond="surface",
+        )
 
     def _ConstruitLayout(self):
+        marge = Style.espace(2)
+
         sizer_dossiers = wx.BoxSizer(wx.VERTICAL)
-        sizer_dossiers.Add(self.ctrl_dossiers, 1, wx.EXPAND | wx.ALL, 6)
+        sizer_dossiers.Add(self.ctrl_dossiers, 1, wx.EXPAND | wx.ALL, marge)
         self.panel_dossiers.SetSizer(sizer_dossiers)
 
         sizer_liste = wx.BoxSizer(wx.VERTICAL)
@@ -94,15 +91,20 @@ class Panel(wx.Panel):
         self.panel_liste.SetSizer(sizer_liste)
 
         sizer_apercu = wx.BoxSizer(wx.VERTICAL)
-        sizer_apercu.Add(self.ctrl_entete, 0, wx.EXPAND | wx.ALL, 8)
-        sizer_apercu.Add(self.ctrl_apercu, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        sizer_apercu.Add(self.ctrl_entete, 0, wx.EXPAND | wx.ALL, Style.espace(3))
+        sizer_apercu.Add(
+            self.ctrl_apercu,
+            1,
+            wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM,
+            Style.espace(3),
+        )
         self.panel_apercu.SetSizer(sizer_apercu)
 
-        self.splitter_contenu.SetMinimumPaneSize(180)
+        self.splitter_contenu.SetMinimumPaneSize(Style.px(180))
         self.splitter_contenu.SplitVertically(self.panel_liste, self.panel_apercu)
         self.splitter_contenu.SetSashGravity(0.52)
 
-        self.splitter_principal.SetMinimumPaneSize(130)
+        self.splitter_principal.SetMinimumPaneSize(Style.px(130))
         self.splitter_principal.SplitVertically(self.panel_dossiers, self.splitter_contenu)
         self.splitter_principal.SetSashGravity(0.18)
 
@@ -111,14 +113,42 @@ class Panel(wx.Panel):
         self.SetSizer(sizer)
         self.Layout()
 
-        # Proportions initiales, ajustées à la vraie largeur au premier layout.
+        # Proportions initiales, puis les sash gravities laissent wx répartir
+        # proprement l'espace lorsque la fenêtre est redimensionnée.
         wx.CallAfter(self._PositionneSplitters)
+        wx.CallAfter(self._AjusteColonnes)
 
     def _PositionneSplitters(self):
         largeur = max(1, self.GetClientSize().GetWidth())
-        self.splitter_principal.SetSashPosition(max(150, int(largeur * 0.17)))
+        self.splitter_principal.SetSashPosition(
+            max(Style.px(150), int(largeur * 0.17))
+        )
         largeur_contenu = max(1, self.splitter_contenu.GetClientSize().GetWidth())
-        self.splitter_contenu.SetSashPosition(max(300, int(largeur_contenu * 0.50)))
+        self.splitter_contenu.SetSashPosition(
+            max(Style.px(300), int(largeur_contenu * 0.50))
+        )
+
+    def _OnMessagesSize(self, event):
+        event.Skip()
+        wx.CallAfter(self._AjusteColonnes)
+
+    def _AjusteColonnes(self):
+        """Répartit les colonnes selon la largeur réellement disponible."""
+        try:
+            largeur = self.ctrl_messages.GetClientSize().GetWidth()
+            if largeur <= Style.px(260):
+                return
+            largeur_date = Style.px(120)
+            largeur_correspondant = max(Style.px(140), int(largeur * 0.30))
+            largeur_objet = max(
+                Style.px(160),
+                largeur - largeur_correspondant - largeur_date - Style.espace(2),
+            )
+            self.ctrl_messages.SetColumnWidth(0, largeur_correspondant)
+            self.ctrl_messages.SetColumnWidth(1, largeur_objet)
+            self.ctrl_messages.SetColumnWidth(2, largeur_date)
+        except Exception:
+            pass
 
     def Initialisation(self):
         """Point d'entrée futur pour démarrer la synchronisation IMAP lazy."""
