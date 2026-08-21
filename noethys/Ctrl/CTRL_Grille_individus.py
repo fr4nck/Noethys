@@ -5,7 +5,7 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-11 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 import datetime
@@ -17,8 +17,7 @@ import wx.html as wxhtml
 import Chemins
 from Ctrl import CTRL_Photo
 from Data import DATA_Civilites as Civilites
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 if wx.VERSION < (2, 9, 0, 0):
@@ -52,7 +51,7 @@ def _TexteContraste(fond):
         luminance = 0.2126 * fond.Red() + 0.7152 * fond.Green() + 0.0722 * fond.Blue()
         return wx.Colour(24, 24, 24) if luminance >= 150 else wx.Colour(248, 248, 248)
     except Exception:
-        return UTILS_Interface.GetCouleurRole("on_surface")
+        return Style.couleur("on_surface")
 
 
 class CTRL_famille(wxhtml.HtmlWindow):
@@ -67,22 +66,21 @@ class CTRL_famille(wxhtml.HtmlWindow):
         )
         self.IDfamille = IDfamille
         self.dictIndividus = dictIndividus
-        self.couleurFond = couleurFond or UTILS_Interface.GetCouleurRole("surface_container_high")
+        self.couleurFond = couleurFond or Style.couleur("surface_container_high")
         self.couleurTexte = (
             _TexteContraste(self.couleurFond)
             if couleurFond is not None
-            else UTILS_Interface.GetCouleurRole("on_surface")
+            else Style.couleur("on_surface")
         )
         self.SetBackgroundColour(self.couleurFond)
-        self.SetBorders(UTILS_UIMetrics.spacing(2))
+        self.SetForegroundColour(self.couleurTexte)
+        self.SetBorders(Style.espace(2))
         if hauteur is None:
-            hauteur = UTILS_UIMetrics.action_target("compact")
+            hauteur = Style.cible_action("compact")
         self.SetMinSize((-1, hauteur))
         try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            taille = max(8, int(round(police.GetPointSize() * facteur)))
-            self.SetStandardFonts(taille, police.GetFaceName(), police.GetFaceName())
+            police = Style.police("body")
+            self.SetStandardFonts(police.GetPointSize(), police.GetFaceName(), police.GetFaceName())
         except Exception:
             if "gtk2" in wx.PlatformInfo:
                 self.SetStandardFonts()
@@ -122,8 +120,7 @@ class CTRL_individus(ULC.UltimateListCtrl):
         self.IDfamille = IDfamille
         self.dictIndividus = dictIndividus
 
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-        self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        Style.appliquer_liste(self)
         try:
             self.SetFirstGradientColour(None)
             self.SetSecondGradientColour(None)
@@ -132,14 +129,7 @@ class CTRL_individus(ULC.UltimateListCtrl):
         except Exception:
             pass
         try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            self.SetFont(police)
-        except Exception:
-            pass
-        try:
-            self.SetDisabledTextColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
+            self.SetDisabledTextColour(Style.couleur("on_surface_variant"))
         except Exception:
             pass
 
@@ -150,7 +140,7 @@ class CTRL_individus(ULC.UltimateListCtrl):
         listeIndividus.sort()
 
         self.dictPhotos = {}
-        taillePhoto = min(96, max(56, UTILS_UIMetrics.px(64)))
+        taillePhoto = min(Style.px(96), max(Style.px(56), Style.px(64)))
         il = wx.ImageList(taillePhoto, taillePhoto, True)
         for _prenom, IDindividu in listeIndividus:
             dictIndividu = self.dictIndividus[IDindividu]
@@ -173,7 +163,7 @@ class CTRL_individus(ULC.UltimateListCtrl):
             if IDindividu in listeSelectionIndividus or selectionTous is True:
                 self.Select(index)
 
-        self.SetMinSize((UTILS_UIMetrics.px(220), taillePhoto + UTILS_UIMetrics.spacing(5)))
+        self.SetMinSize((Style.px(220), taillePhoto + Style.espace(5)))
         self.Bind(wx.EVT_LEFT_UP, self.OnLeftUp)
 
     def OnLeftUp(self, event):
@@ -204,9 +194,9 @@ class CTRL_individus(ULC.UltimateListCtrl):
 
 class CTRL(wx.Panel):
     def __init__(self, parent, IDfamille=None, dictIndividus={}, selectionIndividus=[], selectionTous=False):
-        wx.Panel.__init__(self, parent, -1)
+        wx.Panel.__init__(self, parent, -1, style=wx.BORDER_NONE | wx.TAB_TRAVERSAL)
         self.parent = parent
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        Style.appliquer_fenetre(self, "surface")
 
         self.ctrl_famille = CTRL_famille(self, IDfamille, dictIndividus)
         self.ctrl_individus = CTRL_individus(self, IDfamille, dictIndividus, selectionIndividus, selectionTous)
@@ -230,10 +220,12 @@ class CTRL(wx.Panel):
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
+        Style.appliquer_fenetre(self, "surface")
         panel = wx.Panel(self, -1, name="test1")
+        Style.appliquer_fenetre(panel, "surface")
         self.myOlv = CTRL(panel, IDfamille=209)
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.myOlv, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.myOlv, 1, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(panel, 1, wx.EXPAND)
