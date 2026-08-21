@@ -59,11 +59,15 @@ class CustomTaskBarIcon():
 
     def _PoliceBadge(self, taille_police):
         """Police compacte dérivée de la typographie Repens."""
+        police = Style.police("caption")
         try:
             facteur = max(0.55, float(taille_police) / 9.0)
+            police = wx.Font(police)
+            police.SetPointSize(max(5, int(round(police.GetPointSize() * facteur))))
+            police.SetWeight(wx.FONTWEIGHT_BOLD)
         except Exception:
-            facteur = 1.0
-        return Style.police("caption", bold=True, scale=facteur)
+            pass
+        return police
 
     def AjouteTexteImage(self, image=None, texte="", alignement="droite-bas", padding=0, taille_police=9):
         """Ajoute un badge sémantique sur une image bitmap."""
