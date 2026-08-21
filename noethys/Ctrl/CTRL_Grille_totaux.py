@@ -5,14 +5,13 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-11 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 import wx
 import wx.lib.agw.hypertreelist as HTL
 
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
@@ -20,29 +19,23 @@ class CTRL_Unite_remplissage(wx.Panel):
     """Petite cellule de total, alignée sur les surfaces du design system."""
 
     def __init__(self, parent):
-        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
+        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
         self.ctrl = wx.StaticText(self, -1, u"XXX", style=wx.ALIGN_RIGHT)
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_high"))
-        self.ctrl.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        self.ctrl.SetBackgroundColour(self.GetBackgroundColour())
-        try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            try:
-                police.SetWeight(wx.FONTWEIGHT_SEMIBOLD)
-            except Exception:
-                pass
-            self.ctrl.SetFont(police)
-        except Exception:
-            pass
+
+        Style.appliquer_fenetre(self, "surface_container_high")
+        Style.appliquer_texte(
+            self.ctrl,
+            role="body_emphasis",
+            role_texte="on_surface",
+            role_fond="surface_container_high",
+        )
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.AddStretchSpacer(1)
-        sizer.Add(self.ctrl, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, UTILS_UIMetrics.spacing(1))
+        sizer.Add(self.ctrl, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, Style.espace(1))
         self.SetSizer(sizer)
-        self.SetMinSize((UTILS_UIMetrics.px(60), UTILS_UIMetrics.action_target("compact")))
+        self.SetMinSize((Style.px(60), Style.cible_action("compact")))
 
     def SetValeur(self, valeur=""):
         self.ctrl.SetLabel(str(valeur))
@@ -60,20 +53,10 @@ class CTRL(HTL.HyperTreeList):
         self.date = None
         self._resize_pending = False
 
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-        self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        Style.appliquer_liste(self)
         try:
             main = self.GetMainWindow()
-            main.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            main.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        except Exception:
-            pass
-        try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            self.SetFont(police)
-            self.GetMainWindow().SetFont(police)
+            Style.appliquer_liste(main)
         except Exception:
             pass
 
@@ -85,7 +68,7 @@ class CTRL(HTL.HyperTreeList):
             TR_COLUMN_LINES | wx.TR_HIDE_ROOT | wx.TR_HAS_BUTTONS |
             wx.TR_HAS_VARIABLE_ROW_HEIGHT | wx.TR_FULL_ROW_HIGHLIGHT | HTL.TR_NO_HEADER
         )
-        self.SetMinSize((UTILS_UIMetrics.px(320), UTILS_UIMetrics.px(180)))
+        self.SetMinSize((Style.px(320), Style.px(180)))
         self.Bind(wx.EVT_SIZE, self.OnSize)
 
     def OnSize(self, event):
@@ -102,13 +85,13 @@ class CTRL(HTL.HyperTreeList):
             if nbre <= 0:
                 return
             largeur = self.GetClientSize().GetWidth()
-            marge = UTILS_UIMetrics.spacing(2)
-            largeur_groupe = max(UTILS_UIMetrics.px(150), int(largeur * 0.34))
-            largeur_groupe = min(largeur_groupe, max(UTILS_UIMetrics.px(150), largeur - marge))
+            marge = Style.espace(2)
+            largeur_groupe = max(Style.px(150), int(largeur * 0.34))
+            largeur_groupe = min(largeur_groupe, max(Style.px(150), largeur - marge))
             self.SetColumnWidth(0, largeur_groupe)
             if nbre > 1:
                 disponible = max(0, largeur - largeur_groupe - marge)
-                largeur_unite = max(UTILS_UIMetrics.px(54), disponible // (nbre - 1) if disponible else 0)
+                largeur_unite = max(Style.px(54), disponible // (nbre - 1) if disponible else 0)
                 for index in range(1, nbre):
                     self.SetColumnWidth(index, largeur_unite)
         except Exception:
@@ -176,8 +159,8 @@ class CTRL(HTL.HyperTreeList):
             self.SetColumnAlignment(self.GetColumnCount() - 1, wx.ALIGN_CENTER)
 
         self.root = self.AddRoot(_(u"Racine"))
-        couleur_activite = UTILS_Interface.GetCouleurRole("surface_container_high")
-        couleur_total = UTILS_Interface.GetCouleurRole("danger")
+        couleur_activite = Style.couleur("surface_container_high")
+        couleur_total = Style.couleur("danger")
 
         for IDactivite in self.listeActivites:
             label = self.dictActivites[IDactivite]["nom"] if IDactivite in self.dictActivites else u"?"
