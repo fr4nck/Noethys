@@ -3,14 +3,13 @@
 """Surface arrondie commune de Repens Design.
 
 Ce contrôle n'est pas une carte mobile : c'est une couche de fond desktop pour
-regrouper une information ou une commande dans le cockpit. Les enfants restent
-des contrôles wx standards ; seul le fond/contour est dessiné ici.
+regrouper une information ou une commande dans le cockpit. Son apparence est
+entièrement fournie par ``UTILS_StyleRepens``.
 """
 
 import wx
 
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 
 
 class CTRL(wx.Panel):
@@ -27,18 +26,19 @@ class CTRL(wx.Panel):
         self.role_contour = role_contour
         self.rayon_base = rayon
         self.padding_base = padding
+        self.SetFont(Style.police("body"))
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
         self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.Bind(wx.EVT_ERASE_BACKGROUND, lambda event: None)
 
     def GetCouleurFond(self):
-        return UTILS_Interface.GetCouleurRole(self.role_fond)
+        return Style.couleur(self.role_fond)
 
     def GetCouleurContour(self):
-        return UTILS_Interface.GetCouleurRole(self.role_contour)
+        return Style.couleur(self.role_contour)
 
     def GetPadding(self):
-        return UTILS_UIMetrics.px(self.padding_base)
+        return Style.px(self.padding_base)
 
     def _GetCouleurExterieure(self):
         try:
@@ -47,7 +47,7 @@ class CTRL(wx.Panel):
                 return couleur
         except Exception:
             pass
-        return UTILS_Interface.GetCouleurRole("surface")
+        return Style.couleur("surface")
 
     def SetRoles(self, role_fond=None, role_contour=None):
         if role_fond:
@@ -64,11 +64,11 @@ class CTRL(wx.Panel):
         if rect.width <= 1 or rect.height <= 1:
             return
         dc.SetBrush(wx.Brush(self.GetCouleurFond()))
-        dc.SetPen(wx.Pen(self.GetCouleurContour(), max(1, UTILS_UIMetrics.px(1))))
+        dc.SetPen(wx.Pen(self.GetCouleurContour(), max(1, Style.px(1))))
         dc.DrawRoundedRectangle(
             rect.x,
             rect.y,
             max(1, rect.width - 1),
             max(1, rect.height - 1),
-            UTILS_UIMetrics.px(self.rayon_base),
+            Style.px(self.rayon_base),
         )
