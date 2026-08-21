@@ -68,10 +68,7 @@ class Dialog(wx.Dialog):
             nomImage="Images/32x32/Filtre.png",
         )
 
-        self.splitter = wx.SplitterWindow(
-            self,
-            style=wx.SP_LIVE_UPDATE | wx.SP_3D,
-        )
+        self.splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE)
         self.splitter.SetMinimumPaneSize(UTILS_UIMetrics.px(150))
 
         self.panel_liste = wx.Panel(self.splitter, style=wx.BORDER_NONE | wx.TAB_TRAVERSAL)
