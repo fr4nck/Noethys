@@ -25,6 +25,7 @@ class RepensSharedControlsContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Grille_periode.py",
             "noethys/Ctrl/CTRL_Logo.py",
             "noethys/Ctrl/CTRL_Newsticker.py",
+            "noethys/Ctrl/CTRL_Assistant_base.py",
         ):
             text = self._read(relative_path)
             self.assertIn("UTILS_StyleRepens as Style", text)
@@ -81,6 +82,18 @@ class RepensSharedControlsContractTests(unittest.TestCase):
         self.assertIn('Style.hauteur_panneau("compact")', text)
         self.assertNotIn("wx.Font(6", text)
         self.assertNotIn("(200, 200, 200)", text)
+
+    def test_assistant_foundation_owns_shared_repens_styling(self):
+        text = self._read("noethys/Ctrl/CTRL_Assistant_base.py")
+        self.assertIn("Style.appliquer_saisie(self)", text)
+        self.assertIn('Style.appliquer_fenetre(self, "surface")', text)
+        self.assertIn('role_texte="on_surface_variant"', text)
+        self.assertIn("Style.cible_action(\"compact\")", text)
+        self.assertIn("_TailleDpi", text)
+        self.assertNotIn("wx.Font(", text)
+        self.assertNotIn("(120, 120, 120)", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
 
     def test_semantic_trees_keep_business_icons_but_scale_them(self):
         for relative_path in (
