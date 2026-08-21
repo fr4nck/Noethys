@@ -5,14 +5,13 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-11 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 import wx
 
 from Utils.UTILS_Traduction import _
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Data import DATA_Civilites as Civilites
 
 
@@ -20,28 +19,13 @@ LISTE_CIVILITES = Civilites.LISTE_CIVILITES
 
 
 class Civilite(wx.Choice):
-    """Choix de civilité/genre avec métriques et couleurs sémantiques."""
+    """Choix de civilité/genre aligné sur le CSS Repens."""
 
     def __init__(self, parent):
         wx.Choice.__init__(self, parent, -1, choices=self.GetListeCivilites())
         self.parent = parent
-        self._AppliqueStyle()
+        Style.appliquer_saisie(self)
         self.SetToolTip(wx.ToolTip(_(u"Sélectionnez ici la civilité de l'individu s'il s'agit\nd'un adulte ou le genre s'il s'agit d'un enfant")))
-
-    def _AppliqueStyle(self):
-        try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            self.SetFont(police)
-        except Exception:
-            pass
-        try:
-            self.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        except Exception:
-            pass
 
     def GetListeCivilites(self):
         self.dictCivilites = {}
@@ -113,9 +97,10 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel)
         self.ctrl = Civilite(panel)
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 0, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
