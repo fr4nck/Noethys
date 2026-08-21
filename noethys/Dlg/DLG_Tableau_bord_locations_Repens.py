@@ -2,16 +2,15 @@
 # -*- coding: utf-8 -*-
 """Cockpit Locations en navigation Repens.
 
-La navigation et les pages quotidiennes Locations/Demandes utilisent désormais
-les briques Repens ; Images et Produits restent branchés sur leur moteur actuel
-en attendant leur migration dédiée.
+Les quatre pages du cockpit utilisent désormais une enveloppe Repens dédiée.
+Les moteurs métier restent inchangés dans leurs modules historiques.
 """
 
 import wx
 import wx.lib.agw.aui as aui
 
-from Dlg import DLG_Categories_produits_images
-from Dlg import DLG_Produits_liste
+from Dlg import DLG_Categories_produits_images_Repens as DLG_Categories_produits_images
+from Dlg import DLG_Produits_liste_Repens as DLG_Produits_liste
 from Dlg import DLG_Locations_Repens as DLG_Locations
 from Dlg import DLG_Locations_demandes_Repens as DLG_Locations_demandes
 from Utils import UTILS_Aui
