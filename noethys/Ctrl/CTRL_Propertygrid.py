@@ -11,6 +11,8 @@
 
 import Chemins
 from Utils import UTILS_Adaptations
+from Utils import UTILS_IconesRepens
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 import wx
 from Ctrl import CTRL_Bouton_image
@@ -38,6 +40,20 @@ else:
     from wx.propgrid import PyProperty as Property
     from wx.propgrid import PyArrayStringProperty as ArrayStringProperty
 
+
+def _BitmapRepens(nom, role="on_surface"):
+    """Retourne un pictogramme sémantique adapté à la densité de la PropertyGrid."""
+    try:
+        bitmap = UTILS_IconesRepens.GetBitmap(
+            nom,
+            taille=Style.taille_icone("compact"),
+            role=role,
+        )
+        if bitmap is not None and bitmap.IsOk():
+            return bitmap
+    except Exception:
+        pass
+    return wx.NullBitmap
 
 
 class Propriete_date(wxpg.PyProperty):
@@ -77,10 +93,12 @@ class EditeurChoix(ChoiceEditor):
                 ctrl = ctrl.GetPrimary()
             except:
                 ctrl = ctrl.m_primary
+            Style.appliquer_saisie(ctrl)
             self.SetControlIntValue(property, ctrl, 0)
             return wxpg.PGWindowList(ctrl)
         else :
             ctrl = self.CallSuperMethod("CreateControls", propGrid, property, pos, size)
+            Style.appliquer_saisie(ctrl)
             self.SetControlIntValue(property, ctrl, 0)
             return ctrl
 
@@ -303,8 +321,9 @@ class EditeurComboBoxAvecBoutons(ChoiceEditor):
         # Create and populate buttons-subwindow
         buttons = wxpg.PGMultiButton(propGrid, sz)
 
-        # Add two regular buttons
-        buttons.AddBitmapButton(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Mecanisme.png"), wx.BITMAP_TYPE_PNG))
+        # Action générique de paramétrage : pictogramme sémantique Repens.
+        bitmap = _BitmapRepens("settings")
+        buttons.AddBitmapButton(bitmap)
         buttons.GetButton(0).SetToolTip(wx.ToolTip(_(u"Cliquez ici pour accéder à la gestion des paramêtres")))
         
         # Create the 'primary' editor control (textctrl in this case)
@@ -314,11 +333,13 @@ class EditeurComboBoxAvecBoutons(ChoiceEditor):
                 wnd = wnd.GetPrimary()
             except:
                 wnd = wnd.m_primary
+            Style.appliquer_saisie(wnd)
             buttons.Finalize(propGrid, pos)
             self.buttons = buttons
             return wxpg.PGWindowList(wnd, buttons)
         else :
             wnd = self.CallSuperMethod("CreateControls", propGrid, property, pos, buttons.GetPrimarySize())
+            Style.appliquer_saisie(wnd)
             buttons.Finalize(propGrid, pos);
             self.buttons = buttons
             return (wnd, buttons)
@@ -358,7 +379,7 @@ class EditeurHeure(Editor):
 
     def DrawValue(self, dc, rect, property, text):
         if not property.IsValueUnspecified():
-            dc.DrawText(property.GetDisplayedString(), rect.x+5, rect.y)
+            dc.DrawText(property.GetDisplayedString(), rect.x+Style.espace(1), rect.y)
 
     def OnEvent(self, propgrid, property, ctrl, event):
         if not ctrl:
@@ -413,7 +434,7 @@ class EditeurDate(Editor):
 
     def CreateControls(self, propgrid, property, pos, size):
         try:
-            ctrl = CTRL_Saisie_date.Date2(propgrid.GetPanel(), pos=pos, size=(-1, 25))
+            ctrl = CTRL_Saisie_date.Date2(propgrid.GetPanel(), pos=pos, size=size)
             ctrl.SetDate(property.GetDisplayedString())
             if 'phoenix' in wx.PlatformInfo:
                 return wxpg.PGWindowList(ctrl)
@@ -428,7 +449,7 @@ class EditeurDate(Editor):
 
     def DrawValue(self, dc, rect, property, text):
         if not property.IsValueUnspecified():
-            dc.DrawText(property.GetDisplayedString(), rect.x+5, rect.y)
+            dc.DrawText(property.GetDisplayedString(), rect.x+Style.espace(1), rect.y)
 
     def OnEvent(self, propgrid, property, ctrl, event):
         if not ctrl:
@@ -479,6 +500,7 @@ class CTRL(wxpg.PropertyGrid) :
     def __init__(self, parent, style=wxpg.PG_SPLITTER_AUTO_CENTER):
         wxpg.PropertyGrid.__init__(self, parent, -1, style=style)
         self.parent = parent
+        Style.appliquer_fenetre(self, "surface")
         
         # définition des éditeurs personnalisés
         if not getattr(sys, '_PropGridEditorsRegistered', False):
@@ -491,7 +513,7 @@ class CTRL(wxpg.PropertyGrid) :
         
         self.SetExtraStyle(wxpg.PG_EX_HELP_AS_TOOLTIPS)
         
-        couleurFond = "#e5ecf3"
+        couleurFond = Style.couleur("surface_container_low")
         self.SetCaptionBackgroundColour(couleurFond)
         self.SetMarginColour(couleurFond)
 
@@ -533,9 +555,15 @@ class CTRL(wxpg.PropertyGrid) :
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-class Bouton_reinitialisation(wx.BitmapButton):
+class Bouton_reinitialisation(CTRL_Bouton_image.CTRL):
     def __init__(self, parent, ctrl_parametres=None):
-        wx.BitmapButton.__init__(self, parent, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Actualiser.png"), wx.BITMAP_TYPE_ANY))
+        CTRL_Bouton_image.CTRL.__init__(
+            self,
+            parent,
+            texte="",
+            cheminImage="Images/16x16/Actualiser.png",
+            tailleImage=(Style.taille_icone("compact"), Style.taille_icone("compact")),
+        )
         self.ctrl_parametres = ctrl_parametres
         self.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour réinitialiser tous les paramêtres")))
         self.Bind(wx.EVT_BUTTON, self.OnBouton)
@@ -543,9 +571,15 @@ class Bouton_reinitialisation(wx.BitmapButton):
     def OnBouton(self, event):
         self.ctrl_parametres.Reinitialisation() 
 
-class Bouton_sauvegarde(wx.BitmapButton):
+class Bouton_sauvegarde(CTRL_Bouton_image.CTRL):
     def __init__(self, parent, ctrl_parametres=None):
-        wx.BitmapButton.__init__(self, parent, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Sauvegarder.png"), wx.BITMAP_TYPE_ANY))
+        CTRL_Bouton_image.CTRL.__init__(
+            self,
+            parent,
+            texte="",
+            cheminImage="Images/16x16/Sauvegarder.png",
+            tailleImage=(Style.taille_icone("compact"), Style.taille_icone("compact")),
+        )
         self.ctrl_parametres = ctrl_parametres
         self.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour mémoriser tous les paramêtres")))
         self.Bind(wx.EVT_BUTTON, self.OnBouton)
@@ -784,6 +818,8 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(self, "surface")
+        Style.appliquer_fenetre(panel, "surface")
         sizer_1 = wx.BoxSizer(wx.VERTICAL)
         sizer_1.Add(panel, 1, wx.ALL|wx.EXPAND)
         self.SetSizer(sizer_1)
@@ -791,9 +827,9 @@ class MyFrame(wx.Frame):
         self.boutonTest = wx.Button(panel, -1, _(u"Bouton de test"))
         self.bouton_reinit = Bouton_reinitialisation(panel, self.ctrl)
         sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2.Add(self.ctrl, 1, wx.ALL|wx.EXPAND, 4)
-        sizer_2.Add(self.boutonTest, 0, wx.ALL|wx.EXPAND, 4)
-        sizer_2.Add(self.bouton_reinit, 0, wx.ALL|wx.EXPAND, 4)
+        sizer_2.Add(self.ctrl, 1, wx.ALL|wx.EXPAND, Style.espace(1))
+        sizer_2.Add(self.boutonTest, 0, wx.ALL|wx.EXPAND, Style.espace(1))
+        sizer_2.Add(self.bouton_reinit, 0, wx.ALL|wx.EXPAND, Style.espace(1))
         panel.SetSizer(sizer_2)
         self.Layout()
         self.CentreOnScreen()
@@ -811,4 +847,3 @@ if __name__ == '__main__':
     app.SetTopWindow(frame_1)
     frame_1.Show()
     app.MainLoop()
-
