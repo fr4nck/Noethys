@@ -49,6 +49,17 @@ class RepensTreeListsContractTests(unittest.TestCase):
         self.assertNotIn("UTILS_UIMetrics", text)
         self.assertNotIn("wx.SystemSettings.GetFont", text)
 
+    def test_individuals_grid_uses_repens_facade_and_preserves_custom_family_colour(self):
+        text = self._read("noethys/Ctrl/CTRL_Grille_individus.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_liste(self)", text)
+        self.assertIn('Style.couleur("surface_container_high")', text)
+        self.assertIn('Style.couleur("on_surface_variant")', text)
+        self.assertIn('Style.police("body")', text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+        self.assertNotIn("wx.SystemSettings.GetFont", text)
+
 
 if __name__ == "__main__":
     unittest.main()
