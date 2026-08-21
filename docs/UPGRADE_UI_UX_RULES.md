@@ -20,6 +20,22 @@ Principes d'architecture repris de Teamworks pour la modernisation progressive d
 - Versionner les perspectives afin qu'une ancienne disposition cassée ne soit pas restaurée après une évolution du dashboard.
 - Refactoriser progressivement en conservant logique métier, callbacks et modèles de données ; remplacer uniquement la structure UI obsolète.
 
+## Architecture « CSS Noethys »
+
+Repens Design doit fonctionner comme un design system web centralisé : une règle graphique modifiée au centre se propage à tous les composants qui la consomment.
+
+- `UTILS_DesignSystem.py` contient les rôles sémantiques et palettes.
+- `UTILS_UIMetrics.py` contient les métriques d'échelle et de géométrie.
+- `UTILS_Interface.py` porte les préférences utilisateur d'apparence.
+- **`UTILS_StyleRepens.py` est la façade unique recommandée**, équivalent du CSS consommé par les composants.
+- `CTRL_ActionRepens.py`, `CTRL_SurfaceRepens.py`, `CTRL_Bandeau.py` et `CTRL_FenetreRepens.py` doivent consommer cette façade plutôt que choisir directement couleurs ou dimensions.
+- Les nouveaux dialogues utilisent `CTRL_FenetreRepens.Dialog`, les outils non modaux `CTRL_FenetreRepens.Frame`, et les blocs métier `CTRL_FenetreRepens.Section` lorsque ce patron convient.
+- Un écran métier ne doit plus fixer de RGB, rayon, fonte, taille d'icône ou marge pour exprimer Repens Design. Il demande un rôle (`primary`, `surface`, `danger`, etc.) ou utilise un composant commun.
+- Les dimensions métier intrinsèques restent autorisées lorsqu'elles décrivent réellement la donnée ; les dimensions purement décoratives doivent venir du design system.
+- La migration est progressive : on ne monkey-patch pas `wx.Dialog` ou `wx.Panel`. Chaque écran adopte explicitement le shell commun lorsqu'il est refactorisé.
+
 ## Règle générale
 
 > Si un vieux layout empêche l'interface de s'adapter, on ne construit pas une couche autour pour le dompter : on le remplace proprement.
+
+> Si un écran métier choisit lui-même son apparence, le design system n'est pas terminé : l'apparence doit remonter vers le socle Repens.
