@@ -13,10 +13,10 @@ import datetime
 
 import wx
 
-import Chemins
 import GestionDB
-from Ctrl import CTRL_Bouton_image, CTRL_Saisie_date
-from Utils import UTILS_Interface, UTILS_UIMetrics
+from Ctrl import CTRL_ActionRepens, CTRL_Saisie_date
+from Utils import UTILS_IconesRepens
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
@@ -27,44 +27,36 @@ MOIS = [
 ]
 
 
-def _PoliceInterface():
-    police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-    facteur = UTILS_Interface.GetTailleTexte() / 100.0
-    police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-    return police
-
-
 def _StylePanel(panel):
-    try:
-        panel.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
-    except Exception:
-        pass
+    Style.appliquer_fenetre(panel, "surface")
 
 
 def _StyleLabel(label):
-    try:
-        label.SetFont(_PoliceInterface())
-        label.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-    except Exception:
-        pass
+    Style.appliquer_texte(label, role="label", role_texte="on_surface", role_fond="surface")
 
 
 def _StyleSaisie(ctrl, largeur=-1):
-    try:
-        ctrl.SetFont(_PoliceInterface())
-        ctrl.SetMinSize((largeur, UTILS_UIMetrics.action_target("compact")))
-        ctrl.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-        ctrl.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-    except Exception:
-        pass
+    Style.appliquer_saisie(ctrl)
+    ctrl.SetMinSize((largeur, Style.cible_action("compact")))
 
 
 def _AjouteChamp(sizer, label, ctrl, marge=None):
     if marge is None:
-        marge = UTILS_UIMetrics.spacing(2)
+        marge = Style.espace(2)
     sizer.Add(label, 0, wx.ALIGN_CENTER_VERTICAL)
-    sizer.Add(ctrl, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
+    sizer.Add(ctrl, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
     sizer.AddSpacer(marge)
+
+
+def _Action(parent, label, tooltip, icone=None, variante="ghost"):
+    return CTRL_ActionRepens.CTRL(
+        parent,
+        label=label,
+        icone=icone,
+        variante=variante,
+        tooltip=tooltip,
+        compact=True,
+    )
 
 
 class Page_Semaines(wx.Panel):
@@ -77,15 +69,19 @@ class Page_Semaines(wx.Panel):
         self.ctrl_semaine = wx.SpinCtrl(self, -1, "", min=1, max=53)
         self.label_annee = wx.StaticText(self, -1, _(u"Année :"))
         self.ctrl_annee = wx.SpinCtrl(self, -1, "", min=1977, max=2999)
-        self.bouton_aujourdhui = CTRL_Bouton_image.CTRL(self, texte=_(u"Aujourd'hui"), iconeFluent="calendar")
+        self.bouton_aujourdhui = _Action(
+            self,
+            _(u"Aujourd'hui"),
+            _(u"Sélectionnez la semaine en cours"),
+            icone="calendar",
+        )
 
         for label in (self.label_semaine, self.label_annee):
             _StyleLabel(label)
-        _StyleSaisie(self.ctrl_semaine, UTILS_UIMetrics.px(82))
-        _StyleSaisie(self.ctrl_annee, UTILS_UIMetrics.px(92))
+        _StyleSaisie(self.ctrl_semaine, Style.px(82))
+        _StyleSaisie(self.ctrl_annee, Style.px(92))
         self.ctrl_semaine.SetToolTip(wx.ToolTip(_(u"Sélectionnez une semaine")))
         self.ctrl_annee.SetToolTip(wx.ToolTip(_(u"Sélectionnez une année")))
-        self.bouton_aujourdhui.SetToolTip(wx.ToolTip(_(u"Sélectionnez la semaine en cours")))
 
         self.Bind(wx.EVT_SPINCTRL, self.parent.CallBack, self.ctrl_semaine)
         self.Bind(wx.EVT_SPINCTRL, self.parent.CallBack, self.ctrl_annee)
@@ -96,7 +92,7 @@ class Page_Semaines(wx.Panel):
         _AjouteChamp(sizer, self.label_annee, self.ctrl_annee)
         sizer.Add(self.bouton_aujourdhui, 0, wx.ALIGN_CENTER_VERTICAL)
         cadre = wx.BoxSizer(wx.VERTICAL)
-        cadre.Add(sizer, 0, wx.ALL, UTILS_UIMetrics.spacing(3))
+        cadre.Add(sizer, 0, wx.ALL, Style.espace(3))
         self.SetSizer(cadre)
         self.SelectAujourdhui()
 
@@ -133,20 +129,21 @@ class Page_Mois(wx.Panel):
         self.spin_mois.SetRange(-1, 1)
         self.label_annee = wx.StaticText(self, -1, _(u"Année :"))
         self.ctrl_annee = wx.SpinCtrl(self, -1, "", min=1977, max=2999)
-        self.bouton_aujourdhui = CTRL_Bouton_image.CTRL(self, texte=_(u"Aujourd'hui"), iconeFluent="calendar")
+        self.bouton_aujourdhui = _Action(
+            self,
+            _(u"Aujourd'hui"),
+            _(u"Sélectionnez le mois en cours"),
+            icone="calendar",
+        )
 
         for label in (self.label_mois, self.label_annee):
             _StyleLabel(label)
-        _StyleSaisie(self.ctrl_mois, UTILS_UIMetrics.px(132))
-        _StyleSaisie(self.ctrl_annee, UTILS_UIMetrics.px(92))
-        try:
-            self.spin_mois.SetMinSize((UTILS_UIMetrics.px(28), UTILS_UIMetrics.action_target("compact")))
-        except Exception:
-            pass
+        _StyleSaisie(self.ctrl_mois, Style.px(132))
+        _StyleSaisie(self.ctrl_annee, Style.px(92))
+        self.spin_mois.SetMinSize((Style.px(28), Style.cible_action("compact")))
 
         self.ctrl_mois.SetToolTip(wx.ToolTip(_(u"Sélectionnez un mois")))
         self.ctrl_annee.SetToolTip(wx.ToolTip(_(u"Sélectionnez une année")))
-        self.bouton_aujourdhui.SetToolTip(wx.ToolTip(_(u"Sélectionnez le mois en cours")))
 
         self.Bind(wx.EVT_SPIN, self.OnSpinMois, self.spin_mois)
         self.Bind(wx.EVT_CHOICE, self.parent.CallBack, self.ctrl_mois)
@@ -155,13 +152,13 @@ class Page_Mois(wx.Panel):
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(self.label_mois, 0, wx.ALIGN_CENTER_VERTICAL)
-        sizer.Add(self.ctrl_mois, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
-        sizer.Add(self.spin_mois, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
-        sizer.AddSpacer(UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl_mois, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
+        sizer.Add(self.spin_mois, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
+        sizer.AddSpacer(Style.espace(2))
         _AjouteChamp(sizer, self.label_annee, self.ctrl_annee)
         sizer.Add(self.bouton_aujourdhui, 0, wx.ALIGN_CENTER_VERTICAL)
         cadre = wx.BoxSizer(wx.VERTICAL)
-        cadre.Add(sizer, 0, wx.ALL, UTILS_UIMetrics.spacing(3))
+        cadre.Add(sizer, 0, wx.ALL, Style.espace(3))
         self.SetSizer(cadre)
         self.SelectAujourdhui()
 
@@ -203,8 +200,8 @@ class Page_Vacances(wx.Panel):
         self.ctrl_annee = wx.SpinCtrl(self, -1, "", min=1977, max=2999)
         for label in (self.label_vacances, self.label_annee):
             _StyleLabel(label)
-        _StyleSaisie(self.ctrl_vacances, UTILS_UIMetrics.px(170))
-        _StyleSaisie(self.ctrl_annee, UTILS_UIMetrics.px(92))
+        _StyleSaisie(self.ctrl_vacances, Style.px(170))
+        _StyleSaisie(self.ctrl_annee, Style.px(92))
 
         self.ctrl_vacances.SetToolTip(wx.ToolTip(_(u"Sélectionnez une période de vacances")))
         self.ctrl_annee.SetToolTip(wx.ToolTip(_(u"Sélectionnez une année")))
@@ -215,7 +212,7 @@ class Page_Vacances(wx.Panel):
         _AjouteChamp(sizer, self.label_vacances, self.ctrl_vacances)
         _AjouteChamp(sizer, self.label_annee, self.ctrl_annee, 0)
         cadre = wx.BoxSizer(wx.VERTICAL)
-        cadre.Add(sizer, 0, wx.ALL, UTILS_UIMetrics.spacing(3))
+        cadre.Add(sizer, 0, wx.ALL, Style.espace(3))
         self.SetSizer(cadre)
         self.SelectAujourdhui()
 
@@ -270,23 +267,27 @@ class Page_Dates(wx.Panel):
         self.ctrl_date_debut = CTRL_Saisie_date.Date2(self)
         self.label_au = wx.StaticText(self, wx.ID_ANY, _(u"au"))
         self.ctrl_date_fin = CTRL_Saisie_date.Date2(self)
-        self.bouton_appliquer_dates = CTRL_Bouton_image.CTRL(self, texte=_(u"Appliquer"))
+        self.bouton_appliquer_dates = _Action(
+            self,
+            _(u"Appliquer"),
+            _(u"Cliquez ici pour valider la période saisie"),
+            variante="secondaire",
+        )
         for label in (self.label_periode, self.label_au):
             _StyleLabel(label)
 
         self.ctrl_date_debut.SetToolTip(wx.ToolTip(_(u"Saisissez la date de début de la période")))
         self.ctrl_date_fin.SetToolTip(wx.ToolTip(_(u"Saisissez la date de fin de la période")))
-        self.bouton_appliquer_dates.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour valider la période saisie")))
         self.Bind(wx.EVT_BUTTON, self.parent.CallBack, self.bouton_appliquer_dates)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(self.label_periode, 0, wx.ALIGN_CENTER_VERTICAL)
-        sizer.Add(self.ctrl_date_debut, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
-        sizer.Add(self.label_au, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(2))
-        sizer.Add(self.ctrl_date_fin, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
-        sizer.Add(self.bouton_appliquer_dates, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl_date_debut, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
+        sizer.Add(self.label_au, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(2))
+        sizer.Add(self.ctrl_date_fin, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
+        sizer.Add(self.bouton_appliquer_dates, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(2))
         cadre = wx.BoxSizer(wx.VERTICAL)
-        cadre.Add(sizer, 0, wx.ALL, UTILS_UIMetrics.spacing(3))
+        cadre.Add(sizer, 0, wx.ALL, Style.espace(3))
         self.SetSizer(cadre)
 
         self.ctrl_date_debut.SetDate(datetime.date.today() - datetime.timedelta(days=3))
@@ -309,20 +310,28 @@ class Page_Jour(wx.Panel):
         _StylePanel(self)
 
         self.ctrl_date = CTRL_Saisie_date.Date2(self)
-        self.bouton_appliquer_dates = CTRL_Bouton_image.CTRL(self, texte=_(u"Appliquer"))
-        self.bouton_aujourdhui = CTRL_Bouton_image.CTRL(self, texte=_(u"Aujourd'hui"), iconeFluent="calendar")
+        self.bouton_appliquer_dates = _Action(
+            self,
+            _(u"Appliquer"),
+            _(u"Cliquez ici pour valider la date saisie"),
+            variante="secondaire",
+        )
+        self.bouton_aujourdhui = _Action(
+            self,
+            _(u"Aujourd'hui"),
+            _(u"Sélectionnez la date du jour"),
+            icone="calendar",
+        )
         self.ctrl_date.SetToolTip(wx.ToolTip(_(u"Saisissez une date")))
-        self.bouton_appliquer_dates.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour valider la date saisie")))
-        self.bouton_aujourdhui.SetToolTip(wx.ToolTip(_(u"Sélectionnez la date du jour")))
         self.Bind(wx.EVT_BUTTON, self.parent.CallBack, self.bouton_appliquer_dates)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonAujourdhui, self.bouton_aujourdhui)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(self.ctrl_date, 0, wx.ALIGN_CENTER_VERTICAL)
-        sizer.Add(self.bouton_appliquer_dates, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(2))
-        sizer.Add(self.bouton_aujourdhui, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
+        sizer.Add(self.bouton_appliquer_dates, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(2))
+        sizer.Add(self.bouton_aujourdhui, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
         cadre = wx.BoxSizer(wx.VERTICAL)
-        cadre.Add(sizer, 0, wx.ALL, UTILS_UIMetrics.spacing(3))
+        cadre.Add(sizer, 0, wx.ALL, Style.espace(3))
         self.SetSizer(cadre)
         self.SelectAujourdhui()
 
@@ -350,29 +359,25 @@ class CTRL(wx.Notebook):
         self.callback = callback
         self.dictPages = {}
         self.callback_actif = True
-        _StylePanel(self)
-        try:
-            self.SetFont(_PoliceInterface())
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        except Exception:
-            pass
+        Style.appliquer_fenetre(self, "surface")
 
         self.listePages = [
-            {"code": "mois", "ctrl": Page_Mois(self), "label": _(u"Mois"), "image": "Calendrier_mois.png"},
-            {"code": "semaine", "ctrl": Page_Semaines(self), "label": _(u"Semaine"), "image": "Calendrier3jours.png"},
-            {"code": "vacances", "ctrl": Page_Vacances(self), "label": _(u"Vacances"), "image": "Calendrier3jours.png"},
-            {"code": "periode", "ctrl": Page_Dates(self), "label": _(u"Période"), "image": "Calendrier_jour.png"},
-            {"code": "date", "ctrl": Page_Jour(self), "label": _(u"Jour"), "image": "Calendrier_jour.png"},
+            {"code": "mois", "ctrl": Page_Mois(self), "label": _(u"Mois"), "icone": "calendar_month"},
+            {"code": "semaine", "ctrl": Page_Semaines(self), "label": _(u"Semaine"), "icone": "calendar_week"},
+            {"code": "vacances", "ctrl": Page_Vacances(self), "label": _(u"Vacances"), "icone": "calendar"},
+            {"code": "periode", "ctrl": Page_Dates(self), "label": _(u"Période"), "icone": "calendar"},
+            {"code": "date", "ctrl": Page_Jour(self), "label": _(u"Jour"), "icone": "calendar_day"},
         ]
 
-        taille_icone = UTILS_UIMetrics.icon_size("inline")
+        taille_icone = Style.taille_icone("inline")
         il = wx.ImageList(taille_icone, taille_icone)
         self.dictImages = {}
         for page in self.listePages:
-            chemin = Chemins.GetStaticIconPath("Images/16x16/%s" % page["image"], taille=taille_icone)
-            bitmap = wx.Bitmap(chemin, wx.BITMAP_TYPE_ANY)
-            if bitmap.IsOk() and (bitmap.GetWidth() != taille_icone or bitmap.GetHeight() != taille_icone):
-                bitmap = wx.Bitmap(bitmap.ConvertToImage().Scale(taille_icone, taille_icone, wx.IMAGE_QUALITY_HIGH))
+            bitmap = UTILS_IconesRepens.GetBitmap(
+                page["icone"],
+                taille=taille_icone,
+                role="on_surface_variant",
+            )
             self.dictImages[page["code"]] = il.Add(bitmap)
         self.AssignImageList(il)
 
@@ -422,16 +427,17 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = CTRL(panel)
-        bouton_test = wx.Button(panel, -1, u"Test")
+        bouton_test = CTRL_ActionRepens.CTRL(panel, label=u"Test", variante="secondaire")
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
-        sizer.Add(bouton_test, 0, wx.ALL, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, Style.espace(2))
+        sizer.Add(bouton_test, 0, wx.ALL, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
         self.SetSizer(cadre)
-        self.SetMinSize((UTILS_UIMetrics.px(520), UTILS_UIMetrics.px(280)))
+        self.SetMinSize((Style.px(520), Style.px(280)))
         self.Layout()
         self.CentreOnScreen()
 
