@@ -56,11 +56,15 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertNotIn("SendSizeEvent", text)
         self.assertNotIn("SetSize((400", text)
 
-    def test_common_image_button_supports_explicit_fluent_and_safe_phoenix(self):
+    def test_common_image_button_supports_explicit_fluent_and_css_repens(self):
         text = self._read("noethys/Ctrl/CTRL_Bouton_image.py")
         self.assertIn("iconeFluent", text)
         self.assertIn("SetIconeFluent", text)
-        self.assertIn("action_target", text)
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn('Style.cible_action("standard")', text)
+        self.assertIn('Style.etat("pressed")', text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
         self.assertNotIn("EVT_ENABLE", text)
 
     def test_small_dialogs_are_resizable_and_not_grid_locked(self):
