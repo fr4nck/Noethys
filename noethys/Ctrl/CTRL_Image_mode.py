@@ -16,8 +16,7 @@ import wx
 import Chemins
 import GestionDB
 from Ctrl import CTRL_ActionRepens
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
@@ -46,7 +45,7 @@ class CTRL(wx.StaticBitmap):
         self.modeDefaut = False
 
         self.SetMinSize(self.tailleImage)
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_low"))
+        self.SetBackgroundColour(Style.couleur("surface_container_low"))
         self.SetToolTip(wx.ToolTip(_(u"Image associée. Utilisez les commandes de l'écran pour la modifier.")))
 
         bitmap = self.GetPhoto()
@@ -55,8 +54,8 @@ class CTRL(wx.StaticBitmap):
     def _TailleAffichage(self, taille):
         try:
             return (
-                max(1, UTILS_UIMetrics.px(taille[0])),
-                max(1, UTILS_UIMetrics.px(taille[1])),
+                max(1, Style.px(taille[0])),
+                max(1, Style.px(taille[1])),
             )
         except Exception:
             return tuple(taille)
@@ -207,7 +206,7 @@ class Dialog(wx.Dialog):
     def __init__(self, parent, IDmode=None):
         wx.Dialog.__init__(self, parent, -1, style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.SetTitle(_(u"Image du mode de règlement"))
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        Style.appliquer_fenetre(self, "surface")
 
         self.ctrl_image = CTRL(
             self,
@@ -232,12 +231,12 @@ class Dialog(wx.Dialog):
         )
 
         actions = wx.BoxSizer(wx.HORIZONTAL)
-        actions.Add(self.bouton_ajouter_image, 0, wx.RIGHT, UTILS_UIMetrics.spacing(1))
+        actions.Add(self.bouton_ajouter_image, 0, wx.RIGHT, Style.espace(1))
         actions.Add(self.bouton_supprimer_image, 0)
 
         principal = wx.BoxSizer(wx.VERTICAL)
-        principal.Add(self.ctrl_image, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, UTILS_UIMetrics.spacing(3))
-        principal.Add(actions, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.ALIGN_RIGHT, UTILS_UIMetrics.spacing(3))
+        principal.Add(self.ctrl_image, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, Style.espace(3))
+        principal.Add(actions, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.ALIGN_RIGHT, Style.espace(3))
         self.SetSizer(principal)
         self.Fit()
         self.SetMinSize(self.GetSize())
