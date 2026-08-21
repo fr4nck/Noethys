@@ -11,10 +11,9 @@ les actions sont des callbacks et chaque colonne déclare un minimum + un poids.
 
 import wx
 
+from Ctrl import CTRL_ActionRepens
 from Utils import UTILS_ColonnesResponsive
-from Utils import UTILS_FluentIcons
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 
 
 class Colonne(object):
@@ -36,55 +35,40 @@ class Action(object):
         self.principal = bool(principal)
 
 
-def _police(delta=0, bold=False):
-    police = wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)
-    try:
-        base = police.GetPointSize()
-        facteur = (UTILS_Interface.GetEchelle() / 100.0) * (UTILS_Interface.GetTailleTexte() / 100.0)
-        police.SetPointSize(max(7, int(round((base + delta) * facteur))))
-    except Exception:
-        pass
-    if bold:
-        try:
-            police.SetWeight(wx.FONTWEIGHT_SEMIBOLD)
-        except Exception:
-            police.SetWeight(wx.FONTWEIGHT_BOLD)
-    return police
-
-
 class EnteteSection(wx.Panel):
     """Titre + sous-titre compact ; pas une carte mobile."""
+
     def __init__(self, parent, titre="", sous_titre=""):
-        wx.Panel.__init__(self, parent, style=wx.TAB_TRAVERSAL)
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container"))
+        wx.Panel.__init__(self, parent, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
+        Style.appliquer_fenetre(self, "surface_container")
 
         self.titre = wx.StaticText(self, label=titre)
-        self.titre.SetFont(_police(delta=1, bold=True))
-        self.titre.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        Style.appliquer_texte(
+            self.titre,
+            role="h3",
+            role_texte="on_surface",
+            role_fond="surface_container",
+        )
 
         self.sous_titre = wx.StaticText(self, label=sous_titre)
-        self.sous_titre.SetFont(_police(delta=0, bold=False))
-        self.sous_titre.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
+        Style.appliquer_texte(
+            self.sous_titre,
+            role="body_small",
+            role_texte="on_surface_variant",
+            role_fond="surface_container",
+        )
         self.sous_titre.Show(bool(sous_titre))
 
         texte = wx.BoxSizer(wx.VERTICAL)
-        texte.Add(self.titre, 0, wx.BOTTOM if sous_titre else 0, UTILS_UIMetrics.spacing(1))
-        texte.Add(self.sous_titre, 0)
+        texte.Add(self.titre, 0)
+        if sous_titre:
+            texte.Add(self.sous_titre, 0, wx.TOP, Style.espace(1))
+        else:
+            texte.Add(self.sous_titre, 0)
 
-        sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(texte, 1, wx.ALIGN_CENTER_VERTICAL)
-        marge_x = UTILS_UIMetrics.spacing(3)
-        marge_y = UTILS_UIMetrics.spacing(2)
-        self.SetSizer(sizer)
-        sizer.SetMinSize((-1, UTILS_UIMetrics.px(48)))
-        self.SetMinSize((-1, UTILS_UIMetrics.px(48)))
-        self.SetSizerAndFit(sizer)
-        self.SetMinSize((-1, max(self.GetMinSize().GetHeight(), marge_y * 2 + self.titre.GetBestSize().GetHeight())))
-
-        # La marge est portée par le parent via GetPadding() pour rester simple
-        # avec wxPython classique ; le header lui-même ne dessine aucune bordure.
-        self._marge_x = marge_x
-        self._marge_y = marge_y
+        principal = wx.BoxSizer(wx.HORIZONTAL)
+        principal.Add(texte, 1, wx.ALL | wx.ALIGN_CENTER_VERTICAL, Style.espace(2))
+        self.SetSizer(principal)
 
     def SetTitre(self, titre, sous_titre=None):
         self.titre.SetLabel(titre or "")
@@ -92,72 +76,70 @@ class EnteteSection(wx.Panel):
             self.sous_titre.SetLabel(sous_titre or "")
             self.sous_titre.Show(bool(sous_titre))
         self.Layout()
+        try:
+            self.GetParent().Layout()
+        except Exception:
+            pass
 
 
 class BarreActions(wx.Panel):
-    """Commandes natives avec vraie cible de clic et pictogramme Fluent."""
+    """Commandes Repens regroupées dans une barre desktop compacte."""
+
     def __init__(self, parent, actions=None):
-        wx.Panel.__init__(self, parent, style=wx.TAB_TRAVERSAL)
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_low"))
+        wx.Panel.__init__(self, parent, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
+        Style.appliquer_fenetre(self, "surface_container_low")
         self._boutons = []
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        espace = UTILS_UIMetrics.spacing(1)
-        taille_icone = UTILS_UIMetrics.icon_size("command")
-        hauteur = UTILS_UIMetrics.action_target("standard")
+        marge = Style.espace(1)
+        sizer.AddSpacer(marge)
 
         for action in actions or ():
             if action is None:
-                sizer.AddSpacer(UTILS_UIMetrics.spacing(2))
+                sizer.AddSpacer(Style.espace(2))
                 continue
-            bouton = wx.Button(self, label=action.label, style=wx.BU_EXACTFIT)
-            bouton.SetFont(_police())
-            bouton.SetMinSize((-1, hauteur))
-            if action.icone:
-                bitmap = UTILS_FluentIcons.GetBitmap(action.icone, taille=taille_icone)
-                if bitmap is not None:
-                    try:
-                        bouton.SetBitmap(bitmap)
-                        bouton.SetBitmapMargins((espace, 0))
-                    except Exception:
-                        pass
-            if action.tooltip:
-                bouton.SetToolTip(action.tooltip)
+            bouton = CTRL_ActionRepens.CTRL(
+                self,
+                label=action.label,
+                icone=action.icone,
+                variante="primaire" if action.principal else "secondaire",
+                tooltip=action.tooltip or None,
+                compact=True,
+            )
             if action.callback:
                 bouton.Bind(wx.EVT_BUTTON, action.callback)
             self._boutons.append(bouton)
-            sizer.Add(bouton, 0, wx.RIGHT, espace)
+            sizer.Add(bouton, 0, wx.RIGHT | wx.TOP | wx.BOTTOM, marge)
 
         sizer.AddStretchSpacer(1)
-        marge = UTILS_UIMetrics.spacing(2)
         self.SetSizer(sizer)
-        self.SetMinSize((-1, hauteur + marge))
 
 
 class ListeTableau(wx.ListCtrl):
-    """Liste wx native à colonnes pondérées."""
+    """Liste wx native à colonnes pondérées et métriques DPI-aware."""
+
     def __init__(self, parent, colonnes, style=0):
-        style |= wx.LC_REPORT | wx.LC_HRULES | wx.LC_VRULES
+        style |= wx.LC_REPORT | wx.LC_HRULES
         wx.ListCtrl.__init__(self, parent, style=style)
         self.colonnes = tuple(colonnes or ())
         self._donnees = []
+        Style.appliquer_liste(self)
 
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-        self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        self.SetFont(_police())
-
+        specs = []
         for index, colonne in enumerate(self.colonnes):
             format_colonne = wx.LIST_FORMAT_LEFT
             if colonne.align == "right":
                 format_colonne = wx.LIST_FORMAT_RIGHT
             elif colonne.align == "center":
                 format_colonne = wx.LIST_FORMAT_CENTRE
-            self.InsertColumn(index, colonne.label, format=format_colonne, width=colonne.minimum)
+            minimum = Style.px(colonne.minimum, minimum=0)
+            self.InsertColumn(index, colonne.label, format=format_colonne, width=minimum)
+            specs.append((minimum, colonne.poids))
 
         UTILS_ColonnesResponsive.Installer(
             self,
-            [(colonne.minimum, colonne.poids) for colonne in self.colonnes],
-            marge=UTILS_UIMetrics.spacing(6),
+            specs,
+            marge=Style.espace(6),
         )
 
     def _texte(self, colonne, valeur, ligne):
@@ -177,7 +159,7 @@ class ListeTableau(wx.ListCtrl):
         try:
             self.DeleteAllItems()
             self._donnees = list(donnees or ())
-            for index_ligne, ligne in enumerate(self._donnees):
+            for ligne in self._donnees:
                 if not isinstance(ligne, dict):
                     try:
                         ligne = dict(ligne)
@@ -203,19 +185,25 @@ class ListeTableau(wx.ListCtrl):
 
 class PanneauTableau(wx.Panel):
     """Conteneur prêt à l'emploi pour les futurs tableaux Noethys."""
+
     def __init__(self, parent, titre, colonnes, actions=None, sous_titre="", recherche=True):
-        wx.Panel.__init__(self, parent, style=wx.TAB_TRAVERSAL)
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        wx.Panel.__init__(self, parent, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
+        Style.appliquer_fenetre(self, "surface")
 
         self.entete = EnteteSection(self, titre=titre, sous_titre=sous_titre)
         self.actions = BarreActions(self, actions=actions) if actions else None
         self.tableau = ListeTableau(self, colonnes=colonnes)
         self.recherche = wx.SearchCtrl(self, style=wx.TE_PROCESS_ENTER) if recherche else None
         self.etat = wx.StaticText(self, label="")
-        self.etat.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
-        self.etat.SetFont(_police())
+        Style.appliquer_texte(
+            self.etat,
+            role="body_small",
+            role_texte="on_surface_variant",
+            role_fond="surface",
+        )
 
         if self.recherche is not None:
+            Style.appliquer_saisie(self.recherche)
             self.recherche.ShowSearchButton(True)
             self.recherche.ShowCancelButton(True)
             self.recherche.SetDescriptiveText("Rechercher…")
@@ -231,7 +219,7 @@ class PanneauTableau(wx.Panel):
         sizer.Add(self.tableau, 1, wx.EXPAND)
 
         bas = wx.BoxSizer(wx.HORIZONTAL)
-        marge = UTILS_UIMetrics.spacing(2)
+        marge = Style.espace(2)
         if self.recherche is not None:
             bas.Add(self.recherche, 1, wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, marge)
         bas.Add(self.etat, 0, wx.ALIGN_CENTER_VERTICAL)
