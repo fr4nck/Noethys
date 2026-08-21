@@ -47,6 +47,26 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertNotIn("DrawRoundedRectangle", text)
         self.assertNotIn("surface_container", text)
 
+    def test_mail_client_is_dense_responsive_and_repens_driven(self):
+        text = self._read("noethys/Ctrl/CTRL_Messagerie.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_liste", text)
+        self.assertIn("def _AjusteColonnes", text)
+        self.assertIn("SetSashGravity", text)
+        self.assertIn("wx.SP_NOBORDER", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+        self.assertNotIn("wx.SP_3D", text)
+
+    def test_calendar_wrapper_consumes_repens_metrics_only(self):
+        text = self._read("noethys/Ctrl/CTRL_Grille_calendrier.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn('Style.appliquer_fenetre(self, "surface")', text)
+        self.assertIn("Style.espace(1)", text)
+        self.assertIn("Style.px(240)", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+
     def test_messages_no_longer_use_tiny_vertical_bitmap_buttons(self):
         text = self._read("noethys/Ctrl/CTRL_Messages.py")
         self.assertIn("AddFluentTool", text)
