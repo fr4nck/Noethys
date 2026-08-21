@@ -112,11 +112,23 @@ class CommonUIModernizationContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Compte_internet.py",
             "noethys/Ctrl/CTRL_CheckListBox.py",
             "noethys/Ctrl/CTRL_Selection_depots.py",
+            "noethys/Ctrl/CTRL_Selection_jours.py",
         ):
             text = self._read(relative_path)
             self.assertIn("UTILS_StyleRepens as Style", text)
             self.assertNotIn("UTILS_Interface", text)
             self.assertNotIn("UTILS_UIMetrics", text)
+
+    def test_weekday_selector_uses_repens_actions_and_semantic_spacing(self):
+        text = self._read("noethys/Ctrl/CTRL_Selection_jours.py")
+        self.assertIn("CTRL_ActionRepens.CTRL", text)
+        self.assertIn('label=_(u"Tout")', text)
+        self.assertIn('label=_(u"Aucun")', text)
+        self.assertIn('Style.appliquer_fenetre(self, "surface")', text)
+        self.assertIn('Style.appliquer_texte(label, role="label"', text)
+        self.assertNotIn("CTRL_Bouton_image", text)
+        self.assertNotIn("_PoliceInterface", text)
+        self.assertNotIn("self.Fit()", text)
 
     def test_date_control_consumes_semantic_repens_entry_style(self):
         text = self._read("noethys/Ctrl/CTRL_Saisie_date.py")
