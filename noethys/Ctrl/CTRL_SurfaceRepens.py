@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Surface arrondie commune de Repens Design.
+"""Surface commune de Repens Design.
 
 Ce contrôle n'est pas une carte mobile : c'est une couche de fond desktop pour
-regrouper une information ou une commande dans le cockpit. Son apparence est
-entièrement fournie par ``UTILS_StyleRepens``.
+regrouper une information ou une commande dans une interface métier. Son
+apparence est entièrement fournie par ``UTILS_StyleRepens``.
+
+Les anciens appels peuvent encore fournir ``rayon`` et ``padding`` en valeurs
+numériques. Les nouveaux composants doivent les omettre afin de consommer les
+métriques sémantiques du socle Repens.
 """
 
 import wx
@@ -18,14 +22,16 @@ class CTRL(wx.Panel):
         parent,
         role_fond="surface_container_low",
         role_contour="outline_variant",
-        rayon=9,
-        padding=8,
+        rayon=None,
+        padding=None,
     ):
         wx.Panel.__init__(self, parent, style=wx.BORDER_NONE | wx.TAB_TRAVERSAL)
         self.role_fond = role_fond
         self.role_contour = role_contour
-        self.rayon_base = rayon
-        self.padding_base = padding
+        # Compatibilité avec les écrans historiques encore non migrés. Les
+        # valeurs None signifient : utiliser les métriques communes Repens.
+        self.rayon_legacy = rayon
+        self.padding_legacy = padding
         self.SetFont(Style.police("body"))
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
         self.Bind(wx.EVT_PAINT, self.OnPaint)
@@ -38,7 +44,14 @@ class CTRL(wx.Panel):
         return Style.couleur(self.role_contour)
 
     def GetPadding(self):
-        return Style.px(self.padding_base)
+        if self.padding_legacy is not None:
+            return Style.px(self.padding_legacy)
+        return Style.espace(2)
+
+    def GetRayon(self):
+        if self.rayon_legacy is not None:
+            return Style.px(self.rayon_legacy)
+        return Style.rayon("surface")
 
     def _GetCouleurExterieure(self):
         try:
@@ -70,5 +83,5 @@ class CTRL(wx.Panel):
             rect.y,
             max(1, rect.width - 1),
             max(1, rect.height - 1),
-            Style.px(self.rayon_base),
+            self.GetRayon(),
         )
