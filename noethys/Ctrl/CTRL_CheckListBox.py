@@ -3,7 +3,7 @@
 #-----------------------------------------------------------
 # Application :    Noethys, gestion multi-activités
 # Site internet :  www.noethys.com
-# Auteur:          Ivan LUCAS
+# Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-17 Ivan LUCAS
 # Licence:         Licence GNU GPL
 #-----------------------------------------------------------
@@ -14,7 +14,7 @@ import GestionDB
 from Utils.UTILS_Traduction import _
 from Utils import UTILS_Interface
 from Utils import UTILS_UIMetrics
-from Ctrl import CTRL_Bouton_image
+from Ctrl import CTRL_ActionRepens
 
 
 class CTRL(wx.CheckListBox):
@@ -38,6 +38,7 @@ class CTRL(wx.CheckListBox):
         try:
             self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
             self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+            self.SetMinSize((UTILS_UIMetrics.px(180), UTILS_UIMetrics.panel_min_height("secondary")))
         except Exception:
             pass
 
@@ -79,8 +80,7 @@ class CTRL(wx.CheckListBox):
         if listeIDcoches is None:
             listeIDcoches = []
         for index, dictItem in self.dictDonnees.items():
-            if dictItem["ID"] in listeIDcoches:
-                self.Check(index)
+            self.Check(index, dictItem["ID"] in listeIDcoches)
 
     def GetLabelsCoches(self):
         """Renvoie un texte de type 'label1, label2, label3, ...'."""
@@ -93,20 +93,27 @@ class CTRL(wx.CheckListBox):
 
 
 class Panel(wx.Panel):
+    """Checklist et commandes compactes, sans colonne latérale de boutons."""
+
     def __init__(self, parent):
-        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
+        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
+        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
 
         self.ctrl_liste = CTRL(self)
-        self.bouton_cocher_tout = CTRL_Bouton_image.CTRL(self, texte=_(u"Tout"))
-        self.bouton_cocher_rien = CTRL_Bouton_image.CTRL(self, texte=_(u"Aucun"))
+        self.bouton_cocher_tout = CTRL_ActionRepens.CTRL(
+            self,
+            label=_(u"Tout cocher"),
+            variante="ghost",
+            tooltip=_(u"Cocher tous les éléments"),
+        )
+        self.bouton_cocher_rien = CTRL_ActionRepens.CTRL(
+            self,
+            label=_(u"Tout décocher"),
+            variante="ghost",
+            tooltip=_(u"Décocher tous les éléments"),
+        )
 
-        try:
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
-        except Exception:
-            pass
-
-        self.__set_properties()
         self.__do_layout()
         self.Bind(wx.EVT_BUTTON, self.OnBoutonCocherTout, self.bouton_cocher_tout)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonCocherRien, self.bouton_cocher_rien)
@@ -115,19 +122,15 @@ class Panel(wx.Panel):
         for nomFonction in listeFonctions:
             setattr(self, nomFonction, getattr(self.ctrl_liste, nomFonction))
 
-    def __set_properties(self):
-        self.bouton_cocher_tout.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour tout cocher")))
-        self.bouton_cocher_rien.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour tout décocher")))
-
     def __do_layout(self):
-        actions = wx.BoxSizer(wx.VERTICAL)
-        actions.Add(self.bouton_cocher_tout, 0, wx.EXPAND | wx.BOTTOM, UTILS_UIMetrics.spacing(1))
-        actions.Add(self.bouton_cocher_rien, 0, wx.EXPAND)
+        actions = wx.BoxSizer(wx.HORIZONTAL)
+        actions.Add(self.bouton_cocher_tout, 0, wx.RIGHT, UTILS_UIMetrics.spacing(1))
+        actions.Add(self.bouton_cocher_rien, 0)
         actions.AddStretchSpacer(1)
 
-        principal = wx.BoxSizer(wx.HORIZONTAL)
+        principal = wx.BoxSizer(wx.VERTICAL)
+        principal.Add(actions, 0, wx.EXPAND | wx.BOTTOM, UTILS_UIMetrics.spacing(1))
         principal.Add(self.ctrl_liste, 1, wx.EXPAND)
-        principal.Add(actions, 0, wx.LEFT | wx.EXPAND, UTILS_UIMetrics.spacing(2))
         self.SetSizer(principal)
         self.Layout()
 
