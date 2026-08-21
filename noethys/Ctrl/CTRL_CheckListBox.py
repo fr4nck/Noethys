@@ -5,42 +5,27 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-17 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 import wx
 import GestionDB
 
 from Utils.UTILS_Traduction import _
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Ctrl import CTRL_ActionRepens
 
 
 class CTRL(wx.CheckListBox):
-    """Liste à cocher utilisant les couleurs et la typographie du thème."""
+    """Liste à cocher alignée sur le CSS Repens."""
 
     def __init__(self, parent):
         wx.CheckListBox.__init__(self, parent, -1)
         self.parent = parent
         self.listeDonnees = []
         self.dictDonnees = {}
-        self._AppliqueStyle()
-
-    def _AppliqueStyle(self):
-        try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            self.SetFont(police)
-        except Exception:
-            pass
-        try:
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-            self.SetMinSize((UTILS_UIMetrics.px(180), UTILS_UIMetrics.panel_min_height("secondary")))
-        except Exception:
-            pass
+        Style.appliquer_liste(self)
+        self.SetMinSize((Style.px(180), Style.px(92)))
 
     def SetDonnees(self, listeDonnees=None, trier=False, cocher=False):
         if listeDonnees is None:
@@ -83,7 +68,6 @@ class CTRL(wx.CheckListBox):
             self.Check(index, dictItem["ID"] in listeIDcoches)
 
     def GetLabelsCoches(self):
-        """Renvoie un texte de type 'label1, label2, label3, ...'."""
         listeLabels = []
         listeID = self.GetIDcoches()
         for dictItem in self.dictDonnees.values():
@@ -98,7 +82,7 @@ class Panel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        Style.appliquer_fenetre(self, "surface")
 
         self.ctrl_liste = CTRL(self)
         self.bouton_cocher_tout = CTRL_ActionRepens.CTRL(
@@ -124,12 +108,12 @@ class Panel(wx.Panel):
 
     def __do_layout(self):
         actions = wx.BoxSizer(wx.HORIZONTAL)
-        actions.Add(self.bouton_cocher_tout, 0, wx.RIGHT, UTILS_UIMetrics.spacing(1))
+        actions.Add(self.bouton_cocher_tout, 0, wx.RIGHT, Style.espace(1))
         actions.Add(self.bouton_cocher_rien, 0)
         actions.AddStretchSpacer(1)
 
         principal = wx.BoxSizer(wx.VERTICAL)
-        principal.Add(actions, 0, wx.EXPAND | wx.BOTTOM, UTILS_UIMetrics.spacing(1))
+        principal.Add(actions, 0, wx.EXPAND | wx.BOTTOM, Style.espace(1))
         principal.Add(self.ctrl_liste, 1, wx.EXPAND)
         self.SetSizer(principal)
         self.Layout()
@@ -145,11 +129,12 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1, name="test1")
+        Style.appliquer_fenetre(panel)
         self.ctrl = Panel(panel)
         boutonTest = wx.Button(panel, -1, _(u"Test"))
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
-        sizer.Add(boutonTest, 0, wx.ALL, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, Style.espace(2))
+        sizer.Add(boutonTest, 0, wx.ALL, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
