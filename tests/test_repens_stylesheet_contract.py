@@ -7,8 +7,10 @@ STYLE = ROOT / "noethys" / "Utils" / "UTILS_StyleRepens.py"
 SHELL = ROOT / "noethys" / "Ctrl" / "CTRL_FenetreRepens.py"
 ACTION = ROOT / "noethys" / "Ctrl" / "CTRL_ActionRepens.py"
 SURFACE = ROOT / "noethys" / "Ctrl" / "CTRL_SurfaceRepens.py"
+BADGE = ROOT / "noethys" / "Ctrl" / "CTRL_BadgeRepens.py"
 BANDEAU = ROOT / "noethys" / "Ctrl" / "CTRL_Bandeau.py"
 PRELEVEMENT = ROOT / "noethys" / "Dlg" / "DLG_Active_prelevement.py"
+RIB = ROOT / "noethys" / "Dlg" / "DLG_Saisie_rib.py"
 CALENDRIER = ROOT / "noethys" / "Dlg" / "DLG_Activite_calendrier.py"
 
 
@@ -19,6 +21,7 @@ def test_style_repens_est_le_point_entree_css_de_noethys():
     assert "TYPOGRAPHIES =" in texte
     for api in (
         "def couleur(",
+        "def etat(",
         "def espace(",
         "def rayon(",
         "def taille_icone(",
@@ -33,20 +36,25 @@ def test_style_repens_est_le_point_entree_css_de_noethys():
 
 
 def test_composants_repens_communs_passent_par_la_facade_de_style():
-    for fichier in (ACTION, SURFACE, BANDEAU, SHELL):
+    for fichier in (ACTION, SURFACE, BADGE, BANDEAU, SHELL):
         texte = fichier.read_text(encoding="utf-8")
         assert "UTILS_StyleRepens as Style" in texte
         assert "wx.Colour(" not in texte
 
-    action = ACTION.read_text(encoding="utf-8")
-    surface = SURFACE.read_text(encoding="utf-8")
-    bandeau = BANDEAU.read_text(encoding="utf-8")
-    assert "UTILS_Interface" not in action
-    assert "UTILS_UIMetrics" not in action
-    assert "UTILS_Interface" not in surface
-    assert "UTILS_UIMetrics" not in surface
-    assert "UTILS_Interface" not in bandeau
-    assert "UTILS_UIMetrics" not in bandeau
+    for fichier in (ACTION, SURFACE, BADGE, BANDEAU):
+        texte = fichier.read_text(encoding="utf-8")
+        assert "UTILS_Interface" not in texte
+        assert "UTILS_UIMetrics" not in texte
+
+
+def test_badge_repens_expose_les_etats_semantiques_du_mockup():
+    texte = BADGE.read_text(encoding="utf-8")
+    assert "class CTRL(wx.Control)" in texte
+    assert '"succes": ("success", "success_text")' in texte
+    assert '"attention": ("warning", "warning_text")' in texte
+    assert '"danger": ("danger", "danger_text")' in texte
+    assert '"info": ("info", "info_text")' in texte
+    assert "DrawRoundedRectangle" in texte
 
 
 def test_shell_repens_centralise_dialogue_frame_sections_et_footer():
@@ -69,14 +77,21 @@ def test_shell_repens_centralise_dialogue_frame_sections_et_footer():
 
 def test_premieres_fenetres_metier_consument_le_shell_commun():
     prelevement = PRELEVEMENT.read_text(encoding="utf-8")
+    rib = RIB.read_text(encoding="utf-8")
     calendrier = CALENDRIER.read_text(encoding="utf-8")
 
-    assert "class Dialog(CTRL_FenetreRepens.Dialog)" in prelevement
-    assert "self.AjouterSection(" in prelevement
-    assert "self.AjouterAction(" in prelevement
-    assert "FlexGridSizer" not in prelevement
-    assert "BitmapButton" not in prelevement
-    assert "StaticBox" not in prelevement
+    for texte in (prelevement, rib):
+        assert "class Dialog(CTRL_FenetreRepens.Dialog)" in texte
+        assert "self.AjouterSection(" in texte
+        assert "self.AjouterAction(" in texte
+        assert "FlexGridSizer" not in texte
+        assert "BitmapButton" not in texte
+        assert "StaticBox" not in texte
+
+    assert "CTRL_BadgeRepens.CTRL" in rib
+    assert 'SetEtat(_(u"Coordonnées valides"), "succes")' in rib
+    assert 'SetEtat(_(u"À vérifier"), "attention")' in rib
+    assert "string.letters" not in rib
 
     assert "CTRL_FenetreRepens.Section" in calendrier
     assert "CTRL_ActionRepens.CTRL" in calendrier
