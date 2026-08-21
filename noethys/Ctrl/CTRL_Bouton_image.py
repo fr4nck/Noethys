@@ -14,8 +14,33 @@ import PIL.Image as Image
 import PIL.ImageOps as ImageOps
 
 import Chemins
+from Utils import UTILS_IconesRepens
 from Utils import UTILS_Interface
 from Utils import UTILS_UIMetrics
+
+
+# Migration locale au contrôle commun Noethys. Il ne s'agit pas d'une
+# interception de wx ni de Chemins : lorsqu'un ancien écran demande une action
+# générique connue, le bouton sait désormais l'exprimer avec le pictogramme
+# sémantique Repens. Les images métier spécifiques continuent à fonctionner.
+ICONES_ACTIONS_HISTORIQUES = {
+    "ajouter.png": ("add", "on_surface"),
+    "modifier.png": ("edit", "on_surface"),
+    "supprimer.png": ("delete", "danger_text"),
+    "mecanisme.png": ("settings", "on_surface"),
+    "outils.png": ("settings", "on_surface"),
+    "imprimante.png": ("print", "on_surface"),
+    "loupe.png": ("search", "on_surface"),
+    "calendrier.png": ("calendar", "on_surface"),
+    "email.png": ("mail", "on_surface"),
+    "sms.png": ("chat", "on_surface"),
+    "aide.png": ("help", "on_surface"),
+    "fermer.png": ("dismiss", "on_surface"),
+    "annuler.png": ("dismiss", "on_surface"),
+    "valider.png": ("check", "on_surface"),
+    "cocher.png": ("check", "on_surface"),
+    "filtre.png": ("filter", "on_surface"),
+}
 
 
 def PILtoWx(image):
@@ -32,10 +57,12 @@ def PILtoWx(image):
 
 
 class CTRL(wx.Button):
-    """Bouton d'action commun Noethys, natif et DPI-aware.
+    """Bouton d'action commun Noethys, natif, sémantique et DPI-aware.
 
-    ``cheminImage`` reste compatible avec les écrans historiques. Les écrans
-    migrés utilisent ``iconeFluent`` explicitement, sans substitution globale.
+    L'API historique reste compatible. ``cheminImage`` peut donc continuer à
+    être fourni par les anciens dialogues ; les actions génériques connues sont
+    traduites localement en icônes Repens. Une image métier non répertoriée est
+    toujours chargée comme auparavant.
     """
 
     def __init__(self, parent, id=-1, texte="", cheminImage=None, tailleImage=(20, 20),
@@ -51,13 +78,6 @@ class CTRL(wx.Button):
         self.margesTexte = margesTexte
         self.iconeFluent = iconeFluent
         self.roleIcone = roleIcone
-
-        try:
-            self._fond_natif = self.GetBackgroundColour()
-            self._texte_natif = self.GetForegroundColour()
-        except Exception:
-            self._fond_natif = None
-            self._texte_natif = None
         self._survole = False
         self._presse = False
 
@@ -78,22 +98,45 @@ class CTRL(wx.Button):
             facteur = max(1.0, UTILS_UIMetrics.get_scale())
         except Exception:
             facteur = 1.0
-        return (max(12, int(round(float(largeur) * facteur))),
-                max(12, int(round(float(hauteur) * facteur))))
+        return (
+            max(12, int(round(float(largeur) * facteur))),
+            max(12, int(round(float(hauteur) * facteur))),
+        )
 
-    def _BitmapFluent(self):
-        if not self.iconeFluent:
+    def _BitmapSemantique(self, nom, role="on_surface"):
+        if not nom:
             return None
         try:
-            from Utils import UTILS_FluentIcons
             largeur, hauteur = self._TailleImage()
-            return UTILS_FluentIcons.GetBitmap(self.iconeFluent, taille=max(largeur, hauteur), role=self.roleIcone)
+            bitmap = UTILS_IconesRepens.GetBitmap(nom, taille=max(largeur, hauteur), role=role)
+            if bitmap is not None and bitmap.IsOk():
+                return bitmap
+        except Exception:
+            pass
+        return None
+
+    def _BitmapFluent(self):
+        return self._BitmapSemantique(self.iconeFluent, self.roleIcone)
+
+    def _GetActionHistorique(self):
+        if not self.cheminImage:
+            return None
+        try:
+            nom = os.path.basename(self.cheminImage).lower()
         except Exception:
             return None
+        return ICONES_ACTIONS_HISTORIQUES.get(nom)
 
     def _BitmapHistorique(self):
         if self.cheminImage in ("", None):
             return wx.NullBitmap
+
+        action = self._GetActionHistorique()
+        if action is not None:
+            bitmap = self._BitmapSemantique(action[0], action[1])
+            if bitmap is not None:
+                return bitmap
+
         chemin = self.cheminImage
         if not os.path.isabs(chemin):
             chemin = Chemins.GetStaticPath(chemin)
@@ -128,11 +171,6 @@ class CTRL(wx.Button):
             pass
 
         try:
-            UTILS_Interface.AppliquerAffichage(self, recursif=False)
-        except Exception:
-            pass
-
-        try:
             cible = UTILS_UIMetrics.action_target("standard")
             self.SetMinSize((max(cible, self.GetBestSize().GetWidth()), cible))
         except Exception:
@@ -151,37 +189,36 @@ class CTRL(wx.Button):
             pass
 
     def _AppliquerEtat(self):
-        sombre = UTILS_Interface.EstSombre()
-        if not sombre:
-            try:
-                if self._fond_natif is not None and self._fond_natif.IsOk():
-                    self.SetBackgroundColour(self._fond_natif)
-                if self._texte_natif is not None and self._texte_natif.IsOk():
-                    self.SetForegroundColour(self._texte_natif)
-                self.Refresh()
-            except Exception:
-                pass
-            return
+        """Même grammaire d'état en clair et en sombre.
 
+        Le bouton reste un ``wx.Button`` natif pour conserver les comportements
+        de dialogue (ID_CANCEL, bouton par défaut, tabulation, accessibilité).
+        """
         try:
             actif = self.IsEnabled()
         except Exception:
             actif = True
+
         if not actif:
-            fond = UTILS_Interface.GetCouleurRole("disabled", sombre=True)
+            fond = UTILS_Interface.GetCouleurRole("disabled")
             try:
-                texte = UTILS_Interface.GetCouleurRole("disabled_text", sombre=True)
+                texte = UTILS_Interface.GetCouleurRole("disabled_text")
             except Exception:
-                texte = UTILS_Interface.GetCouleurRole("on_surface_variant", sombre=True)
+                texte = UTILS_Interface.GetCouleurRole("on_surface_variant")
         elif self._presse:
-            etat = UTILS_Interface.GetEtatCouleurs("pressed", sombre=True)
-            fond, texte = etat["background"], etat["foreground"]
+            etat = UTILS_Interface.GetEtatCouleurs("pressed")
+            fond = etat["background"]
+            texte = etat["foreground"]
         elif self._survole:
-            fond = UTILS_Interface.GetCouleurRole("surface_container_highest", sombre=True)
-            texte = UTILS_Interface.GetCouleurRole("on_surface", sombre=True)
+            fond = UTILS_Interface.GetCouleurRole("surface_container_highest")
+            texte = UTILS_Interface.GetCouleurRole("on_surface")
+        elif self.HasFocus():
+            fond = UTILS_Interface.GetCouleurRole("surface_container_high")
+            texte = UTILS_Interface.GetCouleurRole("on_surface")
         else:
-            fond = UTILS_Interface.GetCouleurRole("surface_container_high", sombre=True)
-            texte = UTILS_Interface.GetCouleurRole("on_surface", sombre=True)
+            fond = UTILS_Interface.GetCouleurRole("surface_container_high")
+            texte = UTILS_Interface.GetCouleurRole("on_surface")
+
         try:
             self.SetBackgroundColour(fond)
             self.SetForegroundColour(texte)
