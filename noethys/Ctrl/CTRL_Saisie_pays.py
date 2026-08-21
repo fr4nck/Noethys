@@ -13,26 +13,26 @@ import wx
 
 import Chemins
 from Utils.UTILS_Traduction import _
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
-from Ctrl import CTRL_Bouton_image
+from Utils import UTILS_StyleRepens as Style
+from Ctrl import CTRL_ActionRepens
 
 
 class SaisiePays(wx.Panel):
     """Sélection d'un pays ou d'une nationalité."""
 
     def __init__(self, parent, mode="pays"):
-        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
+        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
         self.mode = mode
         self.IDpays = None
 
         self.image_pays = wx.StaticBitmap(self, -1, self._ChargeDrapeau("france"))
-        self.bouton_pays = CTRL_Bouton_image.CTRL(
+        self.bouton_pays = CTRL_ActionRepens.CTRL(
             self,
-            texte="",
-            iconeFluent="edit",
-            tailleImage=(UTILS_UIMetrics.icon_size("inline"), UTILS_UIMetrics.icon_size("inline")),
+            label=u"",
+            icone="edit",
+            variante="ghost",
+            compact=False,
         )
 
         self._AppliqueStyle()
@@ -44,7 +44,7 @@ class SaisiePays(wx.Panel):
         chemin = Chemins.GetStaticPath("Images/Drapeaux/%s.png" % code)
         try:
             image = wx.Image(chemin, wx.BITMAP_TYPE_PNG)
-            hauteur = UTILS_UIMetrics.icon_size("inline")
+            hauteur = Style.taille_icone("inline")
             largeur = max(hauteur, int(round(hauteur * 1.15)))
             if image.IsOk():
                 image = image.Scale(largeur, hauteur, wx.IMAGE_QUALITY_HIGH)
@@ -54,16 +54,17 @@ class SaisiePays(wx.Panel):
         return wx.Bitmap(chemin, wx.BITMAP_TYPE_PNG)
 
     def _AppliqueStyle(self):
+        Style.appliquer_fenetre(self, "surface")
+        cible = Style.cible_action("standard")
+        self.image_pays.SetMinSize((cible, cible))
         try:
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
-            cible = UTILS_UIMetrics.action_target("standard")
-            self.image_pays.SetMinSize((cible, cible))
+            self.image_pays.SetBackgroundColour(Style.couleur("surface"))
         except Exception:
             pass
 
     def __do_layout(self):
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(self.image_pays, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, UTILS_UIMetrics.spacing(1))
+        sizer.Add(self.image_pays, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, Style.espace(1))
         sizer.Add(self.bouton_pays, 0, wx.ALIGN_CENTER_VERTICAL)
         self.SetSizer(sizer)
         self.Fit()
@@ -117,10 +118,12 @@ class SaisiePays(wx.Panel):
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
+        Style.appliquer_fenetre(self, "surface")
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = SaisiePays(panel)
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 0, wx.ALL, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 0, wx.ALL, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
@@ -131,7 +134,7 @@ class MyFrame(wx.Frame):
 
 if __name__ == '__main__':
     app = wx.App(0)
-    frame_1 = MyFrame(None, -1, "TEST", size=(800, 400))
+    frame_1 = MyFrame(None, -1, "TEST", size=(Style.px(800), Style.px(400)))
     app.SetTopWindow(frame_1)
     frame_1.Show()
     app.MainLoop()
