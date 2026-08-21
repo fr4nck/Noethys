@@ -14,6 +14,7 @@ import sqlite3
 import Chemins
 import wx
 from Utils import UTILS_StyleRepens as Style
+from Utils.UTILS_Traduction import _
 from wx.lib.wordwrap import wordwrap
 
 
