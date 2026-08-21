@@ -28,14 +28,33 @@ Repens Design doit fonctionner comme un design system web centralisé : une règ
 - `UTILS_UIMetrics.py` contient les métriques d'échelle et de géométrie.
 - `UTILS_Interface.py` porte les préférences utilisateur d'apparence.
 - **`UTILS_StyleRepens.py` est la façade unique recommandée**, équivalent du CSS consommé par les composants.
-- `CTRL_ActionRepens.py`, `CTRL_SurfaceRepens.py`, `CTRL_Bandeau.py` et `CTRL_FenetreRepens.py` doivent consommer cette façade plutôt que choisir directement couleurs ou dimensions.
+- `CTRL_ActionRepens.py`, `CTRL_SurfaceRepens.py`, `CTRL_Bandeau.py`, `CTRL_TexteRepens.py` et `CTRL_FenetreRepens.py` doivent consommer cette façade plutôt que choisir directement couleurs ou dimensions.
 - Les nouveaux dialogues utilisent `CTRL_FenetreRepens.Dialog`, les outils non modaux `CTRL_FenetreRepens.Frame`, et les blocs métier `CTRL_FenetreRepens.Section` lorsque ce patron convient.
 - Un écran métier ne doit plus fixer de RGB, rayon, fonte, taille d'icône ou marge pour exprimer Repens Design. Il demande un rôle (`primary`, `surface`, `danger`, etc.) ou utilise un composant commun.
 - Les dimensions métier intrinsèques restent autorisées lorsqu'elles décrivent réellement la donnée ; les dimensions purement décoratives doivent venir du design system.
 - La migration est progressive : on ne monkey-patch pas `wx.Dialog` ou `wx.Panel`. Chaque écran adopte explicitement le shell commun lorsqu'il est refactorisé.
+
+## Hiérarchie typographique sémantique
+
+La typographie suit volontairement une logique proche de l'HTML : le code décrit le **niveau de sens**, jamais une taille de police locale.
+
+- `h1` : titre principal d'une fenêtre ou d'un écran.
+- `h2` : grande section métier.
+- `h3` : sous-section dans une section.
+- `h4`, `h5`, `h6` : niveaux plus fins lorsqu'une interface dense le nécessite.
+- `body` : texte courant.
+- `body_emphasis` : texte courant à forte importance.
+- `caption` : aide, précision, métadonnée secondaire.
+- `overline` : petit libellé structurant ou catégorie.
+
+`CTRL_TexteRepens.py` est l'équivalent d'un élément texte HTML stylé par le CSS Repens : il expose directement `H1`, `H2`, `H3` et le rôle générique pour les autres niveaux. Le bandeau commun utilise `H1`, les sections communes utilisent `H2`, et `Section.AjouterTitre()` crée un `H3` par défaut.
+
+Les alias historiques `title` et `section` restent temporairement acceptés par `UTILS_StyleRepens.py`, mais les nouveaux écrans doivent utiliser les rôles `h1`, `h2`, `h3`, etc.
 
 ## Règle générale
 
 > Si un vieux layout empêche l'interface de s'adapter, on ne construit pas une couche autour pour le dompter : on le remplace proprement.
 
 > Si un écran métier choisit lui-même son apparence, le design system n'est pas terminé : l'apparence doit remonter vers le socle Repens.
+
+> Si un titre est défini par sa taille ou son gras plutôt que par son niveau `h1` à `h6`, il n'est pas encore intégré au design system.
