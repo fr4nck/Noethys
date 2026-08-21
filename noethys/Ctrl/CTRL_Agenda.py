@@ -11,9 +11,8 @@
 import Chemins
 from Utils import UTILS_Adaptations
 from Utils.UTILS_Traduction import _
-from Utils import UTILS_FluentIcons
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_IconesRepens
+from Utils import UTILS_StyleRepens as Style
 import wx
 try:
     import wx.adv
@@ -83,9 +82,9 @@ class ToolBar(UTILS_Adaptations.ToolBar):
         self.ID_OUTIL_CHERCHER = wx.Window.NewControlId()
         self.ID_OUTIL_APERCU = wx.Window.NewControlId()
 
-        # 24 px de dessin dans une cible desktop confortable : les pictos ne
-        # sont plus de vieux PNG 32 px imposant leur propre géométrie.
-        self.SetToolBitmapSize(wx.Size(24, 24))
+        taille_toolbar = Style.taille_icone("toolbar")
+        self.SetToolBitmapSize(wx.Size(taille_toolbar, taille_toolbar))
+        self.SetMinSize((-1, Style.hauteur_toolbar(avec_libelle=True)))
         self.AddFluentTool(self.ID_OUTIL_JOUR, _(u"Jour"), "calendar_day", _(u"Affichage quotidien"), wx.ITEM_RADIO)
         self.AddFluentTool(self.ID_OUTIL_SEMAINE, _(u"Semaine"), "calendar_week", _(u"Affichage hebdomadaire"), wx.ITEM_RADIO)
         self.AddFluentTool(self.ID_OUTIL_MOIS, _(u"Mois"), "calendar_month", _(u"Affichage mensuel"), wx.ITEM_RADIO)
@@ -250,18 +249,23 @@ class DLG_Recherche_date(wx.Dialog):
     def __init__(self, parent):
         wx.Dialog.__init__(self, parent, -1, title=_(u"Chercher une date"), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.parent = parent
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        Style.appliquer_fenetre(self, "surface")
         if 'phoenix' in wx.PlatformInfo:
             self._date = wx.adv.DatePickerCtrl(self, style=wx.adv.DP_DROPDOWN | wx.adv.DP_SHOWCENTURY)
         else:
             self._date = wx.DatePickerCtrl(self, style=wx.DP_DROPDOWN | wx.DP_SHOWCENTURY)
+        Style.appliquer_saisie(self._date)
         btOk = wx.Button(self, wx.ID_OK, _(u"OK"))
         btCancel = wx.Button(self, wx.ID_CANCEL, _(u"Annuler"))
+        Style.appliquer_texte(btOk, role="body")
+        Style.appliquer_texte(btCancel, role="body")
 
-        marge = UTILS_UIMetrics.spacing(4)
-        espace = UTILS_UIMetrics.spacing(3)
+        marge = Style.espace(4)
+        espace = Style.espace(3)
+        label = wx.StaticText(self, label=_(u"Sélectionnez une date :"))
+        Style.appliquer_texte(label, role="body", role_texte="on_surface", role_fond="surface")
         ligne = wx.BoxSizer(wx.HORIZONTAL)
-        ligne.Add(wx.StaticText(self, label=_(u"Sélectionnez une date :")), 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, espace)
+        ligne.Add(label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, espace)
         ligne.Add(self._date, 1, wx.ALIGN_CENTER_VERTICAL)
         boutons = wx.StdDialogButtonSizer()
         boutons.AddButton(btOk)
@@ -271,7 +275,7 @@ class DLG_Recherche_date(wx.Dialog):
         principal.Add(ligne, 1, wx.EXPAND | wx.ALL, marge)
         principal.Add(boutons, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
         self.SetSizer(principal)
-        self.SetMinSize((UTILS_UIMetrics.px(380), -1))
+        self.SetMinSize((Style.px(380), -1))
         self.Fit()
         self.CentreOnParent()
 
@@ -286,7 +290,7 @@ class CTRL_Planning(wx.Panel):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
         self.parent = parent
         self.scheduleMove = None
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        Style.appliquer_fenetre(self, "surface")
 
         self.barre_outils = ToolBar(self)
         self.joursSpeciaux = UTILS_Schedule.JoursSpeciaux()
@@ -303,11 +307,9 @@ class CTRL_Planning(wx.Panel):
         self.ctrl_planning.SetResizable(True)
         self.ctrl_planning.SetShowWorkHour(False)
 
-        # Le vieux FlexGridSizer ne faisait qu'empiler deux éléments. BoxSizer
-        # donne le reflow attendu lorsque la fenêtre ou la police changent.
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.barre_outils, 0, wx.EXPAND)
-        sizer.Add(self.ctrl_planning, 1, wx.EXPAND | wx.TOP, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl_planning, 1, wx.EXPAND | wx.TOP, Style.espace(2))
         self.SetSizer(sizer)
         self.Layout()
 
@@ -344,20 +346,20 @@ class CTRL_Planning(wx.Panel):
             self.Supprimer(schedule)
 
         menuPop = UTILS_Adaptations.Menu()
-        taille = UTILS_UIMetrics.icon_size("compact")
+        taille = Style.taille_icone("compact")
         if schedule is None:
             item = wx.MenuItem(menuPop, 10, _(u"Ajouter"))
-            item.SetBitmap(UTILS_FluentIcons.GetBitmap("add", taille=taille, role="primary"))
+            item.SetBitmap(UTILS_IconesRepens.GetBitmap("add", taille=taille, role="primary"))
             menuPop.AppendItem(item)
             self.Bind(wx.EVT_MENU, Ajouter, id=10)
         else:
             item = wx.MenuItem(menuPop, 20, _(u"Modifier"))
-            item.SetBitmap(UTILS_FluentIcons.GetBitmap("edit", taille=taille))
+            item.SetBitmap(UTILS_IconesRepens.GetBitmap("edit", taille=taille))
             menuPop.AppendItem(item)
             self.Bind(wx.EVT_MENU, Modifier, id=20)
 
             item = wx.MenuItem(menuPop, 30, _(u"Supprimer"))
-            item.SetBitmap(UTILS_FluentIcons.GetBitmap("delete", taille=taille, role="danger"))
+            item.SetBitmap(UTILS_IconesRepens.GetBitmap("delete", taille=taille, role="danger_text"))
             menuPop.AppendItem(item)
             self.Bind(wx.EVT_MENU, Supprimer, id=30)
 
@@ -397,7 +399,9 @@ class CTRL_Planning(wx.Panel):
         self.RemplitSchedule(dictDonnees, schedule)
 
     def RemplitSchedule(self, dictDonnees={}, schedule=None):
-        schedule.icons = [wx.Bitmap(Chemins.GetStaticPath("Images/16x16/%s.png" % dictDonnees["image"]), wx.BITMAP_TYPE_ANY)]
+        taille = Style.taille_icone("compact")
+        chemin = Chemins.GetStaticIconPath("Images/16x16/%s.png" % dictDonnees["image"], taille=taille)
+        schedule.icons = [wx.Bitmap(chemin, wx.BITMAP_TYPE_ANY)]
         schedule.start = ConvertDateDTenWX(date=dictDonnees["depart_date"], heure=dictDonnees["depart_heure"])
         schedule.end = ConvertDateDTenWX(date=dictDonnees["arrivee_date"], heure=dictDonnees["arrivee_heure"])
         schedule.description = dictDonnees["label"]
@@ -414,7 +418,7 @@ class Dialog(wx.Dialog):
     def __init__(self, parent):
         wx.Dialog.__init__(self, parent, -1, style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.MAXIMIZE_BOX | wx.MINIMIZE_BOX)
         self.parent = parent
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        Style.appliquer_fenetre(self, "surface")
 
         intro = _(u"DLG Test")
         titre = _(u"DLG test de l'agenda")
@@ -434,8 +438,7 @@ class Dialog(wx.Dialog):
         self.bouton_ok.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour valider")))
 
     def __do_layout(self):
-        marge = UTILS_UIMetrics.spacing(3)
-        espace = UTILS_UIMetrics.spacing(2)
+        marge = Style.espace(3)
         actions = wx.BoxSizer(wx.HORIZONTAL)
         actions.Add(self.bouton_aide, 0)
         actions.AddStretchSpacer(1)
@@ -448,9 +451,9 @@ class Dialog(wx.Dialog):
         self.SetSizer(principal)
 
         ecran = wx.GetClientDisplayRect()
-        largeur = max(UTILS_UIMetrics.px(720), min(UTILS_UIMetrics.px(1400), int(ecran.GetWidth() * 0.78)))
-        hauteur = max(UTILS_UIMetrics.px(520), min(UTILS_UIMetrics.px(980), int(ecran.GetHeight() * 0.78)))
-        self.SetMinSize((UTILS_UIMetrics.px(620), UTILS_UIMetrics.px(440)))
+        largeur = max(Style.px(720), min(Style.px(1400), int(ecran.GetWidth() * 0.78)))
+        hauteur = max(Style.px(520), min(Style.px(980), int(ecran.GetHeight() * 0.78)))
+        self.SetMinSize((Style.px(620), Style.px(440)))
         self.SetSize((largeur, hauteur))
         self.Layout()
         self.CenterOnScreen()
