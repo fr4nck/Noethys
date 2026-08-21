@@ -126,10 +126,9 @@ class Bandeau(wx.Panel):
         contenu.Add(textes, 1, wx.EXPAND)
 
         principal = wx.BoxSizer(wx.VERTICAL)
-        principal.Add(contenu, 1, wx.EXPAND | wx.ALL, marge_x)
+        principal.Add(contenu, 0, wx.EXPAND | wx.ALL, marge_x)
         principal.Add(self.ligne, 0, wx.EXPAND)
         self.SetSizer(principal)
-        self.SetMinSize((-1, Style.px(76)))
         self.Layout()
 
     def OnSize(self, event):
