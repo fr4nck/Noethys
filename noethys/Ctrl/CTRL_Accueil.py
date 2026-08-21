@@ -8,12 +8,12 @@
 # Licence:         Licence GNU GPL
 #-----------------------------------------------------------
 
-import Chemins
-import wx
 import datetime
 import sqlite3
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+
+import Chemins
+import wx
+from Utils import UTILS_StyleRepens as Style
 from wx.lib.wordwrap import wordwrap
 
 
@@ -82,7 +82,7 @@ def GetAnnonce():
 
 
 class Panel(wx.Panel):
-    """Accueil neutre : le contenu prime sur l'ancien papier peint historique."""
+    """Accueil sobre : information utile, sans décor ni carte surdimensionnée."""
 
     def __init__(self, parent, size=(-1, -1)):
         wx.Panel.__init__(self, parent, name="panel_accueil", id=-1, size=size, style=wx.TAB_TRAVERSAL)
@@ -95,11 +95,7 @@ class Panel(wx.Panel):
         self.Bind(wx.EVT_SIZE, self.OnSize)
 
     def AppliquerTheme(self):
-        try:
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        except Exception:
-            pass
+        Style.appliquer_fenetre(self, "surface")
 
     def _GetAnnonce(self):
         # L'ancienne vue relisait SQLite à chaque paint/resize. Le contenu ne
@@ -113,18 +109,6 @@ class Panel(wx.Panel):
         self.Refresh(False)
         event.Skip()
 
-    def _Police(self, delta=0, gras=False):
-        police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-        try:
-            base = max(8, police.GetPointSize())
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round((base + delta) * facteur))))
-            if gras:
-                police.SetWeight(wx.FONTWEIGHT_SEMIBOLD if hasattr(wx, "FONTWEIGHT_SEMIBOLD") else wx.FONTWEIGHT_BOLD)
-        except Exception:
-            pass
-        return police
-
     def OnPaint(self, event):
         self.AppliquerTheme()
         dc = wx.AutoBufferedPaintDC(self)
@@ -135,36 +119,24 @@ class Panel(wx.Panel):
         if largeur <= 0 or hauteur <= 0:
             return
 
-        fond = UTILS_Interface.GetCouleurRole("surface")
-        panneau = UTILS_Interface.GetCouleurRole("surface_container")
-        texte = UTILS_Interface.GetCouleurRole("on_surface")
-        secondaire = UTILS_Interface.GetCouleurRole("on_surface_variant")
-        accent = UTILS_Interface.GetCouleurRole("primary")
-        contour = UTILS_Interface.GetCouleurRole("outline_variant")
+        fond = Style.couleur("surface")
+        texte = Style.couleur("on_surface")
+        secondaire = Style.couleur("on_surface_variant")
+        accent = Style.couleur("primary")
 
         dc.SetBrush(wx.Brush(fond))
         dc.SetPen(wx.Pen(fond))
         dc.DrawRectangle(0, 0, largeur, hauteur)
 
-        marge = UTILS_UIMetrics.spacing(5)
-        largeur_carte = min(max(UTILS_UIMetrics.px(420), int(largeur * 0.42)), max(0, largeur - 2 * marge))
-        hauteur_carte = min(UTILS_UIMetrics.px(250), max(UTILS_UIMetrics.px(150), int(hauteur * 0.34)))
-        x = marge
-        y = marge
-
-        # Surface volontairement simple : une zone de contenu élevée, pas une
-        # grosse carte mobile ni un bitmap décoratif étiré.
-        dc.SetBrush(wx.Brush(panneau))
-        dc.SetPen(wx.Pen(contour, 1))
-        dc.DrawRoundedRectangle(x, y, largeur_carte, hauteur_carte, UTILS_UIMetrics.px(6))
-        dc.SetBrush(wx.Brush(accent))
-        dc.SetPen(wx.Pen(accent))
-        dc.DrawRectangle(x, y, UTILS_UIMetrics.px(4), hauteur_carte)
-
-        inset = UTILS_UIMetrics.spacing(4)
-        tx = x + inset
-        ty = y + inset
-        contenu_largeur = max(80, largeur_carte - 2 * inset)
+        marge = Style.espace(5)
+        barre = max(Style.px(3), 1)
+        ecart = Style.espace(3)
+        x_barre = marge
+        x_texte = x_barre + barre + ecart
+        largeur_contenu = max(
+            Style.px(220),
+            min(Style.px(700), largeur - x_texte - marge),
+        )
 
         annonce = self._GetAnnonce()
         if annonce:
@@ -174,21 +146,35 @@ class Panel(wx.Panel):
             titre = _(u"Bienvenue dans Noethys")
             corps = _(u"Ouvrez un fichier ou utilisez les commandes principales pour commencer.")
 
-        dc.SetFont(self._Police(delta=2, gras=True))
+        y = marge
+        dc.SetFont(Style.police("h2"))
         dc.SetTextForeground(texte)
-        dc.DrawText(titre, tx, ty)
+        dc.DrawText(titre, x_texte, y)
+        hauteur_titre = dc.GetCharHeight()
 
-        ty += dc.GetCharHeight() + UTILS_UIMetrics.spacing(2)
-        dc.SetFont(self._Police())
+        y_corps = y + hauteur_titre + Style.espace(2)
+        dc.SetFont(Style.police("body"))
         dc.SetTextForeground(secondaire)
-        corps = wordwrap(corps, contenu_largeur, dc, breakLongWords=True)
-        dc.DrawLabel(corps, wx.Rect(tx, ty, contenu_largeur, max(0, y + hauteur_carte - ty - inset)))
+        corps = wordwrap(corps, largeur_contenu, dc, breakLongWords=True)
+        lignes = corps.splitlines() or [u""]
+        hauteur_ligne = max(dc.GetCharHeight(), Style.hauteur_ligne("compact"))
+        hauteur_corps = max(hauteur_ligne, len(lignes) * hauteur_ligne)
+        dc.DrawLabel(corps, wx.Rect(x_texte, y_corps, largeur_contenu, hauteur_corps))
+
+        hauteur_bloc = max(
+            Style.cible_action("standard"),
+            (y_corps - y) + hauteur_corps,
+        )
+        dc.SetBrush(wx.Brush(accent))
+        dc.SetPen(wx.Pen(accent))
+        dc.DrawRectangle(x_barre, y, barre, hauteur_bloc)
 
 
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel, "surface")
         sizer_1 = wx.BoxSizer(wx.VERTICAL)
         sizer_1.Add(panel, 1, wx.EXPAND)
         self.SetSizer(sizer_1)
