@@ -10,10 +10,10 @@
 
 import wx
 
-from Ctrl import CTRL_Bouton_image
+from Ctrl import CTRL_ActionRepens
+from Ctrl import CTRL_OutilsListeRepens
 from Ol import OL_Locations_demandes
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
@@ -23,30 +23,59 @@ class CTRL(wx.Panel):
     def __init__(self, parent, filtres=[]):
         wx.Panel.__init__(self, parent, id=-1, name="CTRL_Liste_locations_demandes", style=wx.TAB_TRAVERSAL)
         self.parent = parent
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        Style.appliquer_fenetre(self, "surface")
 
         self.listviewAvecFooter = OL_Locations_demandes.ListviewAvecFooter(self, kwargs={"checkColonne": True})
         self.ctrl_demandes = self.listviewAvecFooter.GetListview()
 
-        self.bouton_apercu = self._CreerBouton(_(u"Aperçu demande"), "Images/16x16/Apercu.png", _(u"Afficher un aperçu de la demande sélectionnée"))
-        self.bouton_email = self._CreerBouton(_(u"Envoyer"), "Images/16x16/Emails_exp.png", _(u"Envoyer la demande sélectionnée par Email"))
-        self.bouton_supprimer = self._CreerBouton(_(u"Supprimer"), "Images/16x16/Supprimer.png", _(u"Supprimer la demande sélectionnée ou les demandes cochées"))
-        self.bouton_liste_apercu = self._CreerBouton(_(u"Aperçu liste"), "Images/16x16/Apercu.png", _(u"Afficher un aperçu avant impression de cette liste"))
-        self.bouton_liste_imprimer = self._CreerBouton(_(u"Imprimer"), "Images/16x16/Imprimante.png", _(u"Imprimer cette liste"))
-        self.bouton_liste_export_texte = self._CreerBouton(_(u"Texte"), "Images/16x16/Texte2.png", _(u"Exporter cette liste au format Texte"))
-        self.bouton_liste_export_excel = self._CreerBouton(_(u"Excel"), "Images/16x16/Excel.png", _(u"Exporter cette liste au format Excel"))
+        self.bouton_apercu = self._CreerBouton(
+            _(u"Aperçu demande"),
+            _(u"Afficher un aperçu de la demande sélectionnée"),
+        )
+        self.bouton_email = self._CreerBouton(
+            _(u"Envoyer"),
+            _(u"Envoyer la demande sélectionnée par Email"),
+            icone="mail",
+        )
+        self.bouton_supprimer = self._CreerBouton(
+            _(u"Supprimer"),
+            _(u"Supprimer la demande sélectionnée ou les demandes cochées"),
+            icone="delete",
+            variante="danger",
+        )
+        self.bouton_liste_apercu = self._CreerBouton(
+            _(u"Aperçu liste"),
+            _(u"Afficher un aperçu avant impression de cette liste"),
+        )
+        self.bouton_liste_imprimer = self._CreerBouton(
+            _(u"Imprimer"),
+            _(u"Imprimer cette liste"),
+        )
+        self.bouton_liste_export_texte = self._CreerBouton(
+            _(u"Texte"),
+            _(u"Exporter cette liste au format Texte"),
+            variante="ghost",
+        )
+        self.bouton_liste_export_excel = self._CreerBouton(
+            _(u"Excel"),
+            _(u"Exporter cette liste au format Excel"),
+            variante="ghost",
+        )
 
-        self.ctrl_recherche = OL_Locations_demandes.CTRL_Outils(self, listview=self.ctrl_demandes, afficherCocher=True)
+        self.ctrl_recherche = CTRL_OutilsListeRepens.CTRL(
+            self,
+            listview=self.ctrl_demandes,
+            afficherCocher=True,
+        )
         self.check_demandes_actives = wx.CheckBox(self, -1, _(u"Demandes en cours uniquement"))
         self.check_demandes_actives.SetValue(True)
         self.check_demandes_actives.SetToolTip(wx.ToolTip(_(u"Afficher uniquement les demandes actives")))
-        try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            self.check_demandes_actives.SetFont(police)
-        except Exception:
-            pass
+        Style.appliquer_texte(
+            self.check_demandes_actives,
+            role="body",
+            role_texte="on_surface",
+            role_fond="surface",
+        )
 
         self.__do_layout()
 
@@ -61,15 +90,20 @@ class CTRL(wx.Panel):
 
         self.ctrl_demandes.afficher_uniquement_actives = self.check_demandes_actives.GetValue()
 
-    def _CreerBouton(self, texte, image, tooltip):
-        bouton = CTRL_Bouton_image.CTRL(self, texte=texte, cheminImage=image, tailleImage=(20, 20))
-        bouton.SetToolTip(wx.ToolTip(tooltip))
-        return bouton
+    def _CreerBouton(self, texte, tooltip, icone=None, variante="secondaire"):
+        return CTRL_ActionRepens.CTRL(
+            self,
+            label=texte,
+            icone=icone,
+            variante=variante,
+            tooltip=tooltip,
+            compact=True,
+        )
 
     def __do_layout(self):
-        marge = UTILS_UIMetrics.spacing(2)
-        espace = UTILS_UIMetrics.spacing(1)
-        separation = UTILS_UIMetrics.spacing(3)
+        marge = Style.espace(2)
+        espace = Style.espace(1)
+        separation = Style.espace(3)
 
         actions = wx.BoxSizer(wx.HORIZONTAL)
         for bouton in (self.bouton_apercu, self.bouton_email, self.bouton_supprimer):
@@ -93,7 +127,7 @@ class CTRL(wx.Panel):
         principal.Add(self.listviewAvecFooter, 1, wx.EXPAND)
         principal.Add(outils, 0, wx.EXPAND | wx.TOP, marge)
         self.SetSizer(principal)
-        self.SetMinSize((UTILS_UIMetrics.px(600), UTILS_UIMetrics.px(300)))
+        self.SetMinSize((Style.px(600), Style.px(300)))
         self.Layout()
 
     def OnCheckActives(self, event):
@@ -138,10 +172,11 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = CTRL(panel)
         self.ctrl.MAJ()
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(panel, 1, wx.EXPAND)
