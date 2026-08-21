@@ -60,6 +60,26 @@ class RepensTreeListsContractTests(unittest.TestCase):
         self.assertNotIn("UTILS_UIMetrics", text)
         self.assertNotIn("wx.SystemSettings.GetFont", text)
 
+    def test_school_grid_filter_uses_repens_facade(self):
+        text = self._read("noethys/Ctrl/CTRL_Grille_ecoles.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_liste(self)", text)
+        self.assertIn('Style.taille_icone("compact")', text)
+        self.assertIn("Style.espace(2)", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+        self.assertNotIn("wx.SystemSettings.GetFont", text)
+
+    def test_activity_group_grid_filter_uses_repens_facade(self):
+        text = self._read("noethys/Ctrl/CTRL_Grille_activite3.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_liste(self)", text)
+        self.assertIn("Style.appliquer_liste(self.GetMainWindow())", text)
+        self.assertIn("Style.px(185)", text)
+        self.assertNotIn("SetBackgroundColour(wx.WHITE)", text)
+        self.assertNotIn("CTRL_Bouton_image", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+
 
 if __name__ == "__main__":
     unittest.main()
