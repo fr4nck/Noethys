@@ -11,7 +11,7 @@
 import wx
 
 from Ctrl import CTRL_Bouton_image
-from Ctrl import CTRL_Calendrier
+from Ctrl import CTRL_Calendrier_Repens as CTRL_Calendrier
 from Utils import UTILS_Dialogs
 from Utils import UTILS_Interface
 from Utils import UTILS_UIMetrics
