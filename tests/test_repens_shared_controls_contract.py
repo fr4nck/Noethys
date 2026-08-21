@@ -22,6 +22,9 @@ class RepensSharedControlsContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Portail_messages.py",
             "noethys/Ctrl/CTRL_Saisie_adresse.py",
             "noethys/Ctrl/CTRL_Planning_semaine.py",
+            "noethys/Ctrl/CTRL_Grille_periode.py",
+            "noethys/Ctrl/CTRL_Logo.py",
+            "noethys/Ctrl/CTRL_Newsticker.py",
         ):
             text = self._read(relative_path)
             self.assertIn("UTILS_StyleRepens as Style", text)
@@ -53,6 +56,31 @@ class RepensSharedControlsContractTests(unittest.TestCase):
         self.assertIn("Style.appliquer_saisie(ctrl)", text)
         self.assertNotIn("CTRL_Bouton_image", text)
         self.assertNotIn("_PoliceInterface", text)
+
+    def test_period_grid_uses_native_repens_inputs_without_legacy_styles(self):
+        text = self._read("noethys/Ctrl/CTRL_Grille_periode.py")
+        self.assertIn("Style.appliquer_saisie(self)", text)
+        self.assertIn("Style.appliquer_liste(self)", text)
+        self.assertIn('Style.appliquer_fenetre(self.notebook, "surface")', text)
+        self.assertNotIn("FlexGridSizer", text)
+        self.assertNotIn("wx.SystemSettings.GetFont", text)
+
+    def test_logo_uses_semantic_menu_icons_and_scaled_geometry(self):
+        text = self._read("noethys/Ctrl/CTRL_Logo.py")
+        self.assertIn("UTILS_IconesRepens", text)
+        self.assertIn('Style.taille_icone("compact")', text)
+        self.assertIn('Style.couleur("surface_container_lowest")', text)
+        self.assertNotIn("Images/16x16/Ajouter.png", text)
+        self.assertNotIn("Images/16x16/Supprimer.png", text)
+
+    def test_newsticker_uses_semantic_heading_roles_and_intrinsic_height(self):
+        text = self._read("noethys/Ctrl/CTRL_Newsticker.py")
+        self.assertIn('Style.couleur("surface_container_low")', text)
+        self.assertIn('Style.couleur("on_surface_variant")', text)
+        self.assertIn('Style.police("caption")', text)
+        self.assertIn('Style.hauteur_panneau("compact")', text)
+        self.assertNotIn("wx.Font(6", text)
+        self.assertNotIn("(200, 200, 200)", text)
 
     def test_semantic_trees_keep_business_icons_but_scale_them(self):
         for relative_path in (
