@@ -5,59 +5,64 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-11 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
-
-import Chemins
-from Utils import UTILS_Adaptations
-from Utils.UTILS_Traduction import _
 import wx
-from Ctrl import CTRL_Bouton_image
+
+from Ctrl import CTRL_ActionRepens
 from Ctrl import CTRL_Calendrier_ouvertures
-
-import GestionDB
-
-
+from Ctrl import CTRL_FenetreRepens
+from Utils import UTILS_StyleRepens as Style
+from Utils.UTILS_Traduction import _
 
 
 class Panel(wx.Panel):
+    """Calendrier d'activité utilisant la section et les actions Repens communes."""
+
     def __init__(self, parent, IDactivite=None, nouvelleActivite=False):
-        wx.Panel.__init__(self, parent, id=-1, name="panel_unites", style=wx.TAB_TRAVERSAL)
+        wx.Panel.__init__(self, parent, id=-1, name="panel_unites", style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
         self.IDactivite = IDactivite
-                
-        # Ouvertures
-        self.staticbox_ouvertures_staticbox = wx.StaticBox(self, -1, _(u"Calendrier des ouvertures et des évènements"))
-        self.ctrl_ouvertures = CTRL_Calendrier_ouvertures.Calendrier(self, IDactivite=self.IDactivite)
-        self.ctrl_ouvertures.Initialisation() 
-        self.bouton_ouvertures_modifier = wx.BitmapButton(self, -1, wx.Bitmap(Chemins.GetStaticPath(u"Images/16x16/Modifier.png"), wx.BITMAP_TYPE_ANY))
+        Style.appliquer_fenetre(self, "surface")
 
-        self.__set_properties()
-        self.__do_layout()
+        self.section_ouvertures = CTRL_FenetreRepens.Section(
+            self,
+            titre=_(u"Calendrier des ouvertures et des évènements"),
+            sous_titre=_(u"Visualisez les périodes puis ouvrez l'éditeur pour modifier les ouvertures et évènements."),
+        )
+        parent_section = self.section_ouvertures.GetContenu()
 
-        self.Bind(wx.EVT_BUTTON, self.OnBoutonOuvertures_Modifier, self.bouton_ouvertures_modifier)
+        self.bouton_ouvertures_modifier = CTRL_ActionRepens.CTRL(
+            parent_section,
+            label=_(u"Modifier le calendrier"),
+            icone="calendar",
+            variante="primaire",
+            tooltip=_(u"Modifier le calendrier des ouvertures et des évènements"),
+        )
 
-    def __set_properties(self):
+        self.ctrl_ouvertures = CTRL_Calendrier_ouvertures.Calendrier(parent_section, IDactivite=self.IDactivite)
+        self.ctrl_ouvertures.Initialisation()
+        try:
+            Style.appliquer_fenetre(self.ctrl_ouvertures, "surface_container_lowest")
+        except Exception:
+            pass
         self.ctrl_ouvertures.SetToolTip(wx.ToolTip(_(u"Calendrier des ouvertures et des évènements")))
-        self.bouton_ouvertures_modifier.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour modifier le calendrier des ouvertures et des évènements")))
-        
-    def __do_layout(self):
-        grid_sizer_base = wx.FlexGridSizer(rows=3, cols=1, vgap=10, hgap=10)
-        staticbox_ouvertures = wx.StaticBoxSizer(self.staticbox_ouvertures_staticbox, wx.VERTICAL)
-        grid_sizer_ouvertures = wx.FlexGridSizer(rows=1, cols=2, vgap=5, hgap=5)
-        grid_sizer_boutons_ouvertures = wx.FlexGridSizer(rows=5, cols=1, vgap=5, hgap=5)
-        grid_sizer_ouvertures.Add(self.ctrl_ouvertures, 1, wx.EXPAND, 0)
-        grid_sizer_boutons_ouvertures.Add(self.bouton_ouvertures_modifier, 0, 0, 0)
-        grid_sizer_ouvertures.Add(grid_sizer_boutons_ouvertures, 1, wx.EXPAND, 0)
-        grid_sizer_ouvertures.AddGrowableRow(0)
-        grid_sizer_ouvertures.AddGrowableCol(0)
-        staticbox_ouvertures.Add(grid_sizer_ouvertures, 1, wx.ALL|wx.EXPAND, 5)
-        grid_sizer_base.Add(staticbox_ouvertures, 1, wx.ALL|wx.EXPAND, 10)
-        self.SetSizer(grid_sizer_base)
-        grid_sizer_base.Fit(self)
-        grid_sizer_base.AddGrowableRow(0)
-        grid_sizer_base.AddGrowableCol(0)
+
+        barre = wx.BoxSizer(wx.HORIZONTAL)
+        barre.AddStretchSpacer(1)
+        barre.Add(self.bouton_ouvertures_modifier, 0, wx.ALIGN_CENTER_VERTICAL)
+
+        contenu = self.section_ouvertures.GetSizerContenu()
+        contenu.Add(barre, 0, wx.EXPAND | wx.BOTTOM, Style.espace(2))
+        contenu.Add(self.ctrl_ouvertures, 1, wx.EXPAND)
+
+        principal = wx.BoxSizer(wx.VERTICAL)
+        principal.Add(self.section_ouvertures, 1, wx.EXPAND | wx.ALL, Style.espace(2))
+        self.SetSizer(principal)
+        self.Layout()
+
+        self.bouton_ouvertures_modifier.Bind(wx.EVT_BUTTON, self.OnBoutonOuvertures_Modifier)
 
     def OnBoutonOuvertures_Modifier(self, event):
         from Dlg import DLG_Ouvertures
@@ -73,25 +78,18 @@ class Panel(wx.Panel):
         pass
 
 
-
-class MyFrame(wx.Frame):
+class MyFrame(CTRL_FenetreRepens.Frame):
     def __init__(self, *args, **kwds):
-        wx.Frame.__init__(self, *args, **kwds)
-        panel = wx.Panel(self, -1)
-        sizer_1 = wx.BoxSizer(wx.VERTICAL)
-        sizer_1.Add(panel, 1, wx.ALL|wx.EXPAND)
-        self.SetSizer(sizer_1)
-        self.ctrl= Panel(panel, IDactivite=1)
-        sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2.Add(self.ctrl, 1, wx.ALL|wx.EXPAND, 4)
-        panel.SetSizer(sizer_2)
+        CTRL_FenetreRepens.Frame.__init__(self, None, titre=_(u"Calendrier d'activité"), taille=(760, 540))
+        self.ctrl = Panel(self.GetContenu(), IDactivite=1)
+        self.AjouterContenu(self.ctrl, 1, wx.EXPAND)
         self.Layout()
         self.CentreOnScreen()
 
+
 if __name__ == '__main__':
     app = wx.App(0)
-    #wx.InitAllImageHandlers()
-    frame_1 = MyFrame(None, -1, _(u"TEST"), size=(700, 500))
+    frame_1 = MyFrame()
     app.SetTopWindow(frame_1)
     frame_1.Show()
     app.MainLoop()
