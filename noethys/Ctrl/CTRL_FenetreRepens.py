@@ -51,8 +51,6 @@ class Section(CTRL_SurfaceRepens.CTRL):
             parent,
             role_fond=role_fond,
             role_contour="outline_variant",
-            rayon=9,
-            padding=8,
         )
         self.titre = titre or u""
         self.sous_titre = sous_titre or u""
