@@ -17,10 +17,27 @@ from Ctrl import CTRL_Bouton_image
 import GestionDB
 
 
+def _ConfigurerBarreShell(parent):
+    """Annonce explicitement la métrique Repens à la toolbar qui nous héberge."""
+    try:
+        import wx.lib.agw.aui as aui
+        if not isinstance(parent, aui.AuiToolBar):
+            return
+        parent._noethys_toolbar_icon_base = 24
+        taille = UTILS_UIMetrics.icon_size("toolbar")
+        parent.SetToolBitmapSize(wx.Size(taille, taille))
+        hauteur = UTILS_UIMetrics.toolbar_height(avec_libelle=True, icon_px=taille)
+        parent.SetMinSize((-1, hauteur))
+        parent._noethys_toolbar_min_height = hauteur
+    except Exception:
+        pass
+
+
 class CTRL(wx.SearchCtrl):
     """Recherche de facture compacte mais compatible DPI et grosse police."""
 
     def __init__(self, parent, size=wx.DefaultSize, IDfamille=None):
+        _ConfigurerBarreShell(parent)
         wx.SearchCtrl.__init__(self, parent, size=size, style=wx.TE_PROCESS_ENTER)
         self.parent = parent
         self.IDfamille = IDfamille
@@ -183,7 +200,7 @@ class Dialog(wx.Dialog):
 
         self.label = wx.StaticText(self, -1, _(u"Saisissez le numéro de la facture à régler ou scannez directement son code-barres."))
         self.ctrl_mdp = CTRL(self, IDfamille=self.IDfamille)
-        self.bouton_annuler = CTRL_Bouton_image.CTRL(self, id=wx.ID_CANCEL, texte=_(u"Annuler"), cheminImage="Images/32x32/Annuler.png")
+        self.bouton_annuler = CTRL_Bouton_image.CTRL(self, id=wx.ID_CANCEL, texte=_(u"Annuler"), iconeFluent="dismiss")
 
         self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
         self.bouton_annuler.SetToolTip(wx.ToolTip(_(u"Annuler")))
