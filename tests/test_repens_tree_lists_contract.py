@@ -38,6 +38,17 @@ class RepensTreeListsContractTests(unittest.TestCase):
         self.assertNotIn("wx.SystemSettings.GetColour", text)
         self.assertNotIn("wx.BLACK", text)
 
+    def test_consumption_totals_grid_uses_repens_facade(self):
+        text = self._read("noethys/Ctrl/CTRL_Grille_totaux.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_liste(self)", text)
+        self.assertIn('Style.couleur("surface_container_high")', text)
+        self.assertIn('Style.couleur("danger")', text)
+        self.assertIn("Style.cible_action(\"compact\")", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+        self.assertNotIn("wx.SystemSettings.GetFont", text)
+
 
 if __name__ == "__main__":
     unittest.main()
