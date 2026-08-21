@@ -20,27 +20,14 @@ except Exception:
     from Cryptodome.Hash import SHA256
 
 
-def _ConfigurerBarreShell(parent):
-    """Aligne la toolbar hôte sur les métriques publiques de Repens."""
-    try:
-        import wx.lib.agw.aui as aui
-        if not isinstance(parent, aui.AuiToolBar):
-            return
-        parent._noethys_toolbar_icon_base = 24
-        taille = Style.taille_icone("toolbar")
-        parent.SetToolBitmapSize(wx.Size(taille, taille))
-        hauteur = Style.hauteur_toolbar(avec_libelle=True)
-        parent.SetMinSize((-1, hauteur))
-        parent._noethys_toolbar_min_height = hauteur
-    except Exception:
-        pass
-
-
 class CTRL(wx.SearchCtrl):
-    """Champ d'identification utilisable dans le shell et dans le dialogue."""
+    """Champ d'identification utilisable dans le shell et dans le dialogue.
+
+    Le contrôle ne redimensionne jamais sa toolbar parente : le shell AUI reste
+    seul responsable de la hauteur et de l'alignement de ses enfants.
+    """
 
     def __init__(self, parent, listeUtilisateurs=None, size=wx.DefaultSize, modeDLG=False):
-        _ConfigurerBarreShell(parent)
         wx.SearchCtrl.__init__(self, parent, size=size, style=wx.TE_PROCESS_ENTER | wx.TE_PASSWORD)
         self.parent = parent
         self.listeUtilisateurs = listeUtilisateurs or []
@@ -51,7 +38,8 @@ class CTRL(wx.SearchCtrl):
         self.ShowSearchButton(True)
         self.ShowCancelButton(False)
         try:
-            taille = Style.taille_icone("inline")
+            # Le bitmap 16 px suit mieux la métrique native du SearchCtrl MSW.
+            taille = Style.taille_icone("compact")
             chemin = Chemins.GetStaticIconPath("Images/16x16/Cadenas.png", taille=taille)
             bitmap = wx.Bitmap(chemin, wx.BITMAP_TYPE_ANY)
             if bitmap.IsOk():
@@ -60,8 +48,10 @@ class CTRL(wx.SearchCtrl):
             pass
 
         try:
-            largeur = max(Style.px(150), self.GetMinSize().GetWidth())
-            self.SetMinSize((largeur, Style.cible_action("compact")))
+            best = self.GetBestSize()
+            largeur = max(Style.px(150), self.GetMinSize().GetWidth(), best.GetWidth())
+            hauteur = max(Style.cible_action("compact"), best.GetHeight())
+            self.SetMinSize((largeur, hauteur))
         except Exception:
             pass
 
