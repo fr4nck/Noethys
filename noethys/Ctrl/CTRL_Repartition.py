@@ -16,8 +16,7 @@ import wx.lib.agw.hypertreelist as HTL
 import Chemins
 import GestionDB
 from Ol import OL_Prestations_repartition
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
@@ -120,26 +119,15 @@ class CTRL(HTL.HyperTreeList):
         DB.Close()
         self.IDcompte_payeur = listeDonnees[0][0]
 
-        for label, largeur, poids in self.SPECS_COLONNES:
+        for label, largeur, _poids in self.SPECS_COLONNES:
             self.AddColumn(label)
             index = self.GetColumnCount() - 1
-            self.SetColumnWidth(index, UTILS_UIMetrics.px(largeur))
+            self.SetColumnWidth(index, Style.px(largeur))
             self.SetColumnAlignment(index, wx.ALIGN_LEFT)
 
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-        self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        Style.appliquer_liste(self)
         try:
-            main = self.GetMainWindow()
-            main.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            main.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        except Exception:
-            pass
-        try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            self.SetFont(police)
-            self.GetMainWindow().SetFont(police)
+            Style.appliquer_liste(self.GetMainWindow())
         except Exception:
             pass
 
@@ -152,12 +140,12 @@ class CTRL(HTL.HyperTreeList):
             wx.TR_HAS_VARIABLE_ROW_HEIGHT | wx.TR_FULL_ROW_HIGHLIGHT
         )
         self.EnableSelectionVista(True)
-        self.SetMinSize((UTILS_UIMetrics.px(640), UTILS_UIMetrics.px(260)))
+        self.SetMinSize((Style.px(640), Style.px(260)))
         self.Bind(wx.EVT_SIZE, self.OnSize)
         wx.CallAfter(self._AjusterLargeur)
 
     def _BitmapEtat(self, image):
-        taille = UTILS_UIMetrics.icon_size("inline")
+        taille = Style.taille_icone("inline")
         chemin = Chemins.GetStaticIconPath(image, taille=taille)
         bitmap = wx.Bitmap(chemin, wx.BITMAP_TYPE_ANY)
         if bitmap.IsOk() and (bitmap.GetWidth() != taille or bitmap.GetHeight() != taille):
@@ -177,10 +165,10 @@ class CTRL(HTL.HyperTreeList):
             largeur_client = self.GetClientSize().GetWidth()
             if largeur_client <= 0:
                 return
-            bases = [UTILS_UIMetrics.px(spec[1]) for spec in self.SPECS_COLONNES]
+            bases = [Style.px(spec[1]) for spec in self.SPECS_COLONNES]
             poids = [spec[2] for spec in self.SPECS_COLONNES]
             total_base = sum(bases)
-            disponible = max(0, largeur_client - UTILS_UIMetrics.spacing(2))
+            disponible = max(0, largeur_client - Style.espace(2))
             surplus = max(0, disponible - total_base)
             total_poids = sum(poids)
             for index, base in enumerate(bases):
@@ -189,7 +177,7 @@ class CTRL(HTL.HyperTreeList):
                     largeur += int(round(surplus * poids[index] / total_poids))
                 self.SetColumnWidth(index, largeur)
 
-            largeur_sous_liste = max(UTILS_UIMetrics.px(520), disponible - UTILS_UIMetrics.spacing(3))
+            largeur_sous_liste = max(Style.px(520), disponible - Style.espace(3))
             for track in self.listeTracks:
                 if track.ctrl_prestations is not None:
                     hauteur = self._HauteurSousListe(track.ctrl_prestations)
@@ -206,7 +194,7 @@ class CTRL(HTL.HyperTreeList):
             nombre = len(ctrl.donnees)
         except Exception:
             nombre = 0
-        return UTILS_UIMetrics.px(34) + nombre * UTILS_UIMetrics.row_height("compact")
+        return Style.px(34) + nombre * Style.hauteur_ligne("compact")
 
     def Importation(self):
         db = GestionDB.DB()
@@ -244,7 +232,7 @@ class CTRL(HTL.HyperTreeList):
     def Remplissage(self):
         listeTracks = self.Importation()
 
-        taille_icone = UTILS_UIMetrics.icon_size("inline")
+        taille_icone = Style.taille_icone("inline")
         il = wx.ImageList(taille_icone, taille_icone)
         self.imgVert = il.Add(self._BitmapEtat("Images/16x16/Ventilation_vert.png"))
         self.imgRouge = il.Add(self._BitmapEtat("Images/16x16/Ventilation_rouge.png"))
@@ -254,7 +242,7 @@ class CTRL(HTL.HyperTreeList):
         self.imgNon = il.Add(self._BitmapEtat("Images/16x16/Interdit.png"))
         self.AssignImageList(il)
 
-        largeur_sous_liste = max(UTILS_UIMetrics.px(520), self.GetClientSize().GetWidth() - UTILS_UIMetrics.spacing(3))
+        largeur_sous_liste = max(Style.px(520), self.GetClientSize().GetWidth() - Style.espace(3))
         for track in listeTracks:
             regroupement = self.AppendItem(self.root, track.dateComplete)
             self.SetPyData(regroupement, None)
@@ -313,16 +301,18 @@ class CTRL(HTL.HyperTreeList):
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
+        Style.appliquer_fenetre(self, "surface")
         panel = wx.Panel(self, -1, name="test1")
+        Style.appliquer_fenetre(panel, "surface")
         self.myOlv = CTRL(panel, IDfamille=84)
         self.myOlv.MAJ()
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.myOlv, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.myOlv, 1, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(panel, 1, wx.EXPAND)
         self.SetSizer(principal)
-        self.SetSize((1100, 600))
+        self.SetSize((Style.px(1100), Style.px(600)))
         self.Layout()
         self.CenterOnScreen()
 
