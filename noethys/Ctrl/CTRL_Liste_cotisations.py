@@ -11,6 +11,7 @@
 import wx
 
 from Ctrl import CTRL_Bouton_image
+from Ctrl import CTRL_OutilsListeRepens
 from Dlg import DLG_Filtres_cotisations
 from Ol import OL_Liste_cotisations
 from Utils import UTILS_Interface
@@ -42,7 +43,11 @@ class CTRL(wx.Panel):
         self.bouton_liste_export_excel = self._CreerBouton(_(u"Excel"), "Images/16x16/Excel.png", _(u"Exporter cette liste au format Excel"))
         self.bouton_configuration = self._CreerBouton(_(u"Configurer"), "Images/16x16/Mecanisme.png", _(u"Configurer les colonnes et l'affichage de la liste"))
 
-        self.ctrl_recherche = OL_Liste_cotisations.CTRL_Outils(self, listview=self.ctrl_cotisations, afficherCocher=True)
+        self.ctrl_recherche = CTRL_OutilsListeRepens.CTRL(
+            self,
+            listview=self.ctrl_cotisations,
+            afficherCocher=bool(checkColonne),
+        )
         self.__do_layout()
 
         self.Bind(wx.EVT_BUTTON, self.OnBoutonApercu, self.bouton_apercu)
