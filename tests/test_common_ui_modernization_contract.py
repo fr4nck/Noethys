@@ -67,6 +67,24 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertNotIn("UTILS_Interface", text)
         self.assertNotIn("UTILS_UIMetrics", text)
 
+    def test_business_lists_share_repens_actions_and_metrics(self):
+        for relative_path in (
+            "noethys/Ctrl/CTRL_Liste_inscriptions.py",
+            "noethys/Ctrl/CTRL_Liste_cotisations.py",
+            "noethys/Ctrl/CTRL_Liste_rappels.py",
+            "noethys/Ctrl/CTRL_Liste_locations.py",
+        ):
+            text = self._read(relative_path)
+            self.assertIn("CTRL_ActionRepens", text)
+            self.assertIn("CTRL_OutilsListeRepens", text)
+            self.assertIn("UTILS_StyleRepens as Style", text)
+            self.assertIn('Style.appliquer_fenetre(self, "surface")', text)
+            self.assertIn('icone="mail"', text)
+            self.assertNotIn("CTRL_Bouton_image", text)
+            self.assertNotIn("UTILS_Interface", text)
+            self.assertNotIn("UTILS_UIMetrics", text)
+            self.assertNotIn("tailleImage=(20, 20)", text)
+
     def test_messages_no_longer_use_tiny_vertical_bitmap_buttons(self):
         text = self._read("noethys/Ctrl/CTRL_Messages.py")
         self.assertIn("AddFluentTool", text)
