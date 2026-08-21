@@ -19,8 +19,7 @@ import Chemins
 import GestionDB
 from Utils import UTILS_Adaptations
 from Utils import UTILS_Dates
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
@@ -39,20 +38,9 @@ class CTRL(HTL.HyperTreeList):
         self.cochesEcolesActives = set()
         self._resize_pending = False
 
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-        self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        Style.appliquer_liste(self)
         try:
-            main = self.GetMainWindow()
-            main.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            main.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        except Exception:
-            pass
-        try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            self.SetFont(police)
-            self.GetMainWindow().SetFont(police)
+            Style.appliquer_liste(self.GetMainWindow())
         except Exception:
             pass
 
@@ -64,7 +52,7 @@ class CTRL(HTL.HyperTreeList):
         self.SetToolTip(wx.ToolTip(_(u"Cochez les écoles et classes à afficher. Clic droit pour tout cocher ou décocher.")))
 
         self.AddColumn(_(u"École / classe"))
-        self.SetMinSize((UTILS_UIMetrics.px(300), UTILS_UIMetrics.px(220)))
+        self.SetMinSize((Style.px(300), Style.px(220)))
 
         self.Bind(EVT_TREE_ITEM_CHECKED, self.OnCheckItem)
         self.Bind(EVT_TREE_ITEM_RIGHT_CLICK, self.OnContextMenu)
@@ -72,7 +60,7 @@ class CTRL(HTL.HyperTreeList):
         wx.CallAfter(self._AjusterColonne)
 
     def _BitmapMenu(self, image):
-        taille = UTILS_UIMetrics.icon_size("compact")
+        taille = Style.taille_icone("compact")
         chemin = Chemins.GetStaticIconPath(image, taille=taille)
         bitmap = wx.Bitmap(chemin, wx.BITMAP_TYPE_ANY)
         if bitmap.IsOk() and (bitmap.GetWidth() != taille or bitmap.GetHeight() != taille):
@@ -90,7 +78,7 @@ class CTRL(HTL.HyperTreeList):
         self._resize_pending = False
         try:
             largeur = self.GetClientSize().GetWidth()
-            self.SetColumnWidth(0, max(UTILS_UIMetrics.px(280), largeur - UTILS_UIMetrics.spacing(2)))
+            self.SetColumnWidth(0, max(Style.px(280), largeur - Style.espace(2)))
         except Exception:
             pass
 
@@ -294,11 +282,13 @@ class CTRL(HTL.HyperTreeList):
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
+        Style.appliquer_fenetre(self, "surface")
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = CTRL(panel)
         self.ctrl.MAJ()
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(panel, 1, wx.EXPAND)
@@ -309,7 +299,7 @@ class MyFrame(wx.Frame):
 
 if __name__ == '__main__':
     app = wx.App(0)
-    frame_1 = MyFrame(None, -1, _(u"TEST"), size=(800, 400))
+    frame_1 = MyFrame(None, -1, _(u"TEST"), size=(Style.px(800), Style.px(400)))
     frame_1.ctrl.SetDate(datetime.datetime.now())
     app.SetTopWindow(frame_1)
     frame_1.Show()
