@@ -2,18 +2,15 @@
 # -*- coding: utf-8 -*-
 """Commande desktop Repens Design.
 
-Contrôle volontairement léger pour les endroits où le bouton natif wx ne peut
-pas exprimer la grammaire visuelle du cockpit (coins arrondis, état sémantique,
-icône + libellé). Il conserve les usages desktop : focus clavier, Entrée/Espace,
-hover, pressed et émission d'un ``wx.EVT_BUTTON`` standard.
+Le contrôle consomme exclusivement la façade ``UTILS_StyleRepens`` pour son
+apparence. Les écrans métier n'ont donc pas à connaître les couleurs,
+espacements ou rayons utilisés par Repens Design.
 """
 
 import wx
 
 from Utils import UTILS_IconesRepens
-from Utils import UTILS_Interface
-from Utils import UTILS_Responsive
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 
 
 class CTRL(wx.Control):
@@ -36,6 +33,7 @@ class CTRL(wx.Control):
         self._hover = False
         self._pressed = False
 
+        self.SetFont(Style.police("body"))
         if tooltip:
             self.SetToolTip(wx.ToolTip(tooltip))
         self.SetCursor(wx.Cursor(wx.CURSOR_HAND))
@@ -65,12 +63,13 @@ class CTRL(wx.Control):
     def SetIcone(self, icone):
         self.icone = icone
         self.InvalidateBestSize()
+        self.SetMinSize(self.DoGetBestSize())
         self.Refresh()
 
     def _GetBitmap(self):
         if not self.icone:
             return None
-        taille = UTILS_Responsive.GetTailleIcone(18 if self.compact else 20)
+        taille = Style.taille_icone("inline" if self.compact else "command")
         role = "on_primary" if self.variante == "primaire" else "on_surface"
         if self.variante == "danger":
             role = "danger_text"
@@ -85,41 +84,41 @@ class CTRL(wx.Control):
     def _GetCouleurs(self):
         if not self.IsEnabled():
             return (
-                UTILS_Interface.GetCouleurRole("disabled"),
-                UTILS_Interface.GetCouleurRole("disabled_text"),
-                UTILS_Interface.GetCouleurRole("outline_variant"),
+                Style.couleur("disabled"),
+                Style.couleur("disabled_text"),
+                Style.couleur("outline_variant"),
             )
 
         if self.variante == "primaire":
-            fond = UTILS_Interface.GetCouleurRole("primary")
-            texte = UTILS_Interface.GetCouleurRole("on_primary")
-            contour = UTILS_Interface.GetCouleurRole("primary")
+            fond = Style.couleur("primary")
+            texte = Style.couleur("on_primary")
+            contour = Style.couleur("primary")
         elif self.variante == "danger":
-            fond = UTILS_Interface.GetCouleurRole("danger")
-            texte = UTILS_Interface.GetCouleurRole("danger_text")
-            contour = UTILS_Interface.GetCouleurRole("danger_text")
+            fond = Style.couleur("danger")
+            texte = Style.couleur("danger_text")
+            contour = Style.couleur("danger_text")
         elif self.variante == "ghost":
-            fond = UTILS_Interface.GetCouleurRole("surface_container_low")
-            texte = UTILS_Interface.GetCouleurRole("on_surface")
-            contour = UTILS_Interface.GetCouleurRole("surface_container_low")
+            fond = Style.couleur("surface_container_low")
+            texte = Style.couleur("on_surface")
+            contour = Style.couleur("surface_container_low")
         else:
-            fond = UTILS_Interface.GetCouleurRole("surface_container_high")
-            texte = UTILS_Interface.GetCouleurRole("on_surface")
-            contour = UTILS_Interface.GetCouleurRole("outline_variant")
+            fond = Style.couleur("surface_container_high")
+            texte = Style.couleur("on_surface")
+            contour = Style.couleur("outline_variant")
 
         if self._pressed:
-            fond = UTILS_Interface.GetCouleurRole("selection")
-            texte = UTILS_Interface.GetCouleurRole("selection_text")
-            contour = UTILS_Interface.GetCouleurRole("primary")
+            fond = Style.couleur("selection")
+            texte = Style.couleur("selection_text")
+            contour = Style.couleur("primary")
         elif self._hover:
             if self.variante == "primaire":
-                fond = UTILS_Interface.GetCouleurRole("primary_container")
-                texte = UTILS_Interface.GetCouleurRole("on_primary_container")
+                fond = Style.couleur("primary_container")
+                texte = Style.couleur("on_primary_container")
             elif self.variante != "danger":
-                fond = UTILS_Interface.GetCouleurRole("surface_container_highest")
+                fond = Style.couleur("surface_container_highest")
 
         if self.HasFocus():
-            contour = UTILS_Interface.GetCouleurRole("focus")
+            contour = Style.couleur("focus")
         return fond, texte, contour
 
     def _CouleurParent(self):
@@ -130,11 +129,11 @@ class CTRL(wx.Control):
                 return couleur
         except Exception:
             pass
-        return UTILS_Interface.GetCouleurRole("surface")
+        return Style.couleur("surface")
 
     def DoGetBestSize(self):
-        hauteur = UTILS_UIMetrics.action_target("compact" if self.compact else "standard")
-        padding_x = UTILS_UIMetrics.spacing(2 if self.compact else 3)
+        hauteur = Style.cible_action("compact" if self.compact else "standard")
+        padding_x = Style.espace(2 if self.compact else 3)
         largeur = padding_x * 2
 
         bitmap = self._GetBitmap()
@@ -145,7 +144,7 @@ class CTRL(wx.Control):
             dc.SetFont(self.GetFont())
             largeur_texte, _ = dc.GetTextExtent(self.label)
             if bitmap is not None:
-                largeur += UTILS_UIMetrics.spacing(1)
+                largeur += Style.espace(1)
             largeur += largeur_texte
         if not self.label:
             largeur = max(largeur, hauteur)
@@ -157,11 +156,16 @@ class CTRL(wx.Control):
         dc.Clear()
         rect = self.GetClientRect()
         fond, texte, contour = self._GetCouleurs()
-        rayon = UTILS_UIMetrics.px(7)
 
         dc.SetBrush(wx.Brush(fond))
-        dc.SetPen(wx.Pen(contour, max(1, UTILS_UIMetrics.px(1))))
-        dc.DrawRoundedRectangle(rect.x, rect.y, max(1, rect.width - 1), max(1, rect.height - 1), rayon)
+        dc.SetPen(wx.Pen(contour, max(1, Style.px(1))))
+        dc.DrawRoundedRectangle(
+            rect.x,
+            rect.y,
+            max(1, rect.width - 1),
+            max(1, rect.height - 1),
+            Style.rayon("controle"),
+        )
 
         bitmap = self._GetBitmap()
         dc.SetFont(self.GetFont())
@@ -171,7 +175,7 @@ class CTRL(wx.Control):
         largeur_texte, hauteur_texte = dc.GetTextExtent(self.label) if self.label else (0, 0)
         largeur_bitmap = bitmap.GetWidth() if bitmap is not None else 0
         hauteur_bitmap = bitmap.GetHeight() if bitmap is not None else 0
-        espace = UTILS_UIMetrics.spacing(1) if bitmap is not None and self.label else 0
+        espace = Style.espace(1) if bitmap is not None and self.label else 0
         largeur_contenu = largeur_bitmap + espace + largeur_texte
         x = rect.x + max(0, int((rect.width - largeur_contenu) / 2))
 
