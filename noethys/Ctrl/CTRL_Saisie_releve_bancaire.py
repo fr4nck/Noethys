@@ -13,7 +13,7 @@ import GestionDB
 
 from Utils.UTILS_Traduction import _
 from Utils import UTILS_StyleRepens as Style
-from Ctrl import CTRL_Bouton_image
+from Ctrl import CTRL_ActionRepens
 
 
 class CTRL_Choix(wx.Choice):
@@ -61,7 +61,7 @@ class CTRL_Choix(wx.Choice):
 
 class CTRL(wx.Panel):
     def __init__(self, parent, IDcompte_bancaire=None, afficherBouton=True):
-        wx.Panel.__init__(self, parent, id=-1, name="ctrl_saisie_releve_bancaire", style=wx.TAB_TRAVERSAL)
+        wx.Panel.__init__(self, parent, id=-1, name="ctrl_saisie_releve_bancaire", style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
         self.afficherBouton = afficherBouton
         Style.appliquer_fenetre(self, "surface")
@@ -69,15 +69,14 @@ class CTRL(wx.Panel):
 
         self.bouton_releve = None
         if self.afficherBouton is True:
-            taille = Style.taille_icone("inline")
-            self.bouton_releve = CTRL_Bouton_image.CTRL(
+            self.bouton_releve = CTRL_ActionRepens.CTRL(
                 self,
-                texte="",
-                iconeFluent="edit",
-                tailleImage=(taille, taille),
+                label=u"",
+                icone="edit",
+                variante="ghost",
+                tooltip=_(u"Cliquez ici pour accéder à la gestion des relevés bancaires"),
             )
             self.Bind(wx.EVT_BUTTON, self.OnBoutonReleve, self.bouton_releve)
-            self.bouton_releve.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour accéder à la gestion des relevés bancaires")))
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(self.ctrl_releve, 1, wx.EXPAND)
@@ -113,8 +112,9 @@ class CTRL(wx.Panel):
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
+        Style.appliquer_fenetre(self, "surface")
         panel = wx.Panel(self, -1, name="panel_test")
-        Style.appliquer_fenetre(panel)
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl1 = CTRL(panel)
         self.ctrl2 = CTRL(panel, afficherBouton=False)
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -130,7 +130,7 @@ class MyFrame(wx.Frame):
 
 if __name__ == '__main__':
     app = wx.App(0)
-    frame_1 = MyFrame(None, -1, "TEST", size=(800, 400))
+    frame_1 = MyFrame(None, -1, "TEST", size=(Style.px(800), Style.px(400)))
     app.SetTopWindow(frame_1)
     frame_1.Show()
     app.MainLoop()
