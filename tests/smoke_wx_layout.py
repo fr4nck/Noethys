@@ -4,7 +4,7 @@
 
 Construit une fenêtre représentative (toolbar, formulaire, liste, grille), force
 le layout et vérifie que les métriques communes ne tronquent pas leurs
-composants. Aucun fichier utilisateur ni base n'est ouvert.
+composants. Aucun fichier utilisateur ni base métier n'est ouvert.
 """
 from pathlib import Path
 import sys
@@ -16,6 +16,7 @@ import wx
 import wx.grid as gridlib
 from wx.lib.agw import ultimatelistctrl as ULC
 
+from Ctrl import CTRL_Accueil
 from Utils import UTILS_Aui
 from Utils import UTILS_UIMetrics
 
@@ -87,5 +88,20 @@ assert grid.GetDefaultRowSize() >= UTILS_UIMetrics.row_height("table")
 
 frame.Destroy()
 wx.Yield()
+
+# Reproduit explicitement le premier paint de l'accueil. Sous wxMSW/Phoenix,
+# AutoBufferedPaintDC lève une assertion native si BG_STYLE_PAINT n'a pas été
+# posé dans le constructeur du contrôle.
+accueil_frame = wx.Frame(None, title="Noethys accueil smoke", size=(520, 260))
+accueil = CTRL_Accueil.Panel(accueil_frame)
+accueil_frame.Show()
+accueil.Refresh()
+accueil.Update()
+wx.Yield()
+assert accueil.GetBackgroundStyle() == wx.BG_STYLE_PAINT
+assert accueil.GetSize().width > 0 and accueil.GetSize().height > 0
+accueil_frame.Destroy()
+wx.Yield()
+
 app.Destroy()
 print("smoke layout wx OK")
