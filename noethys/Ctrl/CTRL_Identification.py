@@ -5,13 +5,12 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-11 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 import Chemins
 from Utils.UTILS_Traduction import _
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 import wx
 from Ctrl import CTRL_Bouton_image
 import datetime
@@ -22,15 +21,15 @@ except Exception:
 
 
 def _ConfigurerBarreShell(parent):
-    """Annonce explicitement la métrique Repens à la toolbar utilisateur."""
+    """Aligne la toolbar hôte sur les métriques publiques de Repens."""
     try:
         import wx.lib.agw.aui as aui
         if not isinstance(parent, aui.AuiToolBar):
             return
         parent._noethys_toolbar_icon_base = 24
-        taille = UTILS_UIMetrics.icon_size("toolbar")
+        taille = Style.taille_icone("toolbar")
         parent.SetToolBitmapSize(wx.Size(taille, taille))
-        hauteur = UTILS_UIMetrics.toolbar_height(avec_libelle=True, icon_px=taille)
+        hauteur = Style.hauteur_toolbar(avec_libelle=True)
         parent.SetMinSize((-1, hauteur))
         parent._noethys_toolbar_min_height = hauteur
     except Exception:
@@ -47,11 +46,12 @@ class CTRL(wx.SearchCtrl):
         self.listeUtilisateurs = listeUtilisateurs or []
         self.modeDLG = modeDLG
         self.SetDescriptiveText(_(u"Code d'identification"))
+        Style.appliquer_saisie(self)
 
         self.ShowSearchButton(True)
         self.ShowCancelButton(False)
         try:
-            taille = UTILS_UIMetrics.icon_size("inline")
+            taille = Style.taille_icone("inline")
             chemin = Chemins.GetStaticIconPath("Images/16x16/Cadenas.png", taille=taille)
             bitmap = wx.Bitmap(chemin, wx.BITMAP_TYPE_ANY)
             if bitmap.IsOk():
@@ -60,9 +60,8 @@ class CTRL(wx.SearchCtrl):
             pass
 
         try:
-            self.SetMinSize((UTILS_UIMetrics.px(150), UTILS_UIMetrics.action_target("compact")))
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+            largeur = max(Style.px(150), self.GetMinSize().GetWidth())
+            self.SetMinSize((largeur, Style.cible_action("compact")))
         except Exception:
             pass
 
@@ -116,11 +115,14 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(self, "surface")
+        Style.appliquer_fenetre(panel, "surface")
         sizer = wx.BoxSizer(wx.VERTICAL)
         self.myOlv = CTRL(panel)
         self.myOlv2 = wx.TextCtrl(panel, -1, "test")
-        sizer.Add(self.myOlv, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
-        sizer.Add(self.myOlv2, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        Style.appliquer_saisie(self.myOlv2)
+        sizer.Add(self.myOlv, 0, wx.ALL | wx.EXPAND, Style.espace(2))
+        sizer.Add(self.myOlv2, 0, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
@@ -146,21 +148,22 @@ class Dialog(wx.Dialog):
         self.listeUtilisateurs = listeUtilisateurs or []
         self.nomFichier = nomFichier
         self.dictUtilisateur = None
+        Style.appliquer_fenetre(self, "surface")
 
         if self.nomFichier is not None:
             self.SetTitle(_(u"Ouverture du fichier %s") % self.nomFichier)
 
         self.label = wx.StaticText(self, -1, _(u"Saisissez votre code d'identification personnel."))
+        Style.appliquer_texte(self.label, role="body", role_texte="on_surface", role_fond="surface")
         self.ctrl_mdp = CTRL(self, listeUtilisateurs=self.listeUtilisateurs, modeDLG=True)
 
         self.label_exemple = wx.StaticText(self, -1, _(u"Le mot de passe des fichiers exemples est 'aze'"))
-        try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            police.SetPointSize(max(7, int(round(police.GetPointSize() * 0.90))))
-            self.label_exemple.SetFont(police)
-            self.label_exemple.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
-        except Exception:
-            pass
+        Style.appliquer_texte(
+            self.label_exemple,
+            role="caption",
+            role_texte="on_surface_variant",
+            role_fond="surface",
+        )
         self.label_exemple.Show(bool(nomFichier and nomFichier.startswith("EXEMPLE_")))
 
         self.bouton_annuler = CTRL_Bouton_image.CTRL(
@@ -171,17 +174,16 @@ class Dialog(wx.Dialog):
         )
         self.bouton_annuler.SetToolTip(wx.ToolTip(_(u"Annuler")))
 
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
         self.__do_layout()
         wx.CallAfter(self.ctrl_mdp.SetFocus)
 
     def __do_layout(self):
-        marge = UTILS_UIMetrics.spacing(4)
-        espace = UTILS_UIMetrics.spacing(3)
+        marge = Style.espace(4)
+        espace = Style.espace(3)
 
         contenu = wx.BoxSizer(wx.VERTICAL)
         contenu.Add(self.label, 0, wx.EXPAND | wx.BOTTOM, espace)
-        contenu.Add(self.ctrl_mdp, 0, wx.EXPAND | wx.BOTTOM, UTILS_UIMetrics.spacing(1))
+        contenu.Add(self.ctrl_mdp, 0, wx.EXPAND | wx.BOTTOM, Style.espace(1))
         contenu.Add(self.label_exemple, 0, wx.ALIGN_RIGHT)
 
         actions = wx.BoxSizer(wx.HORIZONTAL)
@@ -192,7 +194,7 @@ class Dialog(wx.Dialog):
         principal.Add(contenu, 1, wx.EXPAND | wx.ALL, marge)
         principal.Add(actions, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, marge)
         self.SetSizer(principal)
-        self.SetMinSize((UTILS_UIMetrics.px(380), -1))
+        self.SetMinSize((Style.px(380), -1))
         self.Fit()
         self.Layout()
         if self.GetParent() is not None:
