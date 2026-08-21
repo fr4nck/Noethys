@@ -19,7 +19,7 @@ from Utils.UTILS_Traduction import _
 
 
 class Dialog(CTRL_FenetreRepens.Dialog):
-    """Activation du prélèvement, première fenêtre métier sur le shell Repens."""
+    """Activation du prélèvement sur le shell commun Repens."""
 
     def __init__(self, parent, IDfamille=None):
         self.parent = parent
@@ -37,7 +37,6 @@ class Dialog(CTRL_FenetreRepens.Dialog):
             taille_min=(620, 440),
         )
 
-        # Activation -------------------------------------------------------
         self.section_activation = self.AjouterSection(
             _(u"Activation"),
             _(u"Activez ou désactivez le prélèvement pour cette famille."),
@@ -69,7 +68,6 @@ class Dialog(CTRL_FenetreRepens.Dialog):
         ligne_activation.Add(self.radio_activation_non, 0, wx.ALIGN_CENTER_VERTICAL)
         self.section_activation.GetSizerContenu().Add(ligne_activation, 0, wx.EXPAND)
 
-        # Mandats ----------------------------------------------------------
         self.section_mandats = self.AjouterSection(
             _(u"Mandats SEPA"),
             _(u"Gérez les mandats associés au compte de la famille."),
@@ -118,7 +116,6 @@ class Dialog(CTRL_FenetreRepens.Dialog):
         self.ctrl_listview.MAJ()
         self.section_mandats.GetSizerContenu().Add(self.ctrl_listview, 1, wx.EXPAND)
 
-        # Footer commun ----------------------------------------------------
         self.bouton_aide = self.AjouterAction(
             _(u"Aide"),
             callback=self.OnBoutonAide,
@@ -129,7 +126,7 @@ class Dialog(CTRL_FenetreRepens.Dialog):
         self.bouton_rib = self.AjouterAction(
             _(u"Ancien RIB"),
             callback=self.OnBoutonRib,
-            icone="document",
+            icone="edit",
             alignement="gauche",
             tooltip=_(u"Paramétrer un RIB pour les anciens prélèvements nationaux"),
         )
@@ -167,7 +164,6 @@ class Dialog(CTRL_FenetreRepens.Dialog):
         self.ctrl_listview.Supprimer(None)
 
     def Importation(self):
-        """Importation des données."""
         if self.IDfamille is None:
             return
         DB = GestionDB.DB()
