@@ -11,11 +11,11 @@
 import wx
 
 import GestionDB
-from Ctrl import CTRL_Selection_activites
+from Ctrl import CTRL_ActionRepens
 from Ctrl import CTRL_Grille_periode
+from Ctrl import CTRL_Selection_activites
 from Utils import UTILS_Dates
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
@@ -31,23 +31,9 @@ def GetSQLdates(listePeriodes=[]):
 
 
 def _AppliquerStyleListe(ctrl):
-    """Applique aux listes natives la même grammaire visuelle que le shell."""
-    try:
-        ctrl.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-        ctrl.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-    except Exception:
-        pass
-    try:
-        police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-        facteur = UTILS_Interface.GetTailleTexte() / 100.0
-        police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-        ctrl.SetFont(police)
-    except Exception:
-        pass
-    try:
-        ctrl.SetMinSize((-1, UTILS_UIMetrics.panel_min_height("secondary")))
-    except Exception:
-        pass
+    """Applique aux listes natives la grammaire commune Repens."""
+    Style.appliquer_liste(ctrl)
+    ctrl.SetMinSize((-1, Style.hauteur_panneau("secondary")))
 
 
 class CTRL_Activites(wx.CheckListBox):
@@ -212,7 +198,7 @@ class CTRL(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
         self.parent = parent
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        Style.appliquer_fenetre(self, "surface")
 
         self.staticbox_mode_staticbox = wx.StaticBox(self, -1, _(u"Mode de sélection"))
         self.radio_inscrits = wx.RadioButton(self, -1, _(u"Inscrits"), style=wx.RB_GROUP)
@@ -220,17 +206,27 @@ class CTRL(wx.Panel):
 
         self.staticbox_date_staticbox = wx.StaticBox(self, -1, _(u"Période"))
         self.ctrl_calendrier = CTRL_Grille_periode.CTRL(self)
-        self.ctrl_calendrier.SetMinSize((UTILS_UIMetrics.px(280), UTILS_UIMetrics.px(180)))
+        self.ctrl_calendrier.SetMinSize((Style.px(280), Style.px(180)))
 
         self.staticbox_activites_staticbox = wx.StaticBox(self, -1, _(u"Activités"))
         self.ctrl_activites_presents = CTRL_Activites(self)
         self.ctrl_activites_inscrits = CTRL_Selection_activites.CTRL(self)
-        self.ctrl_activites_presents.SetMinSize((UTILS_UIMetrics.px(280), UTILS_UIMetrics.px(120)))
-        self.ctrl_activites_inscrits.SetMinSize((UTILS_UIMetrics.px(280), UTILS_UIMetrics.px(120)))
+        self.ctrl_activites_presents.SetMinSize((Style.px(280), Style.hauteur_panneau("secondary")))
+        self.ctrl_activites_inscrits.SetMinSize((Style.px(280), Style.hauteur_panneau("secondary")))
 
         self.staticbox_groupes_staticbox = wx.StaticBox(self, -1, _(u"Groupes"))
         self.ctrl_groupes = CTRL_Groupes(self)
-        self.ctrl_groupes.SetMinSize((UTILS_UIMetrics.px(280), UTILS_UIMetrics.px(120)))
+        self.ctrl_groupes.SetMinSize((Style.px(280), Style.hauteur_panneau("secondary")))
+
+        for box in (
+            self.staticbox_mode_staticbox,
+            self.staticbox_date_staticbox,
+            self.staticbox_activites_staticbox,
+            self.staticbox_groupes_staticbox,
+        ):
+            Style.appliquer_texte(box, role="label", role_texte="on_surface_variant", role_fond="surface")
+        for radio in (self.radio_inscrits, self.radio_presents):
+            Style.appliquer_texte(radio, role="body", role_texte="on_surface", role_fond="surface")
 
         self.radio_inscrits.SetToolTip(wx.ToolTip(_(u"Sélectionnez le mode de sélection des individus")))
         self.radio_presents.SetToolTip(wx.ToolTip(_(u"Sélectionnez le mode de sélection des individus")))
@@ -245,9 +241,9 @@ class CTRL(wx.Panel):
         self.OnRadioMode()
 
     def __do_layout(self):
-        marge = UTILS_UIMetrics.spacing(3)
-        espace = UTILS_UIMetrics.spacing(3)
-        interieur = UTILS_UIMetrics.spacing(2)
+        marge = Style.espace(3)
+        espace = Style.espace(3)
+        interieur = Style.espace(2)
 
         mode = wx.StaticBoxSizer(self.staticbox_mode_staticbox, wx.VERTICAL)
         modes = wx.BoxSizer(wx.HORIZONTAL)
@@ -285,7 +281,7 @@ class CTRL(wx.Panel):
         principal.Add(colonnes, 1, wx.ALL | wx.EXPAND, marge)
         self.SetSizer(principal)
         self.grid_sizer_base = principal
-        self.SetMinSize((UTILS_UIMetrics.px(680), UTILS_UIMetrics.px(440)))
+        self.SetMinSize((Style.px(680), Style.px(440)))
         self.Layout()
 
     def OnRadioMode(self, event=None):
@@ -347,16 +343,17 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = CTRL(panel)
-        bouton_test = wx.Button(panel, -1, u"Test")
+        bouton_test = CTRL_ActionRepens.CTRL(panel, label=u"Test", variante="secondaire")
         contenu = wx.BoxSizer(wx.VERTICAL)
-        contenu.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
-        contenu.Add(bouton_test, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        contenu.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, Style.espace(2))
+        contenu.Add(bouton_test, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, Style.espace(2))
         panel.SetSizer(contenu)
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(panel, 1, wx.EXPAND)
         self.SetSizer(principal)
-        self.SetMinSize((UTILS_UIMetrics.px(700), UTILS_UIMetrics.px(520)))
+        self.SetMinSize((Style.px(700), Style.px(520)))
         self.Layout()
         self.CentreOnScreen()
         self.Bind(wx.EVT_BUTTON, self.OnBouton, bouton_test)
