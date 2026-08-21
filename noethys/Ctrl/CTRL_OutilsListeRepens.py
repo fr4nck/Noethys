@@ -12,8 +12,7 @@ import wx
 
 from Ctrl import CTRL_ActionRepens
 from Utils import UTILS_Adaptations
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
@@ -45,12 +44,7 @@ class BarreRecherche(wx.SearchCtrl):
         self.SetDescriptiveText(texteDefaut)
         self.ShowSearchButton(True)
         self.ShowCancelButton(False)
-        self.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
-        try:
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        except Exception:
-            pass
+        Style.appliquer_saisie(self)
 
         try:
             self.listview.SetBarreRecherche(self)
@@ -124,12 +118,8 @@ class CTRL_Regroupement(wx.Choice):
         self.listview = None
         self.listeLabels = []
         self.dictDonnees = {}
-        self.SetMinSize((UTILS_UIMetrics.px(130), UTILS_UIMetrics.action_target("compact")))
-        try:
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        except Exception:
-            pass
+        Style.appliquer_saisie(self)
+        self.SetMinSize((Style.px(130), Style.cible_action("compact")))
 
     def MAJ(self, listview=None):
         if listview is not None:
@@ -212,7 +202,7 @@ class CTRL(wx.Panel):
         self.listview = listview
         self.afficherRegroupement = bool(afficherRegroupement)
         self.afficherCocher = bool(afficherCocher)
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        Style.appliquer_fenetre(self, "surface")
 
         self.barreRecherche = BarreRecherche(self, listview=listview, texteDefaut=texteDefaut)
         self.bouton_filtrer = CTRL_ActionRepens.CTRL(
@@ -238,7 +228,12 @@ class CTRL(wx.Panel):
         self.ctrl_regroupement = None
         if self.afficherRegroupement:
             self.label_regroupement = wx.StaticText(self, -1, _(u"Regrouper :"))
-            self.label_regroupement.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
+            Style.appliquer_texte(
+                self.label_regroupement,
+                role="label",
+                role_texte="on_surface_variant",
+                role_fond="surface",
+            )
             self.ctrl_regroupement = CTRL_Regroupement(self)
             self.ctrl_regroupement.MAJ(listview=listview)
             try:
@@ -247,13 +242,13 @@ class CTRL(wx.Panel):
                 pass
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(self.barreRecherche, 1, wx.EXPAND | wx.RIGHT, UTILS_UIMetrics.spacing(1))
+        sizer.Add(self.barreRecherche, 1, wx.EXPAND | wx.RIGHT, Style.espace(1))
         sizer.Add(self.bouton_filtrer, 0, wx.ALIGN_CENTER_VERTICAL)
         if self.bouton_cocher is not None:
-            sizer.Add(self.bouton_cocher, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
+            sizer.Add(self.bouton_cocher, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
         if self.ctrl_regroupement is not None:
-            sizer.AddSpacer(UTILS_UIMetrics.spacing(2))
-            sizer.Add(self.label_regroupement, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, UTILS_UIMetrics.spacing(1))
+            sizer.AddSpacer(Style.espace(2))
+            sizer.Add(self.label_regroupement, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, Style.espace(1))
             sizer.Add(self.ctrl_regroupement, 0, wx.ALIGN_CENTER_VERTICAL)
         self.SetSizer(sizer)
         self.Layout()
