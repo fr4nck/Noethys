@@ -5,17 +5,16 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-11 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 import html as html_std
 import re
 
 import Chemins
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
-from Utils.UTILS_Traduction import _
 import wx
+from Utils import UTILS_StyleRepens as Style
+from Utils.UTILS_Traduction import _
 
 
 def _texte_simple(texte):
@@ -51,17 +50,18 @@ class TexteIntro(wx.StaticText):
     def __init__(self, parent, texte=u""):
         self.texte_original = _texte_simple(texte)
         wx.StaticText.__init__(self, parent, -1, self.texte_original)
-        self.SetMinSize((-1, UTILS_UIMetrics.row_height("compact")))
+        self.SetMinSize((-1, Style.hauteur_ligne("compact")))
         self.Bind(wx.EVT_SIZE, self.OnSize)
         self.AppliquerTheme()
         wx.CallAfter(self.Reflow)
 
     def AppliquerTheme(self):
-        try:
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface_variant"))
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container"))
-        except Exception:
-            pass
+        Style.appliquer_texte(
+            self,
+            role="body",
+            role_texte="on_surface_variant",
+            role_fond="surface_container",
+        )
 
     def SetTexte(self, texte):
         self.texte_original = _texte_simple(texte)
@@ -73,9 +73,9 @@ class TexteIntro(wx.StaticText):
         except Exception:
             largeur = 0
         self.SetLabel(self.texte_original)
-        if largeur > UTILS_UIMetrics.px(120):
+        if largeur > Style.px(120):
             try:
-                self.Wrap(max(UTILS_UIMetrics.px(120), largeur - UTILS_UIMetrics.spacing(1)))
+                self.Wrap(max(Style.px(120), largeur - Style.espace(1)))
             except Exception:
                 pass
         try:
@@ -103,7 +103,7 @@ class Bandeau(wx.Panel):
         self.hauteurHtml = hauteurHtml
 
         if self.nomImage is not None:
-            taille = UTILS_UIMetrics.icon_size("hero")
+            taille = Style.taille_icone("hero")
             self.image = wx.StaticBitmap(self, -1, _bitmap_adapte(self.nomImage, taille))
 
         self.ctrl_titre = wx.StaticText(self, -1, titre)
@@ -116,27 +116,18 @@ class Bandeau(wx.Panel):
 
     def __set_properties(self):
         self.AppliquerTheme()
-
-        police = wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)
-        try:
-            police = wx.Font(police)
-            base = max(8, police.GetPointSize())
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(9, int(round((base + 1) * facteur))))
-            police.SetWeight(wx.FONTWEIGHT_SEMIBOLD if hasattr(wx, "FONTWEIGHT_SEMIBOLD") else wx.FONTWEIGHT_BOLD)
-            self.ctrl_titre.SetFont(police)
-        except Exception:
-            pass
+        self.ctrl_titre.SetFont(Style.police("title"))
 
     def AppliquerTheme(self):
-        fond = UTILS_Interface.GetCouleurRole("surface_container")
-        texte = UTILS_Interface.GetCouleurRole("on_surface")
-        bordure = UTILS_Interface.GetCouleurRole("outline_variant")
-
+        Style.appliquer_fenetre(self, "surface_container")
+        Style.appliquer_texte(
+            self.ctrl_titre,
+            role="title",
+            role_texte="on_surface",
+            role_fond="surface_container",
+        )
+        bordure = Style.couleur("outline_variant")
         try:
-            self.SetBackgroundColour(fond)
-            self.ctrl_titre.SetBackgroundColour(fond)
-            self.ctrl_titre.SetForegroundColour(texte)
             self.ligne.SetForegroundColour(bordure)
             self.ligne.SetBackgroundColour(bordure)
         except Exception:
@@ -144,7 +135,7 @@ class Bandeau(wx.Panel):
 
         if self.image is not None:
             try:
-                self.image.SetBackgroundColour(fond)
+                self.image.SetBackgroundColour(Style.couleur("surface_container"))
             except Exception:
                 pass
 
@@ -155,14 +146,14 @@ class Bandeau(wx.Panel):
 
     def __do_layout(self):
         """Le texte récupère toute la largeur libre, sans hauteur HTML fixe."""
-        marge_x = UTILS_UIMetrics.spacing(3)
+        marge_x = Style.espace(3)
 
         contenu = wx.BoxSizer(wx.HORIZONTAL)
         if self.image is not None:
             contenu.Add(self.image, 0, wx.ALIGN_TOP | wx.RIGHT, marge_x)
 
         textes = wx.BoxSizer(wx.VERTICAL)
-        textes.Add(self.ctrl_titre, 0, wx.EXPAND | wx.BOTTOM, max(2, UTILS_UIMetrics.spacing(1)))
+        textes.Add(self.ctrl_titre, 0, wx.EXPAND | wx.BOTTOM, max(2, Style.espace(1)))
         textes.Add(self.ctrl_intro, 0, wx.EXPAND)
         contenu.Add(textes, 1, wx.EXPAND)
 
@@ -171,7 +162,7 @@ class Bandeau(wx.Panel):
         principal.Add(self.ligne, 0, wx.EXPAND)
 
         self.SetSizer(principal)
-        self.SetMinSize((-1, UTILS_UIMetrics.panel_min_height("compact")))
+        self.SetMinSize((-1, Style.px(72)))
         self.Layout()
 
     def OnSize(self, event):
@@ -183,6 +174,7 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel, "surface")
         sizer_1 = wx.BoxSizer(wx.VERTICAL)
         sizer_1.Add(panel, 1, wx.EXPAND)
         self.SetSizer(sizer_1)
