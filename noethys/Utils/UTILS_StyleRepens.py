@@ -108,6 +108,11 @@ def hauteur_toolbar(avec_libelle=True):
     return UTILS_UIMetrics.toolbar_height(avec_libelle=avec_libelle)
 
 
+def hauteur_panneau(contexte="secondary"):
+    """Hauteur minimale d'une surface fonctionnelle compacte."""
+    return UTILS_UIMetrics.panel_min_height(contexte)
+
+
 def normaliser_role_typographie(role):
     if role is None:
         return "body"
@@ -215,6 +220,7 @@ def tokens():
         "action_compact": cible_action("compact"),
         "action_standard": cible_action("standard"),
         "icon_toolbar": taille_icone("toolbar"),
+        "panel_secondary": hauteur_panneau("secondary"),
         "font_display": police("display"),
         "font_h1": police("h1"),
         "font_h2": police("h2"),
