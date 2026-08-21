@@ -5,7 +5,7 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-15 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 import datetime
@@ -14,8 +14,7 @@ import six
 
 from Utils.UTILS_Traduction import _
 from Utils import UTILS_Dates
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 
 
 if 'phoenix' in wx.PlatformInfo:
@@ -64,7 +63,7 @@ class MyValidator(validator):
 
 
 class CTRL(wx.TextCtrl):
-    """Saisie de durée compatible thème, DPI et grosse police."""
+    """Saisie de durée alignée sur le CSS Repens."""
 
     def __init__(self, parent, separateur="h", font=None, size=(-1, -1), style=wx.TE_PROCESS_ENTER | wx.TE_CENTER):
         wx.TextCtrl.__init__(self, parent, -1, "", size=size, validator=MyValidator(), style=style)
@@ -77,23 +76,18 @@ class CTRL(wx.TextCtrl):
         self.oldValeur = self.GetValue()
 
     def _AppliqueStyle(self, font=None):
-        try:
-            if font is None:
-                font = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-                facteur = UTILS_Interface.GetTailleTexte() / 100.0
-                font.SetPointSize(max(8, int(round(font.GetPointSize() * facteur))))
-            self.SetFont(font)
-        except Exception:
-            pass
-
+        Style.appliquer_saisie(self)
+        if font is not None:
+            try:
+                self.SetFont(font)
+            except Exception:
+                pass
         try:
             largeur = max(
-                UTILS_UIMetrics.px(84),
-                self.GetTextExtent("000h00")[0] + UTILS_UIMetrics.spacing(4),
+                Style.px(84),
+                self.GetTextExtent("000h00")[0] + Style.espace(4),
             )
-            self.SetMinSize((largeur, UTILS_UIMetrics.action_target("compact")))
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+            self.SetMinSize((largeur, Style.cible_action("compact")))
         except Exception:
             pass
 
@@ -119,7 +113,6 @@ class CTRL(wx.TextCtrl):
         return True, None
 
     def GetDuree(self, format=datetime.timedelta):
-        """format = datetime.timedelta ou str ou float."""
         valeur = wx.TextCtrl.GetValue(self)
         valeur = valeur.replace(' ', '')
         valeur = valeur.replace('h', ':')
@@ -140,7 +133,6 @@ class CTRL(wx.TextCtrl):
         return valeur
 
     def SetDuree(self, duree=None):
-        """duree = float, str ou timedelta."""
         if type(duree) == float:
             td = datetime.timedelta(hours=duree)
         elif type(duree) in (str, six.text_type):
@@ -163,11 +155,12 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel)
         self.ctrl = CTRL(panel)
         self.bouton = wx.Button(panel, -1, "TEST")
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 0, wx.ALL, UTILS_UIMetrics.spacing(2))
-        sizer.Add(self.bouton, 0, wx.ALL, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 0, wx.ALL, Style.espace(2))
+        sizer.Add(self.bouton, 0, wx.ALL, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
