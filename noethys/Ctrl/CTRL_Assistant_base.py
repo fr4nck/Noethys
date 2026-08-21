@@ -11,6 +11,7 @@
 
 import Chemins
 from Utils import UTILS_Adaptations
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 import wx
 import wx.html as html
@@ -31,6 +32,19 @@ def CreationAbrege(nom=""):
     for i in " 0123456789/*-+.,;:_'()" :
         nom = nom.replace(i, "")
     return nom[:5].upper()
+
+
+def _TailleDpi(size):
+    """Adapte les anciennes tailles logiques sans imposer de nouvelle géométrie."""
+    if size in (None, wx.DefaultSize):
+        return wx.DefaultSize
+    try:
+        largeur, hauteur = size
+        largeur = Style.px(largeur) if largeur > 0 else largeur
+        hauteur = Style.px(hauteur) if hauteur > 0 else hauteur
+        return (largeur, hauteur)
+    except Exception:
+        return size
 
 
 class CTRL(object):
@@ -69,10 +83,12 @@ class CTRL(object):
 
 
 
+
 class CTRL_Texte(CTRL, wx.TextCtrl):
     def __init__(self, parent, *args, **kwds):
         CTRL.__init__(self, parent, *args, **kwds)
         wx.TextCtrl.__init__(self, parent, id=-1)
+        Style.appliquer_saisie(self)
 
     def GetValeur(self):
         return self.GetValue()
@@ -98,7 +114,9 @@ class CTRL_Date(CTRL, CTRL_Saisie_date.Date2):
 class CTRL_Nombre(CTRL, wx.SpinCtrl):
     def __init__(self, parent, *args, **kwds):
         CTRL.__init__(self, parent, *args, **kwds)
-        wx.SpinCtrl.__init__(self, parent, size=(80, -1), min=0, max=99999)
+        wx.SpinCtrl.__init__(self, parent, size=(Style.px(80), -1), min=0, max=99999)
+        Style.appliquer_saisie(self)
+        self.SetMinSize((Style.px(80), Style.cible_action("compact")))
 
     def GetValeur(self):
         return self.GetValue()
@@ -109,11 +127,15 @@ class CTRL_Nombre(CTRL, wx.SpinCtrl):
 
 
 
+
 class CTRL_Nombre(CTRL, wx.Panel):
     def __init__(self, parent, *args, **kwds):
         CTRL.__init__(self, parent, *args, **kwds)
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
-        self.ctrl = wx.SpinCtrl(self, size=(100, -1), min=0, max=99999)
+        Style.appliquer_fenetre(self, "surface")
+        self.ctrl = wx.SpinCtrl(self, min=0, max=99999)
+        Style.appliquer_saisie(self.ctrl)
+        self.ctrl.SetMinSize((Style.px(100), Style.cible_action("compact")))
         self.sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.sizer.Add(self.ctrl, 0, 0, 0)
         self.SetSizer(self.sizer)
@@ -127,16 +149,20 @@ class CTRL_Nombre(CTRL, wx.Panel):
 
 
 
+
 class CTRL_Oui_non(CTRL, wx.Panel):
     def __init__(self, parent, *args, **kwds):
         CTRL.__init__(self, parent, *args, **kwds)
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
+        Style.appliquer_fenetre(self, "surface")
         self.radio_oui = wx.RadioButton(self, -1, _(u"Oui"), style=wx.RB_GROUP)
         self.radio_non = wx.RadioButton(self, -1, _(u"Non"))
+        for ctrl in (self.radio_oui, self.radio_non):
+            Style.appliquer_texte(ctrl, role="body", role_texte="on_surface", role_fond="surface")
 
         # Layout
         self.sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.sizer.Add(self.radio_oui, 0, wx.RIGHT, 5)
+        self.sizer.Add(self.radio_oui, 0, wx.RIGHT, Style.espace(2))
         self.sizer.Add(self.radio_non, 0, 0, 0)
         self.SetSizer(self.sizer)
 
@@ -159,6 +185,7 @@ class CTRL_Oui_non(CTRL, wx.Panel):
 
 
 
+
 class CTRL_Radio(CTRL, wx.Panel):
     def __init__(self, parent, *args, **kwds):
         CTRL.__init__(self, parent, *args, **kwds)
@@ -167,6 +194,7 @@ class CTRL_Radio(CTRL, wx.Panel):
         else :
             self.choix = []
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
+        Style.appliquer_fenetre(self, "surface")
 
         self.listeCtrl = []
         self.sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -176,8 +204,9 @@ class CTRL_Radio(CTRL, wx.Panel):
                 ctrl = wx.RadioButton(self, -1, label, style=wx.RB_GROUP)
             else :
                 ctrl = wx.RadioButton(self, -1, label)
+            Style.appliquer_texte(ctrl, role="body", role_texte="on_surface", role_fond="surface")
             self.listeCtrl.append(ctrl)
-            self.sizer.Add(ctrl, 0, wx.RIGHT, 5)
+            self.sizer.Add(ctrl, 0, wx.RIGHT, Style.espace(2))
             index += 1
         self.SetSizer(self.sizer)
         self.SetValeur(self.defaut)
@@ -200,11 +229,12 @@ class CTRL_Radio(CTRL, wx.Panel):
 
 
 
+
 class CTRL_Groupes_activite(CTRL, DLG_Activite_generalites.CTRL_Groupes_activite):
     def __init__(self, parent, *args, **kwds):
         CTRL.__init__(self, parent, *args, **kwds)
         DLG_Activite_generalites.CTRL_Groupes_activite.__init__(self, parent)
-        self.SetMinSize((-1, 70))
+        self.SetMinSize((-1, Style.hauteur_panneau("compact")))
 
     def GetValeur(self):
         return self.GetIDcoches()
@@ -231,7 +261,7 @@ class CTRL_Pieces(CTRL, DLG_Activite_obligations.CheckListBoxPieces):
     def __init__(self, parent, *args, **kwds):
         CTRL.__init__(self, parent, *args, **kwds)
         DLG_Activite_obligations.CheckListBoxPieces.__init__(self, parent)
-        self.SetMinSize((-1, 100))
+        self.SetMinSize((-1, Style.px(100)))
         self.MAJ()
 
     def GetValeur(self):
@@ -246,7 +276,7 @@ class CTRL_Cotisations(CTRL, DLG_Activite_obligations.CheckListBoxCotisations):
     def __init__(self, parent, *args, **kwds):
         CTRL.__init__(self, parent, *args, **kwds)
         DLG_Activite_obligations.CheckListBoxCotisations.__init__(self, parent)
-        self.SetMinSize((-1, 60))
+        self.SetMinSize((-1, Style.hauteur_panneau("compact")))
         self.MAJ()
 
     def GetValeur(self):
@@ -261,7 +291,7 @@ class CTRL_Renseignements(CTRL, DLG_Activite_obligations.CheckListBoxRenseigneme
     def __init__(self, parent, *args, **kwds):
         CTRL.__init__(self, parent, *args, **kwds)
         DLG_Activite_obligations.CheckListBoxRenseignements.__init__(self, parent)
-        self.SetMinSize((-1, 180))
+        self.SetMinSize((-1, Style.px(180)))
         self.MAJ()
 
     def GetValeur(self):
@@ -287,6 +317,7 @@ class CTRL_Choix(CTRL, wx.Choice):
         for code, label in self.liste_choix :
             liste_labels.append(label)
         wx.Choice.__init__(self, parent, id=-1, choices=liste_labels, style=wx.TAB_TRAVERSAL)
+        Style.appliquer_saisie(self)
 
         # Binds
         if on_reponse != None :
@@ -312,7 +343,7 @@ class CTRL_Tarif(CTRL, CTRL_Tarification_calcul.Panel):
         track_tarif = Track_tarif()
         filtre_methodes = ("montant_unique", "qf")
         CTRL_Tarification_calcul.Panel.__init__(self, parent, IDactivite=None, IDtarif=None, track_tarif=track_tarif, filtre_methodes=filtre_methodes)
-        self.SetMinSize((-1, 220))
+        self.SetMinSize((-1, Style.px(220)))
         self.MAJ()
 
     def GetValeur(self):
@@ -326,21 +357,23 @@ class CTRL_Tarif(CTRL, CTRL_Tarification_calcul.Panel):
 
 
 
+
 class CTRL_Html(CTRL, html.HtmlWindow):
     def __init__(self, parent, *args, **kwds):
         CTRL.__init__(self, parent, *args, **kwds)
         if "size" in kwds:
-            size = kwds["size"]
+            size = _TailleDpi(kwds["size"])
         else :
-            size = (-1, 100)
+            size = (-1, Style.px(100))
         if "texte" in kwds:
             texte = kwds["texte"]
         else :
             texte = ""
         html.HtmlWindow.__init__(self, parent, -1, size=size, style=wx.html.HW_NO_SELECTION)
+        Style.appliquer_fenetre(self, "surface")
         if "gtk2" in wx.PlatformInfo:
             self.SetStandardFonts()
-        self.SetBorders(5)
+        self.SetBorders(Style.espace(1))
         if texte != "" :
             self.SetValeur(texte)
 
@@ -358,6 +391,7 @@ class Page(scrolled.ScrolledPanel):
         scrolled.ScrolledPanel.__init__(self, parent, -1)
         self.parent = parent
         self.dict_ctrl = {}
+        Style.appliquer_fenetre(self, "surface")
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(self.sizer)
 
@@ -365,15 +399,15 @@ class Page(scrolled.ScrolledPanel):
         # Titre
         if titre != None :
             ctrl_titre = wx.StaticText(self, -1, titre)
-            ctrl_titre.SetFont(wx.Font(8, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
-            self.sizer.Add(ctrl_titre, 0, wx.EXPAND | wx.RIGHT, 5)
-            self.sizer.Add((5, 2), 0, 0, 0)
+            Style.appliquer_texte(ctrl_titre, role="h6", role_texte="on_surface", role_fond="surface")
+            self.sizer.Add(ctrl_titre, 0, wx.EXPAND | wx.RIGHT, Style.espace(1))
+            self.sizer.Add((Style.espace(1), Style.espace(1)), 0, 0, 0)
 
         ctrl_ligne = wx.StaticLine(self, -1)
-        self.sizer.Add(ctrl_ligne, 0, wx.EXPAND | wx.RIGHT, 5)
+        self.sizer.Add(ctrl_ligne, 0, wx.EXPAND | wx.RIGHT, Style.espace(1))
 
         # Spacer
-        self.sizer.Add((5, 10), 0, 0, 0)
+        self.sizer.Add((Style.espace(1), Style.espace(2)), 0, 0, 0)
 
         # Initialisation des barres de défilement
         self.SetupScrolling()
@@ -382,16 +416,17 @@ class Page(scrolled.ScrolledPanel):
         # Titre
         if titre != None :
             ctrl_titre = wx.StaticText(self, -1, titre)
-            self.sizer.Add(ctrl_titre, 0, wx.EXPAND | wx.RIGHT, 5)
-            self.sizer.Add((5, 7), 0, 0, 0)
+            Style.appliquer_texte(ctrl_titre, role="body", role_texte="on_surface", role_fond="surface")
+            self.sizer.Add(ctrl_titre, 0, wx.EXPAND | wx.RIGHT, Style.espace(1))
+            self.sizer.Add((Style.espace(1), Style.espace(1)), 0, 0, 0)
 
         # Saisie
         if ctrl != None :
             ctrl_valeur = ctrl(self, code=code, titre=titre, *args, **kwds)
             if code != None :
                 self.dict_ctrl[code] = ctrl_valeur
-            self.sizer.Add(ctrl_valeur, 0, wx.EXPAND | wx.RIGHT, 5)
-            self.sizer.Add((5, 7), 0, 0, 0)
+            self.sizer.Add(ctrl_valeur, 0, wx.EXPAND | wx.RIGHT, Style.espace(1))
+            self.sizer.Add((Style.espace(1), Style.espace(1)), 0, 0, 0)
 
             # Importation de la valeur
             if code in self.parent.dict_valeurs :
@@ -400,12 +435,11 @@ class Page(scrolled.ScrolledPanel):
         # Commentaire
         if commentaire != None :
             ctrl_commentaire = wx.StaticText(self, -1, commentaire)
-            ctrl_commentaire.SetFont(wx.Font(7, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, ''))
-            ctrl_commentaire.SetForegroundColour((120, 120, 120))
-            self.sizer.Add(ctrl_commentaire, 0, wx.ALIGN_RIGHT | wx.RIGHT, 5)
+            Style.appliquer_texte(ctrl_commentaire, role="caption", role_texte="on_surface_variant", role_fond="surface")
+            self.sizer.Add(ctrl_commentaire, 0, wx.ALIGN_RIGHT | wx.RIGHT, Style.espace(1))
 
         # Spacer
-        self.sizer.Add((5, 10), 0, 0, 0)
+        self.sizer.Add((Style.espace(1), Style.espace(2)), 0, 0, 0)
 
         # Initialisation des barres de défilement
         self.SetupScrolling()
@@ -452,6 +486,7 @@ class Page(scrolled.ScrolledPanel):
 
 
 
+
 class Page_exemple(Page):
     def __init__(self, parent):
         Page.__init__(self, parent)
@@ -460,7 +495,7 @@ class Page_exemple(Page):
         self.Ajouter_question(code="date_debut", titre=_(u"Quelle est la date de début du séjour ?"), commentaire=None, ctrl=CTRL_Date)
         self.Ajouter_rubrique(titre=_(u"Inscriptions"))
         self.Ajouter_question(code="nbre_inscrits_max", titre=_(u"Quel est le nombre maximal d'inscrits ?"), commentaire=_(u"S'il n'y aucune limite, laissez sur 0"), ctrl=CTRL_Nombre)
-        self.Ajouter_question(ctrl=CTRL_Html, texte=_(u"Ceci est un texte HTML"), size=(-1, 50))
+        self.Ajouter_question(ctrl=CTRL_Html, texte=_(u"Ceci est un texte HTML"), size=(-1, Style.px(50)))
 
 
     def MAJ(self):
@@ -502,7 +537,7 @@ class Page_responsable(Page):
         Indiquez par exemple la directrice, la secrétaire, le Maire, etc... Noethys récupère par défaut le nom de responsable
         de la dernière activité saisie.
         """) % Chemins.GetStaticPath("Images/16x16/Astuce.png")
-        self.Ajouter_question(ctrl=CTRL_Html, texte=texte, size=(-1, 50))
+        self.Ajouter_question(ctrl=CTRL_Html, texte=texte, size=(-1, Style.px(50)))
 
     def Suite(self):
         pass
@@ -539,6 +574,7 @@ class Dialog(wx.Dialog):
         wx.Dialog.__init__(self, parent, -1, name="DLG_assistant_activite", style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.MAXIMIZE_BOX | wx.MINIMIZE_BOX)
         self.parent = parent
         self.dict_valeurs = {}
+        Style.appliquer_fenetre(self, "surface")
 
         intro = _(u"Cette fonctionnalité vous permet de bénéficier d'un paramétrage semi-automatisé d'une activité d'un type donné. Vous n'avez qu'à simplement répondre au questionnaire proposé pour générer facilement votre nouvelle activité.")
         titre = _(u"Assistant de paramétrage d'une activité")
@@ -575,31 +611,34 @@ class Dialog(wx.Dialog):
         self.bouton_retour.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour revenir à la page précédente")))
         self.bouton_suite.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour passer à l'étape suivante")))
         self.bouton_annuler.SetToolTip(wx.ToolTip(_(u"Cliquez pour annuler")))
-        self.SetMinSize((840, 710))
+        self.SetMinSize((Style.px(840), Style.px(710)))
 
     def __do_layout(self):
+        marge = Style.espace(3)
+        espace = Style.espace(2)
+
         grid_sizer_base = wx.FlexGridSizer(rows=4, cols=1, vgap=0, hgap=0)
         # Bandeau
         grid_sizer_base.Add(self.ctrl_bandeau, 1, wx.EXPAND, 0)
 
         # Contenu
         self.sizer_pages = wx.BoxSizer(wx.VERTICAL)
-        self.sizer_pages.Add(self.page_active, 1, wx.ALL | wx.EXPAND, 10)
-        grid_sizer_base.Add(self.sizer_pages, 1, wx.ALL | wx.EXPAND, 10)
+        self.sizer_pages.Add(self.page_active, 1, wx.EXPAND)
+        grid_sizer_base.Add(self.sizer_pages, 1, wx.ALL | wx.EXPAND, marge)
 
         # Bottom
-        grid_sizer_base.Add(self.static_line, 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 10)
+        grid_sizer_base.Add(self.static_line, 0, wx.LEFT | wx.RIGHT | wx.EXPAND, marge)
 
         # Boutons
-        self.grid_sizer_boutons = wx.FlexGridSizer(rows=1, cols=6, vgap=10, hgap=10)
-        self.grid_sizer_boutons.Add(self.bouton_aide, 0, 0, 0)
+        self.grid_sizer_boutons = wx.FlexGridSizer(rows=1, cols=6, vgap=espace, hgap=espace)
+        self.grid_sizer_boutons.Add(self.bouton_aide, 0, wx.ALIGN_CENTER_VERTICAL, 0)
         #self.grid_sizer_boutons.Add(self.bouton_options, 0, 0, 0)
-        self.grid_sizer_boutons.Add((20, 20), 0, wx.EXPAND, 0)
-        self.grid_sizer_boutons.Add(self.bouton_retour, 0, 0, 0)
-        self.grid_sizer_boutons.Add(self.bouton_suite, 0, 0, 0)
-        self.grid_sizer_boutons.Add(self.bouton_annuler, 0, wx.LEFT, 10)
+        self.grid_sizer_boutons.Add((Style.espace(5), Style.espace(1)), 0, wx.EXPAND, 0)
+        self.grid_sizer_boutons.Add(self.bouton_retour, 0, wx.ALIGN_CENTER_VERTICAL, 0)
+        self.grid_sizer_boutons.Add(self.bouton_suite, 0, wx.ALIGN_CENTER_VERTICAL, 0)
+        self.grid_sizer_boutons.Add(self.bouton_annuler, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, espace)
         self.grid_sizer_boutons.AddGrowableCol(1)
-        grid_sizer_base.Add(self.grid_sizer_boutons, 1, wx.ALL | wx.EXPAND, 10)
+        grid_sizer_base.Add(self.grid_sizer_boutons, 1, wx.ALL | wx.EXPAND, marge)
         grid_sizer_base.AddGrowableRow(1)
         grid_sizer_base.AddGrowableCol(0)
 
@@ -612,11 +651,6 @@ class Dialog(wx.Dialog):
         self.Freeze()
 
         # Affichage de la page
-        # self.page_active.Destroy()
-        # self.page_active = ctrl(self)
-        # self.sizer_pages.Add(self.page_active, 1, wx.EXPAND, 0)
-        # self.sizer_pages.Layout()
-
         self.page_active.Destroy()
         self.page_active = ctrl(self)
         self.sizer_pages.Add(self.page_active, 1, wx.EXPAND, 0)
@@ -840,6 +874,7 @@ class Dialog(wx.Dialog):
 
     def Quitter(self):
         self.EndModal(wx.ID_OK)
+
 
 
 
