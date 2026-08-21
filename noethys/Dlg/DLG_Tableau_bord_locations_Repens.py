@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 """Cockpit Locations en navigation Repens.
 
-Les quatre écrans métier historiques sont conservés, mais le Toolbook 32 px et
-son chrome daté disparaissent au profit du même notebook AUI que le reste du
-cockpit.
+La navigation et les pages quotidiennes Locations/Demandes utilisent désormais
+les briques Repens ; Images et Produits restent branchés sur leur moteur actuel
+en attendant leur migration dédiée.
 """
 
 import wx
@@ -12,8 +12,8 @@ import wx.lib.agw.aui as aui
 
 from Dlg import DLG_Categories_produits_images
 from Dlg import DLG_Produits_liste
-from Dlg import DLG_Locations
-from Dlg import DLG_Locations_demandes
+from Dlg import DLG_Locations_Repens as DLG_Locations
+from Dlg import DLG_Locations_demandes_Repens as DLG_Locations_demandes
 from Utils import UTILS_Aui
 from Utils import UTILS_Interface
 from Utils import UTILS_UIMetrics
