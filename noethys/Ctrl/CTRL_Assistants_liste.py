@@ -10,8 +10,7 @@
 
 import Chemins
 from Utils.UTILS_Traduction import _
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 import wx
 import six
 if wx.VERSION < (2, 9, 0, 0):
@@ -43,8 +42,8 @@ LISTE_ASSISTANTS = [
 
 
 def _BitmapActivite(nom):
-    """Conserve les pictos métier riches, mais les adapte à la vraie échelle UI."""
-    taille = UTILS_UIMetrics.icon_size("hero")
+    """Conserve les pictos métier riches, mais les adapte à l'échelle Repens."""
+    taille = Style.taille_icone("hero")
     try:
         bitmap = wx.Bitmap(Chemins.GetStaticIconPath("Images/32x32/%s" % nom, taille=taille), wx.BITMAP_TYPE_ANY)
         if bitmap.IsOk() and (bitmap.GetWidth() != taille or bitmap.GetHeight() != taille):
@@ -59,18 +58,8 @@ class FirstColumnRenderer(object):
         self.parent = parent
         dictItem = dictItem or {}
 
-        self.normalFont = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-        self.normalFont.SetWeight(wx.FONTWEIGHT_SEMIBOLD if hasattr(wx, "FONTWEIGHT_SEMIBOLD") else wx.FONTWEIGHT_BOLD)
-        try:
-            self.normalFont.SetPointSize(max(8, int(round(self.normalFont.GetPointSize() * (UTILS_Interface.GetTailleTexte() / 100.0)))))
-        except Exception:
-            pass
-
-        self.smallerFont = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-        try:
-            self.smallerFont.SetPointSize(max(7, int(round(self.smallerFont.GetPointSize() * 0.92 * (UTILS_Interface.GetTailleTexte() / 100.0)))))
-        except Exception:
-            pass
+        self.normalFont = Style.police("label")
+        self.smallerFont = Style.police("body_small")
 
         self.code = dictItem.get("code")
         self.icon = _BitmapActivite(dictItem.get("image", ""))
@@ -87,7 +76,7 @@ class FirstColumnRenderer(object):
 
     def DrawSubItem(self, dc, rect, line, highlighted, enabled):
         bmpWidth, bmpHeight = self.icon.GetWidth(), self.icon.GetHeight()
-        marge = UTILS_UIMetrics.spacing(2)
+        marge = Style.espace(2)
         x_icon = rect.x + marge
         y_icon = rect.y + max(0, (rect.height - bmpHeight) // 2)
         if self.icon.IsOk():
@@ -97,28 +86,28 @@ class FirstColumnRenderer(object):
         largeur_texte = max(20, rect.width - (x_texte - rect.x) - marge)
 
         dc.SetFont(self.normalFont)
-        dc.SetTextForeground(UTILS_Interface.GetCouleurRole("on_surface"))
+        dc.SetTextForeground(Style.couleur("on_surface"))
         _, h_titre = dc.GetTextExtent(self.text)
         titre = self._Ellipsize(self.text, dc, largeur_texte)
         dc.DrawText(titre, int(x_texte), int(rect.y + max(marge, rect.height * 0.22 - h_titre / 2)))
 
         if self.description:
             dc.SetFont(self.smallerFont)
-            dc.SetTextForeground(UTILS_Interface.GetCouleurRole("on_surface_variant"))
+            dc.SetTextForeground(Style.couleur("on_surface_variant"))
             _, h_desc = dc.GetTextExtent(self.description)
             description = self._Ellipsize(self.description, dc, largeur_texte)
             dc.DrawText(description, int(x_texte), int(rect.y + rect.height * 0.68 - h_desc / 2))
 
     def GetLineHeight(self):
         icon_h = self.icon.GetHeight() if self.icon.IsOk() else 0
-        return max(UTILS_UIMetrics.px(58), icon_h + UTILS_UIMetrics.spacing(4))
+        return max(Style.px(58), icon_h + Style.espace(4))
 
     def GetSubItemWidth(self):
         try:
             largeur = self.parent.GetClientSize().GetWidth()
         except Exception:
             largeur = 0
-        return max(UTILS_UIMetrics.px(320), largeur - UTILS_UIMetrics.spacing(2))
+        return max(Style.px(320), largeur - Style.espace(2))
 
 
 class CTRL(ULC.UltimateListCtrl):
@@ -130,8 +119,7 @@ class CTRL(ULC.UltimateListCtrl):
             style=wx.BORDER_NONE,
             agwStyle=wx.LC_REPORT | wx.LC_NO_HEADER | wx.LC_HRULES | ULC.ULC_HAS_VARIABLE_ROW_HEIGHT,
         )
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-        self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        Style.appliquer_liste(self)
         self.EnableSelectionVista()
         self.Bind(wx.EVT_SIZE, self._OnSize)
         self.Remplissage()
@@ -142,7 +130,7 @@ class CTRL(ULC.UltimateListCtrl):
 
     def _AjusteColonne(self):
         try:
-            largeur = max(UTILS_UIMetrics.px(320), self.GetClientSize().GetWidth() - UTILS_UIMetrics.spacing(1))
+            largeur = max(Style.px(320), self.GetClientSize().GetWidth() - Style.espace(1))
             self.SetColumnWidth(0, largeur)
         except Exception:
             pass
@@ -163,6 +151,8 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(self, "surface")
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = CTRL(panel)
         self.Bind(ULC.EVT_LIST_ITEM_ACTIVATED, self.OnSelection, self.ctrl)
 
