@@ -29,12 +29,23 @@ RAYONS = {
     "dialogue": 12,
 }
 
+# Hiérarchie typographique sémantique, volontairement proche du vocabulaire
+# HTML. Les écrans choisissent un niveau de sens (h1, h2, h3...) et jamais une
+# taille en points. Les anciens noms restent des alias de compatibilité.
 TYPOGRAPHIES = {
-    "caption": {"delta": -1, "weight": wx.FONTWEIGHT_NORMAL},
+    "h1": {"delta": 4, "weight": wx.FONTWEIGHT_BOLD},
+    "h2": {"delta": 2, "weight": wx.FONTWEIGHT_BOLD},
+    "h3": {"delta": 1, "weight": wx.FONTWEIGHT_BOLD},
+    "h4": {"delta": 0, "weight": wx.FONTWEIGHT_BOLD},
+    "h5": {"delta": 0, "weight": wx.FONTWEIGHT_NORMAL, "semibold": True},
+    "h6": {"delta": -1, "weight": wx.FONTWEIGHT_BOLD},
     "body": {"delta": 0, "weight": wx.FONTWEIGHT_NORMAL},
     "body_emphasis": {"delta": 0, "weight": wx.FONTWEIGHT_BOLD},
-    "section": {"delta": 1, "weight": wx.FONTWEIGHT_BOLD},
-    "title": {"delta": 2, "weight": wx.FONTWEIGHT_BOLD},
+    "caption": {"delta": -1, "weight": wx.FONTWEIGHT_NORMAL},
+    "overline": {"delta": -1, "weight": wx.FONTWEIGHT_NORMAL, "semibold": True},
+    # Alias historiques : ne pas les utiliser dans les nouveaux écrans.
+    "title": {"alias": "h1"},
+    "section": {"alias": "h2"},
 }
 
 
@@ -76,9 +87,17 @@ def hauteur_toolbar(avec_libelle=True):
     return UTILS_UIMetrics.toolbar_height(avec_libelle=avec_libelle)
 
 
+def _definition_typographie(role):
+    definition = TYPOGRAPHIES.get(role, TYPOGRAPHIES["body"])
+    alias = definition.get("alias")
+    if alias:
+        return TYPOGRAPHIES.get(alias, TYPOGRAPHIES["body"])
+    return definition
+
+
 def police(role="body"):
     """Construit une fonte système à partir d'un rôle typographique."""
-    definition = TYPOGRAPHIES.get(role, TYPOGRAPHIES["body"])
+    definition = _definition_typographie(role)
     try:
         fonte = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
     except Exception:
@@ -87,10 +106,10 @@ def police(role="body"):
     try:
         facteur_texte = UTILS_Interface.GetTailleTexte() / 100.0
         base = max(8, fonte.GetPointSize())
-        taille = max(8, int(round((base + definition["delta"]) * facteur_texte)))
+        taille = max(8, int(round((base + definition.get("delta", 0)) * facteur_texte)))
         fonte.SetPointSize(taille)
-        poids = definition["weight"]
-        if role == "section" and hasattr(wx, "FONTWEIGHT_SEMIBOLD"):
+        poids = definition.get("weight", wx.FONTWEIGHT_NORMAL)
+        if definition.get("semibold") and hasattr(wx, "FONTWEIGHT_SEMIBOLD"):
             poids = wx.FONTWEIGHT_SEMIBOLD
         fonte.SetWeight(poids)
     except Exception:
@@ -160,4 +179,7 @@ def tokens():
         "action_compact": cible_action("compact"),
         "action_standard": cible_action("standard"),
         "icon_toolbar": taille_icone("toolbar"),
+        "font_h1": police("h1"),
+        "font_h2": police("h2"),
+        "font_h3": police("h3"),
     }
