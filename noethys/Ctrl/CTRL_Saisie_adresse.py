@@ -16,26 +16,16 @@ import wx.lib.masked as masked
 
 import Chemins
 import GestionDB
-from Ctrl import CTRL_Bouton_image
-from Utils import UTILS_Config, UTILS_Interface, UTILS_UIMetrics
+from Ctrl import CTRL_ActionRepens
+from Utils import UTILS_Config
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
-def _PoliceInterface():
-    police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-    facteur = UTILS_Interface.GetTailleTexte() / 100.0
-    police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-    return police
-
-
 def _AppliqueStyleSaisie(ctrl, largeur_min=-1):
-    try:
-        ctrl.SetFont(_PoliceInterface())
-        ctrl.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-        ctrl.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        ctrl.SetMinSize((largeur_min, UTILS_UIMetrics.action_target("compact")))
-    except Exception:
-        pass
+    Style.appliquer_saisie(ctrl)
+    if largeur_min != -1:
+        ctrl.SetMinSize((largeur_min, Style.cible_action("compact")))
 
 
 def Importation_donnees():
@@ -92,7 +82,7 @@ class TextCtrlCp(masked.TextCtrl):
         self.ctrlVille = ctrlVille
         self.listeVilles = listeVilles or []
         self.autoComplete = True
-        _AppliqueStyleSaisie(self, UTILS_UIMetrics.px(72))
+        _AppliqueStyleSaisie(self, Style.px(72))
         if activeAutoComplete:
             self.Bind(wx.EVT_KILL_FOCUS, self.OnKillFocus)
 
@@ -155,7 +145,7 @@ class TextCtrlVille(wx.TextCtrl):
         self.listeNomsVilles = listeNomsVilles or []
         self.ignoreEvtText = False
         self.autoComplete = True
-        _AppliqueStyleSaisie(self, UTILS_UIMetrics.px(150))
+        _AppliqueStyleSaisie(self, Style.px(150))
         if activeAutoComplete:
             self.Bind(wx.EVT_TEXT, self.OnText)
             self.Bind(wx.EVT_CHAR, self.OnChar)
@@ -219,41 +209,37 @@ class TextCtrlVille(wx.TextCtrl):
 
 class Adresse(wx.Panel):
     def __init__(self, parent, size=(-1, -1)):
-        wx.Panel.__init__(self, parent, id=-1, size=size, style=wx.TAB_TRAVERSAL)
+        wx.Panel.__init__(self, parent, id=-1, size=size, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
+        Style.appliquer_fenetre(self, "surface")
         self.listeNomsVilles, self.listeVilles, self.dictRegions, self.dictDepartements = Importation_donnees()
         activeAutoComplete = UTILS_Config.GetParametre("adresse_autocomplete", True)
         mask_cp = UTILS_Config.GetParametre("mask_cp", "#####")
 
         self.ctrl_cp = TextCtrlCp(self, value="", listeVilles=self.listeVilles, activeAutoComplete=activeAutoComplete, style=wx.TE_CENTRE, mask=mask_cp)
         self.label_ville = wx.StaticText(self, -1, _(u"Ville :"))
+        Style.appliquer_texte(self.label_ville, role="label", role_texte="on_surface", role_fond="surface")
         self.ctrl_ville = TextCtrlVille(self, value="", ctrlCp=self.ctrl_cp, listeVilles=self.listeVilles, listeNomsVilles=self.listeNomsVilles, activeAutoComplete=activeAutoComplete)
         self.ctrl_cp.ctrlVille = self.ctrl_ville
-        self.bouton_options = CTRL_Bouton_image.CTRL(
+        self.bouton_options = CTRL_ActionRepens.CTRL(
             self,
-            texte="",
-            iconeFluent="search",
-            tailleImage=(UTILS_UIMetrics.icon_size("inline"), UTILS_UIMetrics.icon_size("inline")),
+            label=u"",
+            icone="search",
+            variante="ghost",
+            tooltip=_(u"Rechercher une ville ou saisir une ville absente de la base"),
+            compact=True,
         )
 
         if "linux" in sys.platform:
             self.ctrl_ville.Enable(False)
 
-        try:
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
-            self.label_ville.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-            self.label_ville.SetFont(_PoliceInterface())
-        except Exception:
-            pass
-
         self.ctrl_cp.SetToolTip(wx.ToolTip(_(u"Saisissez ici le code postal de la ville")))
         self.ctrl_ville.SetToolTip(wx.ToolTip(_(u"Saisissez ici le nom de la ville")))
-        self.bouton_options.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour rechercher une ville ou pour saisir \nmanuellement une ville non présente dans la base\nde données du logiciel")))
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(self.ctrl_cp, 0, wx.ALIGN_CENTER_VERTICAL)
-        sizer.Add(self.label_ville, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(2))
-        sizer.Add(self.ctrl_ville, 1, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
-        sizer.Add(self.bouton_options, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
+        sizer.Add(self.label_ville, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(2))
+        sizer.Add(self.ctrl_ville, 1, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
+        sizer.Add(self.bouton_options, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
         self.SetSizer(sizer)
         self.Layout()
         self.Bind(wx.EVT_BUTTON, self.OnOptionsVille, self.bouton_options)
@@ -300,11 +286,12 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = Adresse(panel)
         self.ctrl.SetValueCP("69380")
         self.ctrl.SetValueVille("CHASSELAY")
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 0, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
