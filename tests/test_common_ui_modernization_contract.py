@@ -138,6 +138,16 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertNotIn("UTILS_Interface", text)
         self.assertNotIn("UTILS_UIMetrics", text)
 
+    def test_required_pieces_tree_uses_repens_list_and_scaled_status_icons(self):
+        text = self._read("noethys/Ctrl/CTRL_Pieces_obligatoires.py")
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_liste(self)", text)
+        self.assertIn('Style.taille_icone("inline")', text)
+        self.assertIn("GetStaticIconPath", text)
+        self.assertNotIn("wx.WHITE", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("CTRL_Bouton_image", text)
+
     def test_period_selector_uses_repens_actions_and_icons(self):
         text = self._read("noethys/Ctrl/CTRL_Selection_periode_simple.py")
         self.assertIn("CTRL_ActionRepens", text)
@@ -150,6 +160,29 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertNotIn("UTILS_Interface", text)
         self.assertNotIn("UTILS_UIMetrics", text)
         self.assertNotIn("_PoliceInterface", text)
+
+    def test_activity_selector_uses_repens_lists_actions_and_spacing(self):
+        text = self._read("noethys/Ctrl/CTRL_Selection_activites.py")
+        self.assertIn("CTRL_ActionRepens", text)
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_liste(ctrl)", text)
+        self.assertIn('icone="settings"', text)
+        self.assertIn('Style.hauteur_ligne("comfortable")', text)
+        self.assertNotIn("CTRL_Bouton_image", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+        self.assertNotIn("_PoliceInterface", text)
+
+    def test_present_registration_selector_consumes_repens_facade_only(self):
+        text = self._read("noethys/Ctrl/CTRL_Selection_inscrits_presents.py")
+        self.assertIn("CTRL_ActionRepens", text)
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_liste(ctrl)", text)
+        self.assertIn('Style.hauteur_panneau("secondary")', text)
+        self.assertIn('Style.appliquer_fenetre(self, "surface")', text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
+        self.assertNotIn("wx.Button", text)
 
     def test_business_lists_share_repens_actions_and_metrics(self):
         for relative_path in (
