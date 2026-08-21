@@ -15,18 +15,17 @@ import wx
 from Ctrl import CTRL_ActionRepens
 from Ctrl import CTRL_Choix_modele
 from Utils import UTILS_Config
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
 class CTRL(wx.Panel):
-    """Options d'édition des rappels, sans grille ni largeur historique figée."""
+    """Options d'édition des rappels, compactes et pilotées par Repens."""
 
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
-        self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        Style.appliquer_fenetre(self, "surface")
 
         self.label_modele = wx.StaticText(self, -1, _(u"Modèle"))
         self.ctrl_modele = CTRL_Choix_modele.CTRL_Choice(self, categorie="rappel")
@@ -36,6 +35,7 @@ class CTRL(wx.Panel):
             icone="settings",
             variante="ghost",
             tooltip=_(u"Gérer les modèles de lettres de rappel"),
+            compact=True,
         )
 
         self.checkbox_coupon = wx.CheckBox(self, -1, _(u"Insérer le coupon-réponse"))
@@ -48,18 +48,13 @@ class CTRL(wx.Panel):
             _(u"Enregistrer une copie unique dans un répertoire"),
         )
         self.ctrl_repertoire = wx.TextCtrl(self, -1, u"")
-        self.ctrl_repertoire.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
-        try:
-            self.ctrl_repertoire.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.ctrl_repertoire.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        except Exception:
-            pass
         self.bouton_repertoire = CTRL_ActionRepens.CTRL(
             self,
             label=_(u"Parcourir…"),
             icone="more",
             variante="ghost",
             tooltip=_(u"Sélectionner le répertoire de destination"),
+            compact=True,
         )
 
         self.__set_properties()
@@ -78,15 +73,12 @@ class CTRL(wx.Panel):
         self.OnCheckRepertoire(None)
 
     def __set_properties(self):
-        secondaire = UTILS_Interface.GetCouleurRole("on_surface_variant")
         for label in (self.label_modele, self.label_repertoire):
-            label.SetForegroundColour(secondaire)
-            try:
-                police = wx.Font(label.GetFont())
-                police.SetWeight(wx.FONTWEIGHT_SEMIBOLD)
-                label.SetFont(police)
-            except Exception:
-                pass
+            Style.appliquer_texte(label, role="label", role_texte="on_surface_variant", role_fond="surface")
+        for controle in (self.checkbox_coupon, self.checkbox_codeBarre, self.checkbox_repertoire):
+            Style.appliquer_texte(controle, role="body", role_texte="on_surface", role_fond="surface")
+        Style.appliquer_saisie(self.ctrl_modele)
+        Style.appliquer_saisie(self.ctrl_repertoire)
 
         self.ctrl_modele.SetToolTip(wx.ToolTip(_(u"Sélectionnez le modèle")))
         self.checkbox_coupon.SetToolTip(wx.ToolTip(_(u"Insérer un coupon à découper")))
@@ -96,8 +88,8 @@ class CTRL(wx.Panel):
         )
 
     def __do_layout(self):
-        espace = UTILS_UIMetrics.spacing(1)
-        section = UTILS_UIMetrics.spacing(2)
+        espace = Style.espace(1)
+        section = Style.espace(2)
 
         ligne_modele = wx.BoxSizer(wx.HORIZONTAL)
         ligne_modele.Add(self.ctrl_modele, 1, wx.EXPAND | wx.RIGHT, espace)
@@ -210,11 +202,12 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = CTRL(panel)
         self.boutonTest = wx.Button(panel, -1, _(u"Bouton de test"))
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
-        sizer.Add(self.boutonTest, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, Style.espace(2))
+        sizer.Add(self.boutonTest, 0, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(panel, 1, wx.EXPAND)
