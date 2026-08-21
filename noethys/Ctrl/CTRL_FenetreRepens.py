@@ -171,6 +171,7 @@ class Dialog(wx.Dialog):
         wx.Dialog.__init__(self, parent, -1, title=titre, style=style)
         self.parent = parent
         self.titre_repens = titre or u""
+        self._sections_ajoutees = 0
         Style.appliquer_fenetre(self, "surface")
 
         self.ctrl_bandeau = None
@@ -230,6 +231,8 @@ class Dialog(wx.Dialog):
         return self.sizer_contenu
 
     def AjouterSection(self, titre=u"", sous_titre=u"", proportion=0, role_fond="surface_container_low"):
+        if self._sections_ajoutees > 0:
+            self.sizer_contenu.AddSpacer(Style.espace(2))
         section = Section(
             self.panel_contenu,
             titre=titre,
@@ -237,10 +240,7 @@ class Dialog(wx.Dialog):
             role_fond=role_fond,
         )
         self.sizer_contenu.Add(section, proportion, wx.EXPAND)
-        if self.sizer_contenu.GetItemCount() > 1:
-            # Le spacer est placé avant la dernière section ajoutée.
-            index = self.sizer_contenu.GetItemCount() - 1
-            self.sizer_contenu.Insert(index, Style.espace(2), Style.espace(2))
+        self._sections_ajoutees += 1
         self.panel_contenu.Layout()
         return section
 
@@ -276,7 +276,6 @@ class Dialog(wx.Dialog):
         try:
             self.panel_contenu.Layout()
             self.Layout()
-            self.SendSizeEvent()
         except Exception:
             pass
 
