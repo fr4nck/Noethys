@@ -79,6 +79,7 @@ class CommonUIModernizationContractTests(unittest.TestCase):
 
     def test_common_entry_controls_consume_repens_stylesheet(self):
         for relative_path in (
+            "noethys/Ctrl/CTRL_Saisie_date.py",
             "noethys/Ctrl/CTRL_Saisie_heure.py",
             "noethys/Ctrl/CTRL_Saisie_mail.py",
             "noethys/Ctrl/CTRL_Saisie_tel.py",
@@ -106,12 +107,13 @@ class CommonUIModernizationContractTests(unittest.TestCase):
             self.assertNotIn("UTILS_Interface", text)
             self.assertNotIn("UTILS_UIMetrics", text)
 
-    def test_date_control_remains_theme_dpi_aware_until_its_full_migration(self):
+    def test_date_control_consumes_semantic_repens_entry_style(self):
         text = self._read("noethys/Ctrl/CTRL_Saisie_date.py")
-        self.assertIn("UTILS_Interface", text)
-        self.assertIn("UTILS_UIMetrics", text)
-        self.assertIn('action_target("compact")', text)
-        self.assertIn('GetCouleurRole("on_surface")', text)
+        self.assertIn("Style.appliquer_saisie(self)", text)
+        self.assertIn('Style.cible_action("compact")', text)
+        self.assertIn('Style.espace(4)', text)
+        self.assertNotIn("GetCouleurRole", text)
+        self.assertNotIn("GetTailleTexte", text)
 
     def test_modern_entry_controls_drop_unused_historical_image_dependencies(self):
         for relative_path in (
@@ -157,11 +159,12 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertNotIn("wx.BitmapButton", text)
         self.assertNotIn("FlexGridSizer", text)
 
-    def test_date_selector_uses_fluent_calendar_and_responsive_menu_icons(self):
+    def test_date_selector_uses_fluent_calendar_and_repens_menu_icons(self):
         text = self._read("noethys/Ctrl/CTRL_Saisie_date.py")
         self.assertIn('iconeFluent="calendar"', text)
         self.assertIn("GetStaticIconPath", text)
-        self.assertIn('icon_size("compact")', text)
+        self.assertIn('Style.taille_icone("compact")', text)
+        self.assertIn('Style.taille_icone("inline")', text)
         self.assertIn("wx.BoxSizer(wx.HORIZONTAL)", text)
         self.assertNotIn("wx.BitmapButton", text)
         self.assertNotIn("FlexGridSizer", text)
