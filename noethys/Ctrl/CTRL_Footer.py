@@ -12,8 +12,7 @@ import wx
 import datetime
 import six
 
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 
 if 'phoenix' in wx.PlatformInfo:
     from wx import Control
@@ -26,7 +25,7 @@ class Footer(Control):
 
     def __init__(self, parent, id=-1, pos=wx.DefaultPosition, size=wx.DefaultSize,
                  style=wx.NO_BORDER, name="footer"):
-        self.hauteur = UTILS_UIMetrics.row_height("table")
+        self.hauteur = Style.hauteur_ligne("table")
         self.afficherColonneDroite = True
 
         self.listview = None
@@ -43,26 +42,21 @@ class Footer(Control):
         self.Bind(wx.EVT_SIZE, self.MAJ_affichage)
 
     def AppliquerTheme(self):
-        sombre = UTILS_Interface.EstSombre()
-        fond = UTILS_Interface.GetCouleurRole("surface_container", sombre=sombre)
-        texte = UTILS_Interface.GetCouleurRole("on_surface_variant", sombre=sombre)
         try:
-            self.SetBackgroundColour(fond)
-            self.SetForegroundColour(texte)
+            self.SetBackgroundColour(Style.couleur("surface_container"))
+            self.SetForegroundColour(Style.couleur("on_surface_variant"))
+            self.SetFont(Style.police("body"))
         except Exception:
             pass
 
     def _PoliceFooter(self):
         try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(7, int(round(police.GetPointSize() * facteur))))
-            return police
+            return Style.police("body")
         except Exception:
             return self.GetFont()
 
     def MAJ_affichage(self, event=None):
-        self.hauteur = UTILS_UIMetrics.row_height("table")
+        self.hauteur = Style.hauteur_ligne("table")
         try:
             self.SetMinSize((-1, self.hauteur))
         except Exception:
@@ -133,7 +127,7 @@ class Footer(Control):
         for indexColonne, col in enumerate(self.listview.columns):
             texte = ""
             font = self._PoliceFooter()
-            couleur = UTILS_Interface.GetCouleurRole("on_surface_variant", sombre=UTILS_Interface.EstSombre())
+            couleur = Style.couleur("on_surface_variant")
             largeur = self._LargeurColonne(indexColonne, col)
             converter = col.stringConverter
             nom = col.valueGetter
@@ -179,7 +173,7 @@ class Footer(Control):
                 if "couleur" in infoColonne:
                     couleur = infoColonne["couleur"]
 
-            ajustement = UTILS_UIMetrics.spacing(1) if mode != "total" and dernierTexte == "" else 0
+            ajustement = Style.espace(1) if mode != "total" and dernierTexte == "" else 0
             self.DrawColonne(dc, x - ajustement, largeur + ajustement, texte, alignement, couleur, font)
             x += largeur
             self.listeImpression.append({"texte": texte, "alignement": alignement})
