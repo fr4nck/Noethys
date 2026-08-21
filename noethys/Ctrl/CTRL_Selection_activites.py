@@ -14,25 +14,14 @@ import wx
 import wx.lib.agw.customtreectrl as CT
 
 import GestionDB
-from Ctrl import CTRL_Bouton_image
-from Utils import UTILS_Adaptations, UTILS_Interface, UTILS_Parametres, UTILS_UIMetrics
+from Ctrl import CTRL_ActionRepens
+from Utils import UTILS_Adaptations, UTILS_Parametres
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
-def _PoliceInterface():
-    police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-    facteur = UTILS_Interface.GetTailleTexte() / 100.0
-    police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-    return police
-
-
 def _StyleListe(ctrl):
-    try:
-        ctrl.SetFont(_PoliceInterface())
-        ctrl.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-        ctrl.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-    except Exception:
-        pass
+    Style.appliquer_liste(ctrl)
 
 
 class CTRL_Groupes(CT.CustomTreeCtrl):
@@ -346,35 +335,29 @@ class CTRL(wx.Panel):
         self.parent = parent
         self.afficheToutes = afficheToutes
         self.modeGroupes = modeGroupes
-        try:
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
-        except Exception:
-            pass
+        Style.appliquer_fenetre(self, "surface")
 
         self.radio_toutes = wx.RadioButton(self, -1, _(u"Toutes les activités"), style=wx.RB_GROUP)
         style = 0 if self.afficheToutes else wx.RB_GROUP
         self.radio_groupes_activites = wx.RadioButton(self, -1, _(u"Les groupes d'activités suivants :"), style=style)
         self.ctrl_groupes_activites = CTRL_Groupes_activites(self)
         self.radio_activites = wx.RadioButton(self, -1, _(u"Les activités suivantes :"))
-        self.bouton_options_activites = CTRL_Bouton_image.CTRL(
+        self.bouton_options_activites = CTRL_ActionRepens.CTRL(
             self,
-            texte="",
-            cheminImage="Images/16x16/Options.png",
-            tailleImage=(UTILS_UIMetrics.icon_size("inline"), UTILS_UIMetrics.icon_size("inline")),
+            label="",
+            icone="settings",
+            variante="ghost",
+            tooltip=_(u"Options d'affichage des activités"),
+            compact=True,
         )
-        self.bouton_options_activites.SetToolTip(wx.ToolTip(_(u"Options d'affichage des activités")))
         self.ctrl_activites = CTRL_Activites(self)
         self.ctrl_groupes = CTRL_Groupes(self)
 
-        hauteur_liste = UTILS_UIMetrics.row_height("comfortable") * 3
+        hauteur_liste = Style.hauteur_ligne("comfortable") * 3
         for ctrl in (self.ctrl_groupes_activites, self.ctrl_activites, self.ctrl_groupes):
-            ctrl.SetMinSize((UTILS_UIMetrics.px(240), hauteur_liste))
+            ctrl.SetMinSize((Style.px(240), hauteur_liste))
         for radio in (self.radio_toutes, self.radio_groupes_activites, self.radio_activites):
-            try:
-                radio.SetFont(_PoliceInterface())
-                radio.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-            except Exception:
-                pass
+            Style.appliquer_texte(radio, role="body", role_texte="on_surface", role_fond="surface")
 
         if not self.modeGroupes:
             self.ctrl_activites.MAJ()
@@ -389,11 +372,11 @@ class CTRL(wx.Panel):
         self.Bind(wx.EVT_RADIOBUTTON, self.OnRadioActivites, self.radio_activites)
         self.Bind(wx.EVT_BUTTON, self.ctrl_activites.OnBoutonOptionsActivites, self.bouton_options_activites)
 
-        marge_indentation = UTILS_UIMetrics.spacing(5)
-        espace = UTILS_UIMetrics.spacing(2)
+        marge_indentation = Style.espace(5)
+        espace = Style.espace(2)
         ligne_activites = wx.BoxSizer(wx.HORIZONTAL)
         ligne_activites.Add(self.radio_activites, 0, wx.ALIGN_CENTER_VERTICAL)
-        ligne_activites.Add(self.bouton_options_activites, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
+        ligne_activites.Add(self.bouton_options_activites, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
 
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(self.radio_toutes, 0, wx.BOTTOM, espace)
@@ -511,14 +494,15 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = CTRL(panel, modeGroupes=False)
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(3))
+        sizer.Add(self.ctrl, 1, wx.ALL | wx.EXPAND, Style.espace(3))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
         self.SetSizer(cadre)
-        self.SetMinSize((UTILS_UIMetrics.px(520), UTILS_UIMetrics.px(420)))
+        self.SetMinSize((Style.px(520), Style.px(420)))
         self.Layout()
         self.CentreOnScreen()
 
