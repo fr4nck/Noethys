@@ -62,8 +62,35 @@ def patch_images():
     )
 
 
+def _taskbar_repens_integer_safe(text):
+    """Reconnaît la génération Repens qui n'a plus besoin du patch historique.
+
+    Le correctif d'origine cherchait des lignes exactes de l'ancien TaskBar.
+    La modernisation Repens calcule désormais directement rectangle, rayon et
+    coordonnées texte avec des entiers ; tenter de réappliquer l'ancien patch
+    doit donc être un no-op explicite et non une erreur fatale.
+    """
+    markers = (
+        "hauteurRond = max(1, int(round(hauteurTexte + padding * 2)))",
+        "int(round(largeurTexte + padding * 2 + hauteurRond / 2.0))",
+        "rect = wx.Rect(int(xRond), int(yRond), int(largeurRond), int(hauteurRond))",
+        "rayon = max(1, int(round(hauteurRond / 2.0)))",
+        "xTexte = int(round(",
+        "yTexte = int(round(",
+        "dc.DrawText(texte, xTexte, yTexte)",
+    )
+    return all(marker in text for marker in markers)
+
+
 def patch_taskbar():
     path = "noethys/Ctrl/CTRL_TaskBarIcon.py"
+    target = ROOT / path
+    text = target.read_text(encoding="utf-8")
+
+    if _taskbar_repens_integer_safe(text):
+        print("already fixed %s (Repens integer-safe)" % path)
+        return
+
     replace(
         path,
         "        hauteurRond = hauteurTexte + padding * 2\n",
