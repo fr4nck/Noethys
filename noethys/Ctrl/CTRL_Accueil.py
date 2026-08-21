@@ -86,6 +86,9 @@ class Panel(wx.Panel):
 
     def __init__(self, parent, size=(-1, -1)):
         wx.Panel.__init__(self, parent, name="panel_accueil", id=-1, size=size, style=wx.TAB_TRAVERSAL)
+        # wx.AutoBufferedPaintDC exige explicitement ce style sous wxMSW/Phoenix.
+        # Le définir dès le constructeur évite l'assertion native au premier paint.
+        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
         self._annonce = None
         self._annonce_chargee = False
         self.AppliquerTheme()
