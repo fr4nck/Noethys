@@ -14,6 +14,7 @@ import wx
 
 import Chemins
 from Utils import UTILS_Adaptations
+from Utils import UTILS_IconesRepens
 from Utils import UTILS_Interface
 from Utils import UTILS_UIMetrics
 from Utils.UTILS_Traduction import _
@@ -24,10 +25,14 @@ else:
     from wx.lib.agw import ultimatelistctrl as ULC
 
 
-class CTRL(ULC.UltimateListCtrl):
-    """Liste des pièces jointes avec icônes et états compatibles thèmes."""
+ID_AJOUTER = 10
+ID_SUPPRIMER = 30
 
-    def __init__(self, parent, listePieces=[]):
+
+class CTRL(ULC.UltimateListCtrl):
+    """Liste des pièces jointes avec icônes informatives et actions Repens."""
+
+    def __init__(self, parent, listePieces=None):
         ULC.UltimateListCtrl.__init__(
             self,
             parent,
@@ -35,7 +40,7 @@ class CTRL(ULC.UltimateListCtrl):
             agwStyle=wx.LC_LIST | ULC.ULC_SINGLE_SEL,
         )
         self.parent = parent
-        self.listePieces = listePieces
+        self.listePieces = listePieces or []
         self._taille_icone = UTILS_UIMetrics.icon_size("inline")
 
         try:
@@ -50,6 +55,8 @@ class CTRL(ULC.UltimateListCtrl):
         self.SetMinSize((UTILS_UIMetrics.px(260), UTILS_UIMetrics.panel_min_height("secondary")))
         self.SetToolTip(wx.ToolTip(_(u"Pièces jointes. Clic droit pour ajouter ou supprimer un fichier.")))
 
+        # Les pictogrammes d'extension portent une information métier et sont
+        # donc conservés ; seules les commandes passent au catalogue Repens.
         self.dictImages = {}
         il = wx.ImageList(self._taille_icone, self._taille_icone, True)
         listeExtensions = ["bmp", "doc", "docx", "gif", "jpeg", "jpg", "pdf", "png", "tous", "xls", "xlsx", "zip"]
@@ -65,6 +72,8 @@ class CTRL(ULC.UltimateListCtrl):
         self.Bind(ULC.EVT_LIST_ITEM_RIGHT_CLICK, self.OnContextMenu)
         self.Bind(wx.EVT_RIGHT_DOWN, self.OnContextMenu)
         self.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
+        self.Bind(wx.EVT_MENU, self.Ajouter, id=ID_AJOUTER)
+        self.Bind(wx.EVT_MENU, self.Supprimer, id=ID_SUPPRIMER)
         self.MAJ()
 
     def MAJ(self):
@@ -105,14 +114,23 @@ class CTRL(ULC.UltimateListCtrl):
         if code in (wx.WXK_DELETE, wx.WXK_BACK):
             self.Supprimer(None)
             return
-        if code in (wx.WXK_INSERT,):
+        if code == wx.WXK_INSERT:
             self.Ajouter(None)
             return
         event.Skip()
 
-    def _BitmapMenu(self, image):
-        chemin = Chemins.GetStaticIconPath(image, taille=UTILS_UIMetrics.icon_size("compact"))
-        return wx.Bitmap(chemin, wx.BITMAP_TYPE_ANY)
+    def _BitmapMenu(self, nom, role="on_surface"):
+        try:
+            bitmap = UTILS_IconesRepens.GetBitmap(
+                nom,
+                taille=UTILS_UIMetrics.icon_size("compact"),
+                role=role,
+            )
+            if bitmap is not None and bitmap.IsOk():
+                return bitmap
+        except Exception:
+            pass
+        return wx.NullBitmap
 
     def OnContextMenu(self, event):
         try:
@@ -129,15 +147,17 @@ class CTRL(ULC.UltimateListCtrl):
             self.ToutDeselectionner()
 
         menuPop = UTILS_Adaptations.Menu()
-        item_ajouter = wx.MenuItem(menuPop, 10, _(u"Ajouter une pièce jointe"))
-        item_ajouter.SetBitmap(self._BitmapMenu("Images/16x16/Ajouter.png"))
+        item_ajouter = wx.MenuItem(menuPop, ID_AJOUTER, _(u"Ajouter une pièce jointe…"))
+        bitmap = self._BitmapMenu("add")
+        if bitmap.IsOk():
+            item_ajouter.SetBitmap(bitmap)
         menuPop.AppendItem(item_ajouter)
-        self.Bind(wx.EVT_MENU, self.Ajouter, id=10)
 
-        item_supprimer = wx.MenuItem(menuPop, 30, _(u"Supprimer la pièce jointe"))
-        item_supprimer.SetBitmap(self._BitmapMenu("Images/16x16/Supprimer.png"))
+        item_supprimer = wx.MenuItem(menuPop, ID_SUPPRIMER, _(u"Supprimer la pièce jointe"))
+        bitmap = self._BitmapMenu("delete", role="danger_text")
+        if bitmap.IsOk():
+            item_supprimer.SetBitmap(bitmap)
         menuPop.AppendItem(item_supprimer)
-        self.Bind(wx.EVT_MENU, self.Supprimer, id=30)
         if noSelection is True:
             item_supprimer.Enable(False)
 
@@ -151,14 +171,13 @@ class CTRL(ULC.UltimateListCtrl):
             index = self.GetNextSelected(index)
 
     def Ajouter(self, event):
-        standardPath = wx.StandardPaths.Get()
-        rep = standardPath.GetDocumentsDir()
+        rep = wx.StandardPaths.Get().GetDocumentsDir()
         dlg = wx.FileDialog(
             self,
             message=_(u"Veuillez sélectionner le ou les fichiers à joindre"),
             defaultDir=rep,
             defaultFile="",
-            style=wx.FD_OPEN | wx.FD_MULTIPLE,
+            style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_FILE_MUST_EXIST,
         )
         try:
             if dlg.ShowModal() != wx.ID_OK:
@@ -180,6 +199,7 @@ class CTRL(ULC.UltimateListCtrl):
                     dlg.ShowModal()
                     dlg.Destroy()
                     valide = False
+                    break
             if valide is True:
                 extension = fichier.split('.')[-1].lower()
                 taille = os.path.getsize(fichier)
@@ -189,21 +209,31 @@ class CTRL(ULC.UltimateListCtrl):
     def Supprimer(self, event):
         if self.GetSelectedItemCount() == 0:
             if event is not None:
-                dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucune pièce jointe à enlever de la liste !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
+                dlg = wx.MessageDialog(
+                    self,
+                    _(u"Vous n'avez sélectionné aucune pièce jointe à enlever de la liste !"),
+                    _(u"Erreur"),
+                    wx.OK | wx.ICON_EXCLAMATION,
+                )
                 dlg.ShowModal()
                 dlg.Destroy()
             return
         index = self.GetFirstSelected()
         if self.listePieces[index]["obligatoire"] is True:
-            dlg = wx.MessageDialog(self, _(u"Vous ne pouvez pas désélectionner cette pièce !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
+            dlg = wx.MessageDialog(
+                self,
+                _(u"Vous ne pouvez pas désélectionner cette pièce !"),
+                _(u"Erreur"),
+                wx.OK | wx.ICON_EXCLAMATION,
+            )
             dlg.ShowModal()
             dlg.Destroy()
             return
         self.listePieces.pop(index)
         self.MAJ()
 
-    def SetPieces(self, listePieces=[]):
-        self.listePieces = listePieces
+    def SetPieces(self, listePieces=None):
+        self.listePieces = listePieces or []
         self.MAJ()
 
 
