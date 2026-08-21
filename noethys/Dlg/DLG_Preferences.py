@@ -13,9 +13,9 @@ import Chemins
 from Utils import UTILS_Adaptations
 from Utils.UTILS_Traduction import _
 import wx
-from Ctrl import CTRL_Bouton_image
 import os
 from Ctrl import CTRL_Bandeau
+from Ctrl import CTRL_ActionRepens
 
 import GestionDB
 from Utils import UTILS_Config
@@ -24,6 +24,7 @@ from Utils import UTILS_Interface
 from Utils import UTILS_Fichiers
 from Utils import UTILS_Parametres
 from Utils import UTILS_Json
+from Utils import UTILS_StyleRepens as Style
 
 
 
@@ -800,43 +801,51 @@ class Email(wx.Panel):
 
 class Dialog(wx.Dialog):
     def __init__(self, parent):
-        wx.Dialog.__init__(self, parent, -1, style=wx.DEFAULT_DIALOG_STYLE)
+        wx.Dialog.__init__(self, parent, -1, style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.parent = parent
-        
+
         intro = _(u"Vous pouvez modifier ici les paramètres de base du logiciel. Les fonctionnalités marquées d'un astérisque (*) nécessitent un redémarrage du logiciel.")
         titre = _(u"Préférences")
         self.ctrl_bandeau = CTRL_Bandeau.Bandeau(self, titre=titre, texte=intro, hauteurHtml=30, nomImage="Images/32x32/Configuration2.png")
-        
-        # Contenu
-        self.ctrl_interface = Interface(self)
-        self.ctrl_monnaie = Monnaie(self)
-        self.ctrl_dates = Dates(self)
-        self.ctrl_telephones = Telephones(self)
-        self.ctrl_codesPostaux = Codes_postaux(self)
-        self.ctrl_adresses = Adresses(self)
-        self.ctrl_rapport_bugs = Rapport_bugs(self)
-        self.ctrl_propose_maj = Propose_maj(self)
-        self.ctrl_derniers_fichiers = DerniersFichiers(self)
-        self.ctrl_autodeconnect = Autodeconnect(self) 
-        self.ctrl_interface_mysql = Interface_mysql(self) 
-        self.ctrl_comptes_internet = Comptes_internet(self)
-        self.ctrl_email = Email(self)
+
+        # Le contenu historique dépasse facilement la hauteur disponible dès que
+        # Windows applique un facteur DPI/texte. Il vit désormais dans une zone
+        # scrollable : chaque panneau conserve sa taille naturelle et n'est plus
+        # comprimé par le sizer du dialogue.
+        self.contenu = wx.ScrolledWindow(self, -1, style=wx.HSCROLL | wx.VSCROLL | wx.TAB_TRAVERSAL)
+        self.contenu.SetScrollRate(max(8, Style.espace(2)), max(8, Style.espace(2)))
+
+        # Contenu métier inchangé
+        self.ctrl_interface = Interface(self.contenu)
+        self.ctrl_monnaie = Monnaie(self.contenu)
+        self.ctrl_dates = Dates(self.contenu)
+        self.ctrl_telephones = Telephones(self.contenu)
+        self.ctrl_codesPostaux = Codes_postaux(self.contenu)
+        self.ctrl_adresses = Adresses(self.contenu)
+        self.ctrl_rapport_bugs = Rapport_bugs(self.contenu)
+        self.ctrl_propose_maj = Propose_maj(self.contenu)
+        self.ctrl_derniers_fichiers = DerniersFichiers(self.contenu)
+        self.ctrl_autodeconnect = Autodeconnect(self.contenu)
+        self.ctrl_interface_mysql = Interface_mysql(self.contenu)
+        self.ctrl_comptes_internet = Comptes_internet(self.contenu)
+        self.ctrl_email = Email(self.contenu)
 
         # Redémarrage
-        self.label_redemarrage = wx.StaticText(self, -1, _(u"* Le changement sera effectif au redémarrage du logiciel"))
-        self.label_redemarrage.SetFont(wx.Font(7, wx.SWISS, wx.NORMAL, wx.NORMAL))
-        
-        self.bouton_aide = CTRL_Bouton_image.CTRL(self, texte=_(u"Aide"), cheminImage="Images/32x32/Aide.png")
-        self.bouton_ok = CTRL_Bouton_image.CTRL(self, texte=_(u"Ok"), cheminImage="Images/32x32/Valider.png")
-        self.bouton_annuler = CTRL_Bouton_image.CTRL(self, id=wx.ID_CANCEL, texte=_(u"Annuler"), cheminImage="Images/32x32/Annuler.png")
-                
+        self.label_redemarrage = wx.StaticText(self.contenu, -1, _(u"* Le changement sera effectif au redémarrage du logiciel"))
+        self.label_redemarrage.SetFont(Style.police("caption"))
+        self.label_redemarrage.SetForegroundColour(Style.couleur("on_surface_variant"))
+
+        # Actions communes Repens : le dialogue ne dépend plus du vieux bouton image.
+        self.bouton_aide = CTRL_ActionRepens.CTRL(self, label=_(u"Aide"), variante="ghost")
+        self.bouton_ok = CTRL_ActionRepens.CTRL(self, id=wx.ID_OK, label=_(u"Ok"), icone="check", variante="primaire")
+        self.bouton_annuler = CTRL_ActionRepens.CTRL(self, id=wx.ID_CANCEL, label=_(u"Annuler"), variante="secondaire")
+
         self.__set_properties()
         self.__do_layout()
 
         self.Bind(wx.EVT_BUTTON, self.OnBoutonAide, self.bouton_aide)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonOk, self.bouton_ok)
 
-        
     def __set_properties(self):
         self.SetTitle(_(u"Préférences"))
         self.bouton_aide.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour obtenir de l'aide")))
@@ -844,53 +853,63 @@ class Dialog(wx.Dialog):
         self.bouton_annuler.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour annuler et fermer")))
 
     def __do_layout(self):
-        grid_sizer_base = wx.FlexGridSizer(rows=4, cols=1, vgap=10, hgap=10)
-        
-        grid_sizer_base.Add(self.ctrl_bandeau, 0, wx.EXPAND, 0)
-        
-        grid_sizer_contenu = wx.FlexGridSizer(rows=10, cols=2, vgap=10, hgap=10)
-        
-        grid_sizer_gauche = wx.FlexGridSizer(rows=7, cols=1, vgap=10, hgap=10)
-        grid_sizer_gauche.Add(self.ctrl_interface, 1, wx.EXPAND, 0)
-        grid_sizer_gauche.Add(self.ctrl_interface_mysql, 1, wx.EXPAND, 0)
-        grid_sizer_gauche.Add(self.ctrl_dates, 1, wx.EXPAND, 0)
-        grid_sizer_gauche.Add(self.ctrl_telephones, 1, wx.EXPAND, 0)
-        grid_sizer_gauche.Add(self.ctrl_codesPostaux, 1, wx.EXPAND, 0)
-        grid_sizer_gauche.Add(self.ctrl_adresses, 1, wx.EXPAND, 0)
-        grid_sizer_gauche.Add(self.label_redemarrage, 1, wx.EXPAND, 0)
+        espace = Style.espace(2)
 
-        grid_sizer_droit = wx.FlexGridSizer(rows=7, cols=1, vgap=10, hgap=10)
-        grid_sizer_droit.Add(self.ctrl_propose_maj, 1, wx.EXPAND, 0)
-        grid_sizer_droit.Add(self.ctrl_rapport_bugs, 1, wx.EXPAND, 0)
-        grid_sizer_droit.Add(self.ctrl_derniers_fichiers, 1, wx.EXPAND, 0)
-        grid_sizer_droit.Add(self.ctrl_monnaie, 1, wx.EXPAND, 0)
-        grid_sizer_droit.Add(self.ctrl_autodeconnect, 1, wx.EXPAND, 0)
-        grid_sizer_droit.Add(self.ctrl_comptes_internet, 1, wx.EXPAND, 0)
-        grid_sizer_droit.Add(self.ctrl_email, 1, wx.EXPAND, 0)
+        colonne_gauche = wx.BoxSizer(wx.VERTICAL)
+        for ctrl in (
+            self.ctrl_interface,
+            self.ctrl_interface_mysql,
+            self.ctrl_dates,
+            self.ctrl_telephones,
+            self.ctrl_codesPostaux,
+            self.ctrl_adresses,
+        ):
+            colonne_gauche.Add(ctrl, 0, wx.EXPAND | wx.BOTTOM, espace)
+        colonne_gauche.Add(self.label_redemarrage, 0, wx.TOP | wx.BOTTOM, Style.espace(1))
 
-        grid_sizer_contenu = wx.FlexGridSizer(rows=10, cols=2, vgap=10, hgap=10)
-        grid_sizer_contenu.Add(grid_sizer_gauche, 1, wx.EXPAND, 0)
-        grid_sizer_contenu.Add(grid_sizer_droit, 1, wx.EXPAND, 0)
-        
-        grid_sizer_base.Add(grid_sizer_contenu, 1, wx.LEFT|wx.RIGHT|wx.EXPAND, 10)
-        
-        # Ligne vide pour agrandir la fenêtre
-        grid_sizer_base.AddGrowableRow(2)
-        grid_sizer_base.AddGrowableCol(0)
+        colonne_droite = wx.BoxSizer(wx.VERTICAL)
+        for ctrl in (
+            self.ctrl_propose_maj,
+            self.ctrl_rapport_bugs,
+            self.ctrl_derniers_fichiers,
+            self.ctrl_monnaie,
+            self.ctrl_autodeconnect,
+            self.ctrl_comptes_internet,
+            self.ctrl_email,
+        ):
+            colonne_droite.Add(ctrl, 0, wx.EXPAND | wx.BOTTOM, espace)
 
-        grid_sizer_boutons = wx.FlexGridSizer(rows=1, cols=4, vgap=10, hgap=10)
-        grid_sizer_boutons.Add(self.bouton_aide, 0, 0, 0)
-        grid_sizer_boutons.Add((20, 20), 0, wx.EXPAND, 0)
-        grid_sizer_boutons.Add(self.bouton_ok, 0, 0, 0)
-        grid_sizer_boutons.Add(self.bouton_annuler, 0, 0, 0)
-        grid_sizer_boutons.AddGrowableCol(1)
-        grid_sizer_base.Add(grid_sizer_boutons, 1, wx.LEFT|wx.RIGHT|wx.BOTTOM|wx.EXPAND, 10)
-        
-        self.SetSizer(grid_sizer_base)
-        grid_sizer_base.Fit(self)
+        colonnes = wx.BoxSizer(wx.HORIZONTAL)
+        colonnes.Add(colonne_gauche, 1, wx.EXPAND | wx.RIGHT, Style.espace(1))
+        colonnes.Add(colonne_droite, 1, wx.EXPAND | wx.LEFT, Style.espace(1))
 
+        sizer_contenu = wx.BoxSizer(wx.VERTICAL)
+        sizer_contenu.Add(colonnes, 0, wx.ALL | wx.EXPAND, espace)
+        self.contenu.SetSizer(sizer_contenu)
+        self.contenu.FitInside()
+
+        ligne_boutons = wx.BoxSizer(wx.HORIZONTAL)
+        ligne_boutons.Add(self.bouton_aide, 0, 0, 0)
+        ligne_boutons.AddStretchSpacer(1)
+        ligne_boutons.Add(self.bouton_ok, 0, wx.RIGHT, Style.espace(1))
+        ligne_boutons.Add(self.bouton_annuler, 0, 0, 0)
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.ctrl_bandeau, 0, wx.EXPAND, 0)
+        sizer.Add(self.contenu, 1, wx.LEFT | wx.RIGHT | wx.EXPAND, espace)
+        sizer.Add(ligne_boutons, 0, wx.ALL | wx.EXPAND, espace)
+        self.SetSizer(sizer)
+
+        # Le dialogue garde une taille de travail raisonnable, mais son contenu
+        # n'impose plus sa hauteur à la fenêtre. Les écrans plus petits disposent
+        # simplement des barres de défilement.
+        ecran = wx.GetClientDisplayRect()
+        largeur = min(Style.px(1040), max(Style.px(760), int(ecran.width * 0.72)))
+        hauteur = min(Style.px(760), max(Style.px(540), int(ecran.height * 0.78)))
+        self.SetMinSize((min(largeur, Style.px(720)), min(hauteur, Style.px(500))))
+        self.SetSize((largeur, hauteur))
         self.Layout()
-        self.CenterOnScreen()
+        self.CenterOnParent()
 
     def OnBoutonAide(self, event):
         from Utils import UTILS_Aide
@@ -926,6 +945,7 @@ class Dialog(wx.Dialog):
         self.ctrl_derniers_fichiers.Sauvegarde()
         self.ctrl_autodeconnect.Sauvegarde()
         self.ctrl_interface_mysql.Sauvegarde()
+        self.ctrl_comptes_internet.Sauvegarde()
         self.ctrl_email.Sauvegarde()
         
         # Fermeture de la fenêtre
