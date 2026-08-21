@@ -15,8 +15,9 @@ import wx.lib.agw.hyperlink as Hyperlink
 from dateutil import rrule
 
 import GestionDB
-from Ctrl import CTRL_Bouton_image
-from Utils import UTILS_Dates, UTILS_Interface, UTILS_UIMetrics
+from Ctrl import CTRL_ActionRepens
+from Utils import UTILS_Dates
+from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
 
@@ -66,13 +67,6 @@ def GetDates(jours=None, date_min=None, date_max=None):
     return listeDates
 
 
-def _PoliceInterface():
-    police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-    facteur = UTILS_Interface.GetTailleTexte() / 100.0
-    police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-    return police
-
-
 class Hyperlien(Hyperlink.HyperLinkCtrl):
     """Compatibilité pour les écrans tiers qui utilisaient encore ce helper."""
 
@@ -82,9 +76,9 @@ class Hyperlien(Hyperlink.HyperLinkCtrl):
         self.URL = URL
         self.AutoBrowse(False)
         try:
-            couleur = UTILS_Interface.GetCouleurRole("primary")
+            couleur = Style.couleur("primary")
             self.SetColours(couleur, couleur, couleur)
-            self.SetFont(_PoliceInterface())
+            self.SetFont(Style.police("body"))
         except Exception:
             pass
         self.SetUnderlines(False, False, True)
@@ -119,40 +113,42 @@ class CTRL_Jours(wx.Panel):
         self.parent = parent
         self.periode = periode
         self.liste_jours = tuple(jour for jour, label in self.JOURS)
-
-        try:
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
-        except Exception:
-            pass
+        Style.appliquer_fenetre(self, "surface")
 
         jours_sizer = wx.BoxSizer(wx.HORIZONTAL)
         for jour, abrege in self.JOURS:
             controle = wx.CheckBox(self, -1, abrege)
             controle.SetToolTip(wx.ToolTip(jour.capitalize()))
-            try:
-                controle.SetFont(_PoliceInterface())
-                controle.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-            except Exception:
-                pass
+            Style.appliquer_texte(controle, role="body", role_texte="on_surface", role_fond="surface")
             setattr(self, "check_%s" % jour, controle)
-            jours_sizer.Add(controle, 0, wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(1))
+            jours_sizer.Add(controle, 0, wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
 
-        self.bouton_tout = CTRL_Bouton_image.CTRL(self, texte=_(u"Tout"))
-        self.bouton_rien = CTRL_Bouton_image.CTRL(self, texte=_(u"Aucun"))
-        self.bouton_tout.SetToolTip(wx.ToolTip(_(u"Tout cocher")))
-        self.bouton_rien.SetToolTip(wx.ToolTip(_(u"Tout décocher")))
+        self.bouton_tout = CTRL_ActionRepens.CTRL(
+            self,
+            label=_(u"Tout"),
+            variante="ghost",
+            tooltip=_(u"Tout cocher"),
+            compact=True,
+        )
+        self.bouton_rien = CTRL_ActionRepens.CTRL(
+            self,
+            label=_(u"Aucun"),
+            variante="ghost",
+            tooltip=_(u"Tout décocher"),
+            compact=True,
+        )
         self.Bind(wx.EVT_BUTTON, self.OnTout, self.bouton_tout)
         self.Bind(wx.EVT_BUTTON, self.OnRien, self.bouton_rien)
 
         actions = wx.BoxSizer(wx.HORIZONTAL)
-        actions.Add(self.bouton_tout, 0, wx.RIGHT, UTILS_UIMetrics.spacing(1))
+        actions.Add(self.bouton_tout, 0, wx.RIGHT, Style.espace(1))
         actions.Add(self.bouton_rien, 0)
 
         principal = wx.BoxSizer(wx.HORIZONTAL)
         principal.Add(jours_sizer, 0, wx.ALIGN_CENTER_VERTICAL)
-        principal.Add(actions, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(2))
+        principal.Add(actions, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(2))
         self.SetSizer(principal)
-        self.Fit()
+        self.Layout()
 
     def OnTout(self, event):
         self.CocherTout()
@@ -189,26 +185,22 @@ class CTRL(wx.Panel):
         self.label_vacances = wx.StaticText(self, -1, _(u"Jours de vacances :"))
         self.ctrl_vacances = CTRL_Jours(self, "vacances")
 
-        try:
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
-            for label in (self.label_scolaires, self.label_vacances):
-                label.SetFont(_PoliceInterface())
-                label.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        except Exception:
-            pass
+        Style.appliquer_fenetre(self, "surface")
+        for label in (self.label_scolaires, self.label_vacances):
+            Style.appliquer_texte(label, role="label", role_texte="on_surface", role_fond="surface")
 
         ligne_scolaire = wx.BoxSizer(wx.HORIZONTAL)
-        ligne_scolaire.Add(self.label_scolaires, 0, wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(2))
+        ligne_scolaire.Add(self.label_scolaires, 0, wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, Style.espace(2))
         ligne_scolaire.Add(self.ctrl_scolaires, 1, wx.EXPAND)
         ligne_vacances = wx.BoxSizer(wx.HORIZONTAL)
-        ligne_vacances.Add(self.label_vacances, 0, wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, UTILS_UIMetrics.spacing(2))
+        ligne_vacances.Add(self.label_vacances, 0, wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, Style.espace(2))
         ligne_vacances.Add(self.ctrl_vacances, 1, wx.EXPAND)
 
         principal = wx.BoxSizer(wx.VERTICAL)
-        principal.Add(ligne_scolaire, 0, wx.EXPAND | wx.BOTTOM, UTILS_UIMetrics.spacing(2))
+        principal.Add(ligne_scolaire, 0, wx.EXPAND | wx.BOTTOM, Style.espace(2))
         principal.Add(ligne_vacances, 0, wx.EXPAND)
         self.SetSizer(principal)
-        self.Fit()
+        self.Layout()
 
     def GetDonnees(self):
         return {
@@ -229,11 +221,12 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel, "surface")
         self.ctrl = CTRL(panel)
         bouton_test = wx.Button(panel, -1, u"Test")
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
-        sizer.Add(bouton_test, 0, wx.ALL, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 0, wx.ALL | wx.EXPAND, Style.espace(2))
+        sizer.Add(bouton_test, 0, wx.ALL, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
