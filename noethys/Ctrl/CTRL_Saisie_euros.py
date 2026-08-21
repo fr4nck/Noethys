@@ -5,18 +5,17 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-11 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 import wx
 
 from Utils.UTILS_Traduction import _
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 
 
 class CTRL(wx.TextCtrl):
-    """Saisie monétaire alignée sur les métriques du design system."""
+    """Saisie monétaire alignée sur le CSS Repens."""
 
     def __init__(self, parent, font=None, size=(-1, -1), style=wx.TE_RIGHT):
         wx.TextCtrl.__init__(self, parent, -1, u"0.00", size=size, style=style)
@@ -26,23 +25,18 @@ class CTRL(wx.TextCtrl):
         self.Bind(wx.EVT_KILL_FOCUS, self.OnKillFocus)
 
     def _AppliqueStyle(self, font=None):
-        try:
-            if font is None:
-                font = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-                facteur = UTILS_Interface.GetTailleTexte() / 100.0
-                font.SetPointSize(max(8, int(round(font.GetPointSize() * facteur))))
-            self.SetFont(font)
-        except Exception:
-            pass
-
+        Style.appliquer_saisie(self)
+        if font is not None:
+            try:
+                self.SetFont(font)
+            except Exception:
+                pass
         try:
             largeur = max(
-                UTILS_UIMetrics.px(88),
-                self.GetTextExtent("0000.00")[0] + UTILS_UIMetrics.spacing(4),
+                Style.px(88),
+                self.GetTextExtent("0000.00")[0] + Style.espace(4),
             )
-            self.SetMinSize((largeur, UTILS_UIMetrics.action_target("compact")))
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+            self.SetMinSize((largeur, Style.cible_action("compact")))
         except Exception:
             pass
 
@@ -83,9 +77,10 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1)
+        Style.appliquer_fenetre(panel)
         self.ctrl = CTRL(panel)
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl, 0, wx.ALL, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl, 0, wx.ALL, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
