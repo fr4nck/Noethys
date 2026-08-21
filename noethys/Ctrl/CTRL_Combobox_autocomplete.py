@@ -5,42 +5,26 @@
 # Site internet :  www.noethys.com
 # Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-14 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
 import wx
 
 from Utils.UTILS_Traduction import _
-from Utils import UTILS_Interface
-from Utils import UTILS_UIMetrics
+from Utils import UTILS_StyleRepens as Style
 
 
 class CTRL(wx.ComboBox):
-    """ComboBox avec autocomplétion, alignée sur le design system."""
+    """ComboBox avec autocomplétion alignée sur le CSS Repens."""
 
     def __init__(self, parent):
         wx.ComboBox.__init__(self, parent, wx.ID_ANY)
         self.ignoreEvtText = False
-        self._AppliqueStyle()
+        Style.appliquer_saisie(self)
         self.Bind(wx.EVT_TEXT, self.EvtText)
         self.Bind(wx.EVT_CHAR, self.EvtChar)
         self.Bind(wx.EVT_COMBOBOX, self.EvtCombobox)
         self.Bind(wx.EVT_KILL_FOCUS, self.EvtFillFocus)
-
-    def _AppliqueStyle(self):
-        try:
-            police = wx.Font(wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT))
-            facteur = UTILS_Interface.GetTailleTexte() / 100.0
-            police.SetPointSize(max(8, int(round(police.GetPointSize() * facteur))))
-            self.SetFont(police)
-        except Exception:
-            pass
-        try:
-            self.SetMinSize((-1, UTILS_UIMetrics.action_target("compact")))
-            self.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-            self.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
-        except Exception:
-            pass
 
     def EvtCombobox(self, event):
         self.ignoreEvtText = True
@@ -81,7 +65,6 @@ class CTRL(wx.ComboBox):
             event.Skip()
 
     def GetValeur(self):
-        """Permet d'obtenir la valeur en cours de saisie avec wx.EVT_TEXT."""
         choice = self.GetValue()
         for index in range(self.GetCount()):
             if self.GetString(index) == choice:
@@ -93,12 +76,13 @@ class MyFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         wx.Frame.__init__(self, *args, **kwds)
         panel = wx.Panel(self, -1, name="panel_test")
+        Style.appliquer_fenetre(panel)
         self.ctrl1 = CTRL(panel)
         self.ctrl1.SetItems([_(u"Bonjour"), _(u"Maison"), _(u"Voiture")])
         self.ctrl2 = CTRL(panel)
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.ctrl1, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
-        sizer.Add(self.ctrl2, 0, wx.ALL | wx.EXPAND, UTILS_UIMetrics.spacing(2))
+        sizer.Add(self.ctrl1, 0, wx.ALL | wx.EXPAND, Style.espace(2))
+        sizer.Add(self.ctrl2, 0, wx.ALL | wx.EXPAND, Style.espace(2))
         panel.SetSizer(sizer)
         cadre = wx.BoxSizer(wx.VERTICAL)
         cadre.Add(panel, 1, wx.EXPAND)
