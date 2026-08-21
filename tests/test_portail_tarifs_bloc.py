@@ -83,6 +83,40 @@ class PortailTarifsBlocTests(unittest.TestCase):
             "IDsactivites_exclues": [5],
         })
 
+    def test_exclusion_temporairement_invisible_survit_a_un_enregistrement(self):
+        politique = BLOC.fusionner_choix_catalogue(
+            {
+                "mode": "automatique",
+                "IDsactivites_exclues": [7, 12],
+            },
+            IDs_catalogue=[1, 7, 9],
+            IDs_coches=[1, 9],
+            mode="automatique",
+        )
+        # 7 est encore visible et décochée ; 12 n'a momentanément plus de
+        # tarif courant/futur. Les deux exclusions doivent être conservées.
+        self.assertEqual(politique, {
+            "mode": "automatique",
+            "IDsactivites": [],
+            "IDsactivites_exclues": [7, 12],
+        })
+
+    def test_selection_temporairement_invisible_survit_a_un_enregistrement(self):
+        politique = BLOC.fusionner_choix_catalogue(
+            {
+                "mode": "selection",
+                "IDsactivites": [2, 15],
+            },
+            IDs_catalogue=[2, 4],
+            IDs_coches=[2, 4],
+            mode="selection",
+        )
+        self.assertEqual(politique, {
+            "mode": "selection",
+            "IDsactivites": [2, 4, 15],
+            "IDsactivites_exclues": [],
+        })
+
     def test_synchro_regenere_un_bloc_tarifs_et_ignore_les_autres(self):
         db = FakeDB([
             (1, '{"source":"autre"}', "ancien"),
