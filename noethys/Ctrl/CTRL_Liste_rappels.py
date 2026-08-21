@@ -11,6 +11,7 @@
 import wx
 
 from Ctrl import CTRL_Bouton_image
+from Ctrl import CTRL_OutilsListeRepens
 from Dlg import DLG_Filtres_rappels
 from Ol import OL_Rappels
 from Utils import UTILS_Interface
@@ -45,12 +46,12 @@ class CTRL(wx.Panel):
         self.bouton_liste_imprimer = self._CreerBouton(_(u"Imprimer"), "Images/16x16/Imprimante.png", _(u"Imprimer cette liste"))
         self.bouton_liste_export_texte = self._CreerBouton(_(u"Texte"), "Images/16x16/Texte2.png", _(u"Exporter cette liste au format Texte"))
         self.bouton_liste_export_excel = self._CreerBouton(_(u"Excel"), "Images/16x16/Excel.png", _(u"Exporter cette liste au format Excel"))
-        self.bouton_tout = self._CreerBouton(_(u"Tout cocher"), "Images/16x16/Cocher.png", _(u"Cocher tous les rappels affichés"))
-        self.bouton_rien = self._CreerBouton(_(u"Tout décocher"), "Images/16x16/Decocher.png", _(u"Décocher tous les rappels affichés"))
-        self.hyper_tout = self.bouton_tout
-        self.hyper_rien = self.bouton_rien
 
-        self.ctrl_recherche = OL_Rappels.BarreRecherche(self, listview=self.ctrl_rappels)
+        self.ctrl_recherche = CTRL_OutilsListeRepens.CTRL(
+            self,
+            listview=self.ctrl_rappels,
+            afficherCocher=bool(checkColonne),
+        )
         self.__do_layout()
 
         self.Bind(wx.EVT_BUTTON, self.OnBoutonApercu, self.bouton_apercu)
@@ -60,8 +61,6 @@ class CTRL(wx.Panel):
         self.Bind(wx.EVT_BUTTON, self.OnBoutonListeImprimer, self.bouton_liste_imprimer)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonListeExportTexte, self.bouton_liste_export_texte)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonListeExportExcel, self.bouton_liste_export_excel)
-        self.Bind(wx.EVT_BUTTON, self.OnBoutonTout, self.bouton_tout)
-        self.Bind(wx.EVT_BUTTON, self.OnBoutonRien, self.bouton_rien)
 
     def _CreerBouton(self, texte, image, tooltip):
         bouton = CTRL_Bouton_image.CTRL(self, texte=texte, cheminImage=image, tailleImage=(20, 20))
@@ -86,16 +85,11 @@ class CTRL(wx.Panel):
             actions.Add(bouton, 0, wx.RIGHT, espace)
         actions.AddStretchSpacer(1)
 
-        outils = wx.BoxSizer(wx.HORIZONTAL)
-        outils.Add(self.ctrl_recherche, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, separation)
-        outils.Add(self.bouton_tout, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, espace)
-        outils.Add(self.bouton_rien, 0, wx.ALIGN_CENTER_VERTICAL)
-
         principal = wx.BoxSizer(wx.VERTICAL)
         principal.Add(self.ctrl_filtres, 0, wx.EXPAND | wx.BOTTOM, marge)
         principal.Add(actions, 0, wx.EXPAND | wx.BOTTOM, marge)
         principal.Add(self.listviewAvecFooter, 1, wx.EXPAND)
-        principal.Add(outils, 0, wx.EXPAND | wx.TOP, marge)
+        principal.Add(self.ctrl_recherche, 0, wx.EXPAND | wx.TOP, marge)
         self.SetSizer(principal)
         self.SetMinSize((UTILS_UIMetrics.px(620), UTILS_UIMetrics.px(300)))
         self.Layout()
@@ -121,11 +115,12 @@ class CTRL(wx.Panel):
     def OnBoutonListeExportExcel(self, event):
         self.ctrl_rappels.ExportExcel(None)
 
+    # Alias conservés pour les éventuels appels externes historiques.
     def OnBoutonTout(self, event=None):
-        self.ctrl_rappels.CocheTout()
+        return self.ctrl_rappels.CocheTout()
 
     def OnBoutonRien(self, event=None):
-        self.ctrl_rappels.CocheRien()
+        return self.ctrl_rappels.CocheRien()
 
     def GetTracksCoches(self):
         return self.ctrl_rappels.GetTracksCoches()
