@@ -77,10 +77,9 @@ class CommonUIModernizationContractTests(unittest.TestCase):
             self.assertNotIn("FlexGridSizer", text)
             self.assertNotIn("GridSizer", text)
 
-    def test_common_entry_controls_follow_theme_text_and_dpi_metrics(self):
+    def test_common_entry_controls_consume_repens_stylesheet(self):
         for relative_path in (
             "noethys/Ctrl/CTRL_Saisie_heure.py",
-            "noethys/Ctrl/CTRL_Saisie_date.py",
             "noethys/Ctrl/CTRL_Saisie_mail.py",
             "noethys/Ctrl/CTRL_Saisie_tel.py",
             "noethys/Ctrl/CTRL_Saisie_euros.py",
@@ -92,10 +91,16 @@ class CommonUIModernizationContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Choix_modele.py",
         ):
             text = self._read(relative_path)
-            self.assertIn("UTILS_Interface", text)
-            self.assertIn("UTILS_UIMetrics", text)
-            self.assertIn('action_target("compact")', text)
-            self.assertIn('GetCouleurRole("on_surface")', text)
+            self.assertIn("UTILS_StyleRepens as Style", text)
+            self.assertNotIn("UTILS_Interface", text)
+            self.assertNotIn("UTILS_UIMetrics", text)
+
+    def test_date_control_remains_theme_dpi_aware_until_its_full_migration(self):
+        text = self._read("noethys/Ctrl/CTRL_Saisie_date.py")
+        self.assertIn("UTILS_Interface", text)
+        self.assertIn("UTILS_UIMetrics", text)
+        self.assertIn('action_target("compact")', text)
+        self.assertIn('GetCouleurRole("on_surface")', text)
 
     def test_modern_entry_controls_drop_unused_historical_image_dependencies(self):
         for relative_path in (
