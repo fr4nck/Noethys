@@ -159,6 +159,26 @@ class RepensSharedControlsContractTests(unittest.TestCase):
             self.assertIn('Style.taille_icone("inline")', text)
             self.assertNotIn("wx.WHITE", text)
 
+    def test_preferences_shell_keeps_business_panels_but_stops_compressing_them(self):
+        text = self._read("noethys/Dlg/DLG_Preferences.py")
+        self.assertIn("wx.ScrolledWindow", text)
+        self.assertIn("CTRL_ActionRepens", text)
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("self.contenu.FitInside()", text)
+        self.assertIn("self.ctrl_comptes_internet.Sauvegarde()", text)
+        self.assertNotIn("CTRL_Bouton_image", text)
+        self.assertNotIn("grid_sizer_base.Fit(self)", text)
+        self.assertNotIn("wx.Font(7", text)
+
+    def test_scale_preview_respects_autobuffered_paint_contract(self):
+        text = self._read("noethys/Dlg/DLG_Echelle_interface.py")
+        self.assertIn("self.SetBackgroundStyle(wx.BG_STYLE_PAINT)", text)
+        self.assertIn("wx.AutoBufferedPaintDC(self)", text)
+        self.assertLess(
+            text.index("self.SetBackgroundStyle(wx.BG_STYLE_PAINT)"),
+            text.index("wx.AutoBufferedPaintDC(self)"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
