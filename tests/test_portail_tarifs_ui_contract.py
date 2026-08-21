@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CTRL_TARIFS = ROOT / "noethys" / "Ctrl" / "CTRL_Portail_tarifs.py"
 CTRL_CONTENU = ROOT / "noethys" / "Ctrl" / "CTRL_Portail_contenu_externe.py"
+DLG_BLOC = ROOT / "noethys" / "Dlg" / "DLG_Saisie_portail_bloc.py"
 SERVEUR = ROOT / "noethys" / "Ctrl" / "CTRL_Portail_serveur.py"
 
 
@@ -30,11 +31,16 @@ class PortailTarifsUIContractTests(unittest.TestCase):
         self.assertIn("self.page_tarifs.SetParametres", texte)
 
     def test_tarifs_restent_exportes_comme_bloc_texte_historique(self):
-        texte = CTRL_CONTENU.read_text(encoding="utf-8")
-        # Le dialogue historique continue à voir le tout comme le même bloc
-        # contenu externe, lui-même mappé vers bloc_texte par le socle #63.
-        self.assertIn("def EstContenuExterne", texte)
-        self.assertNotIn("bloc_tarifs", texte)
+        contenu = CTRL_CONTENU.read_text(encoding="utf-8")
+        dialogue = DLG_BLOC.read_text(encoding="utf-8")
+        # Le marqueur interne peut naturellement contenir le mot "tarifs" ;
+        # ce qui importe est qu'aucune nouvelle catégorie persistante ne soit
+        # créée et que le dialogue continue à convertir le contenu enrichi en
+        # bloc_texte pour Connecthys.
+        self.assertIn("def EstContenuExterne", contenu)
+        self.assertNotIn('_("bloc_tarifs")', dialogue)
+        self.assertIn('if categorie == _("bloc_contenu_externe"):', dialogue)
+        self.assertIn('categorie = _("bloc_texte")', dialogue)
 
     def test_serveur_regenere_les_tarifs_avant_synchro_totale(self):
         texte = SERVEUR.read_text(encoding="utf-8")
