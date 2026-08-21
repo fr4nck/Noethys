@@ -40,6 +40,12 @@ CHAMPS_LISTES_IDS = (
     "jours_vacances",
 )
 
+POLITIQUE_DEFAUT = {
+    "mode": "automatique",
+    "IDsactivites": [],
+    "IDsactivites_exclues": [],
+}
+
 
 def convertir_liste_ids(valeur, type_texte=False):
     """Reprend le format historique Noethys ``1;2;3`` sans dépendance GUI."""
@@ -66,6 +72,45 @@ def convertir_liste_ids(valeur, type_texte=False):
                 # d'être visible lors d'une recette réelle.
                 resultats.append(item)
     return resultats or None
+
+
+def normaliser_politique(politique=None, IDsactivites=None):
+    """Normalise la politique de sélection des activités à publier.
+
+    Le mode ``automatique`` est volontairement le défaut : toute activité qui
+    reçoit plus tard un barème Noethys courant ou futur peut donc apparaître
+    sans qu'il soit nécessaire de revenir cocher son nouvel ID dans le bloc.
+
+    ``IDsactivites`` reste accepté pour compatibilité avec les premiers appels
+    du module et bascule alors en mode ``selection`` explicite.
+    """
+    if IDsactivites is not None:
+        return {
+            "mode": "selection",
+            "IDsactivites": list(IDsactivites),
+            "IDsactivites_exclues": [],
+        }
+
+    resultat = dict(POLITIQUE_DEFAUT)
+    if politique:
+        resultat.update(dict(politique))
+
+    mode = str(resultat.get("mode") or "automatique").strip().lower()
+    if mode not in ("automatique", "selection"):
+        mode = "automatique"
+    resultat["mode"] = mode
+    resultat["IDsactivites"] = list(resultat.get("IDsactivites") or [])
+    resultat["IDsactivites_exclues"] = list(resultat.get("IDsactivites_exclues") or [])
+    return resultat
+
+
+def activite_autorisee(IDactivite, politique):
+    politique = normaliser_politique(politique)
+    if IDactivite in set(politique["IDsactivites_exclues"]):
+        return False
+    if politique["mode"] == "selection":
+        return IDactivite in set(politique["IDsactivites"])
+    return True
 
 
 def _executer(DB, requete):
@@ -149,20 +194,25 @@ def _charger_tarifs(DB):
     return resultats
 
 
-def charger_baremes(DB, IDsactivites=None):
-    """Charge et enrichit les barèmes, puis les développe par catégorie tarifaire."""
+def charger_baremes(DB, IDsactivites=None, politique=None):
+    """Charge les barèmes et les développe par catégorie tarifaire.
+
+    En mode automatique, le filtre ne contient aucune liste figée d'activités :
+    une activité créée après la configuration du bloc sera donc découverte au
+    prochain rafraîchissement dès qu'elle possède un tarif publiable.
+    """
+    politique = normaliser_politique(politique=politique, IDsactivites=IDsactivites)
     activites = _charger_activites(DB)
     categories = _charger_categories(DB)
     lignes_calcul = _charger_lignes_calcul(DB)
     filtres = _charger_filtres(DB)
     tarifs = _charger_tarifs(DB)
 
-    filtre_activites = set(IDsactivites) if IDsactivites is not None else None
     resultats = []
 
     for tarif in tarifs:
         IDactivite = tarif.get("IDactivite")
-        if filtre_activites is not None and IDactivite not in filtre_activites:
+        if not activite_autorisee(IDactivite, politique):
             continue
 
         base = dict(tarif)
@@ -186,20 +236,29 @@ def charger_baremes(DB, IDsactivites=None):
     return resultats
 
 
-def construire_publication(DB, IDsactivites=None, date_reference=None,
-                            inclure_expires=False, titre="Tarifs des activités"):
+def construire_publication(DB, IDsactivites=None, politique=None,
+                            date_reference=None, inclure_expires=False,
+                            titre="Tarifs des activités"):
     """Construit la représentation et le HTML à partir de la base Noethys.
 
     Cette fonction ne modifie aucune donnée. Elle est destinée à alimenter un
     aperçu puis, dans un lot suivant, le cache HTML du bloc portail.
     """
-    baremes = charger_baremes(DB, IDsactivites=IDsactivites)
+    politique = normaliser_politique(politique=politique, IDsactivites=IDsactivites)
+    baremes = charger_baremes(DB, politique=politique)
     descriptions = UTILS_Portail_tarifs.decrire_tarifs(
         baremes,
         date_reference=date_reference,
         inclure_expires=inclure_expires,
     )
+    IDs_publies = sorted(set(
+        description.get("IDactivite")
+        for description in descriptions
+        if description.get("IDactivite") is not None
+    ))
     return {
+        "politique": politique,
+        "IDsactivites_publiees": IDs_publies,
         "baremes": baremes,
         "descriptions": descriptions,
         "html": UTILS_Portail_tarifs.construire_html(descriptions, titre=titre),
