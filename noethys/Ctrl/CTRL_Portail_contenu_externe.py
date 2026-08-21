@@ -21,33 +21,26 @@ class CTRL(wx.Panel):
         self.IDelement = None
 
         self.label_intro = wx.StaticText(
-            self,
-            -1,
+            self, -1,
             _(u"Affichez une page, une photothèque, un lecteur vidéo ou un widget web sans saisir de code HTML."),
         )
         self.label_url = wx.StaticText(self, -1, _(u"Adresse (URL) :"))
         self.ctrl_url = wx.TextCtrl(self, -1, "")
-
         self.label_titre = wx.StaticText(self, -1, _(u"Titre accessible :"))
         self.ctrl_titre = wx.TextCtrl(self, -1, "")
-
         self.label_hauteur = wx.StaticText(self, -1, _(u"Hauteur :"))
         self.ctrl_hauteur = wx.SpinCtrl(
-            self,
-            -1,
+            self, -1,
             min=UTILS_Portail_contenus.HAUTEUR_MIN,
             max=UTILS_Portail_contenus.HAUTEUR_MAX,
             initial=UTILS_Portail_contenus.HAUTEUR_DEFAUT,
         )
         self.label_pixels = wx.StaticText(self, -1, _(u"pixels"))
-
         self.ctrl_defilement = wx.CheckBox(self, -1, _(u"Autoriser les barres de défilement"))
         self.ctrl_plein_ecran = wx.CheckBox(self, -1, _(u"Autoriser le plein écran"))
         self.ctrl_plein_ecran.SetValue(True)
-
         self.label_aide = wx.StaticText(
-            self,
-            -1,
+            self, -1,
             _(u"Le bloc reste stocké comme un bloc Texte standard pour rester compatible avec les hébergements Connecthys existants."),
         )
         self.label_aide.Wrap(500)
@@ -63,44 +56,37 @@ class CTRL(wx.Panel):
     def __do_layout(self):
         sizer_base = wx.BoxSizer(wx.VERTICAL)
         sizer_base.Add(self.label_intro, 0, wx.LEFT | wx.RIGHT | wx.TOP | wx.EXPAND, 10)
-
         grille = wx.FlexGridSizer(rows=3, cols=3, vgap=10, hgap=10)
         grille.Add(self.label_url, 0, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL, 0)
         grille.Add(self.ctrl_url, 0, wx.EXPAND, 0)
         grille.Add((1, 1), 0, 0, 0)
-
         grille.Add(self.label_titre, 0, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL, 0)
         grille.Add(self.ctrl_titre, 0, wx.EXPAND, 0)
         grille.Add((1, 1), 0, 0, 0)
-
         grille.Add(self.label_hauteur, 0, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL, 0)
         grille.Add(self.ctrl_hauteur, 0, 0, 0)
         grille.Add(self.label_pixels, 0, wx.ALIGN_CENTER_VERTICAL, 0)
         grille.AddGrowableCol(1)
         sizer_base.Add(grille, 0, wx.ALL | wx.EXPAND, 10)
-
         sizer_options = wx.BoxSizer(wx.VERTICAL)
         sizer_options.Add(self.ctrl_defilement, 0, wx.BOTTOM, 8)
         sizer_options.Add(self.ctrl_plein_ecran, 0, 0, 0)
         sizer_base.Add(sizer_options, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 20)
-
         sizer_base.AddStretchSpacer(1)
         sizer_base.Add(self.label_aide, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
-
         self.SetSizer(sizer_base)
         self.Layout()
 
     def GetParametres(self):
-        config = {
+        config = UTILS_Portail_contenus.normaliser_parametres({
             "type": "iframe",
             "url": self.ctrl_url.GetValue(),
             "hauteur": self.ctrl_hauteur.GetValue(),
             "defilement": self.ctrl_defilement.GetValue(),
             "plein_ecran": self.ctrl_plein_ecran.GetValue(),
             "titre": self.ctrl_titre.GetValue(),
-        }
-        config = UTILS_Portail_contenus.normaliser_parametres(config)
-        dictElement = {
+        })
+        return {"elements": [{
             "IDelement": self.IDelement,
             "titre": "",
             "date_debut": None,
@@ -108,15 +94,13 @@ class CTRL(wx.Panel):
             "parametres": UTILS_Portail_contenus.serialiser_parametres(config),
             "texte_xml": None,
             "texte_html": UTILS_Portail_contenus.construire_iframe(config),
-        }
-        return {"elements": [dictElement]}
+        }]}
 
     def SetParametres(self, dictParametres=None):
         dictParametres = dictParametres or {}
         elements = dictParametres.get("elements", [])
         if not elements:
             return
-
         dictElement = elements[0]
         self.IDelement = dictElement.get("IDelement")
         config = UTILS_Portail_contenus.deserialiser_parametres(dictElement.get("parametres"))
@@ -127,13 +111,11 @@ class CTRL(wx.Panel):
         self.ctrl_plein_ecran.SetValue(config["plein_ecran"])
 
     def Validation(self):
-        url = self.ctrl_url.GetValue()
-        if not UTILS_Portail_contenus.url_externe_valide(url):
+        if not UTILS_Portail_contenus.url_externe_valide(self.ctrl_url.GetValue()):
             dlg = wx.MessageDialog(
                 self,
                 _(u"Vous devez saisir une adresse web complète et valide commençant par http:// ou https://."),
-                _(u"Erreur de saisie"),
-                wx.OK | wx.ICON_EXCLAMATION,
+                _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION,
             )
             dlg.ShowModal()
             dlg.Destroy()
