@@ -14,9 +14,12 @@ def test_bandeau_nutilise_plus_htmlwindow():
     assert "self.Wrap(" in texte
 
 
-def test_bandeau_ne_fige_plus_la_hauteur_du_texte():
+def test_bandeau_consomme_le_style_central_et_reflow():
     texte = BANDEAU.read_text(encoding="utf-8")
     assert "hauteurHtml reste accepté" in texte
-    assert "panel_min_height" in texte
+    assert "UTILS_StyleRepens as Style" in texte
+    assert "UTILS_Interface" not in texte
+    assert "UTILS_UIMetrics" not in texte
     assert "EVT_SIZE" in texte
     assert "Reflow" in texte
+    assert 'Style.police("title")' in texte
