@@ -34,7 +34,7 @@ Usage
 
 Seuils CI configurés
 --------------------
-- PY2_BUILTINS  : fail si > 0 (aucun appel non-gardé toléré)
+- PY2_BUILTINS  : fail si > 0 (aucun appel Python 2 non-gardé toléré)
 - DB_UNCLOSED   : informatif (seuil à abaisser au fil des corrections)
 """
 
@@ -126,6 +126,17 @@ def _is_in_py2_only_block(lines: list, lineno_0indexed: int) -> bool:
     return False
 
 
+def _has_six_xrange_compat(lines: list) -> bool:
+    """Détecte une importation explicite de xrange fournie par six.moves."""
+    for raw in lines:
+        if re.search(
+            r"^\s*from\s+six\.moves\s+import\s+.*(?:\brange\s+as\s+xrange\b|\bxrange\b)",
+            raw,
+        ):
+            return True
+    return False
+
+
 def check_text_patterns(path: Path, root: Path) -> dict:
     """Returns dict of pattern_name -> list of {file, line, snippet}."""
     results = {
@@ -142,6 +153,7 @@ def check_text_patterns(path: Path, root: Path) -> dict:
         return results
 
     rel = str(path.relative_to(root))
+    xrange_from_six = _has_six_xrange_compat(lines)
 
     for i, raw in enumerate(lines):
         stripped = raw.strip()
@@ -172,29 +184,28 @@ def check_text_patterns(path: Path, root: Path) -> dict:
                 )
 
         # 5b. basestring — in isinstance/type context (not in strings)
-        if re.search(r"\bbasestring\b", raw) and '"basestring"' not in raw:
+        if re.search(r"\bbasestring\b", raw) and '"basestring"' not in raw and "'basestring'" not in raw:
             if not _is_in_py2_only_block(lines, i):
                 results["PY2_BUILTINS"].append(
                     {"file": rel, "line": i + 1,
                      "builtin": "basestring", "snippet": stripped[:120]}
                 )
 
-        # 5c. raw_input() — only standalone call (not self.ctrl.raw_input etc.)
+        # 5c. raw_input() — standalone call, et seulement hors branche Python 2.
         if re.search(r"(?<!\.)raw_input\s*\(", raw):
-            results["PY2_BUILTINS"].append(
-                {"file": rel, "line": i + 1,
-                 "builtin": "raw_input", "snippet": stripped[:120]}
-            )
+            if not _is_in_py2_only_block(lines, i):
+                results["PY2_BUILTINS"].append(
+                    {"file": rel, "line": i + 1,
+                     "builtin": "raw_input", "snippet": stripped[:120]}
+                )
 
-        # 5d. xrange() — only if NOT imported from six.moves on same or prior lines
+        # 5d. xrange() — six.moves fournit une compatibilité Python 3 légitime.
         if re.search(r"\bxrange\s*\(", raw):
-            # Exclude lines that define the compat import itself
-            if "from six.moves" not in raw and "import.*xrange" not in raw:
-                if not _is_in_py2_only_block(lines, i):
-                    results["PY2_BUILTINS"].append(
-                        {"file": rel, "line": i + 1,
-                         "builtin": "xrange", "snippet": stripped[:120]}
-                    )
+            if not xrange_from_six and not _is_in_py2_only_block(lines, i):
+                results["PY2_BUILTINS"].append(
+                    {"file": rel, "line": i + 1,
+                     "builtin": "xrange", "snippet": stripped[:120]}
+                )
 
         # 6. UNSAFE_EXEC
         code_only = raw.split("#", 1)[0]
