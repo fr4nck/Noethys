@@ -5,7 +5,7 @@
 # Site internet :  www.noethys.com
 # Auteur:          Ivan LUCAS
 # Copyright:       (c) 2010-18 Ivan LUCAS
-# Licence:         Licence GNU GPL
+# Licence GNU GPL
 #------------------------------------------------------------------------
 
 
@@ -115,9 +115,9 @@ class Choix_statut(BitmapComboBox):
 
 
 class ListBox(wx.ListBox):
-    def __init__(self, parent, type="groupes"):
+    def __init__(self, parent, controller, type="groupes"):
         wx.ListBox.__init__(self, parent, id=-1, choices=[])
-        self.parent = parent
+        self.controller = controller
         self.listeDonnees = []
         self.type = type
 
@@ -141,13 +141,13 @@ class ListBox(wx.ListBox):
             self.SetID(selection_actuelle)
 
     def Importation_groupes(self):
-        for dictGroupe in self.parent.dictActivite["groupes"] :
+        for dictGroupe in self.controller.dictActivite["groupes"] :
             ID = dictGroupe["IDgroupe"]
             label = dictGroupe["nom"]
             self.listeDonnees.append({"ID" : ID, "label" : label})
 
     def Importation_categories(self):
-        for dictCategorie in self.parent.dictActivite["categories_tarifs"] :
+        for dictCategorie in self.controller.dictActivite["categories_tarifs"] :
             self.listeDonnees.append({"ID" : dictCategorie["IDcategorie_tarif"], "label" : dictCategorie["nom"], "listeVilles" : dictCategorie["listeVilles"]})
             
     def SetID(self, ID=None):
@@ -184,9 +184,9 @@ class ListBox(wx.ListBox):
 
         
 class CTRL_Activite(wx.Panel):
-    def __init__(self, parent):
+    def __init__(self, parent, controller):
         wx.Panel.__init__(self, parent, id=-1, style=wx.BORDER_THEME|wx.TAB_TRAVERSAL)
-        self.parent = parent
+        self.controller = controller
         self.IDactivite = None
         couleur_fond = UTILS_Interface.GetValeur("couleur_tres_claire", wx.Colour(240, 251, 237))
         self.SetBackgroundColour(couleur_fond)
@@ -203,8 +203,8 @@ class CTRL_Activite(wx.Panel):
         self.Layout()
 
     def MAJ(self):
-        self.IDactivite = self.parent.dictActivite["IDactivite"]
-        label = self.parent.dictActivite["nom"]
+        self.IDactivite = self.controller.dictActivite["IDactivite"]
+        label = self.controller.dictActivite["nom"]
         self.ctrl_activite.SetLabel(label)
         self.Layout()
 
@@ -218,9 +218,9 @@ class CTRL_Activite(wx.Panel):
 
 
 class CTRL_Parametres(wx.Notebook):
-    def __init__(self, parent, mode="saisie", IDindividu=None, IDinscription=None, IDfamille=None, cp=None, ville=None):
+    def __init__(self, parent, controller, mode="saisie", IDindividu=None, IDinscription=None, IDfamille=None, cp=None, ville=None):
         wx.Notebook.__init__(self, parent, id=-1, style=wx.BK_DEFAULT | wx.NB_MULTILINE)
-        self.parent = parent
+        self.controller = controller
         self.dictPages = {}
         self.IDinscription = IDinscription
         self.IDindividu = IDindividu
@@ -230,7 +230,7 @@ class CTRL_Parametres(wx.Notebook):
         self.mode = mode
 
         self.listePages = [
-            {"code": "activite", "ctrl": Page_Activite(self, self.IDinscription), "label": _(u"Paramètres"), "image": "Mecanisme.png"},
+            {"code": "activite", "ctrl": Page_Activite(self, controller=self.controller, IDinscription=self.IDinscription, mode=self.mode, IDindividu=self.IDindividu, cp=self.cp, ville=self.ville), "label": _(u"Paramètres"), "image": "Mecanisme.png"},
             {"code": "questionnaire", "ctrl": Page_Questionnaire(self, self.IDinscription), "label": _(u"Questionnaire"), "image": "Questionnaire.png"},
         ]
 
@@ -316,10 +316,14 @@ class Page_Questionnaire(wx.Panel):
 
 
 class Page_Activite(wx.Panel):
-    def __init__(self, parent, IDinscription=None):
+    def __init__(self, parent, controller, IDinscription=None, mode="saisie", IDindividu=None, cp=None, ville=None):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
-        self.parent = parent
+        self.controller = controller
         self.IDinscription = IDinscription
+        self.mode = mode
+        self.IDindividu = IDindividu
+        self.cp = cp
+        self.ville = ville
 
         self.dictActivite = None
         self.IDgroupe = None
@@ -330,18 +334,18 @@ class Page_Activite(wx.Panel):
 
         # Activité
         self.staticbox_activite_staticbox = wx.StaticBox(self, -1, _(u"Activité"))
-        self.ctrl_activite = CTRL_Activite(self)
+        self.ctrl_activite = CTRL_Activite(self, controller=self)
         self.bouton_activites = CTRL_Bouton_image.CTRL(self, texte=_(u"Rechercher"), cheminImage="Images/32x32/Loupe.png")
         self.ctrl_activite.SetMinSize((-1, self.bouton_activites.GetSize()[1]))
 
         # Groupe
         self.staticbox_groupe_staticbox = wx.StaticBox(self, -1, _(u"Groupe"))
-        self.ctrl_groupes = ListBox(self, type="groupes")
+        self.ctrl_groupes = ListBox(self, controller=self, type="groupes")
         self.ctrl_groupes.SetMinSize((-1, 50))
 
         # Catégorie
         self.staticbox_categorie_staticbox = wx.StaticBox(self, -1, _(u"Catégorie de tarif"))
-        self.ctrl_categories = ListBox(self, type="categories")
+        self.ctrl_categories = ListBox(self, controller=self, type="categories")
         self.ctrl_categories.SetMinSize((-1, 50))
 
         # Départ
@@ -408,14 +412,14 @@ class Page_Activite(wx.Panel):
         self.Layout()
 
         # Init
-        if self.parent.mode != "saisie" :
+        if self.mode != "saisie" :
             self.bouton_activites.Show(False)
             self.Importation()
 
-        if self.parent.mode == "saisie" :
-            if self.parent.cp == None :
+        if self.mode == "saisie" :
+            if self.cp == None :
                 # Recherche cp et ville
-                dict_coords = UTILS_Titulaires.GetCoordsIndividu(self.parent.IDindividu)
+                dict_coords = UTILS_Titulaires.GetCoordsIndividu(self.IDindividu)
                 if dict_coords != None :
                     self.cp = dict_coords["cp_resid"]
                     self.ville = dict_coords["ville_resid"]
@@ -442,7 +446,7 @@ class Page_Activite(wx.Panel):
                 self.ctrl_check_depart.SetValue(True)
                 self.ctrl_date_depart.SetDate(date_desinscription)
             if statut != None :
-                self.parent.parent.ctrl_statut.SetID(statut)
+                self.controller.ctrl_statut.SetID(statut)
                 self.ancien_statut = statut
 
     def Validation(self):
@@ -467,7 +471,7 @@ class Page_Activite(wx.Panel):
             dlg.Destroy()
             return False
 
-        IDfamille = self.GetGrandParent().ctrl_famille.GetID()
+        IDfamille = self.controller.ctrl_famille.GetID()
         if IDfamille == None :
             dlg = wx.MessageDialog(self, _(u"Vous devez obligatoirement sélectionner une famille !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
@@ -476,7 +480,7 @@ class Page_Activite(wx.Panel):
 
         nomActivite = self.ctrl_activite.GetNomActivite()
 
-        statut = self.parent.parent.ctrl_statut.GetID()
+        statut = self.controller.ctrl_statut.GetID()
 
         DB = GestionDB.DB()
 
@@ -535,7 +539,7 @@ class Page_Activite(wx.Panel):
 
 
         # Verrouillage utilisateurs
-        if self.parent.mode == "saisie" :
+        if self.mode == "saisie" :
             action = "creer"
         else :
             action = "modifier"
@@ -544,10 +548,10 @@ class Page_Activite(wx.Panel):
             return False
 
         # Vérifie que l'individu n'est pas déjà inscrit à cette activite
-        if self.parent.mode == "saisie" and self.dictActivite["inscriptions_multiples"] != 1:
+        if self.mode == "saisie" and self.dictActivite["inscriptions_multiples"] != 1:
             req = """SELECT IDinscription, IDindividu, IDfamille
             FROM inscriptions
-            WHERE IDindividu=%d AND IDfamille=%d AND IDactivite=%d;""" % (self.parent.IDindividu, IDfamille, IDactivite)
+            WHERE IDindividu=%d AND IDfamille=%d AND IDactivite=%d;""" % (self.IDindividu, IDfamille, IDactivite)
             DB.ExecuterReq(req)
             listeDonnees = DB.ResultatReq()
             if len(listeDonnees) > 0 :
@@ -581,11 +585,11 @@ class Page_Activite(wx.Panel):
             # Applique un statut à l'inscription
             if reponse != None :
                 if reponse == 0:
-                    self.parent.parent.ctrl_statut.SetID("ok")
+                    self.controller.ctrl_statut.SetID("ok")
                 elif reponse == 1:
-                    self.parent.parent.ctrl_statut.SetID("attente")
+                    self.controller.ctrl_statut.SetID("attente")
                 elif reponse == 2:
-                    self.parent.parent.ctrl_statut.SetID("refus")
+                    self.controller.ctrl_statut.SetID("refus")
                 else:
                     DB.Close()
                     return False
@@ -595,7 +599,7 @@ class Page_Activite(wx.Panel):
             req = """SELECT IDprestation, prestations.date, prestations.forfait
             FROM prestations
             WHERE IDactivite=%d AND IDindividu=%d
-            ;""" % (IDactivite, self.parent.parent.IDindividu)
+            ;""" % (IDactivite, self.controller.IDindividu)
             DB.ExecuterReq(req)
             listePrestations = DB.ResultatReq()
             if len(listePrestations) > 0 :
@@ -615,19 +619,19 @@ class Page_Activite(wx.Panel):
         IDcategorie_tarif = self.ctrl_categories.GetID()
         nomGroupe = self.ctrl_groupes.GetStringSelection()
         nomCategorie = self.ctrl_categories.GetStringSelection()
-        IDfamille = self.GetGrandParent().ctrl_famille.GetID()
+        IDfamille = self.controller.ctrl_famille.GetID()
         IDcompte_payeur = self.GetCompteFamille(IDfamille)
         nomActivite = self.ctrl_activite.GetNomActivite()
         if self.ctrl_check_depart.IsChecked():
             date_desinscription = str(self.ctrl_date_depart.GetDate())
         else :
             date_desinscription = None
-        statut = self.parent.parent.ctrl_statut.GetID()
+        statut = self.controller.ctrl_statut.GetID()
 
         # Sauvegarde
         DB = GestionDB.DB()
         listeDonnees = [
-            ("IDindividu", self.parent.IDindividu),
+            ("IDindividu", self.IDindividu),
             ("IDfamille", IDfamille),
             ("IDactivite", IDactivite),
             ("IDgroupe", IDgroupe),
@@ -637,7 +641,7 @@ class Page_Activite(wx.Panel):
             ("statut", statut),
             ]
         ancien_IDinscription = self.IDinscription
-        if self.parent.mode == "saisie" :
+        if self.mode == "saisie" :
             listeDonnees.append(("date_inscription", str(datetime.date.today())))
             IDinscription = DB.ReqInsert("inscriptions", listeDonnees, commit=False)
             if IDinscription is None:
@@ -661,7 +665,7 @@ class Page_Activite(wx.Panel):
                 ("IDactivite", IDactivite),
                 ("IDcategorie_tarif", IDcategorie_tarif),
                 ("IDfamille", IDfamille),
-                ("IDindividu", self.parent.IDindividu),
+                ("IDindividu", self.IDindividu),
                 ("categorie", "autre"),
                 ("date_valeur", str(datetime.date.today())),
             ]
@@ -682,7 +686,7 @@ class Page_Activite(wx.Panel):
                 return False
 
         # Mémorise l'action dans l'historique dans la même transaction.
-        if self.parent.mode == "saisie" :
+        if self.mode == "saisie" :
             IDcategorie_historique = 18
             texte_historique = _(u"Inscription à l'activité '%s' sur le groupe '%s' avec la tarification '%s'") % (nomActivite, nomGroupe, nomCategorie)
         else :
@@ -690,7 +694,7 @@ class Page_Activite(wx.Panel):
             texte_historique = _(u"Modification de l'inscription à l'activité '%s' sur le groupe '%s' avec la tarification '%s'") % (nomActivite, nomGroupe, nomCategorie)
 
         if UTILS_Historique.InsertActions([{
-            "IDindividu" : self.parent.IDindividu,
+            "IDindividu" : self.IDindividu,
             "IDfamille" : IDfamille,
             "IDcategorie" : IDcategorie_historique,
             "action" : texte_historique,
@@ -707,9 +711,9 @@ class Page_Activite(wx.Panel):
         DB.Close()
 
         # Saisie de forfaits auto
-        #if self.parent.mode == "saisie" :
+        #if self.mode == "saisie" :
         if statut == "ok" and self.ancien_statut != "ok" :
-            f = DLG_Appliquer_forfait.Forfaits(IDfamille=IDfamille, listeActivites=[IDactivite,], listeIndividus=[self.parent.IDindividu,], saisieManuelle=False, saisieAuto=True)
+            f = DLG_Appliquer_forfait.Forfaits(IDfamille=IDfamille, listeActivites=[IDactivite,], listeIndividus=[self.IDindividu,], saisieManuelle=False, saisieAuto=True)
             resultat = f.Applique_forfait(selectionIDcategorie_tarif=IDcategorie_tarif, inscription=True, selectionIDactivite=IDactivite, selectionIDinscription=self.IDinscription)
             if resultat == False :
                 dlg = wx.MessageDialog(self, _(u"Cet individu a bien été inscrit mais le forfait associé n'a pas été créé !"), _(u"Information"), wx.OK | wx.ICON_EXCLAMATION)
@@ -765,8 +769,8 @@ class Page_Activite(wx.Panel):
         self.ctrl_activite.MAJ()
         self.ctrl_groupes.MAJ()
         self.ctrl_categories.MAJ()
-        if self.parent.mode == "saisie" :
-            self.ctrl_categories.SelectCategorieSelonVille(self.parent.cp, self.parent.ville)
+        if self.mode == "saisie" :
+            self.ctrl_categories.SelectCategorieSelonVille(self.cp, self.ville)
 
     def CacheBoutonActivite(self):
         self.bouton_activites.Show(False)
@@ -908,7 +912,7 @@ class Dialog(wx.Dialog):
         self.ctrl_statut = Choix_statut(self)
 
         # Paramètres
-        self.ctrl_parametres = CTRL_Parametres(self, mode=mode, IDindividu=IDindividu, IDinscription=IDinscription, IDfamille=IDfamille, cp=cp, ville=ville)
+        self.ctrl_parametres = CTRL_Parametres(self, controller=self, mode=mode, IDindividu=IDindividu, IDinscription=IDinscription, IDfamille=IDfamille, cp=cp, ville=ville)
         self.ctrl_parametres.SetMinSize((650, 460))
 
         self.bouton_aide = CTRL_Bouton_image.CTRL(self, texte=_(u"Aide"), cheminImage="Images/32x32/Aide.png")
