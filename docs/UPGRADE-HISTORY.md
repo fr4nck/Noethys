@@ -1,10 +1,14 @@
 # Historique du chantier Upgrade Noethys
 
+> Historique consolidé au 22 août 2026.
+
 ## Pourquoi ce document ?
 
 Noethys est un logiciel ancien, vaste et fortement lié à des usages métier réels. Le chantier Upgrade Noethys a donc choisi une modernisation incrémentale plutôt qu'une réécriture.
 
 Ce document conserve les décisions structurantes afin qu'une reprise future du projet ne réintroduise pas des choix déjà étudiés ou ne casse pas involontairement la compatibilité historique.
+
+Pour l'état courant, lire d'abord `PROJECT_STATE.md`, `ROADMAP.md` et `NOE-BACKLOG.md`.
 
 ## Principes figés
 
@@ -49,8 +53,6 @@ Décision : importer les **idées démontrées utiles**, jamais les historiques 
 
 ## SQL strict et bases
 
-Le premier bloc a audité les requêtes susceptibles d'échouer avec des modes SQL stricts.
-
 ### Règlements
 
 `OL_Reglements` regroupait une sélection large par seul `IDreglement`. La correction a remplacé le `GROUP BY` permissif par une pré-agrégation de `ventilation`, conservant :
@@ -69,6 +71,8 @@ Les `GROUP BY` historiques ont été audités et corrigés sans changer la séma
 ### Index et performances
 
 L'audit a privilégié les mesures et les usages réels plutôt qu'une création massive d'index pouvant modifier le coût des écritures ou la compatibilité des bases.
+
+Le reliquat SQL strict est conservé dans Noe-005 comme dette progressive : les occurrences `REVIEW` ne sont pas assimilées à des bugs sans démonstration métier.
 
 ## Qualification Python
 
@@ -111,12 +115,7 @@ Décision : ne pas réécrire massivement les aliases historiques qui restent fo
 
 Fusion : `150c9ea9`.
 
-La CI utilise Ubuntu, wxPython GTK3 et Xvfb pour tester :
-
-- backend GTK ;
-- API Phoenix ;
-- cycle `wx.App` ;
-- layout avec sizers et `UltimateListCtrl`.
+La CI utilise Ubuntu, wxPython GTK3 et Xvfb pour tester backend GTK, API Phoenix, cycle `wx.App` et layout représentatif.
 
 ### Noe-022 — macOS
 
@@ -144,7 +143,7 @@ L'issue reste ouverte jusqu'à la recette sur une copie de base réellement util
 
 Fusion : `e8e286a2`.
 
-Tous les `tests/test_*.py` sont exécutés dans la CI principale. Le travail a également réduit le couplage de services PMSL à `GestionDB` lorsqu'une `FakeDB` est injectée.
+Tous les `tests/test_*.py` sont exécutés dans la CI principale.
 
 Décision : un test métier doit vérifier un invariant observable, pas un détail d'implémentation.
 
@@ -176,18 +175,7 @@ contents_directory="."
 
 Le layout `onedir` plat est donc explicitement conservé.
 
-Le workflow :
-
-- construit le bundle ;
-- contrôle les ressources ;
-- crée l'archive ;
-- la ré-extrait dans un dossier neuf ;
-- retire Python externe du contexte ;
-- lance réellement l'EXE ;
-- vérifie les imports embarqués ;
-- publie l'artefact.
-
-Le runtime hook de smoke produit un marqueur de succès/erreur et utilise une sortie non interactive afin qu'un build `console=False` ne puisse pas bloquer la CI sur une boîte de dialogue invisible.
+Le workflow construit le bundle, contrôle les ressources, archive, ré-extrait, retire Python externe du contexte, lance réellement l'EXE et vérifie les imports embarqués.
 
 ### Noe-041 — vrai mode portable
 
@@ -195,22 +183,172 @@ Fusion : `bcd8ca96`.
 
 Le dossier `Portable/`, déjà reconnu historiquement par Noethys, est désormais livré explicitement dans l'archive Windows.
 
-Les chemins sont isolés sous ce dossier et les sous-répertoires runtime sont créés à la demande. Les installations classiques sans marqueur `Portable/` conservent leur comportement.
-
 Décision : réutiliser le mécanisme historique plutôt que créer un second système de configuration portable.
 
-## Préparation RC
+## Préparation RC initiale
 
-Préparation documentaire fusionnée : `7bb7121d`.
+La préparation documentaire et le sas RC ont établi la règle suivante : une RC n'est pas « validée » par la CI seule.
 
-Toutes les portes automatisées critiques sont désormais considérées franchies. Les deux verrous restants avant une RC validée sont volontairement humains :
+Les deux portes humaines restent :
 
 1. recette Noe-030 sur une copie de base réellement utilisée ;
 2. validation visuelle et métier de l'interface Windows sur cette copie.
 
-Tant que ces deux étapes ne sont pas réalisées, le dépôt peut produire un **candidat technique RC**, mais pas une RC déclarée validée.
+La fabrication de la release est protégée et reste en brouillon jusqu'à décision explicite.
 
-## Choix explicitement reportés après la première RC
+---
+
+# Deuxième phase — modernisation UI et métier
+
+À partir du 20 août 2026, le fork a continué à évoluer au-delà du socle technique pré-RC. Cette évolution ne remet pas en cause les règles de compatibilité ; elle élargit le périmètre du produit.
+
+## Commandes de repas — PR #46
+
+Le module historique de commandes a été adapté au fonctionnement réel par **points de livraison** sans migration de schéma :
+
+- dates complétées depuis les consommations réservées/présentes ;
+- une colonne de suggestion peut regrouper plusieurs couples groupe/unité ;
+- repas animateurs saisis séparément ;
+- total livraison = enfants + animateurs ;
+- modèles distincts selon la topologie de livraison de la période.
+
+Décision ultérieure consolidée : le complément de dates depuis les consommations doit rester limité aux couples groupe/unité réellement configurés dans le modèle courant.
+
+## Échelle et apparence — PR #47
+
+Noethys a reçu :
+
+- une échelle d'interface réglable ;
+- Système / Clair / Sombre ;
+- conservation des accents historiques Vert / Bleu / Noir ;
+- palette sombre prudente respectant les couleurs métier ;
+- détection du thème applicatif Windows lorsque disponible.
+
+Cette étape a montré que le dark mode et le scaling ne pouvaient pas être traités comme un simple skin : les métriques, contrôles natifs et layouts historiques devaient être corrigés progressivement.
+
+## Crash AUI — PR #48
+
+Un crash Windows dans `wx.lib.agw.aui.dockart.DrawCaption` a été attribué à des coordonnées `float` refusées par `wx.DC.DrawText`.
+
+Le correctif a renforcé la qualification du runtime Windows et rappelé une règle importante : les incompatibilités de dépendance doivent être reproduites et contrôlées explicitement, pas masquées par des suppressions globales d'erreur.
+
+## Diagnostic performance — PR #49
+
+Un instrument de diagnostic a été ajouté afin de distinguer :
+
+- temps entre action utilisateur et fenêtre visible ;
+- connexions/requêtes MySQL distantes ;
+- faux gels de démarrage ;
+- blocages réels de la boucle UI.
+
+Décision : ne pas ajouter de délai/fondu artificiel pour « améliorer » une lenteur avant d'avoir mesuré son origine.
+
+## Design system — PR #50
+
+Le chantier UI a été recentré autour d'un système commun :
+
+- Fluent 2 pour la grammaire desktop ;
+- Material Design 3 pour tokens, rôles et surfaces ;
+- profondeur très contenue inspirée de Liquid Glass ;
+- Fluent System Icons comme bibliothèque principale ;
+- densité métier conservée ;
+- états focus/hover/pressed/disabled explicites ;
+- préférences d'apparence et d'accessibilité sans impact sur les données métier.
+
+La référence actuelle est `DESIGN_SYSTEM_UI_UX.md`. L'ancien `INTERFACE_MATERIAL3.md` est conservé uniquement comme document historique de la première étape.
+
+## Doctrine wxPython issue de la recette visuelle
+
+Les essais réels ont produit plusieurs règles désormais figées dans `WXPYTHON_UI_RULES.md` :
+
+- parent visuel et contrôleur métier doivent être distincts lorsqu'ils n'ont pas le même rôle ;
+- ne pas utiliser `WXSUPPRESS_SIZER_FLAGS_CHECK` ;
+- ne pas masquer les erreurs de layout par une surcouche ;
+- corriger l'ordre d'initialisation des dialogues et contrôles ;
+- ne pas tronquer artificiellement les titres ;
+- ne pas réintroduire les anciennes hauteurs figées ;
+- vérifier les vrais contenus à 120/150 % ;
+- préserver les couleurs portant une sémantique métier ;
+- les contrôles spécialisés doivent être traités avant les règles génériques du moteur de thème.
+
+## Atomicité des contrats PSU
+
+Le commit `4e3b30dd953b4ae462c468c06f341e4edaae2adf` a rendu atomique la sauvegarde d'un contrat PSU, de ses prestations et de ses consommations.
+
+Décision : en cas d'échec partiel, rollback de l'ensemble et aucun état intermédiaire validé.
+
+Cette correction illustre la doctrine générale : lorsqu'une opération métier est perçue comme unique par l'utilisateur, les écritures liées doivent éviter autant que possible les validations partielles incohérentes.
+
+---
+
+# Troisième phase — source unique et extensions métier
+
+## Noe-060 — reporting fiable
+
+Le besoin métier récurrent a conduit à formaliser :
+
+> une donnée → une règle de calcul canonique → plusieurs sorties.
+
+Le chantier couvre indicateurs, communes partenaires, résidence datée, annulations/absences, exports cohérents et rapports prédéfinis.
+
+## Noe-061 — rapports d'activité
+
+Les rapports PMSL existants deviennent un cahier des charges empirique : Noethys doit produire automatiquement les chiffres, tableaux, graphiques et évolutions récurrentes, tandis que l'analyse qualitative reste humaine.
+
+## Noe-062 — conventions et mises à disposition
+
+Le chantier réutilise les moteurs historiques de Noethys au lieu de créer une deuxième chaîne parallèle.
+
+Décisions structurantes :
+
+- tiers distinct de la relation contractuelle ;
+- bénéficiaire et payeur distincts si nécessaire ;
+- programmation annuelle et renouvellement N-1 ;
+- convention/avenant/annexe issus des mêmes données ;
+- snapshots pour figer les documents officiels ;
+- PMSL-Équipe reste la source RH/planning des intervenants ;
+- identifiants stables pour synchroniser sans coupler directement les bases.
+
+Le cas EPS est décrit comme une chaîne continue : vœux → arbitrage → cycles → programmation → affectation → réalisé → facturation → rapport.
+
+## Noe-063 — portail Connecthys
+
+Le portail est orienté vers une logique de **contenus dynamiques et source unique** :
+
+- contenus externes sans HTML saisi à la main ;
+- RSS/Atom natif ;
+- barèmes générés depuis Noethys ;
+- compatibilité avec le Connecthys hébergé pour les premiers lots ;
+- aucune pseudo-personnalisation basée sur un ID famille exposé ;
+- pas de duplication du moteur tarifaire.
+
+Les anciennes branches empilées du chantier portail ont conduit à une décision de convergence : reconstruire proprement sur le `master` courant plutôt que fusionner une pile de commits devenue trop éloignée.
+
+## Extensions optionnelles
+
+Un registre minimal d'extensions a été proposé pour accueillir à terme des intégrations optionnelles sans ajouter chaque fournisseur directement au cœur historique.
+
+Décision : pas de chargement arbitraire automatique, pas de dépendance obligatoire à Internet, et aucun élargissement du contrat d'extension avant un besoin concret.
+
+---
+
+# Consolidation documentaire du 22 août 2026
+
+Une revue des conversations de travail a montré que la majorité des décisions étaient déjà dans Git, mais que certains choix récents restaient dispersés.
+
+Ont donc été consolidés :
+
+- `PROJECT_STATE.md` — point d'entrée durable ;
+- `DESIGN_SYSTEM_UI_UX.md` — direction UI/UX canonique ;
+- `WXPYTHON_UI_RULES.md` — doctrine wxPython ;
+- `ARCHITECTURE-TIERS-PRESTATIONS-PLANNING.md` — architecture structures/EPS ;
+- `COMMANDES_REPAS_POINTS_LIVRAISON.md` — règle métier repas ;
+- `ROADMAP.md`, `NOE-BACKLOG.md`, `README.md` et les documents RC remis au niveau de l'état courant ;
+- `docs/README.md` — index distinguant documents canoniques et historiques.
+
+Décision finale : **une conversation ne doit plus être l'unique source d'une règle durable**. Le code/test, l'issue ou la documentation Git doivent conserver la décision avant que le chat puisse être supprimé.
+
+## Choix toujours volontairement reportés
 
 - installateur Windows système ;
 - signature de code ;
@@ -218,7 +356,6 @@ Tant que ces deux étapes ne sont pas réalisées, le dépôt peut produire un *
 - packaging utilisateur Linux ;
 - bascule baseline Python 3.11/3.12 ;
 - migration obligatoire MySQL/MariaDB ;
-- réécriture de l'architecture desktop ;
-- interopérabilité approfondie Noethys Desktop / NoethysWeb.
+- réécriture globale de l'architecture desktop.
 
-Ces reports sont volontaires : ils réduisent le risque et permettent de stabiliser d'abord la modernisation compatible avec l'existant.
+Ces reports réduisent le risque et permettent de poursuivre l'amélioration sans casser le socle historique.
