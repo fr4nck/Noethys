@@ -1,8 +1,12 @@
-# Direction d’interface — Noethys × Material Design 3
+# Historique — première direction Material Design 3
 
-Ce document fixe la direction de modernisation visuelle de Noethys. Material Design 3 sert de système de référence, pas de skin à recopier. Noethys reste une application desktop wxPython et conserve ses codes métier, son fonctionnement historique et la densité utile à un logiciel de gestion.
+> **Document historique.** La direction UI/UX canonique est désormais `docs/DESIGN_SYSTEM_UI_UX.md`, complétée pour wxPython par `docs/WXPYTHON_UI_RULES.md`.
+>
+> Material Design 3 reste une référence importante pour les tokens, rôles de couleurs, surfaces et thèmes. Il n’est plus la référence principale de la grammaire desktop : ce rôle revient maintenant à Fluent 2.
 
-## Principes
+Ce document conserve la trace de la première phase de modernisation visuelle de Noethys et des choix déjà implémentés dans le moteur d’interface.
+
+## Principes issus de cette phase
 
 1. **Rôles sémantiques plutôt que couleurs RGB dispersées**
    - `surface`
@@ -63,7 +67,7 @@ Ce document fixe la direction de modernisation visuelle de Noethys. Material Des
 
 ## Première implémentation
 
-La première étape est intégrée dans `Utils/UTILS_Interface.py` :
+La première étape a été intégrée dans `Utils/UTILS_Interface.py` :
 
 - palette sombre structurée sur des rôles inspirés de Material 3 ;
 - accents sombres adaptés aux thèmes Vert/Bleu/Noir ;
@@ -72,19 +76,12 @@ La première étape est intégrée dans `Utils/UTILS_Interface.py` :
 - seconde passe de thématisation après création des fenêtres historiques afin de récupérer les contrôles qui définissent leurs couleurs tardivement ;
 - aperçu des réglages d’apparence aligné sur les mêmes rôles.
 
-## Suite logique
+## Suite
 
-- créer des rôles typographiques communs (titre, section, corps, libellé, secondaire) ;
-- normaliser les états hover/focus/pressed/disabled ;
-- harmoniser les barres d’outils et actions principales ;
-- définir une échelle d’espacement commune ;
-- réduire progressivement les couleurs codées en dur dans les écrans ;
-- adapter les tableaux métier les plus utilisés sans perdre leur densité ;
-- tester Windows, Linux et macOS séparément car le rendu natif wxWidgets diffère selon la plateforme.
+La suite ne doit pas être pilotée par ce document historique mais par :
 
-## Références de conception
+- `DESIGN_SYSTEM_UI_UX.md` pour la direction générale ;
+- `WXPYTHON_UI_RULES.md` pour les règles d’implémentation ;
+- `IMPLEMENTATION_ORDER.md` pour l’ordre de migration.
 
-- Material Design 3 : https://m3.material.io/
-- Material dark theme codelab : https://codelabs.developers.google.com/codelabs/design-material-darktheme?hl=fr
-
-La règle générale reste simple : **moderniser la grammaire visuelle sans réécrire le métier ni masquer l’information utile.**
+La règle générale reste : **moderniser la grammaire visuelle sans réécrire le métier ni masquer l’information utile.**
