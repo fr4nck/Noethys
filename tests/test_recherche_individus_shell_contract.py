@@ -22,13 +22,16 @@ class RechercheIndividusShellContractTests(unittest.TestCase):
         ast.parse(cls.action)
         ast.parse(cls.icones)
 
-    def test_header_is_contextual_without_duplicate_title(self):
-        self.assertNotIn("ctrl_sous_titre", self.text)
-        self.assertNotIn("self.ctrl_titre =", self.text)
-        self.assertIn("entete.Add(self.ctrl_resume", self.text)
-        self.assertIn("entete.Add(self.ctrl_recherche", self.text)
-        self.assertIn("entete.Add(self.ctrl_nouvelle_famille", self.text)
-        self.assertIn('variante="primaire"', self.text)
+    def test_header_is_contextual_without_duplicate_shell_title(self):
+        start = self.text.index("class Panel(wx.Panel):")
+        end = self.text.index("\n\nclass MyFrame", start)
+        panel = self.text[start:end]
+        self.assertNotIn("ctrl_sous_titre", panel)
+        self.assertNotIn("self.ctrl_titre =", panel)
+        self.assertIn("entete.Add(self.ctrl_resume", panel)
+        self.assertIn("entete.Add(self.ctrl_recherche", panel)
+        self.assertIn("entete.Add(self.ctrl_nouvelle_famille", panel)
+        self.assertIn('variante="primaire"', panel)
 
     def test_header_exposes_contextual_communication_actions(self):
         self.assertIn('icone="mail"', self.text)

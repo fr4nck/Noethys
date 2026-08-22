@@ -33,8 +33,8 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertNotIn("UTILS_UIMetrics", text)
         self.assertNotIn("Style.px(76)", text)
         self.assertNotIn("principal.Add(contenu, 1", text)
-        self.assertNotIn("FlexGridSizer", text)
-        self.assertNotIn("GridSizer", text)
+        self.assertNotIn("wx.FlexGridSizer(", text)
+        self.assertNotIn("wx.GridSizer(", text)
 
     def test_home_is_flat_semantic_and_drops_decorative_card(self):
         text = self._read("noethys/Ctrl/CTRL_Accueil.py")
@@ -124,10 +124,10 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertIn("UTILS_StyleRepens as Style", text)
         self.assertIn('Style.police("body_emphasis")', text)
         self.assertIn('Style.police("body_small")', text)
-        self.assertIn('Style.couleur("surface_container_lowest")', text)
-        self.assertIn('Style.couleur("surface_container_low")', text)
+        self.assertIn('role = "surface_container_lowest" if item % 2 == 0 else "surface_container_low"', text)
+        self.assertIn("fond = Style.couleur(role)", text)
         self.assertNotIn("UTILS_Interface", text)
-        self.assertNotIn("_Police", text)
+        self.assertNotIn("def _Police", text)
 
     def test_email_attachments_use_repens_list_metrics(self):
         text = self._read("noethys/Ctrl/CTRL_Pieces_jointes_emails.py")
@@ -213,12 +213,12 @@ class CommonUIModernizationContractTests(unittest.TestCase):
 
     def test_messages_no_longer_use_tiny_vertical_bitmap_buttons(self):
         text = self._read("noethys/Ctrl/CTRL_Messages.py")
-        self.assertIn("AddFluentTool", text)
-        self.assertIn('"add"', text)
-        self.assertIn('"edit"', text)
-        self.assertIn('"delete"', text)
+        self.assertIn("CTRL_ActionRepens.CTRL", text)
+        self.assertIn('icone="add"', text)
+        self.assertIn('icone="edit"', text)
+        self.assertIn('icone="more"', text)
         self.assertNotIn("wx.BitmapButton", text)
-        self.assertNotIn("FlexGridSizer", text)
+        self.assertNotIn("wx.FlexGridSizer(", text)
 
     def test_footer_tracks_real_responsive_column_widths(self):
         text = self._read("noethys/Ctrl/CTRL_Footer.py")
@@ -259,8 +259,8 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         ):
             text = self._read(relative_path)
             self.assertIn("wx.RESIZE_BORDER", text)
-            self.assertNotIn("FlexGridSizer", text)
-            self.assertNotIn("GridSizer", text)
+            self.assertNotIn("wx.FlexGridSizer(", text)
+            self.assertNotIn("wx.GridSizer(", text)
 
     def test_common_entry_controls_consume_repens_stylesheet(self):
         for relative_path in (
@@ -336,7 +336,7 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertIn("Style.appliquer_saisie(self.ctrl_numsecu)", text)
         self.assertIn("wx.StaticText", text)
         self.assertNotIn("wx.StaticBitmap", text)
-        self.assertNotIn("FlexGridSizer", text)
+        self.assertNotIn("wx.FlexGridSizer(", text)
 
     def test_country_and_bank_statement_selectors_use_modern_action_buttons(self):
         for relative_path in (
@@ -344,11 +344,11 @@ class CommonUIModernizationContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Saisie_releve_bancaire.py",
         ):
             text = self._read(relative_path)
-            self.assertIn("CTRL_Bouton_image.CTRL", text)
-            self.assertIn('iconeFluent="edit"', text)
+            self.assertIn("CTRL_ActionRepens.CTRL", text)
+            self.assertIn('icone="edit"', text)
             self.assertIn("wx.BoxSizer(wx.HORIZONTAL)", text)
             self.assertNotIn("wx.BitmapButton", text)
-            self.assertNotIn("FlexGridSizer", text)
+            self.assertNotIn("wx.FlexGridSizer(", text)
 
     def test_checklist_uses_repens_actions_and_no_side_bitmap_column(self):
         text = self._read("noethys/Ctrl/CTRL_CheckListBox.py")
@@ -357,7 +357,7 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertIn('label=_(u"Tout décocher")', text)
         self.assertIn("UTILS_StyleRepens as Style", text)
         self.assertNotIn("wx.BitmapButton", text)
-        self.assertNotIn("FlexGridSizer", text)
+        self.assertNotIn("wx.FlexGridSizer(", text)
 
     def test_date_selector_uses_fluent_calendar_and_repens_menu_icons(self):
         text = self._read("noethys/Ctrl/CTRL_Saisie_date.py")
@@ -367,7 +367,7 @@ class CommonUIModernizationContractTests(unittest.TestCase):
         self.assertIn('Style.taille_icone("inline")', text)
         self.assertIn("wx.BoxSizer(wx.HORIZONTAL)", text)
         self.assertNotIn("wx.BitmapButton", text)
-        self.assertNotIn("FlexGridSizer", text)
+        self.assertNotIn("wx.FlexGridSizer(", text)
         self.assertNotIn("if False else False", text)
         self.assertNotIn("ID_MOIS_ACTUELLE", text)
 

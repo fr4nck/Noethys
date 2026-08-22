@@ -23,10 +23,11 @@ class ResponsiveToolbarContractTests(unittest.TestCase):
         self.assertIn("AUI_TB_PLAIN_BACKGROUND", self.aui_text)
         self.assertIn("SetBackgroundColour", self.aui_text)
 
-    def test_both_toolbar_families_use_responsive_bitmap_sizes(self):
-        self.assertIn("aui.AuiToolBar.SetToolBitmapSize", self.aui_text)
-        self.assertIn("wx.ToolBar.SetToolBitmapSize", self.aui_text)
-        self.assertIn("UTILS_Responsive.AdapterTailleWx", self.aui_text)
+    def test_both_toolbar_families_share_responsive_bitmap_sizing(self):
+        self.assertIn("isinstance(fenetre, (wx.ToolBar, aui.AuiToolBar))", self.aui_text)
+        self.assertIn("toolbar.SetToolBitmapSize", self.aui_text)
+        self.assertIn("UTILS_Responsive.GetTailleIcone", self.aui_text)
+        self.assertIn("_noethys_toolbar_icon_base", self.aui_text)
 
     def test_responsive_rules_are_capped_and_step_based(self):
         self.assertIn("def GetTailleIcone", self.responsive_text)

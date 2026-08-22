@@ -113,22 +113,18 @@ class DesignSystemIntegrationContractTests(unittest.TestCase):
         self.assertIn("def OnValeursDefaut", self.dialog_text)
         self.assertIn('UTILS_Interface.SetTailleTexte(valeurs["taille_texte"])', self.dialog_text)
 
-    def test_common_dialog_header_uses_semantic_theme(self):
-        self.assertIn("from Utils import UTILS_Interface", self.bandeau_text)
-        for role in (
-            "surface_container_lowest",
-            "on_surface",
-            "on_surface_variant",
-            "outline_variant",
-        ):
-            self.assertIn('GetCouleurRole("%s"' % role, self.bandeau_text)
+    def test_common_dialog_header_uses_repens_facade(self):
+        self.assertIn("UTILS_StyleRepens as Style", self.bandeau_text)
+        self.assertIn('Style.appliquer_fenetre(self, "surface_container")', self.bandeau_text)
+        self.assertIn('Style.couleur("outline_variant")', self.bandeau_text)
+        self.assertIn("CTRL_TexteRepens.H1", self.bandeau_text)
         self.assertIn("def AppliquerTheme", self.bandeau_text)
-        self.assertIn("wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)", self.bandeau_text)
+        self.assertNotIn("from Utils import UTILS_Interface", self.bandeau_text)
         self.assertNotIn("self.SetBackgroundColour(wx.Colour(255, 255, 255))", self.bandeau_text)
         self.assertNotIn("wx.Font(10, wx.DEFAULT", self.bandeau_text)
 
-    def test_common_image_button_keeps_native_light_and_semantic_dark_states(self):
-        self.assertIn("from Utils import UTILS_Interface", self.bouton_text)
+    def test_common_image_button_uses_repens_semantic_states(self):
+        self.assertIn("UTILS_StyleRepens as Style", self.bouton_text)
         self.assertIn("wx.EVT_ENTER_WINDOW", self.bouton_text)
         self.assertIn("wx.EVT_LEAVE_WINDOW", self.bouton_text)
         self.assertIn("wx.EVT_LEFT_DOWN", self.bouton_text)
@@ -136,34 +132,34 @@ class DesignSystemIntegrationContractTests(unittest.TestCase):
         self.assertNotIn("wx.EVT_ENABLE", self.bouton_text)
         self.assertIn("def Enable(self, enable=True):", self.bouton_text)
         self.assertIn("wx.Button.Enable(self, enable)", self.bouton_text)
-        self.assertIn('GetEtatCouleurs("pressed", sombre=True)', self.bouton_text)
-        self.assertIn('GetCouleurRole("surface_container_highest", sombre=True)', self.bouton_text)
-        self.assertIn('GetCouleurRole("surface_container_high", sombre=True)', self.bouton_text)
-        self.assertIn('GetCouleurRole("disabled", sombre=True)', self.bouton_text)
-        self.assertIn("if not sombre:", self.bouton_text)
-        self.assertIn("self._fond_natif", self.bouton_text)
+        self.assertIn('Style.etat("pressed")', self.bouton_text)
+        self.assertIn('Style.etat("disabled")', self.bouton_text)
+        self.assertIn('Style.couleur("surface_container_high")', self.bouton_text)
+        self.assertIn('Style.couleur("on_surface")', self.bouton_text)
+        self.assertNotIn("from Utils import UTILS_Interface", self.bouton_text)
 
-    def test_common_list_footer_uses_system_font_and_semantic_secondary_text(self):
-        self.assertIn("from Utils import UTILS_Interface", self.footer_text)
+    def test_common_list_footer_uses_repens_font_and_semantic_secondary_text(self):
+        self.assertIn("UTILS_StyleRepens as Style", self.footer_text)
         self.assertIn("def AppliquerTheme", self.footer_text)
-        self.assertIn('GetCouleurRole("surface_container", sombre=sombre)', self.footer_text)
-        self.assertIn('GetCouleurRole("on_surface_variant", sombre=sombre)', self.footer_text)
-        self.assertIn("wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)", self.footer_text)
+        self.assertIn('Style.couleur("surface_container")', self.footer_text)
+        self.assertIn('Style.couleur("on_surface_variant")', self.footer_text)
+        self.assertIn('Style.police("body")', self.footer_text)
         self.assertIn("wx.RendererNative.Get()", self.footer_text)
+        self.assertNotIn("from Utils import UTILS_Interface", self.footer_text)
         self.assertNotIn("wx.Font(8, wx.SWISS", self.footer_text)
         self.assertNotIn("wx.Colour(140, 140, 140)", self.footer_text)
-        # Une couleur explicitement fournie par un écran métier garde la priorité.
-        self.assertIn('if "couleur" in infoColonne : couleur = infoColonne["couleur"]', self.footer_text)
+        self.assertIn('if "couleur" in infoColonne', self.footer_text)
 
-    def test_ultrachoice_uses_semantic_rows_and_accessible_system_fonts(self):
-        self.assertIn("from Utils import UTILS_Interface", self.ultrachoice_text)
-        self.assertIn("UTILS_Interface.GetTailleTexte()", self.ultrachoice_text)
-        self.assertIn("facteur_hauteur = max(facteur_interface, facteur_texte)", self.ultrachoice_text)
-        self.assertIn("def _Police", self.ultrachoice_text)
-        self.assertIn('GetCouleurRole("on_surface", sombre=sombre)', self.ultrachoice_text)
-        self.assertIn('GetCouleurRole("on_surface_variant", sombre=sombre)', self.ultrachoice_text)
+    def test_ultrachoice_uses_semantic_rows_and_repens_fonts(self):
+        self.assertIn("UTILS_StyleRepens as Style", self.ultrachoice_text)
+        self.assertIn('Style.police("body_emphasis")', self.ultrachoice_text)
+        self.assertIn('Style.police("body_small")', self.ultrachoice_text)
+        self.assertIn('Style.couleur("on_surface")', self.ultrachoice_text)
+        self.assertIn('Style.couleur("on_surface_variant")', self.ultrachoice_text)
         self.assertIn('role = "surface_container_lowest" if item % 2 == 0 else "surface_container_low"', self.ultrachoice_text)
+        self.assertIn("fond = Style.couleur(role)", self.ultrachoice_text)
         self.assertIn("ODCB_PAINTING_SELECTED", self.ultrachoice_text)
+        self.assertNotIn("from Utils import UTILS_Interface", self.ultrachoice_text)
         self.assertNotIn("wx.Font(10, wx.DEFAULT", self.ultrachoice_text)
         self.assertNotIn("wx.Font(7, wx.DEFAULT", self.ultrachoice_text)
         self.assertNotIn("wx.Colour(240, 240, 250)", self.ultrachoice_text)

@@ -39,16 +39,17 @@ class SchoolControlsModernizationContractTests(unittest.TestCase):
             self.assertIn(token, text)
         self.assertIn("return None", text)
 
-    def test_school_grid_is_semantic_and_tracks_available_width(self):
+    def test_school_grid_uses_repens_facade_and_tracks_available_width(self):
         text = self._read("noethys/Ctrl/CTRL_Grille_ecoles.py")
-        self.assertIn("UTILS_Interface", text)
-        self.assertIn("UTILS_UIMetrics", text)
-        self.assertIn('GetCouleurRole("surface_container_lowest")', text)
+        self.assertIn("UTILS_StyleRepens as Style", text)
+        self.assertIn("Style.appliquer_liste(self)", text)
         self.assertIn("GetClientSize().GetWidth()", text)
         self.assertIn("GetStaticIconPath", text)
         self.assertIn("wx.EVT_SIZE", text)
         self.assertNotIn("SetBackgroundColour(wx.WHITE)", text)
         self.assertNotIn("SetColumnWidth(0, 420)", text)
+        self.assertNotIn("UTILS_Interface", text)
+        self.assertNotIn("UTILS_UIMetrics", text)
 
     def test_school_grid_preserves_selection_contract(self):
         text = self._read("noethys/Ctrl/CTRL_Grille_ecoles.py")

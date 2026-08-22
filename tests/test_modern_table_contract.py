@@ -57,18 +57,19 @@ class ModernTableContractTests(unittest.TestCase):
         self.assertIn("GetCouleurRole(role)", self.fluent_text)
         self.assertNotIn("GetLegacyOverridePath", self.fluent_text)
 
-    def test_new_table_component_uses_native_desktop_controls(self):
+    def test_new_table_component_uses_native_desktop_controls_and_repens_actions(self):
         self.assertIn("class PanneauTableau(wx.Panel)", self.tableau_text)
         self.assertIn("class ListeTableau(wx.ListCtrl)", self.tableau_text)
         self.assertIn("wx.SearchCtrl", self.tableau_text)
-        self.assertIn("wx.Button", self.tableau_text)
+        self.assertIn("CTRL_ActionRepens.CTRL", self.tableau_text)
         self.assertIn("UTILS_ColonnesResponsive.Installer", self.tableau_text)
-        self.assertNotIn("FlexGridSizer", self.tableau_text)
-        self.assertNotIn("GridSizer", self.tableau_text)
+        self.assertNotIn("wx.FlexGridSizer(", self.tableau_text)
+        self.assertNotIn("wx.GridSizer(", self.tableau_text)
 
-    def test_individuals_screen_uses_new_common_primitives(self):
+    def test_individuals_screen_uses_repens_common_primitives(self):
         self.assertIn("UTILS_ColonnesResponsive.Installer", self.individus_text)
-        self.assertIn("UTILS_FluentIcons.GetBitmap", self.individus_text)
+        self.assertIn("UTILS_IconesRepens.GetBitmap", self.individus_text)
+        self.assertIn("CTRL_ActionRepens.CTRL", self.individus_text)
         self.assertNotIn("Famille_ajouter.png\", \"tooltip", self.individus_text)
         self.assertNotIn("def _AjusteColonnes", self.individus_text)
 

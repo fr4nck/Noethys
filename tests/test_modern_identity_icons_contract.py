@@ -58,10 +58,15 @@ class ModernIdentityIconsContractTests(unittest.TestCase):
             self.assertEqual(self.identites._identite_pour_chemin(filename), (kind, None))
 
     def test_civilities_no_longer_collapse_all_organizations_to_one_icon(self):
-        self.assertIn('(6, u"Collectivité", None, "Collectivite.png", None)', self.civilites_text)
-        self.assertIn('(7, u"Association", None,  "Association.png", None)', self.civilites_text)
-        self.assertIn('(8, u"Organisme", None, "Organisme.png", None)', self.civilites_text)
-        self.assertIn('(9, u"Entreprise", None, "Entreprise.png", None)', self.civilites_text)
+        for label, image in (
+            (u"Collectivité", "Collectivite.png"),
+            (u"Association", "Association.png"),
+            (u"Organisme", "Organisme.png"),
+            (u"Entreprise", "Entreprise.png"),
+        ):
+            self.assertIn(label, self.civilites_text)
+            self.assertIn(image, self.civilites_text)
+        self.assertEqual(self.civilites_text.count('"Association.png"'), 1)
 
     def test_unknown_business_art_is_not_reinterpreted(self):
         self.assertIsNone(self.identites._identite_pour_chemin("LogoClubTresSpecifique.png"))

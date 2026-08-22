@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Contrats des shells différés/stables des dialogues historiques."""
+"""Contrats des chargements différés qui restent justifiés."""
 
 import ast
 import unittest
@@ -15,13 +15,13 @@ class ImpressionConsoDeferredContractTests(unittest.TestCase):
         ast.parse(text)
         return text
 
-    def test_dlg_package_routes_only_selected_dialogs_lazily(self):
+    def test_dlg_package_routes_only_the_heavy_impression_dialog_lazily(self):
         text = self._read("noethys/Dlg/__init__.py")
         self.assertIn("def __getattr__(name):", text)
         self.assertIn('"DLG_Impression_conso": ".DLG_Impression_conso_differe"', text)
-        self.assertIn('"DLG_Preferences": ".DLG_Preferences_stable"', text)
+        self.assertNotIn('"DLG_Preferences"', text)
+        self.assertNotIn("DLG_Preferences_stable", text)
         self.assertNotIn("from .DLG_Impression_conso", text)
-        self.assertNotIn("from .DLG_Preferences", text)
 
     def test_deferred_dialog_reuses_legacy_business_engine(self):
         text = self._read("noethys/Dlg/DLG_Impression_conso_differe.py")
@@ -48,15 +48,16 @@ class ImpressionConsoDeferredContractTests(unittest.TestCase):
         self.assertIn("ctrl_evenements.SetDates(listeDates=self._dates_initiales)", text)
         self.assertNotIn("ctrl_evenements.SetActivites(liste_activites)", text)
 
-    def test_preferences_adapter_is_one_full_width_scroll_column(self):
-        text = self._read("noethys/Dlg/DLG_Preferences_stable.py")
-        self.assertIn("class Dialog(Legacy.Dialog):", text)
-        self.assertIn("colonne = wx.BoxSizer(wx.VERTICAL)", text)
+    def test_preferences_dialog_is_direct_scrollable_and_resizable(self):
+        text = self._read("noethys/Dlg/DLG_Preferences.py")
+        self.assertIn("class Dialog(wx.Dialog):", text)
+        self.assertIn("wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER", text)
+        self.assertIn("self.contenu = wx.ScrolledWindow", text)
+        self.assertIn("self.contenu.SetScrollRate", text)
         self.assertIn("self.contenu.FitInside()", text)
-        self.assertIn("colonne.Add(ctrl, 0, wx.EXPAND", text)
-        self.assertNotIn("wx.BoxSizer(wx.HORIZONTAL)", text)
-        self.assertNotIn("colonne_gauche", text)
-        self.assertNotIn("colonne_droite", text)
+        self.assertIn("self.ctrl_interface = Interface(self.contenu)", text)
+        self.assertIn("CTRL_ActionRepens.CTRL", text)
+        self.assertNotIn("class Dialog(Legacy.Dialog):", text)
 
 
 if __name__ == "__main__":

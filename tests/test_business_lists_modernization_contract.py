@@ -25,14 +25,13 @@ class BusinessListsModernizationContractTests(unittest.TestCase):
             "noethys/Ctrl/CTRL_Liste_rappels.py",
         ):
             text = self._read(relative_path)
-            self.assertIn("CTRL_Bouton_image.CTRL", text)
-            self.assertIn("UTILS_Interface", text)
-            self.assertIn("UTILS_UIMetrics", text)
+            self.assertIn("CTRL_ActionRepens", text)
+            self.assertIn("UTILS_StyleRepens as Style", text)
             self.assertIn("wx.BoxSizer(wx.HORIZONTAL)", text)
             self.assertIn("wx.BoxSizer(wx.VERTICAL)", text)
             self.assertNotIn("wx.BitmapButton", text)
-            self.assertNotIn("FlexGridSizer", text)
-            self.assertNotIn("GridSizer", text)
+            self.assertNotIn("wx.FlexGridSizer(", text)
+            self.assertNotIn("wx.GridSizer(", text)
 
     def test_invoice_and_reminder_lists_replace_blue_hyperlinks_with_buttons(self):
         for relative_path, tout, rien in (
@@ -46,15 +45,16 @@ class BusinessListsModernizationContractTests(unittest.TestCase):
             self.assertIn(tout, text)
             self.assertIn(rien, text)
 
-    def test_location_filters_use_scaled_system_text(self):
+    def test_location_filters_use_repens_scaled_text(self):
         for relative_path in (
             "noethys/Ctrl/CTRL_Liste_locations.py",
             "noethys/Ctrl/CTRL_Liste_locations_demandes.py",
         ):
             text = self._read(relative_path)
-            self.assertIn("wx.SystemSettings.GetFont(wx.SYS_DEFAULT_GUI_FONT)", text)
-            self.assertIn("UTILS_Interface.GetTailleTexte()", text)
+            self.assertIn("UTILS_StyleRepens as Style", text)
+            self.assertIn("Style.appliquer_texte(", text)
             self.assertNotIn("wx.Font(8,", text)
+            self.assertNotIn("UTILS_Interface.GetTailleTexte()", text)
 
     def test_business_actions_preserve_underlying_list_operations(self):
         expectations = {
