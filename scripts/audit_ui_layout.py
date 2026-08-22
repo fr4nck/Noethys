@@ -7,6 +7,10 @@ exhaustive : tailles figées, toolbars dimensionnées localement, dépendances
 visuelles qui contournent la façade Repens, boutons bitmap historiques et
 combinaisons de flags connues pour produire des layouts bloqués.
 
+Les mécanismes qui masquent les assertions de cohérence des sizers constituent
+en revanche une erreur structurelle : ils sont détectés séparément afin que la
+CI puisse les interdire explicitement.
+
 La section « couverture Repens » fournit un indicateur reproductible. Il ne
 prétend pas mesurer la modernisation fonctionnelle de Noethys : il mesure la
 part des fichiers UI qui déclarent une dépendance de style et qui passent déjà
@@ -31,7 +35,18 @@ PATTERNS = {
     "toolbar_bitmap_fixed": re.compile(r"SetToolBitmapSize\s*\(\s*(?:wx\.Size\s*\()?\s*\(?\s*(?:16|20|24|32|40|48)\s*,"),
     "aui_pane_fixed_size": re.compile(r"\.(?:MinSize|BestSize)\s*\(\s*\(\s*-?\d+\s*,\s*-?\d+"),
     "window_fixed_min_size": re.compile(r"\.SetMinSize\s*\(\s*\(\s*-?\d+\s*,\s*-?\d+"),
-    "align_expand_conflict": re.compile(r"wx\.ALIGN_(?:CENTER|CENTRE)_VERTICAL\s*\|\s*wx\.EXPAND|wx\.EXPAND\s*\|\s*wx\.ALIGN_(?:CENTER|CENTRE)_VERTICAL"),
+    # wx.EXPAND rend les flags d'alignement de l'axe concerné incohérents ou
+    # inutiles. L'audit reste informatif car l'axe dépend du sizer parent.
+    "align_expand_conflict": re.compile(
+        r"(?:wx\.EXPAND[^#\n]*wx\.ALIGN_(?:LEFT|RIGHT|TOP|BOTTOM|CENTER|CENTRE|CENTER_HORIZONTAL|CENTRE_HORIZONTAL|CENTER_VERTICAL|CENTRE_VERTICAL)"
+        r"|wx\.ALIGN_(?:LEFT|RIGHT|TOP|BOTTOM|CENTER|CENTRE|CENTER_HORIZONTAL|CENTRE_HORIZONTAL|CENTER_VERTICAL|CENTRE_VERTICAL)[^#\n]*wx\.EXPAND)"
+    ),
+    # Ne jamais faire taire wxWidgets pour rendre une CI verte. Ces deux formes
+    # couvrent la variable d'environnement officielle et l'API de désactivation
+    # des consistency checks lorsqu'elle est exposée par le binding.
+    "sizer_assertion_suppression": re.compile(
+        r"WXSUPPRESS_SIZER_FLAGS_CHECK|DisableConsistencyChecks\s*\("
+    ),
     "raw_grid_double_click": re.compile(r"GetGridWindow\(\)\.Bind\(wx\.EVT_LEFT_DCLICK"),
     "fixed_grid_column": re.compile(r"\.SetColSize\s*\([^,]+,\s*\d+\s*\)"),
     "legacy_grid_lines": re.compile(r"wx\.LC_HRULES\s*\|\s*wx\.LC_VRULES|wx\.LC_VRULES\s*\|\s*wx\.LC_HRULES"),
