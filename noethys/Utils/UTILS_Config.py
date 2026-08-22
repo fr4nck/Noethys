@@ -23,9 +23,11 @@ from Utils import UTILS_Json
 
 def GetNomFichierConfig(nomFichier="Config.json"):
     return UTILS_Fichiers.GetRepUtilisateur(nomFichier)
+
 def IsFichierExists() :
     nomFichier = GetNomFichierConfig()
     return os.path.isfile(nomFichier)
+
 def GenerationFichierConfig():
     dictDonnees = {}
     nouveau_fichier = True
@@ -77,6 +79,7 @@ def GenerationFichierConfig():
 
     print("nouveau_fichier = %s" % nouveau_fichier)
     return nouveau_fichier
+
 def SupprimerFichier():
     nomFichier = GetNomFichierConfig()
     os.remove(nomFichier)
@@ -167,7 +170,7 @@ class FichierConfig():
         data = self.GetDictConfig()
         for key, valeur in dictParametres.items():
             data[key] = valeur
-        self.SetDictConfig(dictParametres)
+        self.SetDictConfig(data)
 
     def DelItemConfig(self, key ):
         """ Supprime une valeur dans le fichier de config """
@@ -262,3 +265,4 @@ def SetParametres(dictParametres={}):
 # --------------- TESTS ----------------------------------------------------------------------------------------------------------
 if __name__ == u"__main__":
     print("GET :", GetParametres( {"impression_factures_impayes" : 0} ))
+    #print("SET :", SetParametres( {"test1" : True, "test2" : True} ))
