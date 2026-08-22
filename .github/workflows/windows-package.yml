@@ -162,7 +162,11 @@ jobs:
             $errorMarker = Join-Path $testRoot "FROZEN-SMOKE-ERROR.txt"
             $okMarker = Join-Path $testRoot "FROZEN-SMOKE-OK.txt"
             if ($process.ExitCode -ne 0) {
-              if (Test-Path $errorMarker) { Get-Content $errorMarker | Write-Error }
+              if (Test-Path $errorMarker) {
+                Write-Host "----- FROZEN-SMOKE-ERROR -----"
+                Get-Content $errorMarker | ForEach-Object { Write-Host $_ }
+                Write-Host "------------------------------"
+              }
               throw "Smoke de l'exécutable figé en échec (code $($process.ExitCode))"
             }
             if (-not (Test-Path $okMarker)) {
