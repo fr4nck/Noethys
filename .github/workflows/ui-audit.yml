@@ -30,5 +30,8 @@ jobs:
           python -m py_compile noethys/Utils/UTILS_Responsive.py
           python -m py_compile noethys/Utils/UTILS_Aui.py
           python -m py_compile noethys/Ctrl/CTRL_Ephemeride.py
-      - name: Inventorier la dette de layout
-        run: python scripts/audit_ui_layout.py --json tmp/ui-layout-audit.json
+      - name: Inventorier la dette de layout et interdire le masquage des assertions
+        run: >-
+          python scripts/audit_ui_layout.py
+          --json tmp/ui-layout-audit.json
+          --fail-on sizer_assertion_suppression
