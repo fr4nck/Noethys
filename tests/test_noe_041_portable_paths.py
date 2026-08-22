@@ -70,6 +70,16 @@ class PortablePathsTests(unittest.TestCase):
                 self.assertEqual(Path(path).parent, portable / dirname)
                 self.assertTrue((portable / dirname).is_dir())
 
+    def test_standard_data_directory_creates_missing_appdirs_parents(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            module = _load_utils_files(root)
+
+            data = Path(module.GetRepData("demo.dat"))
+            expected = root / "outside-user-data" / "noethys" / "Data" / "demo.dat"
+            self.assertEqual(data, expected)
+            self.assertTrue(expected.parent.is_dir())
+
     def test_standard_runtime_subdirectories_are_created_on_demand(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
