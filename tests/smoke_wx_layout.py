@@ -32,6 +32,47 @@ def _descendants(window):
     return resultat
 
 
+def _book_types():
+    """Types standards wx dérivés de BookCtrl disponibles sur la plateforme."""
+    noms = ("Notebook", "Treebook", "Listbook", "Choicebook", "Toolbook")
+    return tuple(getattr(wx, nom) for nom in noms if hasattr(wx, nom))
+
+
+def _assert_books_populated(descendants):
+    """Parcourt réellement toutes les pages des Notebook/Treebook standards."""
+    types = _book_types()
+    if not types:
+        return
+
+    for book in (ctrl for ctrl in descendants if isinstance(ctrl, types)):
+        page_count = book.GetPageCount()
+        assert page_count > 0, f"book vide: {book.__class__.__name__}"
+        selection_initiale = book.GetSelection()
+
+        for index in range(page_count):
+            book.SetSelection(index)
+            book.Layout()
+            page = book.GetPage(index)
+            page.Layout()
+            wx.Yield()
+
+            taille = page.GetSize()
+            assert taille.width > 0 and taille.height > 0, (
+                f"page non dimensionnée: {book.__class__.__name__}[{index}] {taille}"
+            )
+
+            contenu = _descendants(page)
+            assert contenu, f"page sans contenu: {book.__class__.__name__}[{index}]"
+            assert any(
+                ctrl.IsShown() and ctrl.GetSize().width > 0 and ctrl.GetSize().height > 0
+                for ctrl in contenu
+            ), f"page sans contrôle visible: {book.__class__.__name__}[{index}]"
+
+        if 0 <= selection_initiale < page_count:
+            book.SetSelection(selection_initiale)
+            wx.Yield()
+
+
 def _assert_window_populated(window, min_descendants=1):
     """Vérifie qu'une fenêtre affichée n'est ni vide ni non dimensionnée."""
     window.Layout()
@@ -55,6 +96,8 @@ def _assert_window_populated(window, min_descendants=1):
         if ctrl.IsShown() and taille.width > 0 and taille.height > 0:
             visibles.append(ctrl)
     assert visibles, f"aucun contrôle visible et dimensionné dans {window.__class__.__name__}"
+
+    _assert_books_populated(descendants)
     return descendants
 
 
