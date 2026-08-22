@@ -7,12 +7,14 @@ on:
       - 'noethys/**'
       - 'scripts/audit_ui_layout.py'
       - 'scripts/audit_wx_lifecycle.py'
+      - 'tests/test_audit_wx_lifecycle.py'
       - '.github/workflows/ui-audit.yml'
   pull_request:
     paths:
       - 'noethys/**'
       - 'scripts/audit_ui_layout.py'
       - 'scripts/audit_wx_lifecycle.py'
+      - 'tests/test_audit_wx_lifecycle.py'
       - '.github/workflows/ui-audit.yml'
 
 permissions:
@@ -32,6 +34,8 @@ jobs:
           python -m py_compile noethys/Utils/UTILS_Responsive.py
           python -m py_compile noethys/Utils/UTILS_Aui.py
           python -m py_compile noethys/Ctrl/CTRL_Ephemeride.py
+      - name: Tester l'audit des contrats wxPython
+        run: python -m unittest tests.test_audit_wx_lifecycle -v
       - name: Inventorier la dette de layout et interdire le masquage des assertions
         run: >-
           python scripts/audit_ui_layout.py
@@ -41,6 +45,7 @@ jobs:
         run: >-
           python scripts/audit_wx_lifecycle.py
           --json tmp/wx-lifecycle-audit.json
+          --fail-on constructor_parent_callback
       - name: Conserver les inventaires UI
         if: always()
         uses: actions/upload-artifact@v6
