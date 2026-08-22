@@ -1,27 +1,38 @@
 # Développement — fork Upgrade Noethys
 
+> Guide maintenu au 22 août 2026.
+
 ## Positionnement
 
-Ce dépôt modernise Noethys Desktop sans réécriture métier. Les priorités de développement sont, dans l'ordre :
+Ce dépôt modernise Noethys Desktop sans réécriture métier. Les priorités de développement sont :
 
 1. conserver les bases et configurations existantes ;
 2. éviter toute migration implicite de schéma ;
-3. maintenir le comportement métier historique ;
-4. moderniser Python, wxPython et les dépendances par corrections ciblées ;
-5. conserver le code source compatible Windows, macOS et Linux lorsque c'est raisonnablement possible ;
-6. produire en priorité un portable Windows reproductible.
+3. maintenir le comportement métier historique sauf décision explicite ;
+4. corriger les causes racines plutôt que masquer les symptômes ;
+5. moderniser runtime, UI et architecture par lots ciblés ;
+6. conserver Windows, macOS et Linux comme cibles du code source lorsque c'est raisonnablement possible ;
+7. produire en priorité un portable Windows reproductible ;
+8. conserver les décisions durables dans Git.
+
+Lire également :
+
+- `PROJECT_STATE.md` pour les décisions transversales ;
+- `DESIGN_SYSTEM_UI_UX.md` pour la direction UI/UX ;
+- `WXPYTHON_UI_RULES.md` pour les règles wxPython ;
+- `ROADMAP.md` et `NOE-BACKLOG.md` pour le travail restant.
 
 ## Runtime de référence
 
 La baseline de production reste **Python 3.10**.
 
-Python 3.11 et 3.12 ont été qualifiés par des workflows dédiés, conservés pour des requalifications ponctuelles avant des jalons importants. Ils ne sont pas encore la baseline de distribution.
+Python 3.11 et 3.12 ont été qualifiés pour des revalidations ponctuelles mais ne sont pas encore la baseline de distribution.
 
-wxPython Phoenix est utilisé sur les plateformes modernes. La CI vérifie les API historiques réellement encore employées et évite les remplacements cosmétiques lorsqu'un alias reste supporté.
+wxPython Phoenix est utilisé sur les plateformes modernes. Les anciens aliases encore réellement supportés ne sont pas remplacés uniquement pour des raisons cosmétiques.
 
 ## Installation de l'environnement
 
-Pour les audits et tests sans GUI, un Python 3.10 suffit avec les dépendances nécessaires au scénario concerné.
+Pour les audits et tests non GUI, utiliser Python 3.10 avec les dépendances du scénario concerné.
 
 Pour reproduire le build Windows complet :
 
@@ -29,8 +40,6 @@ Pour reproduire le build Windows complet :
 python -m pip install --upgrade pip wheel
 python -m pip install -r requirements-build.txt
 ```
-
-`requirements-build.txt` inclut la chaîne nécessaire à PyInstaller et aux piles fonctionnelles vérifiées pendant le packaging.
 
 ## Organisation du dépôt
 
@@ -40,11 +49,11 @@ python -m pip install -r requirements-build.txt
 - `noethys/Ol/` : listes/ObjectListView ;
 - `noethys/Utils/` : services, fichiers, sauvegarde, intégrations et utilitaires ;
 - `noethys/Data/` : descriptions et données structurelles ;
-- `tests/` : tests unitaires/non-régression ;
+- `tests/` : tests unitaires et non-régression ;
 - `scripts/` : audits, smoke tests et outils de recette ;
 - `packaging/` : spec PyInstaller et runtime hooks ;
-- `.github/workflows/` : CI multi-plateforme et packaging Windows ;
-- `docs/` : roadmap, décisions, procédures de qualification et documentation du fork.
+- `.github/workflows/` : CI, qualifications et packaging ;
+- `docs/` : documentation actuelle et archives de décision.
 
 Le point d'entrée historique reste :
 
@@ -54,37 +63,27 @@ noethys/Noethys.py
 
 ## Tests de non-régression
 
-La suite métier complète s'exécute avec :
+Commande de base :
 
 ```bash
 python -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
-Elle couvre notamment :
+Elle couvre notamment SQL strict, base, exports comptables, restauration, mode portable et divers contrats métier/runtime.
 
-- migration/copie de bases ;
-- SQL strict des règlements ;
-- exports comptables concernés ;
-- passerelle PMSL ;
-- restauration ;
-- isolation du mode portable.
+Une correction d'un défaut reproductible doit ajouter ou renforcer un test lorsqu'il est raisonnablement automatisable.
 
-Une correction d'un défaut métier reproductible doit ajouter ou renforcer un test lorsqu'il est raisonnablement automatisable.
+Règle : tester un **invariant observable**, pas un détail d'implémentation sans valeur métier.
 
-## Audits principaux
+## Audits et garde-fous
 
-La CI exécute notamment :
+Le dépôt dispose notamment d'audits runtime, SQL, imports dynamiques, compatibilité wxPython, encodages, dates, CSV, schéma et packaging.
 
-- `scripts/audit_runtime_patterns.py` ;
-- `scripts/audit_critical_business_modules.py` ;
-- `scripts/audit_dynamic_import_risks.py` ;
-- `scripts/audit_wxphoenix_compat.py` ;
-- audits encodage, CSV, dates, bytes/texte et dépendances ;
-- `scripts/check_schema_compatibility.py` ;
-- base synthétique et benchmark lecture seule ;
-- préflight Noe-030.
+Ces outils sont des garde-fous :
 
-Ces outils sont des garde-fous. Un motif statique n'est pas automatiquement un bug : la règle reste de corriger les causes confirmées.
+- un motif statique n'est pas automatiquement un bug ;
+- une occurrence `REVIEW` demande une analyse ;
+- ne pas transformer un audit en correcteur mécanique si la sémantique métier n'est pas démontrée.
 
 ## Bases de données
 
@@ -92,91 +91,160 @@ Ces outils sont des garde-fous. Un motif statique n'est pas automatiquement un b
 
 - aucune migration implicite ;
 - SQLite reste supporté ;
-- la compatibilité avec les anciennes installations MySQL/MariaDB est conservée autant que possible ;
-- ne pas introduire une fonctionnalité SQL nécessitant inutilement un serveur récent ;
-- toute modification touchant les requêtes doit préserver la forme et la sémantique des résultats métier.
+- compatibilité MySQL/MariaDB historique conservée autant que possible ;
+- ne pas introduire inutilement une fonction SQL réservée aux serveurs récents ;
+- préserver cardinalité, ordre utile et sémantique des résultats.
 
-### Recette
+### SQL strict
 
-Pour une base existante, utiliser :
+Ne pas :
+
+- ajouter toutes les colonnes au `GROUP BY` mécaniquement ;
+- utiliser `MIN()` / `MAX()` comme rustine sans invariant métier ;
+- déduire qu'une requête classée `REVIEW` est nécessairement incorrecte.
+
+Préférer les pré-agrégations et sous-requêtes lorsque cela préserve clairement la logique historique.
+
+### Atomicité métier
+
+Lorsqu'une action perçue comme unique écrit plusieurs objets liés, éviter les validations partielles.
+
+Exemple déjà corrigé : sauvegarde d'un contrat PSU + prestations + consommations dans une transaction unique avec rollback en cas d'échec.
+
+### Recette sur base existante
+
+Utiliser une **copie**, jamais l'unique production.
+
+Le préflight RC unifié est :
 
 ```bash
-python scripts/recette_existing_db_readonly.py --sqlite copie.dat --json avant.json
+python scripts/rc_db_preflight.py ...
 ```
 
-Puis, après la recette sur la copie :
+Les scripts de recette lecture seule peuvent également produire et comparer une empreinte de schéma.
 
-```bash
-python scripts/recette_existing_db_readonly.py \
-  --sqlite copie.dat \
-  --expect-schema-from avant.json \
-  --json apres.json
-```
+## wxPython : règles obligatoires
 
-Ne jamais utiliser l'unique base de production pour qualifier une branche ou une RC.
+Voir `WXPYTHON_UI_RULES.md` pour le détail.
 
-## wxPython et plateformes
+Minimum à respecter :
 
-La CI principale comporte :
+- `parent` wxPython = vrai parent visuel ;
+- contrôleur métier séparé lorsqu'il ne s'agit pas du parent visuel ;
+- pas de `WXSUPPRESS_SIZER_FLAGS_CHECK` ;
+- pas de fermeture/`EndModal()` prématurée pendant une construction incomplète ;
+- corriger les flags/sizers invalides à la source ;
+- éviter l'empilement de `SetSize`, `SetPosition`, `SetMinSize` et `CallAfter` comme système de layout ;
+- pas de troncature artificielle de titre ;
+- tester les contenus longs et l'échelle 100/120/150 % ;
+- préserver les couleurs métier en thème sombre ;
+- une CI verte ne remplace pas la validation visuelle.
 
-- Windows : compilation, Phoenix, imports, `wx.App` et layout wx ;
-- macOS : mêmes frontières techniques principales ;
-- Linux GTK3 : wxPython système sous Xvfb, Phoenix, `wx.App` et layout représentatif.
+Pour une correction GUI importante : compiler/importer, créer/détruire un vrai `wx.App(False)` lorsque possible et conserver un smoke ciblé du contrôle fautif.
 
-Une CI verte valide le socle technique, pas chaque dialogue métier ni chaque périphérique.
+## UI/UX
+
+La référence canonique est `DESIGN_SYSTEM_UI_UX.md`.
+
+Direction :
+
+- Fluent 2 : grammaire desktop ;
+- Material Design 3 : tokens, surfaces et thèmes ;
+- Liquid Glass : inspiration très ciblée pour profondeur/couches fonctionnelles ;
+- Fluent System Icons : iconographie principale.
+
+Ordre de migration : moteur de thème/tokens → listes/tableaux → saisies → boutons → toolbars/navigation → dialogues → composants métier → écrans particuliers.
+
+Ne pas ajouter une dépendance lourde uniquement pour obtenir un effet visuel.
+
+## Performance et freezes
+
+Le fork dispose d'une instrumentation de performance Windows/MySQL distante.
+
+Règles :
+
+- mesurer avant d'optimiser ;
+- distinguer temps de requête, latence réseau, blocage de la boucle UI et délai de layout ;
+- ne pas ajouter un fondu ou délai artificiel pour cacher un traitement bloquant ;
+- pendant l'investigation, conserver les actions lentes dans le journal prévu sans données métier sensibles.
 
 ## Packaging Windows
 
-Le build s'effectue via :
+Build :
 
 ```bash
 pyinstaller --noconfirm --clean packaging/noethys.spec
 ```
 
-Le layout `onedir` est volontairement **plat** (`contents_directory="."`) car `Chemins.py` résout historiquement les ressources depuis le dossier de `Noethys.exe`.
+Le layout `onedir` reste volontairement plat (`contents_directory="."`) car `Chemins.py` résout historiquement les ressources depuis le dossier de `Noethys.exe`.
 
-Le workflow `Package Windows` :
+Le workflow de packaging :
 
 1. installe les dépendances ;
-2. exécute les smoke tests fonctionnels ;
+2. exécute les contrôles prévus ;
 3. construit le bundle ;
 4. vérifie ressources et layout ;
-5. active le dossier historique `Portable/` ;
+5. active `Portable/` ;
 6. crée `BUILD-INFO.txt` ;
-7. archive le dossier ;
-8. ré-extrait l'archive ;
-9. neutralise l'environnement Python du runner ;
+7. archive ;
+8. ré-extrait dans un dossier neuf ;
+9. neutralise Python externe ;
 10. exécute réellement l'EXE figé en mode smoke ;
-11. publie `Noethys-Windows-portable`.
+11. publie l'artefact.
 
-Le runtime hook de smoke quitte avant l'ouverture de la configuration ou d'une base utilisateur.
+Le smoke s'arrête avant la recette d'une base utilisateur.
 
 ## Mode portable
 
-La présence de `Portable/` à côté de l'EXE active le comportement historique :
+La présence de `Portable/` à côté de l'EXE active le mécanisme historique.
 
-- configuration dans `Portable/` ;
-- bases locales dans `Portable/Data/` ;
-- répertoires runtime sous `Portable/`.
+Ne jamais supprimer ce dossier lors d'une mise à jour sans sauvegarde : il peut contenir configuration et bases locales.
 
-Ne pas supprimer ce dossier lors d'une mise à jour d'une installation qui l'utilise : il peut contenir les données utilisateur.
+## Architecture métier et projets voisins
+
+Ne pas fusionner arbitrairement les responsabilités :
+
+- Noethys : familles, consommations, prestations, facturation, structures/relations contractuelles et données métier ;
+- PMSL-Équipe : RH/planning des intervenants ;
+- Teamworks-CCNS : règles RH/CCNS et contrôle du temps ;
+- Connecthys : portail synchronisé ;
+- autres outils : intégrations explicites, idempotentes et découplées.
+
+Les échanges doivent utiliser des identifiants stables et des interfaces contrôlées plutôt qu'un couplage direct aux tables entre projets.
 
 ## Style de modification attendu
 
 - diff ciblé ;
-- pas de refactorisation cosmétique massive ;
-- pas de nouvelle fonctionnalité métier mélangée à un correctif de compatibilité ;
-- conserver les interfaces historiques lorsque leur remplacement n'apporte pas de gain réel ;
+- pas de reformatage massif sans valeur ;
+- pas de fonctionnalité métier sans lien dans un correctif technique ;
+- ne pas réécrire un mécanisme historique encore correct juste pour le moderniser ;
 - documenter les exceptions de plateforme ;
-- ajouter un garde-fou lorsqu'une régression importante peut être reproduite automatiquement.
+- une correction centrale vaut mieux que des dizaines d'exceptions locales ;
+- ajouter un garde-fou lorsqu'une régression importante peut être reproduite.
+
+## CI rapide et qualification lourde
+
+Le principe visé est de garder une boucle quotidienne rapide et de réserver les qualifications lourdes aux jalons/RC. Tant que la PR dédiée à cette séparation n'est pas fusionnée, **les workflows présents sur `master` sont la seule description exécutable de la CI courante**.
+
+Ne jamais documenter une PR ouverte comme si elle était déjà intégrée.
 
 ## Avant une PR ou une fusion
 
-Au minimum :
+Minimum :
 
 ```bash
 python -m compileall -q noethys
 python -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
-Pour tout changement touchant packaging, wxPython, base ou dépendances, s'appuyer ensuite sur les jobs GitHub Actions correspondants avant fusion.
+Pour tout changement touchant packaging, wxPython, base ou dépendances, s'appuyer ensuite sur les jobs GitHub Actions correspondants.
+
+## Entretien documentaire
+
+Une décision durable prise pendant une recette ou une conversation doit être portée par :
+
+- le code/test si elle est exécutable ;
+- une issue si du travail reste ;
+- le document canonique correspondant si elle est architecturale ou transversale.
+
+Voir `docs/README.md` pour savoir quel document est canonique et lequel est historique.
