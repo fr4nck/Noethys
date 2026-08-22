@@ -6,11 +6,13 @@ on:
     paths:
       - 'noethys/**'
       - 'scripts/audit_ui_layout.py'
+      - 'scripts/audit_wx_lifecycle.py'
       - '.github/workflows/ui-audit.yml'
   pull_request:
     paths:
       - 'noethys/**'
       - 'scripts/audit_ui_layout.py'
+      - 'scripts/audit_wx_lifecycle.py'
       - '.github/workflows/ui-audit.yml'
 
 permissions:
@@ -35,3 +37,14 @@ jobs:
           python scripts/audit_ui_layout.py
           --json tmp/ui-layout-audit.json
           --fail-on sizer_assertion_suppression
+      - name: Inventorier les contrats de construction wxPython
+        run: >-
+          python scripts/audit_wx_lifecycle.py
+          --json tmp/wx-lifecycle-audit.json
+      - name: Conserver les inventaires UI
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ui-audit-inventories
+          path: tmp/*-audit.json
+          if-no-files-found: warn
