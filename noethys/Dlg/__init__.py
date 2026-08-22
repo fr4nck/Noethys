@@ -16,9 +16,10 @@ _ADAPTATEURS = {
 
 
 def __getattr__(name):
-    module_name = _ADAPTATEURS.get(name)
-    if module_name is not None:
-        module = importlib.import_module(module_name, __name__)
+    # Garder la cible littérale ici est volontaire : PyInstaller peut ainsi
+    # l'identifier statiquement tout en conservant le chargement paresseux.
+    if name == "DLG_Impression_conso":
+        module = importlib.import_module(".DLG_Impression_conso_differe", __name__)
         globals()[name] = module
         return module
     raise AttributeError(name)
