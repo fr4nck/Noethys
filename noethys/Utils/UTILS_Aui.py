@@ -169,32 +169,92 @@ def ConfigurerGrille(grille):
     return True
 
 
-def ConfigurerNotebook(notebook):
-    """Donne aux onglets AUI une hauteur lisible et cohérente."""
-    if notebook is None:
+def _TypesNavigationStandard(wx):
+    """Retourne les contrôles book disponibles dans la version courante de wxPython."""
+    types_navigation = []
+    for nom in ("Notebook", "Choicebook", "Listbook", "Treebook", "Simplebook"):
+        classe = getattr(wx, nom, None)
+        if isinstance(classe, type):
+            types_navigation.append(classe)
+    return tuple(types_navigation)
+
+
+def _StyliserControleNavigation(controle, UTILS_Interface):
+    """Style un sélecteur interne de book sans modifier sa géométrie native."""
+    if controle is None:
+        return
+    try:
+        controle.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_low"))
+        controle.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        controle.Refresh()
+    except Exception:
+        pass
+
+
+def ConfigurerNavigation(book):
+    """Applique Repens aux notebooks/listbooks/choicebooks sans redessiner leurs onglets."""
+    if book is None:
         return False
     try:
+        import wx
         import wx.lib.agw.aui as aui
         from Utils import UTILS_UIMetrics
         from Utils import UTILS_Interface
-        if not isinstance(notebook, aui.AuiNotebook):
-            return False
     except Exception:
         return False
 
+    types_standard = _TypesNavigationStandard(wx)
+    est_aui = isinstance(book, aui.AuiNotebook)
+    if not est_aui and (not types_standard or not isinstance(book, types_standard)):
+        return False
+
     try:
-        notebook.SetTabCtrlHeight(UTILS_UIMetrics.px(32))
+        book.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        book.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
     except Exception:
         pass
+
+    # AUI expose explicitement la hauteur de sa barre d'onglets. Les books
+    # natifs conservent volontairement leur métrique plateforme et leur focus.
+    if est_aui:
+        try:
+            book.SetTabCtrlHeight(UTILS_UIMetrics.px(32))
+        except Exception:
+            pass
+
+    # Listbook/Choicebook/Treebook fournissent selon la version de wxPython un
+    # contrôle de navigation interne. On le thématise sans remplacer son rendu.
+    for getter in ("GetListView", "GetChoiceCtrl", "GetTreeCtrl"):
+        try:
+            controle = getattr(book, getter)()
+        except Exception:
+            controle = None
+        _StyliserControleNavigation(controle, UTILS_Interface)
+
+    # Les pages reçoivent uniquement les rôles de surface/texte. Leur layout,
+    # leurs tailles et leur logique métier restent intégralement inchangés.
     try:
-        notebook.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+        nombre_pages = book.GetPageCount()
     except Exception:
-        pass
+        nombre_pages = 0
+    for index in range(nombre_pages):
+        try:
+            page = book.GetPage(index)
+            page.SetBackgroundColour(UTILS_Interface.GetCouleurRole("surface"))
+            page.SetForegroundColour(UTILS_Interface.GetCouleurRole("on_surface"))
+        except Exception:
+            pass
+
     try:
-        notebook.Refresh()
+        book.Refresh()
     except Exception:
         pass
     return True
+
+
+def ConfigurerNotebook(notebook):
+    """Compatibilité historique : configure désormais toute navigation de type book."""
+    return ConfigurerNavigation(notebook)
 
 
 def _ConfigurerComposantsDuManager(manager):
@@ -207,6 +267,7 @@ def _ConfigurerComposantsDuManager(manager):
     except Exception:
         return
 
+    types_navigation = _TypesNavigationStandard(wx)
     deja_vues = set()
     for pane in panes:
         racine = getattr(pane, "window", None)
@@ -221,8 +282,8 @@ def _ConfigurerComposantsDuManager(manager):
                     taille_base = _TailleBitmapExistante(fenetre, defaut=16)
                 ConfigurerToolBar(fenetre, taille_base=taille_base, fond_uni=True)
                 continue
-            if isinstance(fenetre, aui.AuiNotebook):
-                ConfigurerNotebook(fenetre)
+            if isinstance(fenetre, aui.AuiNotebook) or (types_navigation and isinstance(fenetre, types_navigation)):
+                ConfigurerNavigation(fenetre)
                 continue
             if isinstance(fenetre, gridlib.Grid):
                 ConfigurerGrille(fenetre)
