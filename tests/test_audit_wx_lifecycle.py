@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import ast
+import unittest
+
+from scripts import audit_wx_lifecycle as audit
+
+
+class AuditWxLifecycleTests(unittest.TestCase):
+    def _path(self):
+        return audit.NOETHYS / "Ctrl" / "sample.py"
+
+    def test_non_wx_track_is_not_reported_as_constructor_parent_callback(self):
+        source = '''
+class Track:
+    def __init__(self, parent):
+        self.parent = parent
+        self.value = parent.GetReponse()
+'''
+        tree = ast.parse(source)
+        findings = audit._scan_constructor_order(self._path(), tree, source.splitlines())
+        self.assertEqual(findings, [])
+
+    def test_wx_parent_business_callback_before_layout_is_reported(self):
+        source = '''
+class CTRL(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
+        self.parent = parent
+        parent.MAJListeCtrl()
+        self.SetSizer(wx.BoxSizer(wx.VERTICAL))
+'''
+        tree = ast.parse(source)
+        findings = audit._scan_constructor_order(self._path(), tree, source.splitlines())
+        kinds = {item["kind"] for item in findings}
+        self.assertIn("constructor_parent_callback", kinds)
+
+    def test_callback_reading_late_attribute_is_high_risk(self):
+        source = '''
+class CTRL(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
+        self.MAJ()
+        self.bouton_modifier = object()
+        self.SetSizer(wx.BoxSizer(wx.VERTICAL))
+
+    def MAJ(self):
+        self.bouton_modifier.Enable(True)
+'''
+        tree = ast.parse(source)
+        findings = audit._scan_constructor_order(self._path(), tree, source.splitlines())
+        risky = [
+            item for item in findings
+            if item["kind"] == "constructor_callback_before_dependency"
+        ]
+        self.assertEqual(len(risky), 1)
+        self.assertEqual(risky[0]["dependencies"], ["bouton_modifier"])
+
+    def test_parent_parent_is_reported_as_ancestry_coupling_once(self):
+        source = '''
+class Page(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
+        self.parent = parent
+
+    def Validation(self):
+        return self.parent.parent.ctrl_statut.GetID()
+'''
+        tree = ast.parse(source)
+        findings = audit._dedupe(
+            audit._scan_parent_coupling(self._path(), tree, source.splitlines())
+        )
+        ancestry = [
+            item for item in findings
+            if item["kind"] == "visual_parent_ancestry_coupling"
+        ]
+        self.assertEqual(len(ancestry), 1)
+        self.assertEqual(ancestry[0]["member"], "ctrl_statut")
+
+    def test_get_grand_parent_business_access_is_ancestry_coupling(self):
+        source = '''
+class Page(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
+        self.parent = parent
+
+    def Validation(self):
+        return self.GetGrandParent().ctrl_famille.GetID()
+'''
+        tree = ast.parse(source)
+        findings = audit._scan_parent_coupling(self._path(), tree, source.splitlines())
+        ancestry = [
+            item for item in findings
+            if item["kind"] == "visual_parent_ancestry_coupling"
+        ]
+        self.assertEqual(len(ancestry), 1)
+        self.assertEqual(ancestry[0]["member"], "ctrl_famille")
+
+
+if __name__ == "__main__":
+    unittest.main()
