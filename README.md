@@ -1,47 +1,83 @@
-# Noethys
+# Noethys — fork Upgrade Noethys
 
-Noethys est un logiciel libre et gratuit de gestion multi-activités destiné notamment aux accueils de loisirs, crèches, garderies périscolaires, cantines, activités périscolaires, clubs sportifs et structures culturelles.
+Noethys est un logiciel libre et gratuit de gestion multi-activités destiné notamment aux accueils de loisirs, crèches, garderies périscolaires, cantines, clubs sportifs, structures culturelles et associations.
 
-Le projet d'origine, sa documentation fonctionnelle et les informations historiques restent disponibles sur le site officiel de Noethys et dans le dépôt amont `Noethys/Noethys`.
+Ce dépôt est le fork `fr4nck/Noethys`, consacré à la **modernisation progressive de Noethys Desktop** en conservant son métier, ses bases existantes et ses configurations historiques autant que possible.
 
-## À propos de ce fork
+**Base fonctionnelle : Noethys 1.3.4.2 (1er février 2026), issue du `master` du dépôt amont `Noethys/Noethys`.**
 
-`fr4nck/Noethys` poursuit la **remise à niveau technique de Noethys Desktop** en conservant son fonctionnement métier et, autant que possible, sa compatibilité avec les données et configurations existantes.
+Le projet d'origine et sa documentation fonctionnelle restent les références historiques pour Noethys. Ce fork ne cherche pas à effacer cette origine ni à imposer une réécriture ou un basculement vers NoethysWeb.
 
-**Base fonctionnelle : Noethys 1.3.4.2 (1er février 2026), issue du `master` du dépôt amont `Noethys/Noethys`.** Cette base est plus récente que la version 1.3.3.9 encore distribuée sur le site officiel.
+## État du projet — 22 août 2026
 
-Le chantier ne vise pas une réécriture de Noethys ni une migration forcée vers NoethysWeb. Il modernise le code desktop par lots ciblés : Python 3, wxPython Phoenix, SQL strict, encodages, fichiers, dépendances, tests, sauvegarde/restauration et packaging.
+Le chantier a dépassé la seule remise à niveau Python/wxPython. Il comporte maintenant deux axes complémentaires.
 
-## État actuel
+### 1. Socle technique modernisé
 
-Les principales portes **techniques automatisées** de la première RC modernisée sont désormais franchies :
+Les principales portes automatisées d'une première Release Candidate conservatrice sont franchies :
 
-- Python 3.10 comme baseline de production ;
-- Python 3.11 et 3.12 qualifiés pour revalidation ponctuelle ;
+- Python 3.10 comme baseline ;
+- Python 3.11 qualifié et Python 3.12 étudié ;
 - wxPython Phoenix ;
-- SQL strict et non-régressions des règlements/exports comptables ;
-- suite complète `tests/test_*.py` dans la CI ;
-- préflight lecture seule des bases existantes ;
+- SQL critique modernisé et tests de non-régression ;
 - sauvegarde/restauration auditée et réparée ;
-- smoke tests Windows, macOS et Linux GTK3 ;
-- build PyInstaller Windows `onedir` ;
-- exécution réelle en CI de l'archive Windows extraite sans Python externe ;
-- vrai mode portable via le dossier historique `Portable/` ;
-- traçabilité du build via `BUILD-INFO.txt`.
+- CI Windows/macOS/Linux GTK3 ;
+- portable Windows PyInstaller `onedir` réellement exécuté en CI ;
+- mode historique `Portable/` qualifié ;
+- préflight lecture seule des bases existantes ;
+- sas RC manuel protégé.
 
-Le projet dispose donc d'un **candidat technique RC**. La publication d'une RC validée reste volontairement bloquée jusqu'à une recette humaine sur une **copie d'une base réellement utilisée** et une validation visuelle/métier sous Windows.
+La publication d'une RC validée reste volontairement bloquée jusqu'à une **recette humaine sur une copie d'une base réellement utilisée** et une validation visuelle/métier Windows du SHA candidat.
+
+### 2. Modernisation métier et UI en cours
+
+Le fork porte également désormais :
+
+- design system desktop commun et thèmes clair/sombre ;
+- échelle d'interface et accessibilité ;
+- nettoyage wxPython des layouts, parentages et initialisations ;
+- diagnostic des freezes et lenteurs MySQL distantes ;
+- commandes de repas par points de livraison ;
+- chantier de rapports métier fiables et rapports d'activité ;
+- architecture tiers / conventions / mises à disposition / EPS ;
+- portail Connecthys avec contenus dynamiques, RSS/Atom et barèmes Noethys en cours de développement ;
+- expérimentation d'un registre minimal d'extensions optionnelles.
+
+## Principes du fork
+
+- aucune migration implicite de schéma ;
+- préserver les données et configurations existantes ;
+- conserver SQLite et les anciennes installations MySQL/MariaDB autant que raisonnablement possible ;
+- corriger les causes racines plutôt que masquer les symptômes ;
+- préférer des changements ciblés et testables aux refactorisations massives ;
+- conserver Windows comme cible de distribution prioritaire sans rendre le code source Windows-only ;
+- tester les changements métier sur une copie de base réelle ;
+- une donnée métier = une source de vérité réutilisable par l'écran, l'export, le PDF, le rapport et le portail ;
+- moderniser les composants communs avant les écrans particuliers ;
+- documenter les décisions durables dans Git afin que le projet ne dépende pas d'un historique de conversations.
+
+## Documentation — points d'entrée
+
+- [`docs/README.md`](docs/README.md) — carte de la documentation et statut des documents ;
+- [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) — état transversal et décisions durables ;
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — trajectoire actuelle ;
+- [`docs/NOE-BACKLOG.md`](docs/NOE-BACKLOG.md) — index des chantiers Noe-xxx et issues ;
+- [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — environnement, tests, CI, base et packaging ;
+- [`docs/USER-GUIDE-UPGRADE.md`](docs/USER-GUIDE-UPGRADE.md) — installation, mise à jour et recette utilisateur ;
+- [`docs/UPGRADE-HISTORY.md`](docs/UPGRADE-HISTORY.md) — historique des décisions ;
+- [`docs/DESIGN_SYSTEM_UI_UX.md`](docs/DESIGN_SYSTEM_UI_UX.md) — direction UI/UX canonique ;
+- [`docs/WXPYTHON_UI_RULES.md`](docs/WXPYTHON_UI_RULES.md) — règles d'implémentation wxPython ;
+- [`docs/ARCHITECTURE-TIERS-PRESTATIONS-PLANNING.md`](docs/ARCHITECTURE-TIERS-PRESTATIONS-PLANNING.md) — tiers, conventions, EPS, planning et facturation ;
+- [`docs/COMMANDES_REPAS_POINTS_LIVRAISON.md`](docs/COMMANDES_REPAS_POINTS_LIVRAISON.md) — commandes de repas ;
+- [`docs/RC-CHECKLIST.md`](docs/RC-CHECKLIST.md) — qualification avant RC.
+
+Les documents d'audit `NOE-00x-*`, `CI-WINDOWS-AUDIT.md` et `INTERFACE_MATERIAL3.md` conservent volontairement l'historique d'une étape précise. Ils ne remplacent pas les documents canoniques ci-dessus.
 
 ## Windows
 
 Windows est la plateforme de distribution prioritaire.
 
-Le workflow `Package Windows` produit l'artefact :
-
-```text
-Noethys-Windows-portable
-```
-
-L'archive contient notamment :
+Le workflow de packaging produit un portable contenant notamment :
 
 ```text
 Noethys.exe
@@ -50,27 +86,15 @@ Static/
 Portable/
 ```
 
-La chaîne de qualification :
+La chaîne de qualification construit l'archive, la ré-extrait dans un dossier neuf, neutralise l'environnement Python externe puis exécute réellement l'EXE figé en mode smoke.
 
-1. compile le code ;
-2. valide les piles fonctionnelles et PDF ;
-3. construit le bundle PyInstaller ;
-4. vérifie les ressources historiques à côté de l'EXE ;
-5. active le mode `Portable/` ;
-6. crée l'archive ;
-7. la ré-extrait dans un dossier neuf ;
-8. neutralise `PYTHONHOME`, `PYTHONPATH` et le Python externe du `PATH` ;
-9. exécute réellement `Noethys.exe` en mode smoke ;
-10. vérifie les dépendances embarquées ;
-11. publie l'artefact.
-
-Le smoke automatique s'arrête avant l'ouverture de la configuration ou d'une base utilisateur. Une recette réelle reste donc nécessaire avant RC.
+Le smoke automatique s'arrête volontairement avant la recette métier complète. Une CI verte ne remplace donc pas l'ouverture réelle d'une copie de base utilisateur.
 
 ## Mode portable
 
-Noethys reconnaît historiquement un dossier `Portable` à côté de l'exécutable. Le fork réutilise ce mécanisme au lieu d'en créer un nouveau.
+Noethys reconnaît historiquement un dossier `Portable/` à côté de l'exécutable. Le fork réutilise ce mécanisme.
 
-Dans la distribution portable :
+Dans une distribution portable :
 
 - configuration : `Portable/` ;
 - bases locales : `Portable/Data/` ;
@@ -80,36 +104,34 @@ Dans la distribution portable :
 - synchronisation : `Portable/Sync/` ;
 - extensions : `Portable/Extensions/`.
 
-Les installations classiques sans dossier `Portable/` conservent leur comportement habituel.
-
-## Linux
-
-Le code source reste une cible Linux. La CI utilise Ubuntu avec wxPython GTK3 sous Xvfb et vérifie :
-
-- le backend GTK/Phoenix ;
-- la création/destruction de `wx.App` ;
-- un layout wx représentatif avec sizers et `UltimateListCtrl`.
-
-Il n'existe pas encore de paquet Linux utilisateur final équivalent au portable Windows.
-
-## macOS
-
-Le code source reste également une cible macOS. La CI valide compilation, imports, wxPython Phoenix, `wx.App` et layout représentatif.
-
-Cette qualification confirme le socle technique du code source ; elle ne constitue pas encore une distribution macOS signée/notarisée ni une recette métier complète sur machine réelle.
+**Ne jamais supprimer le dossier `Portable/` d'une installation existante sans sauvegarde : il peut contenir les données utilisateur.**
 
 ## Compatibilité des bases
 
-La conservation des données existantes est un invariant du chantier :
+La conservation des données existantes est un invariant :
 
-- aucune migration implicite de schéma ;
+- aucune migration implicite ;
 - SQLite conservé ;
-- stratégie conservatrice pour les anciennes installations MySQL/MariaDB ;
-- recette sur copie de base réelle ;
+- stratégie conservatrice pour MySQL/MariaDB ;
+- recette sur copie réelle ;
+- contrôle d'empreinte de schéma ;
 - possibilité de retour arrière ;
-- contrôles de non-régression sur les requêtes modernisées.
+- tests de non-régression sur les requêtes modernisées.
 
-Une CI verte ou un build réussi ne justifient jamais un premier essai sur l'unique base de production.
+Une nouvelle RC ou branche ne doit jamais être qualifiée directement sur l'unique base de production.
+
+## Interface et wxPython
+
+La direction visuelle actuelle combine :
+
+- **Fluent 2** pour la grammaire desktop ;
+- **Material Design 3** pour les tokens, surfaces et thèmes ;
+- une inspiration **Liquid Glass** très limitée pour la profondeur fonctionnelle ;
+- **Fluent System Icons** pour l'iconographie principale.
+
+Les règles wxPython sont strictes : pas de suppression d'assertion pour cacher un défaut, pas de confusion entre parent visuel et contrôleur métier, pas de métrique historique rigide réintroduite pour « faire tenir » un écran.
+
+Voir `docs/DESIGN_SYSTEM_UI_UX.md` et `docs/WXPYTHON_UI_RULES.md`.
 
 ## Développement
 
@@ -119,28 +141,30 @@ Le point d'entrée historique reste :
 noethys/Noethys.py
 ```
 
-La baseline de développement/distribution est Python 3.10. Les changements doivent privilégier les API portables et isoler le code spécifique à une plateforme uniquement lorsque c'est nécessaire.
+La baseline de développement/distribution est Python 3.10.
 
-Voir [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) pour l'environnement, l'architecture du dépôt, les tests, les audits et le build.
+Avant une contribution :
 
-## Documentation
+```bash
+python -m compileall -q noethys
+python -m unittest discover -s tests -p 'test_*.py' -v
+```
 
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — feuille de route ;
-- [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — documentation développeur ;
-- [`docs/USER-GUIDE-UPGRADE.md`](docs/USER-GUIDE-UPGRADE.md) — installation, mise à jour, sauvegarde et recette utilisateur ;
-- [`docs/UPGRADE-HISTORY.md`](docs/UPGRADE-HISTORY.md) — historique et décisions du chantier ;
-- [`docs/PACKAGING-WINDOWS11.md`](docs/PACKAGING-WINDOWS11.md) — packaging Windows ;
-- [`docs/RC-CHECKLIST.md`](docs/RC-CHECKLIST.md) — checklist avant RC ;
-- [`docs/NOE-030-RECETTE-BASE-EXISTANTE.md`](docs/NOE-030-RECETTE-BASE-EXISTANTE.md) — recette sur copie de base existante ;
-- [`docs/NOE-042-RC-READINESS.md`](docs/NOE-042-RC-READINESS.md) — état de préparation de la RC ;
-- `noethys/Doc/` — documentation historique embarquée dans Noethys.
+Pour les changements touchant wxPython, base de données, packaging ou dépendances, les jobs GitHub Actions correspondants restent nécessaires.
 
-## Principes de contribution
+Voir [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
 
-Les changements doivent rester ciblés : pas de refactorisation cosmétique massive, pas de nouvelle fonctionnalité métier mêlée à la modernisation, pas de multiplication inutile des workflows et pas de modification globale des données ou encodages sans preuve de compatibilité.
+## Source de vérité du projet
 
-Lorsqu'un défaut apparaît, la priorité est de corriger sa cause racine et d'ajouter un garde-fou reproductible lorsqu'il apporte une valeur réelle.
+Pour le comportement et les décisions :
+
+1. code et tests ;
+2. issues GitHub ;
+3. documentation `docs/` ;
+4. conversations de travail uniquement avant consolidation.
+
+Une décision importante ne doit plus rester uniquement dans un chat.
 
 ## Projet d'origine
 
-Noethys est un projet existant dont ce dépôt dérive. Cette modernisation vise à prolonger sa compatibilité technique sur les plateformes actuelles, pas à effacer son origine ni à se substituer à sa documentation fonctionnelle historique.
+Le dépôt amont `Noethys/Noethys` reste une source de compatibilité, de correctifs et de contexte historique. Les changements amont ou issus d'autres forks sont audités et repris uniquement lorsqu'ils apportent une valeur démontrée au fork moderne.
