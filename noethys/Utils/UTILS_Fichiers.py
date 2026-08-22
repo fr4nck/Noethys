@@ -72,6 +72,8 @@ def _GetRepUtilisateurSousDossier(nom, fichier=""):
     chemin = _GetRepPortableSousDossier(nom)
     if chemin is None:
         chemin = GetRepUtilisateur(nom)
+        if not os.path.isdir(chemin):
+            os.mkdir(chemin)
     return os.path.join(chemin, fichier)
 
 
@@ -106,7 +108,6 @@ def GetRepUtilisateur(fichier=""):
     if not os.path.isdir(chemin):
         os.mkdir(chemin)
     return os.path.join(chemin, fichier)
-
 def DeplaceFichiers():
     """ Vérifie si des fichiers du répertoire Data ou du répertoire Utilisateur sont à déplacer vers le répertoire Utilisateur>AppData>Roaming """
 
@@ -137,7 +138,7 @@ def DeplaceFichiers():
                 nomFichier = nomFichier.decode("utf8")
             if nomFichier.endswith(".dat") and "_" in nomFichier and "EXEMPLE_" not in nomFichier and "_archive.dat" not in nomFichier :
                 print(["copie base de donnees :", nomFichier, " > ", GetRepData(nomFichier)])
-                shutil.copy(Chemins.GetMainPath(u"Data/%s" % nomFichier), GetRepData(nomFichier))
+                shutil.copy(os.path.join(chemin, nomFichier), GetRepData(nomFichier))
                 try :
                     os.rename(Chemins.GetMainPath(u"Data/%s" % nomFichier), Chemins.GetMainPath(u"Data/%s" % nomFichier.replace(".dat", "_archive.dat")))
                 except :
