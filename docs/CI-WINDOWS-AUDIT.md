@@ -137,3 +137,84 @@ Python 3.10 est choisi comme version stable, bien supportée.
 5. **Packaging Python 3** : migrer `setup.py` de `py2exe` vers PyInstaller.
 
 
+---
+
+Appliquer au nettoyage UI/wxPython de Noethys exactement la même méthode que sur Teamworks-CCNS.
+
+Objectif : éliminer les fenêtres vides, freezes à l’ouverture, dialogues partiellement construits, assertions wxPython et erreurs de layout sans masquer les problèmes.
+
+Règles de travail :
+
+1. Ne pas ajouter de surcouche pour contourner un bug wxPython.
+2. Ne jamais utiliser WXSUPPRESS_SIZER_FLAGS_CHECK ou équivalent pour faire disparaître une assertion.
+3. Corriger les erreurs à la source, en conservant la logique métier existante.
+4. Distinguer clairement :
+    * le parent visuel wxPython, utilisé pour construire le contrôle ;
+    * le contrôleur métier, qui possède les méthodes et boutons utilisés par ce contrôle.
+5. Ne pas supposer que self.parent est le contrôleur métier. Les contrôles inclus dans un Panel, Section, StaticBox, ScrolledWindow, etc. doivent recevoir explicitement leur contrôleur si nécessaire.
+6. Vérifier systématiquement l’ordre d’initialisation : un contrôle ne doit pas appeler MAJ(), Refresh(), MAJListeCtrl() ou équivalent avant que les boutons, attributs et dépendances qu’il utilise aient été créés.
+7. Traiter les bugs par famille. Lorsqu’un pattern fautif est découvert dans un dialogue, scanner le dépôt pour rechercher toutes les occurrences similaires avant de relancer la CI.
+8. Nettoyer les combinaisons de flags wxPython incompatibles, notamment les alignements horizontaux combinés inutilement à wx.EXPAND.
+9. Ne pas considérer qu’un dialogue fonctionne simplement parce que son constructeur ne lève pas d’exception.
+
+Garde-fous à ajouter ou conserver dans les smokes Windows :
+
+* ouvrir réellement chaque dialogue structurant ;
+* appeler Show(), Layout() et laisser tourner la boucle wx (wx.Yield() ou équivalent adapté) ;
+* vérifier que la fenêtre possède une taille non nulle ;
+* vérifier que ses contrôles descendants ont réellement été construits ;
+* vérifier qu’au moins un contrôle est visible et dimensionné ;
+* pour les Notebook / Treebook, parcourir toutes les pages et vérifier leur contenu ;
+* détruire proprement chaque dialogue après le test ;
+* utiliser un timeout global afin qu’un freeze transforme automatiquement la CI en échec ;
+* tester particulièrement Préférences, Paramétrage, fiches individuelles, contrats, recrutement, présences et autres dialogues utilisés régulièrement.
+
+Règle CI :
+
+Une fenêtre qui s’ouvre vide, reste bloquée, ne construit pas son contenu ou déclenche une assertion wxPython doit rendre la CI rouge.
+
+La CI ne doit pas seulement vérifier que Python démarre : elle doit construire réellement les interfaces critiques.
+
+Méthode de correction :
+
+* reproduire l’erreur ;
+* identifier la cause structurelle ;
+* rechercher les autres occurrences du même pattern ;
+* corriger tout le lot cohérent ;
+* vérifier le diff pour éviter toute modification métier parasite ;
+* relancer les parcours critiques Windows ;
+* continuer jusqu’à obtenir un run entièrement vert.
+
+Exemple typique déjà rencontré :
+
+contenu = self.section.GetContentPanel()
+self.listCtrl = ListCtrl(contenu)
+
+si ListCtrl utilise ensuite :
+
+self.parent.bouton_modifier
+self.parent.Modifier()
+
+alors self.parent désigne contenu, pas le Panel métier.
+
+Correction attendue :
+
+self.listCtrl = ListCtrl(contenu, controller=self)
+
+puis :
+
+class ListCtrl(wx.ListCtrl):
+    def __init__(self, parent, controller):
+        super().__init__(parent, ...)
+        self.controller = controller
+
+et utiliser :
+
+self.controller.bouton_modifier
+self.controller.Modifier()
+
+plutôt que détourner artificiellement le parent wx.
+
+Priorité générale : code wxPython propre, déterministe et testable, sans masquer les warnings ou assertions. Le nettoyage graphique ne doit jamais casser la construction fonctionnelle des fenêtres.
+
+C’est essentiellement le protocole qui nous a permis de faire passer Teamworks d’une suite de fenêtres cassées à un parcours Windows entièrement vert.
