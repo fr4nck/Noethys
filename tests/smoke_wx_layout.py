@@ -18,6 +18,7 @@ from wx.lib.agw import ultimatelistctrl as ULC
 
 from Ctrl import CTRL_Accueil
 from Dlg import DLG_Echelle_interface
+from Dlg import DLG_Inscription
 from Utils import UTILS_Aui
 from Utils import UTILS_UIMetrics
 
@@ -209,6 +210,36 @@ assert preferences.bouton_annuler.IsShown()
 preferences.Destroy()
 preferences_parent.Destroy()
 wx.Yield()
+
+# Inscription : construit le vrai dialogue et parcourt ses deux pages. Le seul
+# accès DB neutralisé est le chargement du questionnaire ; la structure wx et
+# le câblage parent visuel / contrôleur métier restent ceux de production.
+inscription_parent = wx.Frame(None, title="Noethys inscription parent", size=(1000, 800))
+inscription_parent.Show()
+wx.Yield()
+_questionnaire_maj = DLG_Inscription.CTRL_Questionnaire.CTRL.MAJ
+inscription = None
+try:
+    DLG_Inscription.CTRL_Questionnaire.CTRL.MAJ = lambda self, *args, **kwargs: None
+    inscription = DLG_Inscription.Dialog(
+        inscription_parent,
+        mode="saisie",
+        IDindividu=None,
+        cp="00000",
+        ville="CI",
+    )
+    _desc = _assert_window_populated(inscription, min_descendants=20)
+    page_activite = inscription.GetPageActivite()
+    assert page_activite.controller is inscription
+    assert page_activite.ctrl_activite.controller is page_activite
+    assert page_activite.ctrl_groupes.controller is page_activite
+    assert page_activite.ctrl_categories.controller is page_activite
+finally:
+    DLG_Inscription.CTRL_Questionnaire.CTRL.MAJ = _questionnaire_maj
+    if inscription is not None:
+        inscription.Destroy()
+    inscription_parent.Destroy()
+    wx.Yield()
 
 # Reproduit explicitement le premier paint de l'accueil. Sous wxMSW/Phoenix,
 # AutoBufferedPaintDC lève une assertion native si BG_STYLE_PAINT n'a pas été
