@@ -20,6 +20,8 @@ Le modèle de commande existant permet déjà de représenter cette logique sans
 
 Le calcul des journées doit utiliser à la fois les ouvertures Noethys et les consommations réellement réservées ou présentes. Une journée comportant des repas réservés ne doit pas disparaître de la commande parce qu'une ouverture manque dans le paramétrage.
 
+**Règle de filtrage indispensable :** le complément de journées issu des consommations doit rester strictement limité aux couples `IDgroupe` / `IDunite` configurés dans les colonnes de suggestion du modèle courant. Il ne faut pas parcourir indistinctement toutes les consommations d'une activité, au risque de faire apparaître des jours ou sites qui ne correspondent pas au point de livraison demandé.
+
 ## Exemple PMSL
 
 ### Point de livraison Bais
