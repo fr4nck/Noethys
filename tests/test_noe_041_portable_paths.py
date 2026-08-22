@@ -70,6 +70,24 @@ class PortablePathsTests(unittest.TestCase):
                 self.assertEqual(Path(path).parent, portable / dirname)
                 self.assertTrue((portable / dirname).is_dir())
 
+    def test_standard_runtime_subdirectories_are_created_on_demand(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "outside-user-config").mkdir()
+            module = _load_utils_files(root)
+
+            base = root / "outside-user-config" / "noethys"
+            expected = {
+                "Temp": module.GetRepTemp("journal.tmp"),
+                "Updates": module.GetRepUpdates("update.bin"),
+                "Lang": module.GetRepLang("fr.xlang"),
+                "Sync": module.GetRepSync("sync.json"),
+                "Extensions": module.GetRepExtensions("plugin.py"),
+            }
+            for dirname, path in expected.items():
+                self.assertEqual(Path(path).parent, base / dirname)
+                self.assertTrue((base / dirname).is_dir())
+
     def test_portable_mode_does_not_use_appdirs(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
