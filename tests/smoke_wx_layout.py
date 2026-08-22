@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 """Smoke test d'interface wxPython sans données métier.
 
-Construit une fenêtre représentative (toolbar, formulaire, liste, grille), force
-le layout et vérifie que les métriques communes ne tronquent pas leurs
-composants. Aucun fichier utilisateur ni base métier n'est ouvert.
+Construit des composants et dialogues représentatifs, force leur affichage et
+leur layout, puis vérifie qu'ils contiennent réellement des contrôles visibles
+et dimensionnés. Aucun fichier utilisateur ni base métier n'est modifié.
 """
 from pathlib import Path
 import sys
@@ -22,17 +22,54 @@ from Utils import UTILS_Aui
 from Utils import UTILS_UIMetrics
 
 
+def _descendants(window):
+    resultat = []
+    pile = list(window.GetChildren())
+    while pile:
+        enfant = pile.pop()
+        resultat.append(enfant)
+        pile.extend(enfant.GetChildren())
+    return resultat
+
+
+def _assert_window_populated(window, min_descendants=1):
+    """Vérifie qu'une fenêtre affichée n'est ni vide ni non dimensionnée."""
+    window.Layout()
+    window.Show()
+    wx.Yield()
+
+    client = window.GetClientSize()
+    assert client.width > 0 and client.height > 0, (
+        f"fenêtre sans taille utile: {window.__class__.__name__} {client}"
+    )
+
+    descendants = _descendants(window)
+    assert len(descendants) >= min_descendants, (
+        f"contenu incomplet: {window.__class__.__name__} "
+        f"({len(descendants)} descendants, minimum {min_descendants})"
+    )
+
+    visibles = []
+    for ctrl in descendants:
+        taille = ctrl.GetSize()
+        if ctrl.IsShown() and taille.width > 0 and taille.height > 0:
+            visibles.append(ctrl)
+    assert visibles, f"aucun contrôle visible et dimensionné dans {window.__class__.__name__}"
+    return descendants
+
+
 app = wx.App(False)
 print("wx :", wx.version())
 print("plateforme :", wx.PlatformInfo)
 assert "phoenix" in wx.PlatformInfo
 
-# Les imports historiques doivent arriver sur les shells stabilisés, sans que
-# Noethys.py ait besoin de connaître leur implémentation.
+# Les imports historiques doivent pointer vers leur implémentation réelle quand
+# aucune spécialisation n'est structurellement nécessaire. Les corrections de
+# layout des préférences vivent désormais dans DLG_Preferences lui-même.
 from Dlg import DLG_Impression_conso
 from Dlg import DLG_Preferences
 assert DLG_Impression_conso.__name__ == "Dlg.DLG_Impression_conso_differe"
-assert DLG_Preferences.__name__ == "Dlg.DLG_Preferences_stable"
+assert DLG_Preferences.__name__ == "Dlg.DLG_Preferences"
 
 frame = wx.Frame(None, title="Noethys UI smoke", size=(720, 560))
 panel = wx.Panel(frame)
@@ -95,6 +132,39 @@ assert grid.GridLinesEnabled()
 assert grid.GetDefaultRowSize() >= UTILS_UIMetrics.row_height("table")
 
 frame.Destroy()
+wx.Yield()
+
+# Préférences : ce test construit réellement le dialogue métier. Un simple
+# import ou un constructeur qui retourne sans contenu ne suffit pas.
+preferences_parent = wx.Frame(None, title="Noethys préférences parent", size=(1000, 800))
+preferences_parent.Show()
+wx.Yield()
+preferences = DLG_Preferences.Dialog(preferences_parent)
+_desc = _assert_window_populated(preferences, min_descendants=30)
+assert isinstance(preferences.contenu, wx.ScrolledWindow)
+for nom_ctrl in (
+    "ctrl_interface",
+    "ctrl_interface_mysql",
+    "ctrl_dates",
+    "ctrl_telephones",
+    "ctrl_codesPostaux",
+    "ctrl_adresses",
+    "ctrl_propose_maj",
+    "ctrl_rapport_bugs",
+    "ctrl_derniers_fichiers",
+    "ctrl_monnaie",
+    "ctrl_autodeconnect",
+    "ctrl_comptes_internet",
+    "ctrl_email",
+):
+    ctrl = getattr(preferences, nom_ctrl)
+    assert ctrl.GetParent() is preferences.contenu, f"parent wx inattendu pour {nom_ctrl}"
+    taille = ctrl.GetSize()
+    assert taille.width > 0 and taille.height > 0, f"contrôle non dimensionné: {nom_ctrl}"
+assert preferences.bouton_ok.IsShown()
+assert preferences.bouton_annuler.IsShown()
+preferences.Destroy()
+preferences_parent.Destroy()
 wx.Yield()
 
 # Reproduit explicitement le premier paint de l'accueil. Sous wxMSW/Phoenix,
