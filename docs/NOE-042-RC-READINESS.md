@@ -1,34 +1,52 @@
 # Noe-042 — État de préparation de la Release Candidate
 
+> État consolidé au 22 août 2026.
+
 ## Position actuelle
 
-Les **portes techniques critiques sont franchies**. Le dépôt peut désormais produire un candidat Windows portable techniquement qualifié.
+Les **portes techniques critiques du socle sont franchies**. Le dépôt peut produire un candidat Windows portable techniquement qualifié.
 
-Une RC ne doit toutefois **pas** être publiée comme validée tant que la recette humaine sur une copie de base réellement utilisée n'a pas été effectuée.
+Une RC ne doit toutefois **pas** être publiée comme validée tant que la recette humaine n'a pas été effectuée sur une copie de base réellement utilisée avec **le SHA exact qui doit être publié**.
+
+Cette précision est importante : le `master` a continué à recevoir des corrections et évolutions depuis la première préparation du sas RC. La qualification d'un ancien artefact ne valide pas automatiquement un nouveau candidat.
 
 ## Portes techniques franchies
 
-- **SQL / bases** : audit SQL strict, `OL_Reglements`, export comptable et audit d'index traités ;
-- **Python** : baseline Python 3.10 qualifiée, études 3.11 et 3.12 vertes et conservées en requalification à la demande ;
-- **wxPython** : audit Phoenix intégré à la CI, incompatibilité réelle `SystemSettings_GetFont` corrigée ;
-- **plateformes** : smoke tests Windows, macOS et Linux GTK3 ;
-- **non-régression métier** : découverte complète `tests/test_*.py` intégrée à la CI ;
-- **bases existantes** : préflight Noe-030 en lecture seule, empreinte de schéma et contrôle SHA-256 SQLite ;
-- **sauvegarde/restauration** : contrôle de flux réparé et tests de restauration ajoutés ;
-- **packaging Windows** : PyInstaller `onedir` qualifié par exécution réelle de l'archive extraite sans Python externe ;
-- **layout PyInstaller 6** : disposition `_internal` refusée, layout plat historique restauré afin de rester compatible avec `Chemins.py` ;
-- **mode portable** : dossier historique `Portable/` livré dans l'archive, isolation config/données testée et marqueur vérifié après extraction ;
-- **traçabilité** : `BUILD-INFO.txt` identifie commit, Python, run, date de fabrication et activation du mode portable.
+- **SQL / bases** : chemins critiques règlements/exports sécurisés ; audit d'index disponible ; dette Noe-005 séparée ;
+- **Python** : baseline Python 3.10 ; 3.11 qualifié ; 3.12 étudié ;
+- **wxPython** : audit Phoenix et smoke tests de layout ;
+- **plateformes** : Windows, macOS, Linux GTK3 qualifiés au niveau du code source ;
+- **non-régression métier** : `tests/test_*.py` exécutés globalement ;
+- **bases existantes** : préflight lecture seule, empreinte de schéma et contrôles SQLite/MySQL ;
+- **sauvegarde/restauration** : flux réparé et tests ajoutés ;
+- **packaging Windows** : PyInstaller `onedir` plat qualifié par exécution réelle de l'archive extraite ;
+- **mode portable** : `Portable/` livré et isolation testée ;
+- **traçabilité** : `BUILD-INFO.txt` ;
+- **sas RC** : workflow manuel protégé, release créée en brouillon uniquement.
 
-## Portes humaines obligatoires avant publication d'une RC
+## Changements intégrés après la première préparation RC
 
-### 1. Noe-030 — recette sur une copie de base réelle
+Le candidat final doit également prendre en compte les changements déjà fusionnés dans `master`, notamment :
+
+- commandes de repas par points de livraison ;
+- échelle d'interface et modes Système / Clair / Sombre ;
+- design system commun et préférences d'apparence/accessibilité ;
+- instrumentation des freezes et lenteurs MySQL distantes ;
+- corrections wxPython et AUI intégrées ;
+- sauvegarde atomique des contrats PSU ;
+- autres correctifs fusionnés depuis le premier sas.
+
+Ces éléments ne changent pas le principe du sas : ils élargissent simplement ce qui doit être réellement testé si le SHA candidat les contient.
+
+## Portes humaines obligatoires avant publication
+
+### 1. Noe-030 — recette sur copie réelle
 
 Utiliser exclusivement une **copie** d'une base Noethys réellement utilisée.
 
-Minimum attendu :
+Minimum :
 
-- préflight lecture seule avant ouverture ;
+- préflight avant ouverture ;
 - démarrage du portable Windows ;
 - familles / individus ;
 - activités / groupes / inscriptions ;
@@ -36,40 +54,53 @@ Minimum attendu :
 - prestations / facturation ;
 - règlements et ventilation ;
 - comptabilité / export réellement utilisé ;
-- génération d'un PDF ;
-- sauvegarde et restauration sur la copie si le contexte le permet ;
-- fermeture et réouverture ;
-- second préflight et confirmation que le `schema_digest` n'a pas changé de façon inattendue.
+- PDF ;
+- sauvegarde/restauration si pertinent ;
+- fermeture/réouverture ;
+- second contrôle de schéma.
 
 ### 2. Validation visuelle Windows
 
-La CI lance le véritable EXE en mode smoke mais s'arrête volontairement avant `Noethys.py`. Un humain doit donc encore confirmer :
+Vérifier au minimum :
 
-- ouverture réelle de la fenêtre principale ;
-- absence de dialogue ou ressource manquante ;
-- comportement normal des écrans critiques utilisés pendant la recette ;
-- fermeture propre de l'application.
+- fenêtre principale ;
+- dialogues courants ;
+- absence de fenêtre vide/freeze/assertion sizer ;
+- thèmes Système / Clair / Sombre ;
+- échelles couramment utilisées, dont 120/125 % et 150 % ;
+- titres longs, listes, grilles, toolbars et panneaux AUI ;
+- fermeture propre.
 
-## Ce qui n'est pas bloquant pour cette première RC
+### 3. Fonctions nouvellement fusionnées réellement utilisées
+
+Suivre `RC-CHECKLIST.md` pour les scénarios supplémentaires : commandes de repas, contrats PSU, MySQL distant/performance et autres fonctions présentes dans le SHA candidat.
+
+## Ce qui reste hors exigence de la première RC
 
 - installateur Windows système ;
 - signature de code ;
 - paquet macOS signé/notarisé ;
-- paquet Linux ;
-- migration Python 3.11 ou 3.12 comme baseline ;
-- migration de la base vers une version MySQL/MariaDB plus récente.
+- paquet Linux utilisateur final ;
+- migration baseline Python 3.11/3.12 ;
+- migration obligatoire vers un MySQL/MariaDB récent ;
+- clôture complète de Noe-005 ;
+- achèvement de tous les chantiers Noe-060/061/062/063 encore ouverts.
 
-Ces sujets peuvent être traités après stabilisation sans retarder une RC Windows portable compatible avec l'existant.
+Un chantier ouvert n'empêche pas la RC s'il ne constitue pas un défaut bloquant du code déjà intégré au SHA candidat.
 
-## Décision RC
+## Procédure de décision RC
 
-La partie **technique automatisée est prête**. Pour figer puis publier une RC validée :
+1. choisir le SHA candidat sur `master` ;
+2. confirmer CI + packaging verts pour ce SHA ;
+3. vérifier `BUILD-INFO.txt` ;
+4. lancer `scripts/rc_db_preflight.py` sur la copie réelle ;
+5. effectuer la recette métier et visuelle ;
+6. appliquer les scénarios spécifiques aux fonctions fusionnées ;
+7. si un défaut bloquant est corrigé, recommencer la qualification sur le nouveau SHA ;
+8. déclencher le workflow `Release Candidate` ;
+9. relire la release brouillon ;
+10. publier uniquement après décision explicite.
 
-1. sélectionner le SHA candidat sur `master` ;
-2. confirmer CI + `Package Windows` verts sur ce SHA ;
-3. vérifier `BUILD-INFO.txt` dans l'artefact ;
-4. exécuter Noe-030 sur une copie de base réelle ;
-5. effectuer la recette Windows manuelle ;
-6. corriger tout défaut bloquant éventuel et relancer les contrôles concernés.
+## Conclusion
 
-Tant que les points 4 et 5 ne sont pas réalisés, le projet dispose d'un **candidat technique RC**, mais la validation finale reste volontairement en attente.
+Le projet dispose d'un **socle techniquement prêt pour fabriquer une RC**, mais pas encore d'une **RC validée en exploitation** tant que la recette réelle du SHA final n'a pas été menée.
