@@ -4,8 +4,9 @@
 
 Objectif : repérer les contrôles qui confondent encore leur parent visuel wx
 avec un contrôleur métier, ainsi que les callbacks exécutés trop tôt pendant
-``__init__``. L'audit est volontairement informatif : chaque occurrence doit
-être relue puis corrigée à la source avant de rendre une catégorie bloquante.
+``__init__``. L'audit reste informatif pour les familles historiques larges,
+mais distingue désormais des signaux structurels plus précis avant de rendre
+une catégorie bloquante.
 """
 
 from __future__ import annotations
@@ -71,6 +72,11 @@ def _line(lines: list[str], lineno: int) -> str:
 
 
 def _looks_like_wx_constructor(init: ast.FunctionDef) -> bool:
+    """Ne retient que les constructeurs qui initialisent explicitement wx.*.
+
+    ``super().__init__`` seul n'est pas une preuve : l'ancienne heuristique
+    classait aussi des objets de données ``Track`` comme contrôles wxPython.
+    """
     for node in ast.walk(init):
         if not isinstance(node, ast.Call):
             continue
@@ -78,8 +84,6 @@ def _looks_like_wx_constructor(init: ast.FunctionDef) -> bool:
         if not chain:
             continue
         if chain[:1] == ["wx"] and chain[-1] == "__init__":
-            return True
-        if chain[:1] == ["super"] and chain[-1] == "__init__":
             return True
     return False
 
@@ -99,15 +103,52 @@ def _stores_visual_parent(init: ast.FunctionDef) -> bool:
     return False
 
 
+def _loaded_self_attributes(function: ast.FunctionDef) -> set[str]:
+    result: set[str] = set()
+    for node in ast.walk(function):
+        if not isinstance(node, ast.Attribute) or not isinstance(node.ctx, ast.Load):
+            continue
+        chain = _attr_chain(node)
+        if chain and len(chain) >= 2 and chain[0] == "self":
+            result.add(chain[1])
+    return result
+
+
+def _assigned_self_attributes_after(init: ast.FunctionDef, lineno: int) -> set[str]:
+    result: set[str] = set()
+    for node in ast.walk(init):
+        if getattr(node, "lineno", 0) <= lineno:
+            continue
+        targets: list[ast.AST] = []
+        if isinstance(node, ast.Assign):
+            targets = list(node.targets)
+        elif isinstance(node, ast.AnnAssign):
+            targets = [node.target]
+        elif isinstance(node, ast.AugAssign):
+            targets = [node.target]
+        else:
+            continue
+        for target in targets:
+            if isinstance(target, ast.Attribute):
+                chain = _attr_chain(target)
+                if chain and len(chain) == 2 and chain[0] == "self":
+                    result.add(chain[1])
+    return result
+
+
+def _method(cls: ast.ClassDef, name: str) -> ast.FunctionDef | None:
+    return next(
+        (node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name == name),
+        None,
+    )
+
+
 def _scan_parent_coupling(path: Path, tree: ast.AST, lines: list[str]) -> list[dict]:
     findings: list[dict] = []
     rel = str(path.relative_to(ROOT)).replace("\\", "/")
 
     for cls in (node for node in tree.body if isinstance(node, ast.ClassDef)):
-        init = next(
-            (node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name == "__init__"),
-            None,
-        )
+        init = _method(cls, "__init__")
         if init is None:
             continue
         if "parent" not in {arg.arg for arg in init.args.args}:
@@ -120,20 +161,43 @@ def _scan_parent_coupling(path: Path, tree: ast.AST, lines: list[str]) -> list[d
                 if not isinstance(node, ast.Attribute):
                     continue
                 chain = _attr_chain(node)
-                if not chain or len(chain) < 3 or chain[:2] != ["self", "parent"]:
-                    continue
-                member = chain[2]
-                if member in WX_PARENT_METHODS:
-                    continue
-                findings.append({
-                    "kind": "visual_parent_business_coupling",
-                    "file": rel,
-                    "class": cls.name,
-                    "method": method.name,
-                    "line": node.lineno,
-                    "member": member,
-                    "snippet": _line(lines, node.lineno),
-                })
+                if chain and len(chain) >= 3 and chain[:2] == ["self", "parent"]:
+                    member = chain[2]
+                    if member not in WX_PARENT_METHODS:
+                        findings.append({
+                            "kind": "visual_parent_business_coupling",
+                            "file": rel,
+                            "class": cls.name,
+                            "method": method.name,
+                            "line": node.lineno,
+                            "member": member,
+                            "snippet": _line(lines, node.lineno),
+                        })
+                    if len(chain) >= 4 and chain[:3] == ["self", "parent", "parent"]:
+                        findings.append({
+                            "kind": "visual_parent_ancestry_coupling",
+                            "file": rel,
+                            "class": cls.name,
+                            "method": method.name,
+                            "line": node.lineno,
+                            "member": chain[3],
+                            "snippet": _line(lines, node.lineno),
+                        })
+
+                # ``self.GetGrandParent().controle_metier`` est le même type de
+                # dépendance fragile qu'un ``self.parent.parent`` explicite.
+                if isinstance(node.value, ast.Call):
+                    call_chain = _call_name(node.value)
+                    if call_chain == ["self", "GetGrandParent"] and node.attr not in WX_PARENT_METHODS:
+                        findings.append({
+                            "kind": "visual_parent_ancestry_coupling",
+                            "file": rel,
+                            "class": cls.name,
+                            "method": method.name,
+                            "line": node.lineno,
+                            "member": node.attr,
+                            "snippet": _line(lines, node.lineno),
+                        })
 
     return findings
 
@@ -150,11 +214,8 @@ def _scan_constructor_order(path: Path, tree: ast.AST, lines: list[str]) -> list
     rel = str(path.relative_to(ROOT)).replace("\\", "/")
 
     for cls in (node for node in tree.body if isinstance(node, ast.ClassDef)):
-        init = next(
-            (node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name == "__init__"),
-            None,
-        )
-        if init is None:
+        init = _method(cls, "__init__")
+        if init is None or not _looks_like_wx_constructor(init):
             continue
 
         layout_seen = False
@@ -163,7 +224,7 @@ def _scan_constructor_order(path: Path, tree: ast.AST, lines: list[str]) -> list
             if not chain:
                 continue
 
-            # Le premier marqueur de layout clôt la phase dangereuse.
+            # Le premier marqueur de layout clôt la phase à inspecter.
             if chain[:1] == ["self"] and chain[-1] in LAYOUT_MARKERS:
                 layout_seen = True
                 continue
@@ -178,6 +239,25 @@ def _scan_constructor_order(path: Path, tree: ast.AST, lines: list[str]) -> list
                     "member": chain[-1],
                     "snippet": _line(lines, call.lineno),
                 })
+
+                # Signal fort : la méthode appelée lit réellement un attribut
+                # de ``self`` qui n'est créé que plus tard dans le constructeur.
+                if len(chain) == 2:
+                    callback = _method(cls, chain[-1])
+                    if callback is not None:
+                        late = _assigned_self_attributes_after(init, call.lineno)
+                        dependencies = sorted(_loaded_self_attributes(callback).intersection(late))
+                        if dependencies:
+                            findings.append({
+                                "kind": "constructor_callback_before_dependency",
+                                "file": rel,
+                                "class": cls.name,
+                                "method": "__init__",
+                                "line": call.lineno,
+                                "member": chain[-1],
+                                "dependencies": dependencies,
+                                "snippet": _line(lines, call.lineno),
+                            })
 
             if not layout_seen and chain[:1] == ["parent"] and len(chain) >= 2:
                 member = chain[1]
@@ -195,6 +275,21 @@ def _scan_constructor_order(path: Path, tree: ast.AST, lines: list[str]) -> list
     return findings
 
 
+def _dedupe(findings: list[dict]) -> list[dict]:
+    result: list[dict] = []
+    seen: set[tuple] = set()
+    for item in findings:
+        key = (
+            item.get("kind"), item.get("file"), item.get("class"),
+            item.get("method"), item.get("line"), item.get("member"),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(item)
+    return result
+
+
 def scan() -> list[dict]:
     findings: list[dict] = []
     for path in sorted(NOETHYS.rglob("*.py")):
@@ -208,7 +303,7 @@ def scan() -> list[dict]:
         lines = text.splitlines()
         findings.extend(_scan_parent_coupling(path, tree, lines))
         findings.extend(_scan_constructor_order(path, tree, lines))
-    return findings
+    return _dedupe(findings)
 
 
 def main() -> int:
@@ -221,7 +316,9 @@ def main() -> int:
     counts = Counter(item["kind"] for item in findings)
     kinds = {
         "visual_parent_business_coupling",
+        "visual_parent_ancestry_coupling",
         "constructor_callback_before_layout",
+        "constructor_callback_before_dependency",
         "constructor_parent_callback",
     }
 
@@ -229,7 +326,7 @@ def main() -> int:
     print("=======================")
     print("Occurrences : %d" % len(findings))
     for kind in sorted(kinds):
-        print("  %-36s %d" % (kind + ":", counts.get(kind, 0)))
+        print("  %-38s %d" % (kind + ":", counts.get(kind, 0)))
 
     hotspots = Counter(item["file"] for item in findings)
     print("\nFichiers prioritaires :")
@@ -237,9 +334,14 @@ def main() -> int:
         print("  %4d  %s" % (count, filename))
 
     print("\nPremières occurrences :")
-    for item in findings[:80]:
+    for item in findings[:100]:
+        detail = ""
+        if item.get("dependencies"):
+            detail = " dépend de " + ", ".join(item["dependencies"])
         print(
-            "  {kind}  {file}:{line}  {class}.{method} -> {member}  {snippet}".format(**item)
+            "  {kind}  {file}:{line}  {class}.{method} -> {member}{detail}  {snippet}".format(
+                detail=detail, **item
+            )
         )
 
     if args.json:
