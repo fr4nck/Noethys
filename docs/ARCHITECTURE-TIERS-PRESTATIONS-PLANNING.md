@@ -58,6 +58,44 @@ Une fiche « Demande / programmation annuelle » enregistre : structure, saison,
 
 Le renouvellement d'une saison doit permettre de recopier la programmation précédente puis de marquer chaque ligne : inchangée, modifiée, supprimée ou ajoutée.
 
+## Cas EPS écoles — du vœu au réalisé
+
+Le processus observé dans les écoles ne doit pas être reproduit dans plusieurs documents indépendants.
+
+Chaîne cible :
+
+**vœux de l'école → validation/arbitrage → cycles EPS → programmation réelle → affectation RH → séances réalisées → heures validées → facturation → rapport d'activité.**
+
+Le document opérationnel construit aujourd'hui après les vœux (par exemple un planning EPS annuel par école) doit devenir une **vue/export de la programmation acceptée**, pas une seconde source de saisie.
+
+Pour une programmation EPS, le modèle doit pouvoir porter au minimum :
+
+- établissement ;
+- année scolaire / saison ;
+- période ou cycle ;
+- activité / discipline ;
+- classe, niveau ou groupe libre ;
+- jour ;
+- heure de début et heure de fin ;
+- lieu ;
+- nombre de séances prévu ;
+- dates/occurrences calculées ;
+- volume d'heures prévisionnel ;
+- tarif applicable et éventuelle adhésion/relation contractuelle ;
+- budget prévisionnel ;
+- statut de validation.
+
+Noethys porte la demande, les cycles, les occurrences, les règles contractuelles et les montants. PMSL-Équipe porte l'affectation de l'éducateur, les contraintes RH, remplacements et le réalisé RH. Les deux systèmes doivent échanger par identifiants stables, sans double saisie ni couplage direct de bases.
+
+La programmation doit pouvoir :
+
+- vérifier les dates et périodes scolaires ;
+- calculer automatiquement les heures ;
+- détecter les incohérences de créneaux ;
+- soumettre les besoins à l'écran d'impact planning ;
+- produire un export lisible pour l'école et le coordinateur ;
+- réutiliser ensuite exactement les mêmes données pour convention, facturation et rapport annuel.
+
 ## Formulaire web futur de demande annuelle
 
 Le formulaire papier de demande de créneaux doit pouvoir être remplacé par un formulaire web public ou semi-public sécurisé par un lien ou jeton propre à la structure.
