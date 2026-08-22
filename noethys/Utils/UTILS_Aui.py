@@ -110,54 +110,18 @@ def _ItererDescendants(window):
 
 
 def ConfigurerGrille(grille):
-    """Applique la grammaire visuelle commune à une wx.Grid existante."""
+    """Applique le langage Repens à une wx.Grid sans toucher au métier."""
     if grille is None:
         return False
     try:
         import wx.grid as gridlib
-        from Utils import UTILS_Interface
-        from Utils import UTILS_UIMetrics
+        from Utils import UTILS_StyleRepens as Style
         if not isinstance(grille, gridlib.Grid):
             return False
     except Exception:
         return False
 
-    try:
-        grille.EnableGridLines(True)
-        grille.SetGridLineColour(UTILS_Interface.GetCouleurRole("outline_variant"))
-    except Exception:
-        pass
-    try:
-        grille.SetLabelBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_high"))
-        grille.SetLabelTextColour(UTILS_Interface.GetCouleurRole("on_surface"))
-    except Exception:
-        pass
-    try:
-        grille.SetDefaultCellBackgroundColour(UTILS_Interface.GetCouleurRole("surface_container_lowest"))
-        grille.SetDefaultCellTextColour(UTILS_Interface.GetCouleurRole("on_surface"))
-    except Exception:
-        pass
-
-    try:
-        if not hasattr(grille, "_noethys_default_row_base"):
-            grille._noethys_default_row_base = grille.GetDefaultRowSize()
-        grille.SetDefaultRowSize(
-            max(UTILS_UIMetrics.row_height("table"), UTILS_UIMetrics.px(grille._noethys_default_row_base)),
-            True,
-        )
-    except Exception:
-        pass
-
-    for getter, setter, attribut in (
-        ("GetRowLabelSize", "SetRowLabelSize", "_noethys_row_label_base"),
-        ("GetColLabelSize", "SetColLabelSize", "_noethys_col_label_base"),
-    ):
-        try:
-            if not hasattr(grille, attribut):
-                setattr(grille, attribut, getattr(grille, getter)())
-            getattr(grille, setter)(UTILS_UIMetrics.px(getattr(grille, attribut)))
-        except Exception:
-            pass
+    Style.appliquer_grille(grille)
 
     try:
         grille.ForceRefresh()
