@@ -16,6 +16,7 @@ from __future__ import annotations
 import importlib
 import os
 import sys
+import traceback
 from pathlib import Path
 
 
@@ -77,8 +78,8 @@ if os.environ.get("NOETHYS_FROZEN_SMOKE") == "1":
             _finish(
                 root,
                 4,
-                "Import figé en échec pour %s: %s: %s"
-                % (module_name, type(exc).__name__, exc),
+                "Import figé en échec pour %s: %s: %s\n%s"
+                % (module_name, type(exc).__name__, exc, traceback.format_exc()),
             )
 
     _finish(root, 0, "Bundle figé Noethys validé")
