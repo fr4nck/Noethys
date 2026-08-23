@@ -204,43 +204,32 @@ def appliquer_liste(ctrl):
 
 
 def appliquer_liste_riche(ctrl):
-    """Valeurs de présentation communes des listes ObjectListView.
+    """Réapplique la palette prudente des ObjectListView historiques.
 
-    Les attributs de lignes et renderers métier ne sont jamais parcourus ni
-    modifiés. Seuls le fond de données, le zebra par défaut et le message de
-    liste vide appartiennent à la grammaire Repens.
+    Le moteur global d'apparence sait déjà distinguer les surfaces neutres des
+    couleurs métier explicites. Ce point d'entrée ne redéfinit donc pas une
+    seconde règle : il réutilise exactement cette politique au moment où les
+    anciens écrans ont fini d'assigner leurs zebra et leurs groupes.
     """
-    appliquer_liste(ctrl)
-
     try:
-        ctrl.evenRowsBackColor = couleur("surface_container_lowest")
-        ctrl.oddRowsBackColor = couleur("surface_container_low")
+        ctrl.SetFont(police("body"))
     except Exception:
         pass
 
     try:
-        message_vide = ctrl.stEmptyListMsg
-        appliquer_texte(
-            message_vide,
-            role="body_small",
-            role_texte="on_surface_variant",
-            role_fond="surface_container_lowest",
+        UTILS_Interface._appliquer_palette_liste(
+            ctrl,
+            sombre=UTILS_Interface.EstSombre(),
         )
     except Exception:
-        pass
-
+        # Repli minimal lorsque le contrôle est utilisé hors du runtime complet.
+        appliquer_liste(ctrl)
     return ctrl
 
 
 def appliquer_groupes_liste(ctrl):
-    """Harmonise uniquement l'en-tête des groupes ObjectListView."""
-    try:
-        ctrl.groupFont = police("label")
-        ctrl.groupTextColour = couleur("on_primary_container")
-        ctrl.groupBackgroundColour = couleur("primary_container")
-    except Exception:
-        pass
-    return ctrl
+    """Compatibilité : les groupes suivent la même politique prudente que la liste."""
+    return appliquer_liste_riche(ctrl)
 
 
 def appliquer_grille(ctrl):
