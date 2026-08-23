@@ -1,21 +1,13 @@
 name: Package Windows
 
+# Fabrication coûteuse : uniquement sur master ou à la demande.
+# Les PR ordinaires sont couvertes par la CI rapide ; la qualification complète
+# peut être déclenchée séparément avant fusion lorsqu'un lot le justifie.
 on:
   workflow_dispatch:
   push:
     branches:
       - master
-    paths:
-      - 'noethys/**'
-      - 'packaging/**'
-      - 'requirements-build.txt'
-      - 'requirements.txt'
-      - 'scripts/apply_py3_runtime_source_fixes.py'
-      - 'scripts/smoke_reportlab_unicode_pdf.py'
-      - 'scripts/smoke_packaged_resources.py'
-      - 'scripts/smoke_optional_feature_stacks.py'
-      - '.github/workflows/windows-package.yml'
-  pull_request:
     paths:
       - 'noethys/**'
       - 'packaging/**'
