@@ -15,9 +15,10 @@
 """
 An ObjectListView provides a more convienent and powerful interface to a ListCtrl.
 
-Noethys conserve cette bibliothèque historique mais lui applique désormais ses
-valeurs visuelles par défaut via Repens. Le wrapper reste volontairement mince :
-il ne modifie ni les colonnes, ni les renderers, ni les éditeurs, ni les données.
+Noethys conserve cette bibliothèque historique mais réapplique sa politique de
+palette Repens aux moments où les écrans anciens peuvent encore restaurer leurs
+valeurs de zebra. Le wrapper reste volontairement mince : il ne modifie ni les
+colonnes, ni les renderers, ni les éditeurs, ni les données.
 """
 
 __version__ = '1.3.2'
@@ -38,13 +39,11 @@ from . ListCtrlPrinter import ListCtrlPrinter, ReportFormat, BlockFormat, LineDe
 from . import Filter
 
 
-def _appliquer_repens(ctrl, groupes=False):
-    """Applique les valeurs visuelles Noethys sans rendre OLV dépendant du métier."""
+def _appliquer_repens(ctrl):
+    """Réapplique la politique de liste existante sans dépendance métier."""
     try:
         from Utils import UTILS_StyleRepens as Style
         Style.appliquer_liste_riche(ctrl)
-        if groupes:
-            Style.appliquer_groupes_liste(ctrl)
     except Exception:
         # La bibliothèque reste importable isolément, notamment par les outils
         # de packaging et de diagnostic qui ne chargent pas toute l'application.
@@ -52,7 +51,7 @@ def _appliquer_repens(ctrl, groupes=False):
 
 
 class ObjectListView(_ObjectListView):
-    """ObjectListView historique avec valeurs visuelles Repens par défaut."""
+    """ObjectListView historique avec rappel tardif de la palette Repens."""
 
     def __init__(self, *args, **kwargs):
         _ObjectListView.__init__(self, *args, **kwargs)
@@ -60,8 +59,8 @@ class ObjectListView(_ObjectListView):
 
     def SetObjects(self, *args, **kwargs):
         # Les anciens écrans assignent souvent leur zebra juste avant SetObjects.
-        # Repens reprend ici uniquement ces valeurs de présentation communes ;
-        # les attributs/couleurs métier par ligne restent inchangés.
+        # Le rappel utilise la politique prudente du moteur global : une couleur
+        # métier explicite n'est donc jamais remplacée.
         _appliquer_repens(self)
         return _ObjectListView.SetObjects(self, *args, **kwargs)
 
@@ -89,17 +88,17 @@ class FastObjectListView(_FastObjectListView):
 class GroupListView(_GroupListView):
     def __init__(self, *args, **kwargs):
         _GroupListView.__init__(self, *args, **kwargs)
-        _appliquer_repens(self, groupes=True)
+        _appliquer_repens(self)
 
     def SetObjects(self, *args, **kwargs):
-        _appliquer_repens(self, groupes=True)
+        _appliquer_repens(self)
         return _GroupListView.SetObjects(self, *args, **kwargs)
 
     def _InitializeImages(self):
         # CTRL_ObjectListView règle historiquement ses couleurs de groupes juste
-        # avant cet appel. Les normaliser ici permet au thème clair/sombre de
-        # gagner sans réécrire les nombreux écrans métier qui héritent d'OLV.
-        _appliquer_repens(self, groupes=True)
+        # avant cet appel. Le rappel ne remplace que le bleu/noir legacy reconnu
+        # par UTILS_Interface et conserve toute personnalisation métier.
+        _appliquer_repens(self)
         return _GroupListView._InitializeImages(self)
 
 
