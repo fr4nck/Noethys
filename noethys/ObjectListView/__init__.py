@@ -39,6 +39,71 @@ from . ListCtrlPrinter import ListCtrlPrinter, ReportFormat, BlockFormat, LineDe
 from . import Filter
 
 
+_MESSAGE_VIDE_VENDOR = "This list is empty"
+
+
+def _normaliser_message_vide(ctrl):
+    """Remplace uniquement le libellé anglais livré par la bibliothèque."""
+    try:
+        message = ctrl.stEmptyListMsg
+        if message.GetLabel() != _MESSAGE_VIDE_VENDOR:
+            return
+        from Utils.UTILS_Traduction import _
+        message.SetLabel(_(u"Aucun élément"))
+    except Exception:
+        pass
+
+
+def _synchroniser_etat_vide(ctrl):
+    """Restaure l'état vide natif après les anciennes rustines Phoenix.
+
+    CTRL_ObjectListView masquait historiquement le message à chaque resize pour
+    contourner un artefact visuel désormais traité par la palette Repens. La
+    visibilité suit donc de nouveau le contenu réel de la liste.
+    """
+    try:
+        message = ctrl.stEmptyListMsg
+    except Exception:
+        return
+
+    try:
+        vide = ctrl.GetItemCount() == 0
+    except Exception:
+        try:
+            vide = len(ctrl.GetObjects()) == 0
+        except Exception:
+            return
+
+    try:
+        message.Show(vide)
+        if vide:
+            message.Raise()
+            message.Refresh()
+    except Exception:
+        pass
+
+
+def _lier_etat_vide(ctrl):
+    """Réapplique l'état vide après resize sans remplacer le handler historique."""
+    if getattr(ctrl, "_repens_etat_vide_lie", False):
+        return
+    try:
+        import wx
+
+        ctrl._repens_etat_vide_lie = True
+
+        def _apres_resize(event):
+            event.Skip()
+            try:
+                wx.CallAfter(_synchroniser_etat_vide, ctrl)
+            except Exception:
+                _synchroniser_etat_vide(ctrl)
+
+        ctrl.Bind(wx.EVT_SIZE, _apres_resize)
+    except Exception:
+        pass
+
+
 def _appliquer_repens(ctrl):
     """Réapplique la politique de liste existante sans dépendance métier."""
     try:
@@ -48,6 +113,13 @@ def _appliquer_repens(ctrl):
         # La bibliothèque reste importable isolément, notamment par les outils
         # de packaging et de diagnostic qui ne chargent pas toute l'application.
         pass
+    _normaliser_message_vide(ctrl)
+    _lier_etat_vide(ctrl)
+
+
+def _apres_set_objects(ctrl, resultat):
+    _synchroniser_etat_vide(ctrl)
+    return resultat
 
 
 class ObjectListView(_ObjectListView):
@@ -56,43 +128,51 @@ class ObjectListView(_ObjectListView):
     def __init__(self, *args, **kwargs):
         _ObjectListView.__init__(self, *args, **kwargs)
         _appliquer_repens(self)
+        _synchroniser_etat_vide(self)
 
     def SetObjects(self, *args, **kwargs):
         # Les anciens écrans assignent souvent leur zebra juste avant SetObjects.
         # Le rappel utilise la politique prudente du moteur global : une couleur
         # métier explicite n'est donc jamais remplacée.
         _appliquer_repens(self)
-        return _ObjectListView.SetObjects(self, *args, **kwargs)
+        resultat = _ObjectListView.SetObjects(self, *args, **kwargs)
+        return _apres_set_objects(self, resultat)
 
 
 class VirtualObjectListView(_VirtualObjectListView):
     def __init__(self, *args, **kwargs):
         _VirtualObjectListView.__init__(self, *args, **kwargs)
         _appliquer_repens(self)
+        _synchroniser_etat_vide(self)
 
     def SetObjects(self, *args, **kwargs):
         _appliquer_repens(self)
-        return _VirtualObjectListView.SetObjects(self, *args, **kwargs)
+        resultat = _VirtualObjectListView.SetObjects(self, *args, **kwargs)
+        return _apres_set_objects(self, resultat)
 
 
 class FastObjectListView(_FastObjectListView):
     def __init__(self, *args, **kwargs):
         _FastObjectListView.__init__(self, *args, **kwargs)
         _appliquer_repens(self)
+        _synchroniser_etat_vide(self)
 
     def SetObjects(self, *args, **kwargs):
         _appliquer_repens(self)
-        return _FastObjectListView.SetObjects(self, *args, **kwargs)
+        resultat = _FastObjectListView.SetObjects(self, *args, **kwargs)
+        return _apres_set_objects(self, resultat)
 
 
 class GroupListView(_GroupListView):
     def __init__(self, *args, **kwargs):
         _GroupListView.__init__(self, *args, **kwargs)
         _appliquer_repens(self)
+        _synchroniser_etat_vide(self)
 
     def SetObjects(self, *args, **kwargs):
         _appliquer_repens(self)
-        return _GroupListView.SetObjects(self, *args, **kwargs)
+        resultat = _GroupListView.SetObjects(self, *args, **kwargs)
+        return _apres_set_objects(self, resultat)
 
     def _InitializeImages(self):
         # CTRL_ObjectListView règle historiquement ses couleurs de groupes juste
