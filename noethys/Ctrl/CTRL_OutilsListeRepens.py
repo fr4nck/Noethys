@@ -229,7 +229,7 @@ class CTRL(wx.Panel):
         self.listview = listview
         self.afficherRegroupement = bool(afficherRegroupement)
         self.afficherCocher = bool(afficherCocher)
-        Style.appliquer_fenetre(self, "surface")
+        Style.appliquer_fenetre(self, "surface_container_low")
 
         self.barreRecherche = BarreRecherche(self, listview=listview, texteDefaut=texteDefaut)
         self.bouton_filtrer = CTRL_ActionRepens.CTRL(
@@ -260,7 +260,7 @@ class CTRL(wx.Panel):
                 self.label_regroupement,
                 role="label",
                 role_texte="on_surface_variant",
-                role_fond="surface",
+                role_fond="surface_container_low",
             )
             self.ctrl_regroupement = CTRL_Regroupement(self)
             self.ctrl_regroupement.MAJ(listview=listview)
