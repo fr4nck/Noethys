@@ -7,8 +7,6 @@ corrections de layout wxPython doivent rester dans leur module métier d'origine
 pas dans un shell de substitution.
 """
 
-import importlib
-
 
 _ADAPTATEURS = {
     "DLG_Impression_conso": ".DLG_Impression_conso_differe",
@@ -16,9 +14,11 @@ _ADAPTATEURS = {
 
 
 def __getattr__(name):
-    module_name = _ADAPTATEURS.get(name)
-    if module_name is not None:
-        module = importlib.import_module(module_name, __name__)
+    if name == "DLG_Impression_conso":
+        # Import statique placé dans le getter : le chargement reste paresseux,
+        # mais PyInstaller voit explicitement le module à embarquer.
+        import Dlg.DLG_Impression_conso_differe as module
+
         globals()[name] = module
         return module
     raise AttributeError(name)
