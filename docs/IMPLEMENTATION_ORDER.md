@@ -96,6 +96,19 @@ Le module Messagerie reste optionnel et désactivé par défaut. Son UI ne doit 
 
 Voir `MAIL_MODULE_ARCHITECTURE.md`.
 
+## Ligne d'arrivée de la refonte transverse
+
+Le chantier transverse est considéré **terminé** lorsque les points suivants sont vrais :
+
+- `ObjectListView` / `ListCtrl` et `wx.Grid` consomment les règles Repens communes ;
+- les barres de recherche/filtrage/cochage des listes métier utilisent `CTRL_OutilsListeRepens` et l'inventaire des anciens outils ne signale plus d'écran métier à migrer ;
+- la navigation commune (`AuiNotebook`, `Notebook`, `Choicebook`, `Listbook`, `Treebook`) est raccordée sans reprendre la géométrie native ;
+- les états vides, le focus et les états interactifs communs ne nécessitent plus de rustine wxPython historique ;
+- les contrôles communs restent lisibles en clair/sombre et à 100/120-125/150 % ;
+- aucun correctif purement graphique ne nécessite de nouvelle migration de données ou de nouvelle dépendance lourde.
+
+Une fois ces critères atteints, il n'existe plus de backlog générique « moderniser Noethys ». Les travaux UI suivants doivent partir d'un **défaut concret observé** (fenêtre vide, freeze, texte tronqué, mauvais contraste, scaling cassé, commande peu utilisable, etc.) ou d'un besoin métier identifié.
+
 ## Règle de validation
 
 Un écran n'est pas considéré modernisé uniquement parce qu'il « paraît plus moderne ».

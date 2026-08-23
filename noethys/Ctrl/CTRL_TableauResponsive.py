@@ -119,7 +119,7 @@ class ListeTableau(wx.ListCtrl):
     """Liste wx native à colonnes pondérées et métriques DPI-aware."""
 
     def __init__(self, parent, colonnes, style=0):
-        style |= wx.LC_REPORT | wx.LC_HRULES
+        style |= wx.LC_REPORT | wx.LC_HRULES | wx.BORDER_NONE
         wx.ListCtrl.__init__(self, parent, style=style)
         self.colonnes = tuple(colonnes or ())
         self._donnees = []
@@ -154,12 +154,21 @@ class ListeTableau(wx.ListCtrl):
             return ""
         return str(valeur)
 
+    def _StyliserLigne(self, item, index):
+        """Alterne deux surfaces discrètes sans ajouter de renderer maison."""
+        role = "surface_container_lowest" if index % 2 == 0 else "surface_container_low"
+        try:
+            self.SetItemBackgroundColour(item, Style.couleur(role))
+            self.SetItemTextColour(item, Style.couleur("on_surface"))
+        except Exception:
+            pass
+
     def SetDonnees(self, donnees):
         self.Freeze()
         try:
             self.DeleteAllItems()
             self._donnees = list(donnees or ())
-            for ligne in self._donnees:
+            for index_ligne, ligne in enumerate(self._donnees):
                 if not isinstance(ligne, dict):
                     try:
                         ligne = dict(ligne)
@@ -172,6 +181,7 @@ class ListeTableau(wx.ListCtrl):
                 for index_colonne, colonne in enumerate(self.colonnes[1:], start=1):
                     texte = self._texte(colonne, ligne.get(colonne.cle), ligne)
                     self.SetItem(item, index_colonne, texte)
+                self._StyliserLigne(item, index_ligne)
         finally:
             self.Thaw()
         UTILS_ColonnesResponsive.Ajuster(self)
@@ -193,17 +203,22 @@ class PanneauTableau(wx.Panel):
         self.entete = EnteteSection(self, titre=titre, sous_titre=sous_titre)
         self.actions = BarreActions(self, actions=actions) if actions else None
         self.tableau = ListeTableau(self, colonnes=colonnes)
-        self.recherche = wx.SearchCtrl(self, style=wx.TE_PROCESS_ENTER) if recherche else None
-        self.etat = wx.StaticText(self, label="")
+        self.barre_donnees = wx.Panel(self, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
+        Style.appliquer_fenetre(self.barre_donnees, "surface_container_low")
+
+        self.recherche = wx.SearchCtrl(self.barre_donnees, style=wx.TE_PROCESS_ENTER) if recherche else None
+        self.etat = wx.StaticText(self.barre_donnees, label="")
         Style.appliquer_texte(
             self.etat,
             role="body_small",
             role_texte="on_surface_variant",
-            role_fond="surface",
+            role_fond="surface_container_low",
         )
 
         if self.recherche is not None:
             Style.appliquer_saisie(self.recherche)
+            self.recherche.SetMinSize((Style.px(180), Style.cible_action("compact")))
+            self.recherche.SetMaxSize((Style.px(360), -1))
             self.recherche.ShowSearchButton(True)
             self.recherche.ShowCancelButton(True)
             self.recherche.SetDescriptiveText("Rechercher…")
@@ -212,19 +227,21 @@ class PanneauTableau(wx.Panel):
         else:
             self._donnees_source = None
 
+        outils = wx.BoxSizer(wx.HORIZONTAL)
+        marge = Style.espace(2)
+        if self.recherche is not None:
+            outils.Add(self.recherche, 0, wx.ALIGN_CENTER_VERTICAL)
+            outils.AddSpacer(marge)
+        outils.AddStretchSpacer(1)
+        outils.Add(self.etat, 0, wx.ALIGN_CENTER_VERTICAL)
+        self.barre_donnees.SetSizer(outils)
+
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.entete, 0, wx.EXPAND)
         if self.actions is not None:
             sizer.Add(self.actions, 0, wx.EXPAND)
+        sizer.Add(self.barre_donnees, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP | wx.BOTTOM, marge)
         sizer.Add(self.tableau, 1, wx.EXPAND)
-
-        bas = wx.BoxSizer(wx.HORIZONTAL)
-        marge = Style.espace(2)
-        if self.recherche is not None:
-            bas.Add(self.recherche, 1, wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, marge)
-        bas.Add(self.etat, 0, wx.ALIGN_CENTER_VERTICAL)
-        sizer.Add(bas, 0, wx.EXPAND | wx.ALL, marge)
-
         self.SetSizer(sizer)
 
     def SetDonnees(self, donnees):
