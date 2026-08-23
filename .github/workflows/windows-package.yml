@@ -1,19 +1,12 @@
 name: Package Windows
 
-# Fabrication coûteuse : exécutable réutilisable par la qualification complète
-# et toujours déclenchable seule à la demande. Aucun build automatique sur PR.
+# Workflow réutilisable uniquement. La porte d'entrée humaine et automatique
+# est désormais ci.yml afin d'éviter les demandes concurrentes dans Actions.
 on:
   workflow_call:
-  workflow_dispatch:
 
 permissions:
   contents: read
-
-# Si plusieurs qualifications du même ref se chevauchent, seul le HEAD utile
-# doit terminer sa fabrication.
-concurrency:
-  group: package-windows-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   package:
