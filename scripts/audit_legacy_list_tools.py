@@ -27,6 +27,12 @@ PATTERNS = {
 }
 
 SKIP_DIRS = {".git", "build", "dist", "__pycache__", ".venv", "venv"}
+SOURCE_HISTORIQUE = "Ctrl/CTRL_ObjectListView.py"
+CODES_ECRAN = {
+    "ctrl_outils_historique",
+    "barre_recherche_historique",
+    "import_ctrl_outils_historique",
+}
 
 
 def scan_file(path: Path) -> list[dict[str, object]]:
@@ -48,15 +54,26 @@ def scan_file(path: Path) -> list[dict[str, object]]:
     return findings
 
 
+def _est_source_historique(path: Path, root: Path) -> bool:
+    try:
+        relatif = path.relative_to(root).as_posix()
+    except ValueError:
+        relatif = path.as_posix()
+    return relatif == SOURCE_HISTORIQUE or relatif.endswith("/" + SOURCE_HISTORIQUE)
+
+
 def scan(root: Path) -> list[dict[str, object]]:
     findings = []
     for path in sorted(root.rglob("*.py")):
         if any(part in SKIP_DIRS for part in path.parts):
             continue
-        # Le module historique lui-même est la source à remplacer, pas un écran
-        # métier restant à migrer. Les assets qu'il contient sont néanmoins
-        # comptés séparément afin de matérialiser le dernier raccord central.
-        findings.extend(scan_file(path))
+        items = scan_file(path)
+        if _est_source_historique(path, root):
+            # La définition historique n'est pas un écran restant à migrer.
+            # On ne conserve ici que ses anciens assets afin de matérialiser le
+            # dernier raccord central encore à retirer une fois les appels partis.
+            items = [item for item in items if item["code"] == "assets_filtre_16px"]
+        findings.extend(items)
     return findings
 
 
@@ -65,6 +82,15 @@ def summarize(findings: list[dict[str, object]]) -> dict[str, int]:
     for item in findings:
         counts[str(item["code"])] += 1
     return counts
+
+
+def screens(findings: list[dict[str, object]]) -> list[str]:
+    """Retourne les écrans encore raccordés aux anciens outils, sans doublons."""
+    return sorted({
+        str(item["path"])
+        for item in findings
+        if item["code"] in CODES_ECRAN
+    })
 
 
 def main() -> int:
@@ -76,6 +102,7 @@ def main() -> int:
     root = Path(args.root)
     findings = scan(root)
     counts = summarize(findings)
+    legacy_screens = screens(findings)
 
     for item in findings:
         print(
@@ -85,13 +112,18 @@ def main() -> int:
     print("\nDette outils de listes :")
     for code in PATTERNS:
         print(f"- {code}: {counts[code]}")
+    print(f"- ecrans_metier_restants: {len(legacy_screens)}")
 
     if args.json_path:
         output = Path(args.json_path)
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(
             json.dumps(
-                {"summary": counts, "findings": findings},
+                {
+                    "summary": counts,
+                    "screens": legacy_screens,
+                    "findings": findings,
+                },
                 ensure_ascii=False,
                 indent=2,
             ),
