@@ -8,7 +8,6 @@
 # Licence:          Licence GNU GPL
 #-----------------------------------------------------------
 
-import html as html_std
 import re
 
 import Chemins
@@ -16,6 +15,49 @@ import wx
 from Ctrl import CTRL_TexteRepens
 from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
+
+
+# Ne pas importer la stdlib ``html`` ici. Le bundle PyInstaller historique de
+# Noethys est volontairement plat et contient aussi ``wx/html.py`` : sur Windows,
+# un import absolu ``html`` peut alors être résolu contre wx.html et casser ses
+# imports relatifs. Les bandeaux n'ont besoin que d'un sous-ensemble compact des
+# entités HTML réellement rencontrées dans les anciens textes d'introduction.
+_ENTITES_HTML = {
+    "amp": "&", "lt": "<", "gt": ">", "quot": '"', "apos": "'", "nbsp": "\u00a0",
+    "agrave": "à", "aacute": "á", "acirc": "â", "auml": "ä", "aring": "å", "aelig": "æ",
+    "ccedil": "ç", "egrave": "è", "eacute": "é", "ecirc": "ê", "euml": "ë",
+    "igrave": "ì", "iacute": "í", "icirc": "î", "iuml": "ï",
+    "ograve": "ò", "oacute": "ó", "ocirc": "ô", "ouml": "ö", "oelig": "œ",
+    "ugrave": "ù", "uacute": "ú", "ucirc": "û", "uuml": "ü", "yuml": "ÿ",
+    "Agrave": "À", "Aacute": "Á", "Acirc": "Â", "Auml": "Ä", "Aring": "Å", "AElig": "Æ",
+    "Ccedil": "Ç", "Egrave": "È", "Eacute": "É", "Ecirc": "Ê", "Euml": "Ë",
+    "Igrave": "Ì", "Iacute": "Í", "Icirc": "Î", "Iuml": "Ï",
+    "Ograve": "Ò", "Oacute": "Ó", "Ocirc": "Ô", "Ouml": "Ö", "OElig": "Œ",
+    "Ugrave": "Ù", "Uacute": "Ú", "Ucirc": "Û", "Uuml": "Ü", "Yuml": "Ÿ",
+    "laquo": "«", "raquo": "»", "lsquo": "‘", "rsquo": "’", "ldquo": "“", "rdquo": "”",
+    "ndash": "–", "mdash": "—", "hellip": "…", "bull": "•", "middot": "·",
+    "copy": "©", "reg": "®", "trade": "™", "euro": "€", "deg": "°",
+}
+_RE_ENTITE_HTML = re.compile(r"&(#(?:x[0-9A-Fa-f]+|[0-9]+)|[A-Za-z][A-Za-z0-9]+);")
+
+
+def _decoder_entites_html(texte):
+    """Décode les entités utiles sans dépendre d'un module nommé ``html``."""
+    def remplacer(match):
+        code = match.group(1)
+        if code.startswith("#x"):
+            try:
+                return chr(int(code[2:], 16))
+            except (TypeError, ValueError, OverflowError):
+                return match.group(0)
+        if code.startswith("#"):
+            try:
+                return chr(int(code[1:], 10))
+            except (TypeError, ValueError, OverflowError):
+                return match.group(0)
+        return _ENTITES_HTML.get(code, match.group(0))
+
+    return _RE_ENTITE_HTML.sub(remplacer, texte)
 
 
 def _texte_simple(texte):
@@ -26,11 +68,7 @@ def _texte_simple(texte):
     texte = re.sub(r"(?i)<\s*br\s*/?\s*>", "\n", texte)
     texte = re.sub(r"(?i)</\s*p\s*>", "\n", texte)
     texte = re.sub(r"<[^>]+>", "", texte)
-    try:
-        texte = html_std.unescape(texte)
-    except Exception:
-        pass
-    return texte.strip()
+    return _decoder_entites_html(texte).strip()
 
 
 def _bitmap_adapte(chemin, taille):
