@@ -203,6 +203,46 @@ def appliquer_liste(ctrl):
     return ctrl
 
 
+def appliquer_liste_riche(ctrl):
+    """Valeurs de présentation communes des listes ObjectListView.
+
+    Les attributs de lignes et renderers métier ne sont jamais parcourus ni
+    modifiés. Seuls le fond de données, le zebra par défaut et le message de
+    liste vide appartiennent à la grammaire Repens.
+    """
+    appliquer_liste(ctrl)
+
+    try:
+        ctrl.evenRowsBackColor = couleur("surface_container_lowest")
+        ctrl.oddRowsBackColor = couleur("surface_container_low")
+    except Exception:
+        pass
+
+    try:
+        message_vide = ctrl.stEmptyListMsg
+        appliquer_texte(
+            message_vide,
+            role="body_small",
+            role_texte="on_surface_variant",
+            role_fond="surface_container_lowest",
+        )
+    except Exception:
+        pass
+
+    return ctrl
+
+
+def appliquer_groupes_liste(ctrl):
+    """Harmonise uniquement l'en-tête des groupes ObjectListView."""
+    try:
+        ctrl.groupFont = police("label")
+        ctrl.groupTextColour = couleur("on_primary_container")
+        ctrl.groupBackgroundColour = couleur("primary_container")
+    except Exception:
+        pass
+    return ctrl
+
+
 def appliquer_grille(ctrl):
     """Style sémantique commun d'une ``wx.grid.Grid`` existante.
 
