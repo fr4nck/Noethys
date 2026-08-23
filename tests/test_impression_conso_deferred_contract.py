@@ -19,6 +19,8 @@ class ImpressionConsoDeferredContractTests(unittest.TestCase):
         text = self._read("noethys/Dlg/__init__.py")
         self.assertIn("def __getattr__(name):", text)
         self.assertIn('"DLG_Impression_conso": ".DLG_Impression_conso_differe"', text)
+        self.assertIn("import Dlg.DLG_Impression_conso_differe as module", text)
+        self.assertNotIn("importlib.import_module(module_name", text)
         self.assertNotIn('"DLG_Preferences"', text)
         self.assertNotIn("DLG_Preferences_stable", text)
         self.assertNotIn("from .DLG_Impression_conso", text)
