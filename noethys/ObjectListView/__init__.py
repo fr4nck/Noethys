@@ -59,10 +59,19 @@ def _synchroniser_etat_vide(ctrl):
 
     CTRL_ObjectListView masquait historiquement le message à chaque resize pour
     contourner un artefact visuel désormais traité par la palette Repens. La
-    visibilité suit donc de nouveau le contenu réel de la liste.
+    visibilité suit donc de nouveau le contenu réel de la liste, mais seulement
+    après la création de ses colonnes afin d'éviter un flash « Aucun élément »
+    pendant la construction du contrôle.
     """
     try:
         message = ctrl.stEmptyListMsg
+    except Exception:
+        return
+
+    try:
+        if ctrl.GetColumnCount() <= 0:
+            message.Hide()
+            return
     except Exception:
         return
 
@@ -128,7 +137,6 @@ class ObjectListView(_ObjectListView):
     def __init__(self, *args, **kwargs):
         _ObjectListView.__init__(self, *args, **kwargs)
         _appliquer_repens(self)
-        _synchroniser_etat_vide(self)
 
     def SetObjects(self, *args, **kwargs):
         # Les anciens écrans assignent souvent leur zebra juste avant SetObjects.
@@ -143,7 +151,6 @@ class VirtualObjectListView(_VirtualObjectListView):
     def __init__(self, *args, **kwargs):
         _VirtualObjectListView.__init__(self, *args, **kwargs)
         _appliquer_repens(self)
-        _synchroniser_etat_vide(self)
 
     def SetObjects(self, *args, **kwargs):
         _appliquer_repens(self)
@@ -155,7 +162,6 @@ class FastObjectListView(_FastObjectListView):
     def __init__(self, *args, **kwargs):
         _FastObjectListView.__init__(self, *args, **kwargs)
         _appliquer_repens(self)
-        _synchroniser_etat_vide(self)
 
     def SetObjects(self, *args, **kwargs):
         _appliquer_repens(self)
@@ -167,7 +173,6 @@ class GroupListView(_GroupListView):
     def __init__(self, *args, **kwargs):
         _GroupListView.__init__(self, *args, **kwargs)
         _appliquer_repens(self)
-        _synchroniser_etat_vide(self)
 
     def SetObjects(self, *args, **kwargs):
         _appliquer_repens(self)
