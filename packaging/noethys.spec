@@ -25,13 +25,6 @@ def collect_runtime_submodules(package):
 
 
 hiddenimports = [
-    # CTRL_Bandeau utilise le module stdlib ``html`` pour décoder les entités.
-    # Dans le bundle plat Windows, wxPython fournit aussi ``wx.html`` ; forcer
-    # explicitement la stdlib évite qu'un import absolu ``html`` soit résolu
-    # contre le sous-module wx et casse ses imports relatifs.
-    "html",
-    "html.entities",
-    "html.parser",
     # wx.richtext charge wx._xml au runtime. PyInstaller ne détecte pas toujours
     # ce module natif via le graphe d'import ; sans lui le portable plante dès
     # l'import de DLG_Portail_config.
