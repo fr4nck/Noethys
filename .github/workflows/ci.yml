@@ -1,12 +1,23 @@
-name: CI
+name: CI Noethys
 
-# Déclenché uniquement quand du code Python, le packaging ou les workflows changent.
-# Les modifications portant exclusivement sur docs/ ou *.md ne déclenchent
-# aucun job Python, Windows, macOS ou Linux.
-# workflow_dispatch permet aussi une qualification ponctuelle sans modifier le code.
+# Une seule porte d'entrée pour la validation du dépôt.
+# - PR / push master : un job Ubuntu rapide et unique.
+# - workflow_dispatch "complete" : même run, puis qualification lourde multi-OS
+#   et fabrication Windows. Rien de coûteux ne part automatiquement sur une PR.
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Niveau de qualification"
+        required: true
+        default: "rapide"
+        type: choice
+        options:
+          - "rapide"
+          - "complete"
   push:
+    branches:
+      - master
     paths:
       - 'noethys/**'
       - 'requirements.txt'
@@ -30,10 +41,17 @@ on:
 permissions:
   contents: read
 
+# Un seul run utile par ref. Les commits suivants remplacent les validations
+# obsolètes au lieu d'empiler des demandes dans GitHub Actions.
+concurrency:
+  group: ci-noethys-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  compile:
-    name: Compilation + Audit runtime
+  fast-gate:
+    name: Validation rapide Python / métier / UI / schéma
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v7
         with:
@@ -43,15 +61,91 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Compiler les sources (détection d'erreurs de syntaxe)
+      - name: Compiler les sources
         run: python -m compileall -q -x 'C866CA3A' noethys/
 
-      - name: Valider les outils DB de recette
+      - name: Compiler les outils de qualification
         run: |
           python -m py_compile scripts/benchmark_db_readonly.py
           python -m py_compile scripts/build_synthetic_recette_db.py
           python -m py_compile scripts/recette_existing_db_readonly.py
           python -m py_compile scripts/rc_db_preflight.py
+
+      - name: Audit runtime bloquant
+        run: python scripts/audit_runtime_patterns.py --fail-on PY2_BUILTINS
+
+      - name: Vérifier les chemins SQLite Unicode natifs
+        run: python scripts/modernize_sqlite_unicode_paths.py
+
+      - name: Vérifier ReqInsert et newID
+        run: python scripts/modernize_reqinsert_newid.py
+
+      - name: Vérifier les imports métier critiques
+        run: python scripts/audit_critical_business_modules.py
+
+      - name: Tests de non-régression métier et contrats UI
+        env:
+          PYTHONPATH: ${{ github.workspace }}/noethys:${{ github.workspace }}
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+
+      - name: Surveiller les imports dynamiques PyInstaller
+        run: python scripts/audit_dynamic_import_risks.py --max-import-risks 0
+
+      - name: Vérifier le repli des perspectives AUI
+        run: python scripts/smoke_aui_perspective_guard.py
+
+      - name: Auditer le layout wxPython sans masquer les assertions
+        run: |
+          mkdir -p tmp
+          python scripts/audit_ui_layout.py \
+            --json tmp/ui-layout-audit.json \
+            --fail-on sizer_assertion_suppression
+          python scripts/audit_wx_lifecycle.py \
+            --json tmp/wx-lifecycle-audit.json \
+            --fail-on constructor_parent_callback
+
+      - name: Conserver les diagnostics UI en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnostics-ui
+          path: tmp/*-audit.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Vérifier le schéma sur PR
+        if: github.event_name == 'pull_request'
+        run: python scripts/check_schema_compatibility.py "${{ github.event.pull_request.base.sha }}" HEAD
+
+      - name: Vérifier le schéma sur push
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          BASE="${{ github.event.before }}"
+          ZERO="0000000000000000000000000000000000000000"
+          if [ -z "$BASE" ] || [ "$BASE" = "$ZERO" ]; then
+            BASE="HEAD^"
+          fi
+          python scripts/check_schema_compatibility.py "$BASE" HEAD
+
+      - name: Vérifier le schéma en lancement manuel
+        if: github.event_name == 'workflow_dispatch'
+        run: python scripts/check_schema_compatibility.py HEAD^ HEAD
+
+  audit-complet:
+    name: Recette synthétique et inventaires complets
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'complete'
+    needs: fast-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.10"
 
       - name: Générer une base de recette synthétique
         run: python scripts/build_synthetic_recette_db.py --output tmp/ci_recette.dat
@@ -87,163 +181,104 @@ jobs:
       - name: Préflight RC unifié Noe-002/003/004/030
         run: python scripts/rc_db_preflight.py --sqlite tmp/ci_recette.dat --output-dir tmp/rc-db-preflight-ci
 
-      - name: Benchmark lecture seule sur la base de recette
+      - name: Benchmark lecture seule
         run: python scripts/benchmark_db_readonly.py --db tmp/ci_recette.dat --repeats 3
 
-      - name: Audit des motifs runtime dangereux
-        run: python scripts/audit_runtime_patterns.py --fail-on PY2_BUILTINS
-
-      - name: Vérifier les chemins SQLite Unicode natifs
-        run: python scripts/modernize_sqlite_unicode_paths.py
-
-      - name: Vérifier ReqInsert et newID
-        run: python scripts/modernize_reqinsert_newid.py
-
-      - name: Vérifier les imports des modules métier critiques
-        run: python scripts/audit_critical_business_modules.py
-
-      - name: Tests de non-régression métier
-        env:
-          PYTHONPATH: ${{ github.workspace }}/noethys:${{ github.workspace }}
-        run: python -m unittest discover -s tests -p 'test_*.py' -v
-
-      - name: Surveiller les imports dynamiques PyInstaller
-        run: python scripts/audit_dynamic_import_risks.py --max-import-risks 0
-
-      - name: Inventorier les parsings de date fragiles
-        run: python scripts/audit_fragile_date_parsing.py
-
-      - name: Inventorier les arguments wx numériques fragiles
-        run: python scripts/audit_wx_numeric_arguments.py
-
-      - name: Inventorier les frontières bytes/texte
-        run: python scripts/audit_bytes_text_boundaries.py
-
-      - name: Inventorier les frontières CSV
-        run: python scripts/audit_csv_boundaries.py
-
-      - name: Inventorier les frontières UTF-8
-        run: python scripts/audit_utf8_boundaries.py
-
-      - name: Inventorier l'usage réel des dépendances
-        run: python scripts/audit_dependency_usage.py
-
-      - name: Vérifier le repli des perspectives AUI
-        run: python scripts/smoke_aui_perspective_guard.py
-
-      - name: Vérifier l'absence de migration implicite du schéma (PR)
-        if: github.event_name == 'pull_request'
-        run: python scripts/check_schema_compatibility.py "${{ github.event.pull_request.base.sha }}" HEAD
-
-      - name: Vérifier l'absence de migration implicite du schéma (push)
-        if: github.event_name == 'push'
-        shell: bash
+      - name: Inventaires de compatibilité
         run: |
-          BASE="${{ github.event.before }}"
-          ZERO="0000000000000000000000000000000000000000"
-          if [ -z "$BASE" ] || [ "$BASE" = "$ZERO" ]; then
-            BASE="HEAD^"
-          fi
-          python scripts/check_schema_compatibility.py "$BASE" HEAD
+          python scripts/audit_fragile_date_parsing.py
+          python scripts/audit_wx_numeric_arguments.py
+          python scripts/audit_bytes_text_boundaries.py
+          python scripts/audit_csv_boundaries.py
+          python scripts/audit_utf8_boundaries.py
+          python scripts/audit_dependency_usage.py
 
   windows-smoke:
     name: Smoke test Windows
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'complete'
+    needs: fast-gate
     runs-on: windows-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-python@v7
         with:
           python-version: "3.10"
-
       - name: Installer les dépendances minimales
-        run: pip install six appdirs python-dateutil pytz wxPython pyttsx3
-
+        run: pip install six appdirs python-dateutil pytz Pillow pycryptodome wxPython pyttsx3
       - name: Appliquer les corrections runtime Python 3 validées
         run: python scripts/apply_py3_runtime_source_fixes.py
-
       - name: Compiler les sources Windows corrigées
         run: python -m compileall -q noethys/
-
       - name: Audit compatibilité wxPython Phoenix
         run: python scripts/audit_wxphoenix_compat.py --runtime --fail-missing
-
       - name: Smoke test imports non-GUI
         run: python tests/smoke_noethys.py
-
       - name: Smoke test configuration UTF-8 et récupération
         run: python scripts/smoke_config_utf8_recovery.py
-
       - name: Smoke test compatibilité pyttsx3
         run: python -c "import sys; sys.path.insert(0, 'noethys'); import pyttsx; assert callable(pyttsx.init)"
-
       - name: Smoke test wx.App
         run: python tests/smoke_wx.py
-
       - name: Smoke test layout wx
         run: python tests/smoke_wx_layout.py
 
   macos-smoke:
     name: Smoke test macOS
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'complete'
+    needs: fast-gate
     runs-on: macos-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-python@v7
         with:
           python-version: "3.10"
-
       - name: Installer les dépendances minimales
-        run: python -m pip install --upgrade pip && python -m pip install six appdirs python-dateutil pytz wxPython pyttsx3
-
+        run: python -m pip install --upgrade pip && python -m pip install six appdirs python-dateutil pytz Pillow pycryptodome wxPython pyttsx3
       - name: Appliquer les corrections runtime Python 3 validées
         run: python scripts/apply_py3_runtime_source_fixes.py
-
       - name: Compiler les sources macOS corrigées
         run: python -m compileall -q -x 'C866CA3A' noethys/
-
       - name: Audit compatibilité wxPython Phoenix
         run: python scripts/audit_wxphoenix_compat.py --runtime --fail-missing
-
       - name: Smoke test imports non-GUI
         run: python tests/smoke_noethys.py
-
       - name: Smoke test configuration UTF-8 et récupération
         run: python scripts/smoke_config_utf8_recovery.py
-
       - name: Smoke test compatibilité pyttsx3
         run: python -c "import sys; sys.path.insert(0, 'noethys'); import pyttsx; assert callable(pyttsx.init)"
-
       - name: Smoke test wx.App
         run: python tests/smoke_wx.py
-
       - name: Smoke test layout wx
         run: python tests/smoke_wx_layout.py
 
   linux-gtk3-smoke:
     name: Smoke test Linux GTK3
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'complete'
+    needs: fast-gate
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v7
-
       - name: Installer wxPython GTK3 et X virtuel
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth python3-wxgtk4.0
-
+          sudo apt-get install -y xvfb xauth python3-appdirs python3-pil python3-pycryptodome python3-wxgtk4.0
       - name: Appliquer les corrections runtime Python 3 validées
         run: /usr/bin/python3 scripts/apply_py3_runtime_source_fixes.py
-
       - name: Vérifier le runtime GTK3
         run: |
           /usr/bin/python3 -c "import wx; print(wx.version()); print(wx.PlatformInfo); assert 'phoenix' in wx.PlatformInfo; assert any(x in wx.PlatformInfo for x in ('wxGTK', '__WXGTK__'))"
-
       - name: Audit compatibilité wxPython Phoenix sous GTK3
         run: /usr/bin/python3 scripts/audit_wxphoenix_compat.py --runtime --fail-missing
-
       - name: Smoke test wx.App sous X virtuel
         run: xvfb-run -a /usr/bin/python3 tests/smoke_wx.py
-
       - name: Smoke test layout wx sous X virtuel
         run: xvfb-run -a /usr/bin/python3 tests/smoke_wx_layout.py
+
+  package-windows:
+    name: Package Windows portable
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'complete'
+    needs: fast-gate
+    uses: ./.github/workflows/windows-package.yml

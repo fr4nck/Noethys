@@ -1,41 +1,12 @@
 name: Package Windows
 
+# Workflow réutilisable uniquement. La porte d'entrée humaine et automatique
+# est désormais ci.yml afin d'éviter les demandes concurrentes dans Actions.
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - master
-    paths:
-      - 'noethys/**'
-      - 'packaging/**'
-      - 'requirements-build.txt'
-      - 'requirements.txt'
-      - 'scripts/apply_py3_runtime_source_fixes.py'
-      - 'scripts/smoke_reportlab_unicode_pdf.py'
-      - 'scripts/smoke_packaged_resources.py'
-      - 'scripts/smoke_optional_feature_stacks.py'
-      - '.github/workflows/windows-package.yml'
-  pull_request:
-    paths:
-      - 'noethys/**'
-      - 'packaging/**'
-      - 'requirements-build.txt'
-      - 'requirements.txt'
-      - 'scripts/apply_py3_runtime_source_fixes.py'
-      - 'scripts/smoke_reportlab_unicode_pdf.py'
-      - 'scripts/smoke_packaged_resources.py'
-      - 'scripts/smoke_optional_feature_stacks.py'
-      - '.github/workflows/windows-package.yml'
+  workflow_call:
 
 permissions:
   contents: read
-
-# Les commits directs sur master peuvent arriver en rafale pendant la
-# modernisation. Un portable obsolète n'a aucune valeur : on annule donc le
-# build précédent de la même ref et on réserve le runner Windows au HEAD.
-concurrency:
-  group: package-windows-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   package:
