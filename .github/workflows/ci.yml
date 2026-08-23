@@ -61,51 +61,84 @@ jobs:
         with:
           python-version: "3.10"
 
+      # Les contrôles ci-dessous sont indépendants autant que possible. Ils
+      # continuent après un échec afin de remonter tous les défauts d'un seul
+      # passage. Le job reste rouge grâce au bilan final.
       - name: Compiler les sources
+        id: compile_sources
+        continue-on-error: true
         run: python -m compileall -q -x 'C866CA3A' noethys/
 
       - name: Compiler les outils de qualification
+        id: compile_tools
+        continue-on-error: true
+        shell: bash
         run: |
-          python -m py_compile scripts/benchmark_db_readonly.py
-          python -m py_compile scripts/build_synthetic_recette_db.py
-          python -m py_compile scripts/recette_existing_db_readonly.py
-          python -m py_compile scripts/rc_db_preflight.py
+          status=0
+          python -m py_compile scripts/benchmark_db_readonly.py || status=1
+          python -m py_compile scripts/build_synthetic_recette_db.py || status=1
+          python -m py_compile scripts/recette_existing_db_readonly.py || status=1
+          python -m py_compile scripts/rc_db_preflight.py || status=1
+          exit "$status"
 
       - name: Audit runtime bloquant
+        id: runtime_audit
+        continue-on-error: true
         run: python scripts/audit_runtime_patterns.py --fail-on PY2_BUILTINS
 
       - name: Vérifier les chemins SQLite Unicode natifs
+        id: sqlite_unicode
+        continue-on-error: true
         run: python scripts/modernize_sqlite_unicode_paths.py
 
       - name: Vérifier ReqInsert et newID
+        id: reqinsert_newid
+        continue-on-error: true
         run: python scripts/modernize_reqinsert_newid.py
 
       - name: Vérifier les imports métier critiques
+        id: critical_imports
+        continue-on-error: true
         run: python scripts/audit_critical_business_modules.py
 
       - name: Tests de non-régression métier et contrats UI
+        id: unit_tests
+        continue-on-error: true
         env:
           PYTHONPATH: ${{ github.workspace }}/noethys:${{ github.workspace }}
         run: python -m unittest discover -s tests -p 'test_*.py' -v
 
       - name: Surveiller les imports dynamiques PyInstaller
+        id: dynamic_imports
+        continue-on-error: true
         run: python scripts/audit_dynamic_import_risks.py --max-import-risks 0
 
       - name: Vérifier le repli des perspectives AUI
+        id: aui_guard
+        continue-on-error: true
         run: python scripts/smoke_aui_perspective_guard.py
 
       - name: Auditer le layout wxPython sans masquer les assertions
+        id: ui_layout
+        continue-on-error: true
         run: |
           mkdir -p tmp
           python scripts/audit_ui_layout.py \
             --json tmp/ui-layout-audit.json \
             --fail-on sizer_assertion_suppression
+
+      - name: Auditer le cycle de vie wxPython
+        id: wx_lifecycle
+        continue-on-error: true
+        run: |
+          mkdir -p tmp
           python scripts/audit_wx_lifecycle.py \
             --json tmp/wx-lifecycle-audit.json \
             --fail-on constructor_parent_callback
 
-      - name: Conserver les diagnostics UI en cas d'échec
-        if: failure()
+      - name: Conserver les diagnostics UI
+        if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: diagnostics-ui
@@ -114,11 +147,15 @@ jobs:
           retention-days: 7
 
       - name: Vérifier le schéma sur PR
+        id: schema_pr
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         run: python scripts/check_schema_compatibility.py "${{ github.event.pull_request.base.sha }}" HEAD
 
       - name: Vérifier le schéma sur push
+        id: schema_push
         if: github.event_name == 'push'
+        continue-on-error: true
         shell: bash
         run: |
           BASE="${{ github.event.before }}"
@@ -129,8 +166,75 @@ jobs:
           python scripts/check_schema_compatibility.py "$BASE" HEAD
 
       - name: Vérifier le schéma en lancement manuel
+        id: schema_dispatch
         if: github.event_name == 'workflow_dispatch'
+        continue-on-error: true
         run: python scripts/check_schema_compatibility.py HEAD^ HEAD
+
+      - name: Bilan de la validation rapide
+        if: always()
+        shell: bash
+        env:
+          COMPILE_SOURCES: ${{ steps.compile_sources.outcome }}
+          COMPILE_TOOLS: ${{ steps.compile_tools.outcome }}
+          RUNTIME_AUDIT: ${{ steps.runtime_audit.outcome }}
+          SQLITE_UNICODE: ${{ steps.sqlite_unicode.outcome }}
+          REQINSERT_NEWID: ${{ steps.reqinsert_newid.outcome }}
+          CRITICAL_IMPORTS: ${{ steps.critical_imports.outcome }}
+          UNIT_TESTS: ${{ steps.unit_tests.outcome }}
+          DYNAMIC_IMPORTS: ${{ steps.dynamic_imports.outcome }}
+          AUI_GUARD: ${{ steps.aui_guard.outcome }}
+          UI_LAYOUT: ${{ steps.ui_layout.outcome }}
+          WX_LIFECYCLE: ${{ steps.wx_lifecycle.outcome }}
+          SCHEMA_PR: ${{ steps.schema_pr.outcome }}
+          SCHEMA_PUSH: ${{ steps.schema_push.outcome }}
+          SCHEMA_DISPATCH: ${{ steps.schema_dispatch.outcome }}
+        run: |
+          failed=0
+
+          report() {
+            label="$1"
+            status="$2"
+            case "$status" in
+              success)
+                line="✅ $label"
+                ;;
+              skipped|'')
+                line="⏭️  $label — non applicable"
+                ;;
+              *)
+                line="❌ $label — $status"
+                failed=1
+                ;;
+            esac
+            printf '%s\n' "$line"
+            printf '%s\n' "$line" >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          echo "## Bilan CI" >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+
+          report "Compilation des sources" "$COMPILE_SOURCES"
+          report "Compilation des outils" "$COMPILE_TOOLS"
+          report "Audit runtime" "$RUNTIME_AUDIT"
+          report "Chemins SQLite Unicode" "$SQLITE_UNICODE"
+          report "ReqInsert / newID" "$REQINSERT_NEWID"
+          report "Imports métier critiques" "$CRITICAL_IMPORTS"
+          report "Tests métier et contrats UI" "$UNIT_TESTS"
+          report "Imports dynamiques PyInstaller" "$DYNAMIC_IMPORTS"
+          report "Repli perspectives AUI" "$AUI_GUARD"
+          report "Layout wxPython" "$UI_LAYOUT"
+          report "Cycle de vie wxPython" "$WX_LIFECYCLE"
+          report "Schéma PR" "$SCHEMA_PR"
+          report "Schéma push" "$SCHEMA_PUSH"
+          report "Schéma manuel" "$SCHEMA_DISPATCH"
+
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::Un ou plusieurs contrôles ont échoué. Tous les diagnostics indépendants ont été exécutés avant ce verdict."
+            exit 1
+          fi
 
   audit-complet:
     name: Recette synthétique et inventaires complets
