@@ -193,13 +193,113 @@ def appliquer_saisie(ctrl):
 
 
 def appliquer_liste(ctrl):
-    """Style de base des listes/grilles lorsque leur renderer reste natif."""
+    """Style de base des listes lorsque leur renderer reste natif."""
     try:
         ctrl.SetFont(police("body"))
         ctrl.SetForegroundColour(couleur("on_surface"))
         ctrl.SetBackgroundColour(couleur("surface_container_lowest"))
     except Exception:
         pass
+    return ctrl
+
+
+def appliquer_liste_riche(ctrl):
+    """Réapplique la palette prudente des ObjectListView historiques.
+
+    Le moteur global d'apparence sait déjà distinguer les surfaces neutres des
+    couleurs métier explicites. Ce point d'entrée ne redéfinit donc pas une
+    seconde règle : il réutilise exactement cette politique au moment où les
+    anciens écrans ont fini d'assigner leurs zebra et leurs groupes.
+    """
+    try:
+        ctrl.SetFont(police("body"))
+    except Exception:
+        pass
+
+    # ObjectListView 1.3.2 utilisait une énorme fonte fixe de 24 pt pour son
+    # message vide. L'état vide suit désormais la typographie sémantique et le
+    # réglage de taille de texte, sans modifier un éventuel libellé métier.
+    try:
+        message_vide = getattr(ctrl, "stEmptyListMsg", None)
+        if message_vide is not None:
+            message_vide.SetFont(police("body_small"))
+    except Exception:
+        pass
+
+    try:
+        UTILS_Interface._appliquer_palette_liste(
+            ctrl,
+            sombre=UTILS_Interface.EstSombre(),
+        )
+    except Exception:
+        # Repli minimal lorsque le contrôle est utilisé hors du runtime complet.
+        appliquer_liste(ctrl)
+    return ctrl
+
+
+def appliquer_groupes_liste(ctrl):
+    """Compatibilité : les groupes suivent la même politique prudente que la liste."""
+    return appliquer_liste_riche(ctrl)
+
+
+def appliquer_grille(ctrl):
+    """Style sémantique commun d'une ``wx.grid.Grid`` existante.
+
+    Repens ne touche ni aux renderers métier, ni aux éditeurs, ni aux dimensions
+    de colonnes. Seuls la typographie, les surfaces, la sélection, les traits et
+    les métriques de ligne communes sont harmonisés.
+    """
+    try:
+        import wx.grid as gridlib
+        if not isinstance(ctrl, gridlib.Grid):
+            return ctrl
+    except Exception:
+        return ctrl
+
+    appliquer_liste(ctrl)
+
+    for methode, valeur in (
+        ("SetDefaultCellFont", police("body")),
+        ("SetLabelFont", police("label")),
+        ("SetGridLineColour", couleur("outline_variant")),
+        ("SetLabelBackgroundColour", couleur("surface_container_low")),
+        ("SetLabelTextColour", couleur("on_surface_variant")),
+        ("SetDefaultCellBackgroundColour", couleur("surface_container_lowest")),
+        ("SetDefaultCellTextColour", couleur("on_surface")),
+        ("SetSelectionBackground", couleur("selection")),
+        ("SetSelectionForeground", couleur("selection_text")),
+    ):
+        try:
+            getattr(ctrl, methode)(valeur)
+        except Exception:
+            pass
+
+    try:
+        ctrl.EnableGridLines(True)
+    except Exception:
+        pass
+
+    try:
+        if not hasattr(ctrl, "_noethys_default_row_base"):
+            ctrl._noethys_default_row_base = ctrl.GetDefaultRowSize()
+        ctrl.SetDefaultRowSize(
+            max(hauteur_ligne("table"), px(ctrl._noethys_default_row_base)),
+            True,
+        )
+    except Exception:
+        pass
+
+    for getter, setter, attribut in (
+        ("GetRowLabelSize", "SetRowLabelSize", "_noethys_row_label_base"),
+        ("GetColLabelSize", "SetColLabelSize", "_noethys_col_label_base"),
+    ):
+        try:
+            if not hasattr(ctrl, attribut):
+                setattr(ctrl, attribut, getattr(ctrl, getter)())
+            getattr(ctrl, setter)(px(getattr(ctrl, attribut)))
+        except Exception:
+            pass
+
     return ctrl
 
 

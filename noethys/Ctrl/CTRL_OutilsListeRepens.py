@@ -12,6 +12,7 @@ import wx
 
 from Ctrl import CTRL_ActionRepens
 from Utils import UTILS_Adaptations
+from Utils import UTILS_IconesRepens
 from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
@@ -45,6 +46,32 @@ class BarreRecherche(wx.SearchCtrl):
         self.ShowSearchButton(True)
         self.ShowCancelButton(False)
         Style.appliquer_saisie(self)
+
+        # La recherche reste un outil compact : sur un grand écran elle ne doit
+        # pas devenir une longue barre vide, et à 120/150 % elle conserve une
+        # largeur minimale réellement exploitable.
+        self.SetMinSize((Style.px(180), Style.cible_action("compact")))
+        self.SetMaxSize((Style.px(360), -1))
+
+        # Remplace les anciens petits bitmaps de recherche par les glyphes
+        # Fluent sémantiques tout en conservant le SearchCtrl natif.
+        try:
+            self.SetSearchBitmap(
+                UTILS_IconesRepens.GetBitmap(
+                    "search",
+                    taille=Style.taille_icone("inline"),
+                    role="on_surface_variant",
+                )
+            )
+            self.SetCancelBitmap(
+                UTILS_IconesRepens.GetBitmap(
+                    "dismiss",
+                    taille=Style.taille_icone("inline"),
+                    role="on_surface_variant",
+                )
+            )
+        except Exception:
+            pass
 
         try:
             self.listview.SetBarreRecherche(self)
@@ -219,6 +246,7 @@ class CTRL(wx.Panel):
             self.bouton_cocher = CTRL_ActionRepens.CTRL(
                 self,
                 label=_(u"Cocher"),
+                icone="check",
                 variante="ghost",
                 tooltip=_(u"Cocher ou décocher rapidement les éléments de la liste"),
             )
@@ -242,15 +270,16 @@ class CTRL(wx.Panel):
                 pass
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(self.barreRecherche, 1, wx.EXPAND | wx.RIGHT, Style.espace(1))
+        sizer.Add(self.barreRecherche, 0, wx.EXPAND | wx.RIGHT, Style.espace(1))
         sizer.Add(self.bouton_filtrer, 0, wx.ALIGN_CENTER_VERTICAL)
         if self.bouton_cocher is not None:
             sizer.Add(self.bouton_cocher, 0, wx.LEFT | wx.ALIGN_CENTER_VERTICAL, Style.espace(1))
+        sizer.AddStretchSpacer(1)
         if self.ctrl_regroupement is not None:
-            sizer.AddSpacer(Style.espace(2))
             sizer.Add(self.label_regroupement, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, Style.espace(1))
             sizer.Add(self.ctrl_regroupement, 0, wx.ALIGN_CENTER_VERTICAL)
         self.SetSizer(sizer)
+        self.SetMinSize((-1, Style.cible_action("compact")))
         self.Layout()
 
         self.Bind(wx.EVT_SIZE, self.OnSize)
