@@ -12,6 +12,15 @@ AUI = ROOT / "noethys" / "Utils" / "UTILS_Aui.py"
 TABLEAU = ROOT / "noethys" / "Ctrl" / "CTRL_TableauResponsive.py"
 
 
+def _fonction(source, nom):
+    """Extrait une fonction top-level sans dépendre de l'ordre des helpers voisins."""
+    arbre = ast.parse(source)
+    for noeud in arbre.body:
+        if isinstance(noeud, (ast.FunctionDef, ast.AsyncFunctionDef)) and noeud.name == nom:
+            return ast.get_source_segment(source, noeud) or ""
+    raise AssertionError("Fonction %s introuvable" % nom)
+
+
 class TableGridRepensContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -30,9 +39,7 @@ class TableGridRepensContractTests(unittest.TestCase):
         self.assertNotIn("wx.Colour(", self.style_text)
 
     def test_aui_grid_adapter_delegates_without_business_geometry(self):
-        debut = self.aui_text.index("def ConfigurerGrille")
-        fin = self.aui_text.index("\ndef ConfigurerNotebook", debut)
-        bloc = self.aui_text[debut:fin]
+        bloc = _fonction(self.aui_text, "ConfigurerGrille")
         self.assertIn("UTILS_StyleRepens as Style", bloc)
         self.assertIn("Style.appliquer_grille(grille)", bloc)
         self.assertNotIn("UTILS_Interface", bloc)
