@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 STYLE = ROOT / "noethys" / "Utils" / "UTILS_StyleRepens.py"
+INTERFACE = ROOT / "noethys" / "Utils" / "UTILS_Interface.py"
 OLV_INIT = ROOT / "noethys" / "ObjectListView" / "__init__.py"
 
 
@@ -24,24 +25,33 @@ def _fonction(source, nom):
 
 
 class ObjectListViewRepensContractTests(unittest.TestCase):
-    def test_repens_owns_default_olv_surfaces(self):
+    def test_rich_list_reuses_existing_cautious_palette_policy(self):
         source = _source(STYLE)
         liste = _fonction(source, "appliquer_liste_riche")
 
-        self.assertIn('couleur("surface_container_lowest")', liste)
-        self.assertIn('couleur("surface_container_low")', liste)
-        self.assertIn('role_texte="on_surface_variant"', liste)
+        self.assertIn("UTILS_Interface._appliquer_palette_liste", liste)
+        self.assertIn("UTILS_Interface.EstSombre()", liste)
+        self.assertNotIn("evenRowsBackColor =", liste)
+        self.assertNotIn("oddRowsBackColor =", liste)
         self.assertNotIn("SetColumnWidth", liste)
         self.assertNotIn("SetItem", liste)
         self.assertNotIn("wx.Colour", liste)
 
-    def test_group_headers_are_semantic(self):
+    def test_existing_palette_policy_preserves_business_colours(self):
+        source = _source(INTERFACE)
+        palette = _fonction(source, "_appliquer_palette_liste")
+
+        self.assertIn("_peut_remplacer_surface_liste", palette)
+        self.assertIn('GetCouleurRole("surface_container_lowest"', palette)
+        self.assertIn('GetCouleurRole("surface_container_low"', palette)
+        self.assertIn('GetCouleurRole("surface_container_high"', palette)
+        self.assertIn("groupBackgroundColour", palette)
+        self.assertIn("stEmptyListMsg", palette)
+
+    def test_group_compatibility_uses_same_palette_policy(self):
         source = _source(STYLE)
         groupes = _fonction(source, "appliquer_groupes_liste")
-
-        self.assertIn('police("label")', groupes)
-        self.assertIn('couleur("primary_container")', groupes)
-        self.assertIn('couleur("on_primary_container")', groupes)
+        self.assertIn("appliquer_liste_riche(ctrl)", groupes)
         self.assertNotIn("wx.Colour", groupes)
 
     def test_vendored_olv_adapter_stays_thin_and_lazy(self):
@@ -50,7 +60,6 @@ class ObjectListViewRepensContractTests(unittest.TestCase):
         self.assertIn("def _appliquer_repens", source)
         self.assertIn("from Utils import UTILS_StyleRepens as Style", source)
         self.assertIn("Style.appliquer_liste_riche(ctrl)", source)
-        self.assertIn("Style.appliquer_groupes_liste(ctrl)", source)
         self.assertIn("def SetObjects", source)
         self.assertIn("def _InitializeImages", source)
         self.assertNotIn("SetColumnWidth", source)
