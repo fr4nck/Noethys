@@ -3,6 +3,8 @@ name: UI layout audit
 on:
   workflow_dispatch:
   push:
+    branches:
+      - master
     paths:
       - 'noethys/**'
       - 'scripts/audit_ui_layout.py'
@@ -20,9 +22,17 @@ on:
 permissions:
   contents: read
 
+# Une PR qui reçoit plusieurs commits rapidement ne doit conserver que son audit
+# le plus récent. Le push direct n'est déclenché que sur master pour éviter le
+# doublon push + pull_request sur chaque branche de travail.
+concurrency:
+  group: ui-audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   audit-ui-layout:
     runs-on: ubuntu-latest
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
