@@ -216,6 +216,16 @@ def appliquer_liste_riche(ctrl):
     except Exception:
         pass
 
+    # ObjectListView 1.3.2 utilisait une énorme fonte fixe de 24 pt pour son
+    # message vide. L'état vide suit désormais la typographie sémantique et le
+    # réglage de taille de texte, sans modifier un éventuel libellé métier.
+    try:
+        message_vide = getattr(ctrl, "stEmptyListMsg", None)
+        if message_vide is not None:
+            message_vide.SetFont(police("body_small"))
+    except Exception:
+        pass
+
     try:
         UTILS_Interface._appliquer_palette_liste(
             ctrl,
