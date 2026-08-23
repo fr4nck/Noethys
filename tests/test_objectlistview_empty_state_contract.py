@@ -23,6 +23,14 @@ class ObjectListViewEmptyStateContractTests(unittest.TestCase):
         self.assertIn("ctrl.Bind(wx.EVT_SIZE, _apres_resize)", text)
         self.assertNotIn("'phoenix' in wx.PlatformInfo", text)
 
+    def test_empty_state_waits_for_real_list_columns_before_becoming_visible(self):
+        text = self._read("noethys/ObjectListView/__init__.py")
+        self.assertIn("if ctrl.GetColumnCount() <= 0:", text)
+        self.assertIn("message.Hide()", text)
+        # Un contrôle tout juste construit ne doit pas afficher fugitivement
+        # « Aucun élément » avant que l'écran métier ait installé ses colonnes.
+        self.assertNotIn("_synchroniser_etat_vide(self)", text)
+
     def test_vendor_default_message_is_localized_without_overwriting_business_text(self):
         text = self._read("noethys/ObjectListView/__init__.py")
         self.assertIn('_MESSAGE_VIDE_VENDOR = "This list is empty"', text)
