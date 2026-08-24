@@ -1,6 +1,6 @@
 # Roadmap de modernisation de Noethys
 
-> État consolidé au 22 août 2026.
+> État consolidé au 24 août 2026.
 
 Cette feuille de route décrit la trajectoire du fork `fr4nck/Noethys`. Elle complète :
 
@@ -35,13 +35,14 @@ La modernisation technique nécessaire à une première Release Candidate conser
 - SQL critique règlements / exports comptables sécurisé et couvert par des tests ;
 - Python 3.10 baseline qualifiée ; Python 3.11 validé ; Python 3.12 étudié ;
 - wxPython Phoenix qualifié ;
-- smoke tests Windows, macOS et Linux/GTK3 ;
+- smoke tests Windows, macOS et Linux/GTK3 disponibles dans la qualification complète ;
 - tests de non-régression métier exécutés globalement ;
 - sauvegarde/restauration auditée et réparée ;
-- portable Windows PyInstaller construit, extrait et réellement exécuté en CI ;
+- portable Windows PyInstaller construit, extrait et réellement exécuté en qualification ;
 - mode `Portable/` isolant configuration et données qualifié ;
 - préflight Noe-002/003/004/030 regroupé en une seule commande ;
-- sas RC manuel protégé : aucune RC ne peut être fabriquée sans confirmation explicite de la recette réelle et la release reste en brouillon.
+- sas RC manuel protégé : aucune RC ne peut être fabriquée sans confirmation explicite de la recette réelle et la release reste en brouillon ;
+- CI consolidée : boucle rapide unique sur PR/push, qualification lourde multi-OS et packaging uniquement en lancement manuel `complete`.
 
 ### Verrou restant avant une RC validée
 
@@ -49,7 +50,7 @@ Il ne reste pas de chantier technique caché obligatoire. La validation reste vo
 
 1. exécuter `scripts/rc_db_preflight.py` sur une **copie** d'une base Noethys réellement utilisée ;
 2. effectuer le parcours métier de `NOE-030-RECETTE-BASE-EXISTANTE.md` ;
-3. valider visuellement l'interface Windows sur cette copie ;
+3. valider visuellement l'interface Windows selon `CI-WINDOWS-AUDIT.md` ;
 4. corriger uniquement les anomalies réellement observées ;
 5. déclencher le workflow `Release Candidate` depuis `master` ;
 6. relire la release GitHub créée en brouillon avant publication.
@@ -88,7 +89,9 @@ Le diagnostic de performance Windows / MySQL WAN est déjà instrumenté. Les ac
 
 ## Phase 3 — Modernisation UI/UX desktop
 
-### Socle déjà intégré
+### Socle transverse consolidé
+
+Le lot transverse Repens est désormais intégré sur `master` :
 
 - réglage d'échelle de l'interface ;
 - modes Système / Clair / Sombre ;
@@ -98,30 +101,31 @@ Le diagnostic de performance Windows / MySQL WAN est déjà instrumenté. Les ac
 - Material Design 3 pour surfaces/tokens/thèmes ;
 - Fluent System Icons comme bibliothèque principale ;
 - instrumentation des freezes et temps d'ouverture ;
-- modernisation progressive des composants communs.
+- `ObjectListView` / `ListCtrl` et `wx.Grid` raccordés aux règles communes ;
+- recherche / filtrage / cochage communs ;
+- navigation AUI / Notebook / Choicebook / Listbook / Treebook ;
+- états vides ObjectListView sous Phoenix ;
+- garde-fous de contrat UI associés.
+
+La consolidation a été fusionnée via PR #78. Elle clôt le chantier générique de modernisation transverse : **les travaux UI suivants doivent partir d'un défaut concret observé ou d'un besoin métier explicite**.
 
 ### Références canoniques
 
 - [`DESIGN_SYSTEM_UI_UX.md`](DESIGN_SYSTEM_UI_UX.md) ;
 - [`WXPYTHON_UI_RULES.md`](WXPYTHON_UI_RULES.md) ;
-- [`IMPLEMENTATION_ORDER.md`](IMPLEMENTATION_ORDER.md).
+- [`IMPLEMENTATION_ORDER.md`](IMPLEMENTATION_ORDER.md) ;
+- [`CI-WINDOWS-AUDIT.md`](CI-WINDOWS-AUDIT.md).
 
 ### Règles de travail
 
 - parent visuel wxPython et contrôleur métier sont deux responsabilités différentes ;
 - ne pas masquer une assertion avec `WXSUPPRESS_SIZER_FLAGS_CHECK` ;
-- supprimer les sizers/tailles historiques rigides lorsqu'ils sont la cause ;
+- supprimer les sizers/tailles historiques rigides lorsqu'ils sont la cause d'un défaut ;
 - pas de troncature artificielle des titres ;
-- vérifier 100/120/150 % et les vrais contenus ;
+- vérifier 100/120-125/150 % et les vrais contenus ;
 - préserver les couleurs portant une information métier ;
-- une correction centrale vaut mieux qu'une série de rustines locales.
-
-### Suite
-
-- poursuivre listes, grilles, champs, boutons, toolbars et dialogues partagés ;
-- migrer ensuite les écrans métier ;
-- consolider dashboard, navigation et panneaux AUI sans restaurer les rigidités historiques ;
-- conserver une recette visuelle Windows réelle en complément des tests automatiques.
+- une correction centrale vaut mieux qu'une série de rustines locales ;
+- la recette Windows réelle décide désormais des prochains lots UI.
 
 ---
 
@@ -153,14 +157,16 @@ Principe :
 
 > une donnée → une règle de calcul canonique → plusieurs sorties.
 
-Chantiers :
+État des sous-chantiers :
 
-- Noe-060A : référentiel des indicateurs et moteur partagé ;
-- Noe-060B : communes partenaires ALSH ;
-- Noe-060C : communes homonymes / codes postaux ;
-- Noe-060D : écran, tableur, PDF et annexes issus du même jeu de données ;
-- Noe-060E : résidence datée et règles territoriales historisées ;
-- Noe-060F : annulations, absences et historique compact.
+- Noe-060A : référentiel des indicateurs et moteur partagé — ouvert ;
+- Noe-060B : communes partenaires ALSH — ouvert ;
+- Noe-060C : communes homonymes / codes postaux — **terminé** ;
+- Noe-060D : écran, tableur, PDF et annexes issus du même jeu de données — ouvert ;
+- Noe-060E : résidence datée et règles territoriales historisées — ouvert ;
+- Noe-060F : annulations, absences et historique compact — ouvert.
+
+L'ancienne PR de chantier #52 a été fermée ; le travail restant repartira des issues sur le `master` courant.
 
 ### Noe-061 — Rapports d'activité
 
@@ -193,6 +199,8 @@ Principes :
 - snapshots des documents officiels ;
 - réalisé et facturation issus du même socle ;
 - identifiants stables pour l'échange avec PMSL-Équipe.
+
+L'ancienne PR #61 a été fermée sans fusion car sa branche était devenue trop en retard sur `master`. Elle reste une référence de conception ; les lots futurs seront reconstruits depuis le `master` courant.
 
 ### EPS écoles
 
@@ -228,13 +236,13 @@ Principes :
 - aucune migration destructive ;
 - compatibilité avec un Connecthys hébergé non modifié pour les premiers lots.
 
-Les PR historiques empilées de ce chantier ne constituent pas toutes des cibles de fusion indépendantes ; la convergence doit se faire sur une branche propre construite depuis le `master` courant.
+Les anciennes PR #63/#66/#68/#69/#71/#72 ont été fermées sans fusion après inspection. Elles restent des références historiques de conception/diff. Les besoins sont conservés dans les issues #62, #65 et #67 ; toute reprise doit reconstruire un lot propre depuis le `master` courant.
 
 ---
 
 ## Phase 8 — Extensions et intégrations optionnelles
 
-Le dépôt expérimente un registre minimal d'extensions afin d'éviter d'intégrer chaque fournisseur ou besoin local directement au cœur historique.
+Le besoin d'un registre minimal d'extensions reste une piste d'architecture, suivie par **l'issue #80**.
 
 Contraintes :
 
@@ -242,22 +250,25 @@ Contraintes :
 - aucun chargement arbitraire automatique ;
 - aucune dépendance obligatoire à Internet ;
 - aucune migration de base propre à une extension sans besoin concret et procédure testée ;
-- premier usage potentiel : fournisseurs de communication, reporting ou connecteurs externes.
+- ne construire le socle que lorsqu'un premier consommateur réel le justifie.
 
-Ce socle reste séparé du noyau tant que ses hooks et cas d'usage réels ne sont pas stabilisés.
+Usages potentiels : fournisseurs de communication, reporting ou connecteurs externes.
+
+L'ancienne PR #64 a été fermée et sert uniquement de référence historique.
 
 ---
 
 ## Suivi opérationnel courant
 
-Les issues GitHub constituent la source de vérité pour le travail restant. Au 22 août 2026, les grands groupes encore ouverts sont :
+Les issues GitHub constituent la source de vérité pour le travail restant. Au 24 août 2026, les grands groupes encore ouverts sont :
 
 - validation réelle pré-RC : Noe-004 / Noe-030 / Noe-042 ;
 - dette SQL progressive : Noe-005 ;
-- reporting : Noe-060 et sous-lots ;
+- reporting : Noe-060 et sous-lots restants ;
 - rapport annuel : Noe-061 ;
 - conventions / mises à disposition : Noe-062 ;
-- portail Connecthys : Noe-063 et sous-lots.
+- portail Connecthys : Noe-063 et sous-lots ;
+- extensions optionnelles : issue #80, uniquement si un cas d'usage concret apparaît.
 
 Le détail et les numéros d'issues sont maintenus dans [`NOE-BACKLOG.md`](NOE-BACKLOG.md).
 
@@ -269,6 +280,6 @@ Lorsqu'une nouvelle idée apparaît :
 2. identifier la source de vérité métier ;
 3. décider si le besoin appartient à Noethys ou à un projet voisin ;
 4. documenter l'architecture avant une migration de données ;
-5. implémenter par lot testable ;
+5. implémenter par lot testable depuis le `master` courant ;
 6. valider sur copie réelle lorsque les données ou le métier sont concernés ;
 7. mettre à jour issue, documentation et tests pour que la décision ne dépende pas d'une conversation.
