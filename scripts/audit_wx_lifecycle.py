@@ -362,10 +362,14 @@ def _scan_destroy_block(
     lines: list[str],
     class_name: str,
     method_name: str,
+    inherited_destroyed: dict[str, int] | None = None,
 ) -> list[dict]:
     findings: list[dict] = []
     rel = str(path.relative_to(ROOT)).replace("\\", "/")
-    destroyed: dict[str, int] = {}
+    # Une branche exécutée après un Destroy() du bloc parent hérite de cet état.
+    # Elle travaille sur une copie : un Destroy conditionnel interne ne doit pas
+    # contaminer le bloc parent une fois la branche terminée.
+    destroyed: dict[str, int] = dict(inherited_destroyed or {})
 
     for statement in statements:
         # Un usage dans une instruction ultérieure au Destroy est risqué. On
@@ -383,12 +387,18 @@ def _scan_destroy_block(
                 "snippet": _line(lines, statement.lineno),
             })
 
-        # Les branches sont analysées dans leur propre ordre séquentiel. Un
-        # Destroy conditionnel ne contamine donc pas artificiellement le bloc
-        # parent.
+        # Les branches héritent uniquement des objets déjà détruits avant leur
+        # entrée. Leurs propres destructions/réaffectations restent locales.
         for block in _nested_statement_blocks(statement):
             findings.extend(
-                _scan_destroy_block(path, block, lines, class_name, method_name)
+                _scan_destroy_block(
+                    path,
+                    block,
+                    lines,
+                    class_name,
+                    method_name,
+                    inherited_destroyed=destroyed,
+                )
             )
 
         for target in _assigned_targets(statement):

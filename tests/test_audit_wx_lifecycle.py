@@ -113,6 +113,21 @@ class Dialog(wx.Dialog):
         self.assertEqual(risky[0]["member"], "dlg")
         self.assertEqual(risky[0]["destroy_line"], 6)
 
+    def test_destroy_before_following_if_propagates_into_branch(self):
+        source = '''
+def ouvrir(ok):
+    dlg = Fabrique()
+    dlg.Destroy()
+    if ok:
+        valeur = dlg.ctrl_grille
+'''
+        tree = ast.parse(source)
+        findings = audit._scan_use_after_destroy(self._path(), tree, source.splitlines())
+        risky = [item for item in findings if item["kind"] == "use_after_destroy"]
+        self.assertEqual(len(risky), 1)
+        self.assertEqual(risky[0]["member"], "dlg")
+        self.assertEqual(risky[0]["destroy_line"], 4)
+
     def test_return_after_destroy_does_not_create_false_positive(self):
         source = '''
 def ouvrir():
