@@ -42,16 +42,30 @@ def _relative(path: Path, root: Path) -> str:
         return path.as_posix()
 
 
-def _serialise_sql(item, root: Path) -> dict:
+def _display_path(path: Path) -> str:
+    """Privilégie un chemin relatif au dépôt dans les rapports partageables."""
+    return _relative(path, ROOT)
+
+
+def _serialise_sql(item) -> dict:
     return {
         "classification": item.classification,
         "risk": item.risk,
-        "path": _relative(item.path, root),
+        "path": _display_path(item.path),
         "line": item.line,
         "reason": item.reason,
         "ungrouped_items": list(item.ungrouped_items),
         "summary": item.summary(),
     }
+
+
+def _normalise_legacy_findings(findings: list[dict]) -> list[dict]:
+    normalised = []
+    for item in findings:
+        current = dict(item)
+        current["path"] = _display_path(Path(str(current["path"])))
+        normalised.append(current)
+    return normalised
 
 
 def _write_json(path: Path, payload) -> None:
@@ -68,7 +82,7 @@ def collect(root: Path = DEFAULT_ROOT) -> dict:
     sql_candidates = audit_sql_strict.scan(root)
     sql_counts = Counter(item.classification for item in sql_candidates)
     sql_review = [
-        _serialise_sql(item, root)
+        _serialise_sql(item)
         for item in sql_candidates
         if item.classification == "REVIEW"
     ]
@@ -80,7 +94,9 @@ def collect(root: Path = DEFAULT_ROOT) -> dict:
         for kind in WX_HIGH_RISK
     }
 
-    legacy_findings = audit_legacy_list_tools.scan(root)
+    legacy_findings = _normalise_legacy_findings(
+        audit_legacy_list_tools.scan(root)
+    )
     legacy_counts = audit_legacy_list_tools.summarize(legacy_findings)
     legacy_screens = audit_legacy_list_tools.screens(legacy_findings)
 
