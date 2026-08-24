@@ -6,6 +6,18 @@ Cette checklist sépare les garanties automatisées des vérifications qui néce
 
 **Important : la recette doit porter sur le SHA réellement candidat à la publication.** Plusieurs fonctions ont été intégrées après la première préparation du sas RC ; un ancien artefact qualifié ne suffit donc pas à valider un nouveau SHA.
 
+## Lecture rapide : un seul chemin critique
+
+Le suivi pré-RC est centralisé dans **l'issue #19 (Noe-042)**. Les anciens lots SQL déjà implémentés **#5 / Noe-002** et **#6 / Noe-003** sont clos ; leurs vérifications réelles sont intégrées au parcours Noe-030.
+
+Avant de figer le SHA candidat, relire également les inventaires statiques sur le `master` courant :
+
+- `python scripts/audit_sql_strict.py --root noethys --format text --only review` ;
+- `python scripts/audit_wx_lifecycle.py` ;
+- `python scripts/audit_legacy_list_tools.py --root noethys`.
+
+Ces audits servent à **localiser** les zones à examiner. Ils ne doivent jamais déclencher une correction mécanique sans cause démontrée.
+
 ## Déjà couvert automatiquement par le socle
 
 - compilation Python 3 ;
@@ -30,23 +42,26 @@ Cette checklist sépare les garanties automatisées des vérifications qui néce
 ## Avant de déclarer une RC validée
 
 1. choisir un SHA candidat sur `master` ;
-2. utiliser l'artefact construit depuis **ce même SHA** ;
-3. vérifier `BUILD-INFO.txt` ;
-4. conserver une sauvegarde indépendante et une copie de recette ;
-5. exécuter `scripts/rc_db_preflight.py` sur la copie avant ouverture ;
-6. lancer `Noethys.exe` manuellement ;
-7. vérifier l'accueil et l'absence de ressource/module manquant ;
-8. exécuter la recette métier complète ;
-9. fermer/réouvrir l'application ;
-10. exécuter le contrôle final de schéma/empreinte ;
-11. corriger tout défaut bloquant puis recommencer sur un nouvel artefact si le SHA change ;
-12. seulement ensuite déclencher le workflow `Release Candidate` et relire la release brouillon.
+2. lancer `CI Noethys` en mode `complete` pour ce SHA ;
+3. utiliser l'artefact construit depuis **ce même SHA** ;
+4. vérifier `BUILD-INFO.txt` ;
+5. conserver une sauvegarde indépendante et une copie de recette ;
+6. exécuter `scripts/rc_db_preflight.py` sur la copie avant ouverture ;
+7. lancer `Noethys.exe` manuellement ;
+8. vérifier l'accueil et l'absence de ressource/module manquant ;
+9. exécuter la recette métier complète ;
+10. effectuer la recette visuelle Windows ;
+11. fermer/réouvrir l'application ;
+12. exécuter le contrôle final de schéma/empreinte ;
+13. corriger tout défaut bloquant puis recommencer sur un nouvel artefact si le SHA change ;
+14. seulement ensuite déclencher le workflow `Release Candidate` et relire la release brouillon.
 
 ## Recette métier minimale historique
 
 Tester au moins :
 
 - familles et individus ;
+- saisie/modification d'adresse, notamment commune/code postal ;
 - activités, groupes et inscriptions ;
 - consommations/réservations ;
 - prestations/facturation ;
@@ -136,13 +151,21 @@ Après la recette :
 - extensions Python utilisateur ;
 - modules spécifiques de commandes, conventions ou exports réellement utilisés.
 
-## Travaux ouverts qui ne doivent pas être confondus avec du code intégré
+## Travaux ouverts hors chemin critique RC
 
-Les chantiers Noe-060/061/062/063 comportent encore des issues et PR ouvertes. Une fonctionnalité décrite dans une issue ou une PR draft n'entre dans la recette RC que si elle a effectivement été fusionnée dans le SHA candidat.
+Les chantiers suivants restent suivis, mais ne bloquent pas la première RC tant que leur code n'est pas fusionné dans le SHA candidat et qu'aucun défaut concret du `master` n'est identifié :
+
+- **Noe-005 / #40** — dette SQL progressive ;
+- **Noe-060 / 061** — #51, #54, #55, #56, #57, #58, #59 ;
+- **Noe-062** — #60 ;
+- **Noe-063** — #62, #65, #67 ;
+- **extensions optionnelles** — #80.
+
+Les anciennes PR de ces chantiers sont des références historiques de conception. Toute reprise doit repartir du `master` courant.
 
 La règle est simple :
 
-> **code présent dans le SHA candidat = à qualifier ; idée/issue/PR ouverte = pas encore un comportement de la RC.**
+> **code présent dans le SHA candidat = à qualifier ; idée/issue/PR fermée non fusionnée = pas un comportement de la RC.**
 
 ## Critères de décision
 
