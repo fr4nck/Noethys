@@ -41,21 +41,26 @@ La modernisation technique nécessaire à une première Release Candidate conser
 - portable Windows PyInstaller construit, extrait et réellement exécuté en qualification ;
 - mode `Portable/` isolant configuration et données qualifié ;
 - préflight Noe-002/003/004/030 regroupé en une seule commande ;
+- inventaires statiques SQL/wx/listes regroupés via `scripts/audit_pre_rc.py` ;
 - sas RC manuel protégé : aucune RC ne peut être fabriquée sans confirmation explicite de la recette réelle et la release reste en brouillon ;
 - CI consolidée : boucle rapide unique sur PR/push, qualification lourde multi-OS et packaging uniquement en lancement manuel `complete`.
 
 ### Verrou restant avant une RC validée
 
-Il ne reste pas de chantier technique caché obligatoire. La validation reste volontairement bloquée par l'exploitation réelle :
+Il ne reste pas de chantier technique caché obligatoire. Le **seul suivi opérationnel pré-RC est l'issue #19**. La validation reste volontairement bloquée par l'exploitation réelle :
 
-1. exécuter `scripts/rc_db_preflight.py` sur une **copie** d'une base Noethys réellement utilisée ;
-2. effectuer le parcours métier de `NOE-030-RECETTE-BASE-EXISTANTE.md` ;
-3. valider visuellement l'interface Windows selon `CI-WINDOWS-AUDIT.md` ;
-4. corriger uniquement les anomalies réellement observées ;
-5. déclencher le workflow `Release Candidate` depuis `master` ;
-6. relire la release GitHub créée en brouillon avant publication.
+1. exécuter `python scripts/audit_pre_rc.py` sur le `master` candidat et relire les inventaires ;
+2. lancer la CI en mode manuel `complete` sur le même SHA ;
+3. exécuter `scripts/rc_db_preflight.py` sur une **copie** d'une base Noethys réellement utilisée ;
+4. effectuer le parcours métier de `NOE-030-RECETTE-BASE-EXISTANTE.md` ;
+5. valider visuellement l'interface Windows selon `CI-WINDOWS-AUDIT.md` ;
+6. corriger uniquement les anomalies réellement observées ;
+7. déclencher le workflow `Release Candidate` depuis `master` ;
+8. relire la release GitHub créée en brouillon avant publication.
 
 Depuis la préparation initiale de la RC, plusieurs correctifs et fonctions ont été intégrés au fork. La recette finale doit donc porter sur **le SHA candidat réellement publié**, pas sur un ancien artefact déjà qualifié.
+
+Les anciens lots #5/Noe-002, #6/Noe-003, #7/Noe-004 et #14/Noe-030 sont clos comme lots d'implémentation/outillage. Leurs opérations de validation réelle sont absorbées par le cockpit #19.
 
 ---
 
@@ -220,7 +225,7 @@ Référence : [`ARCHITECTURE-TIERS-PRESTATIONS-PLANNING.md`](ARCHITECTURE-TIERS-
 
 Objectif : faire du portail une vue de données et contenus déjà maintenus ailleurs, sans double saisie et sans exposer directement la base locale.
 
-Lots suivis :
+Lots conservés dans **l'issue unique #62** :
 
 - contenu externe compatible avec le Connecthys hébergé ;
 - RSS / Atom natif avec cache sûr ;
@@ -236,15 +241,15 @@ Principes :
 - aucune migration destructive ;
 - compatibilité avec un Connecthys hébergé non modifié pour les premiers lots.
 
-Les anciennes PR #63/#66/#68/#69/#71/#72 ont été fermées sans fusion après inspection. Elles restent des références historiques de conception/diff. Les besoins sont conservés dans les issues #62, #65 et #67 ; toute reprise doit reconstruire un lot propre depuis le `master` courant.
+Les anciennes PR #63/#66/#68/#69/#71/#72 ont été fermées sans fusion après inspection. Elles restent des références historiques de conception/diff. Les anciennes sous-issues #65 et #67 ont été closes après consolidation de leurs exigences dans #62. Toute reprise reconstruit un lot propre depuis le `master` courant.
 
 ---
 
-## Phase 8 — Extensions et intégrations optionnelles
+## Phase 8 — Extensions optionnelles : piste dormante
 
-Le besoin d'un registre minimal d'extensions reste une piste d'architecture, suivie par **l'issue #80**.
+Le registre minimal d'extensions reste une **piste d'architecture**, pas un chantier actif. L'issue #80 a été close comme `not planned` tant qu'aucun consommateur concret ne justifie de rouvrir le sujet.
 
-Contraintes :
+Contraintes si le besoin réapparaît :
 
 - opt-in ;
 - aucun chargement arbitraire automatique ;
@@ -262,13 +267,13 @@ L'ancienne PR #64 a été fermée et sert uniquement de référence historique.
 
 Les issues GitHub constituent la source de vérité pour le travail restant. Au 24 août 2026, les grands groupes encore ouverts sont :
 
-- validation réelle pré-RC : Noe-004 / Noe-030 / Noe-042 ;
-- dette SQL progressive : Noe-005 ;
-- reporting : Noe-060 et sous-lots restants ;
-- rapport annuel : Noe-061 ;
-- conventions / mises à disposition : Noe-062 ;
-- portail Connecthys : Noe-063 et sous-lots ;
-- extensions optionnelles : issue #80, uniquement si un cas d'usage concret apparaît.
+- **pré-RC : #19 / Noe-042 uniquement** ;
+- dette SQL progressive : #40 / Noe-005 ;
+- reporting et pilotage : #51, #54, #55, #56, #57, #58, #59 ;
+- conventions / mises à disposition : #60 / Noe-062 ;
+- portail Connecthys : #62 / Noe-063.
+
+Les issues #5, #6, #7, #14, #53, #65, #67 et #80 sont closes. Leur contenu utile est soit intégré au code, soit absorbé dans un suivi parent, soit conservé comme référence non planifiée.
 
 Le détail et les numéros d'issues sont maintenus dans [`NOE-BACKLOG.md`](NOE-BACKLOG.md).
 

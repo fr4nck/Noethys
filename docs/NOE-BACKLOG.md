@@ -19,6 +19,7 @@ Pour éviter de disperser à nouveau le chantier, le suivi courant se lit désor
 Le **cockpit pré-RC est l'issue #19 (Noe-042)**. Elle rassemble les dernières étapes qui exigent encore une action concrète avant publication :
 
 - choisir le SHA candidat sur `master` ;
+- relancer les inventaires statiques consolidés sur ce SHA ;
 - lancer la qualification complète du même SHA ;
 - exécuter le préflight sur une copie de base réellement utilisée ;
 - effectuer la recette métier Noe-030 ;
@@ -29,7 +30,13 @@ Le **cockpit pré-RC est l'issue #19 (Noe-042)**. Elle rassemble les dernières 
 
 Les lots techniques historiques **#5 (Noe-002)**, **#6 (Noe-003)**, **#7 (Noe-004)** et **#14 (Noe-030)** sont clos comme lots d'implémentation/outillage. Leurs opérations de qualification sur copie réelle sont désormais suivies dans **#19**. **#40 (Noe-005)** reste une dette SQL progressive et non un blocage générique de RC.
 
-Avant de figer un SHA candidat, les inventaires statiques doivent être relus sur le `master` courant (`audit_sql_strict.py`, `audit_wx_lifecycle.py`, `audit_legacy_list_tools.py`) afin de ne pas baser une décision sur des chiffres anciens. Une occurrence d'audit n'est corrigée que si sa sémantique ou son risque concret est établi.
+Avant de figer un SHA candidat, lancer :
+
+```bash
+python scripts/audit_pre_rc.py
+```
+
+Cette commande, ajoutée via PR #81, regroupe les inventaires SQL strict, cycle de vie/parentage wxPython et anciens outils de listes, avec rapports sous `tmp/pre-rc-audits/`. Une occurrence d'audit n'est corrigée que si sa sémantique ou son risque concret est établi.
 
 ### 2. Chantiers métier après / à côté de la RC
 
@@ -37,8 +44,9 @@ Ils restent suivis par leurs issues, sans PR de travail ancienne laissée ouvert
 
 - **Noe-060 / 061 — reporting et pilotage** : #51, #54, #55, #56, #57, #58, #59 ;
 - **Noe-062 — conventions et mises à disposition** : #60 ;
-- **Noe-063 — portail Connecthys** : suivi consolidé dans #62 ;
-- **extensions optionnelles** : #80.
+- **Noe-063 — portail Connecthys** : suivi consolidé dans #62.
+
+La piste **extensions optionnelles** n'est plus un chantier actif : l'issue #80 est close comme `not planned` tant qu'aucun premier consommateur concret ne justifie de la rouvrir.
 
 Les anciennes PR de ces chantiers ont été fermées sans fusion lorsqu'elles étaient trop éloignées du `master`. Elles restent des références historiques de conception ; toute reprise doit repartir du `master` courant.
 
@@ -226,13 +234,13 @@ Règles :
 - pas d'identifiant famille exposé en clair comme pseudo-personnalisation ;
 - aucune migration destructive.
 
-## Extensions optionnelles — piste d'architecture
+## Extensions optionnelles — piste dormante
 
-L'ancienne PR #64 a exploré un registre minimal d'extensions, sans chargement automatique et sans modification du comportement historique. Elle a été fermée car sa branche était devenue trop en retard sur `master`.
+L'ancienne PR #64 a exploré un registre minimal d'extensions, sans chargement automatique et sans modification du comportement historique. Elle reste une référence de conception, pas du code livré.
 
-Le besoin futur est désormais conservé dans **l'issue #80**. Une reprise ne doit avoir lieu que lorsqu'un premier usage concret le justifie et doit repartir du `master` courant.
+L'issue #80 est désormais **close comme `not planned`**. Le sujet ne doit être rouvert que lorsqu'un premier usage concret le justifie ; toute reprise repartira alors du `master` courant.
 
-Usages envisagés : fournisseurs de communication, exports/reporting et connecteurs externes.
+Usages envisagés si le besoin réapparaît : fournisseurs de communication, exports/reporting et connecteurs externes.
 
 ## CI — boucle rapide et qualification lourde
 
@@ -245,15 +253,16 @@ La consolidation CI a été fusionnée via PR #70.
 - `workflow_dispatch` mode `complete` : recette synthétique, smokes Windows/macOS/Linux et packaging ;
 - `windows-package.yml` est réutilisable ;
 - l'ancien workflow UI séparé a été supprimé ;
-- les diagnostics indépendants sont collectés avant le verdict final lorsque possible.
+- les diagnostics indépendants sont collectés avant le verdict final lorsque possible ;
+- `scripts/audit_pre_rc.py`, fusionné via #81, fournit l'inventaire consolidé à relire avant le gel d'un SHA candidat.
 
 Le comportement réel des workflows présents sur `master` reste la référence exécutable.
 
 ## Situation pré-RC
 
-Le verrou pré-RC reste unique : **validation du SHA candidat sur une copie de base réellement utilisée puis recette métier/visuelle Windows**.
+Le verrou pré-RC reste unique : **validation du SHA candidat sur une copie de base réellement utilisée puis recette métier/visuelle Windows**, suivie dans #19.
 
-Noe-005, Noe-060, Noe-061, Noe-062, Noe-063 et l'issue #80 sont des chantiers parallèles ou post-socle ; ils ne doivent pas être confondus avec le minimum technique historiquement requis pour fabriquer la première RC. En revanche, tout code déjà fusionné dans `master` au moment du gel RC fait naturellement partie du SHA à qualifier.
+Noe-005, Noe-060, Noe-061, Noe-062 et Noe-063 sont des chantiers parallèles ou post-socle ; ils ne doivent pas être confondus avec le minimum technique historiquement requis pour fabriquer la première RC. La piste extensions/#80 est dormante et n'appartient plus au backlog actif. En revanche, tout code déjà fusionné dans `master` au moment du gel RC fait naturellement partie du SHA à qualifier.
 
 ## Règle de suivi
 
