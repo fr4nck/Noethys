@@ -1456,9 +1456,12 @@ class Traitement():
             dlg = DLG_Portail_reservations.Dialog(self, track=self.track)
             reponse_modal = dlg.ShowModal()
             reponse = dlg.GetReponse()
+            sauvegarde_ok = True
+            if reponse_modal == wx.ID_OK :
+                sauvegarde_ok = self.Save_grille(dlg.ctrl_grille)
             dlg.Destroy()
             if reponse_modal == wx.ID_OK :
-                if self.Save_grille(dlg.ctrl_grille) == False:
+                if sauvegarde_ok == False:
                     self.EcritLog(_(u"[ERREUR] Les consommations n'ont pas pu être enregistrées."))
                     dlg = wx.MessageDialog(self.parent, _(u"Les réservations n'ont pas pu être enregistrées. La demande reste non validée."), _(u"Erreur d'enregistrement"), wx.OK | wx.ICON_ERROR)
                     dlg.ShowModal()
