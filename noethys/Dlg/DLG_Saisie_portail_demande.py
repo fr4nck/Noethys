@@ -35,7 +35,7 @@ else :
     from wx import DatePickerCtrl, DP_DROPDOWN, EVT_DATE_CHANGED
 
 
-DICT_RENSEIGNEMENTS = {"nom" : u"Nom", "prenom" : u"Prénom", "date_naiss" : u"Date de naissance", "cp_naiss" : u"CP de naissance", "ville_naiss" : u"Ville de naissance", "rue_resid" : u"Adresse - Rue", "cp_resid" : u"Adresse - CP", "ville_resid" : u"Ville de résidence",
+DICT_RENSEIGNEMENTS = {"nom" : u"Nom", "prenom" : u"Prénom", "date_naiss" : u"Date de naissance", "cp_naiss" : u"CP de naissance", "ville_naiss" : u"Ville de naissance", "rue_resid" : u"Adresse - Rue", "cp_resid" : u"Adresse - CP", "ville_resid" : u"Adresse - Ville",
                     "tel_domicile" : u"Tél. Domicile", "tel_mobile" : u"Tél. Mobile", "mail" : u"Email", "profession" : u"Profession", "employeur" : u"Employeur", "travail_tel" : u"Tél. Pro.", "travail_mail" : u"Email Pro."}
 
 
@@ -1362,7 +1362,7 @@ class Traitement():
 
             # Affichage du PDF pour envoi par courrier ou retrait sur site
             if self.dict_parametres["methode_envoi"] != "email" :
-                message = _(u"La facture va être générée au format PDF et ouvert dans votre lecteur de PDF.\n\n")
+                message = _(u"La facture va être générée au format PDF et ouverte dans votre lecteur de PDF.\n\n")
                 if self.dict_parametres["methode_envoi"] == "courrier" :
                     message += _(u"Veuillez l'imprimer et l'envoyer par courrier.")
                 else :
