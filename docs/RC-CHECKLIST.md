@@ -1,6 +1,6 @@
 # Checklist de qualification RC
 
-> Checklist maintenue au 22 août 2026.
+> Checklist maintenue au 24 août 2026.
 
 Cette checklist sépare les garanties automatisées des vérifications qui nécessitent encore une recette humaine avec une copie de base réelle.
 
@@ -23,7 +23,9 @@ Cette checklist sépare les garanties automatisées des vérifications qui néce
 - isolation du mode `Portable/` ;
 - génération de `BUILD-INFO.txt` ;
 - smoke tests représentatifs Windows, macOS et Linux/GTK3 ;
-- tests de contrat UI/DB ajoutés au fil des corrections lorsqu'ils sont automatisables.
+- tests de contrat UI/DB ajoutés au fil des corrections lorsqu'ils sont automatisables ;
+- socle transverse Repens des listes/ObjectListView, grilles, outils de liste, navigation et états vides ;
+- CI rapide unifiée sur PR/push, qualification multi-OS et packaging réservés au mode manuel `complete`.
 
 ## Avant de déclarer une RC validée
 
@@ -59,6 +61,8 @@ Tester au moins :
 
 ### Interface / wxPython
 
+Le parcours détaillé est dans `CI-WINDOWS-AUDIT.md`. Depuis les sources, `DEV-Noethys.cmd` prépare l'environnement Windows et active les journaux utiles.
+
 Tester avec de vrais écrans métier :
 
 - apparence **Système**, **Clair** et **Sombre** ;
@@ -66,7 +70,10 @@ Tester avec de vrais écrans métier :
 - échelle 100 %, puis au moins 120/125 % et 150 % ;
 - titres longs sans troncature artificielle ;
 - dialogues de préférences/paramétrage ;
-- listes, grilles, barres d'outils et boutons communs ;
+- listes/ObjectListView, grilles, barres d'outils et boutons communs ;
+- recherche, filtrage, cochage et regroupement lorsqu'ils existent ;
+- navigation Notebook/Choicebook/AUI représentative ;
+- états vides de listes ;
 - absence de fenêtre vide ou partiellement construite ;
 - absence d'assertion sizer ;
 - ouverture/fermeture répétée de quelques dialogues critiques ;
@@ -102,6 +109,10 @@ Si l'installation utilise les contrats PSU :
 - modifier/supprimer une période ;
 - confirmer l'absence d'état partiellement enregistré en cas d'échec simulable ou d'annulation ;
 - rouvrir le contrat et vérifier la cohérence des données.
+
+### Adresses et communes homonymes
+
+Le contrôle ville/code postal a été durci pour ne plus remplacer silencieusement un couple valide par le premier homonyme trouvé. Pendant la recette d'une fiche famille/individu, vérifier au moins un changement de focus après saisie d'une commune et, si possible, un cas de nom homonyme.
 
 ## Compatibilité des données historiques
 
