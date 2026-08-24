@@ -302,7 +302,7 @@ class Panel(wx.Panel):
         self.MAJ()
         try :
             self.parent.ctrl_remplissage.MAJ()
-        except :
+        except Exception:
             pass
 
     def OnBoutonSynchroniser(self, event=None):
@@ -399,7 +399,7 @@ class Panel(wx.Panel):
                     texte = u""
                 try :
                     texte += u"[%s] %s" % (horodatage, message)
-                except :
+                except Exception:
                     texte += u"[%s] %s" % (horodatage, str(message).decode('UTF-8'))
                 wx.CallAfter(self.log.AppendText, texte)
                 self.lock.release()
@@ -413,7 +413,7 @@ class Panel(wx.Panel):
                 try :
                     texte += u"[%s] %s" % (horodatage, message)
                     file_log.write(six.text_type(texte))
-                except :
+                except Exception:
                     texte += u"[%s] %s" % (horodatage, str(message).decode('UTF-8'))
                     file_log.write(six.text_type(texte))
 

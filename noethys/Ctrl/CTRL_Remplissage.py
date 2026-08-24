@@ -196,7 +196,7 @@ class Evenement():
     def GetPlacesEvenement(self):
         try:
             nbrePlacesPrises = self.case.grid.dictRemplissageEvenements[self.IDevenement]["reservation"] + self.case.grid.dictRemplissageEvenements[self.IDevenement]["present"]
-        except:
+        except Exception:
             nbrePlacesPrises = None
 
         nbrePlacesRestantes = None
@@ -282,7 +282,7 @@ class Case():
             if self.IDunite in listeUnitesRemplissage :
                 try :
                     liste_donnees.extend(self.grid.dictOuvertures[self.date][self.IDgroupe][IDunite]["liste_evenements"])
-                except :
+                except Exception:
                     pass
 
         liste_evenements = []
@@ -297,29 +297,29 @@ class Case():
         # Recherche des nbres de places
         try :
             nbrePlacesPrises = self.grid.dictRemplissage[self.IDunite][self.date][self.IDgroupe]["nbrePlacesPrises"]
-        except :
+        except Exception:
             nbrePlacesPrises = 0
         try :
             nbrePlacesInitial = self.grid.dictRemplissage[self.IDunite][self.date][self.IDgroupe]["nbrePlacesInitial"]
             nbrePlacesRestantes = nbrePlacesInitial - nbrePlacesPrises
-        except :
+        except Exception:
             nbrePlacesInitial = None
             nbrePlacesRestantes = None
         try :
             seuil_alerte = self.grid.dictRemplissage[self.IDunite]["seuil_alerte"]
-        except :
+        except Exception:
             seuil_alerte = None
         # Attente
         try :
             nbreAttente = self.grid.dictConsoAttente[self.date][self.IDgroupe][self.IDunite]
-        except : 
+        except Exception: 
             nbreAttente = 0
 
         # Récupère le nombre de places restantes pour l'ensemble des groupes
         nbrePlacesInitialTousGroupes = 0
         try :
             nbrePlacesInitialTousGroupes = self.grid.dictRemplissage[IDunite_remplissage][self.date][None]["nbrePlacesInitial"]
-        except :
+        except Exception:
             pass
 
         if nbrePlacesInitialTousGroupes > 0 :
@@ -327,7 +327,7 @@ class Case():
             try :
                 for IDgroupe, d in self.grid.dictRemplissage[IDunite_remplissage][self.date].items() :
                     nbrePlacesPrisesTousGroupes += d["nbrePlacesPrises"]
-            except :
+            except Exception:
                 pass
 
             nbrePlacesRestantesTousGroupes = nbrePlacesInitialTousGroupes - nbrePlacesPrisesTousGroupes
@@ -974,7 +974,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         tip = _(u"Double-cliquez sur une case contenant des valeurs pour consulter la liste des consommations associées")
         try :
             self.GetGridWindow().SetToolTip(tip)
-        except :
+        except Exception:
             self.GetGridWindow().SetToolTip(wx.ToolTip(tip))
         self.caseSurvolee = None
         
@@ -1194,7 +1194,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         # Recherche des conso
         try :
             listeConsoPresents = self.dictRemplissage[case.IDunite][case.date][case.IDgroupe]["listeConsoPresents"]
-        except :
+        except Exception:
             listeConsoPresents = []
 
         if len(listeConsoPresents) > 0 :
@@ -1485,7 +1485,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                                     valide = True
                                 else:
                                     valide = False
-                        except :
+                        except Exception:
                             pass
                         
                         # Vérifie si condition étiquettes

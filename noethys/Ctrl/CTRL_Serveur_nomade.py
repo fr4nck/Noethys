@@ -69,7 +69,7 @@ class GenerationFichier(Thread):
             nomFichier = export.Run() 
             self.parent.EnvoyerInfosSurFichierAEnvoyer(nomFichier) 
             self.parent.log.SetImage("on")
-        except: 
+        except Exception: 
             self.stop = True 
             self.parent.log.SetImage("on")
             raise 
@@ -189,7 +189,7 @@ class Echo(Protocol):
         try :
             message = json.loads(data)
             return True
-        except :
+        except Exception:
             return False
 
     def Envoyer(self):
@@ -389,7 +389,7 @@ class Panel(wx.Panel):
             texte = u""
         try :
             texte += u"[%s] %s" % (horodatage, message)
-        except :
+        except Exception:
             texte += u"[%s] %s" % (horodatage, str(message).decode("utf8"))
         self.log.AppendText(texte)
         

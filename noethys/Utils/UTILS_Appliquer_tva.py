@@ -72,7 +72,7 @@ def Appliquer():
     
     try :
         tva = float(tva)
-    except :
+    except Exception:
         dlg = wx.MessageDialog(None, _(u"Le taux saisi ne semble pas correct !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_ERROR)
         dlg.ShowModal()
         dlg.Destroy()

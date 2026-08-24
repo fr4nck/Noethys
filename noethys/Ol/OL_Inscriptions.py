@@ -395,7 +395,7 @@ class ListView(FastObjectListView):
             dictAdresse = self.GetGrandParent().GetPageAvecCode("coords").GetAdresseIndividu()
             cp = dictAdresse["cp"]
             ville = dictAdresse["ville"]
-        except :
+        except Exception:
             pass
 
         from Dlg import DLG_Inscription

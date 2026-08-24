@@ -158,7 +158,7 @@ class CTRL_Parametres(CTRL_Propertygrid.CTRL):
             self.MAJ_modes() 
         try :
             propriete.SetValue(ancienneValeur)
-        except :
+        except Exception:
             pass
 
     def OnPropGridChange(self, event):
@@ -597,7 +597,7 @@ class Dialog(wx.Dialog):
         for code, valeur in listeValeurs:
             try:
                 self.ctrl_parametres.SetPropertyValue(code, valeur)
-            except:
+            except Exception:
                 pass
 
     def ValidationDonnees(self):
@@ -703,7 +703,7 @@ class Dialog(wx.Dialog):
             if code == "id_bordereau" :
                 try :
                     test = int(donnee) 
-                except :
+                except Exception:
                     dlg = wx.MessageDialog(self, _(u"Vous devez saisir une valeur numérique valide pour le paramètre de bordereau 'ID Bordereau' !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
                     dlg.ShowModal()
                     dlg.Destroy()
@@ -712,7 +712,7 @@ class Dialog(wx.Dialog):
             if code == "id_collectivite" :
                 try :
                     test = int(donnee) 
-                except :
+                except Exception:
                     dlg = wx.MessageDialog(self, _(u"Vous devez saisir une valeur numérique valide pour le paramètre de bordereau 'ID Collectivité' !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
                     dlg.ShowModal()
                     dlg.Destroy()
@@ -781,36 +781,36 @@ class Dialog(wx.Dialog):
             date_prelevement = self.ctrl_parametres.GetPropertyValue("date_prelevement").FormatISODate()
             try:
                 date_envoi = self.ctrl_parametres.GetPropertyValue("date_envoi").FormatISODate()
-            except:
+            except Exception:
                 date_envoi = None
         else:
             date_emission = self.ctrl_parametres.GetPropertyValue("date_emission").strftime("%Y-%m-%d")
             date_prelevement = self.ctrl_parametres.GetPropertyValue("date_prelevement").strftime("%Y-%m-%d")
             try:
                 date_envoi = self.ctrl_parametres.GetPropertyValue("date_envoi").strftime("%Y-%m-%d")
-            except:
+            except Exception:
                 date_envoi = None
         try:
             id_bordereau = self.ctrl_parametres.GetPropertyValue("id_bordereau")
-        except:
+        except Exception:
             id_bordereau = None
         id_poste = self.ctrl_parametres.GetPropertyValue("id_poste")
         try:
             id_collectivite = self.ctrl_parametres.GetPropertyValue("id_collectivite")
-        except:
+        except Exception:
             id_collectivite = None
         try:
             code_collectivite = self.ctrl_parametres.GetPropertyValue("code_collectivite")
-        except:
+        except Exception:
             code_collectivite = None
         try:
             code_budget = self.ctrl_parametres.GetPropertyValue("code_budget")
-        except:
+        except Exception:
             code_budget = None
         code_prodloc = self.ctrl_parametres.GetPropertyValue("code_prodloc")
         try:
             code_etab = self.ctrl_parametres.GetPropertyValue("code_etab")
-        except:
+        except Exception:
             code_etab = None
         reglement_auto = int(self.ctrl_parametres.GetPropertyValue("reglement_auto"))
         IDcompte = self.ctrl_parametres.GetPropertyValue("IDcompte")

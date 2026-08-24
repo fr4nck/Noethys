@@ -739,7 +739,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         self.moveTo = None
         try:
             self.GetGridWindow().SetToolTip(wx.ToolTip(""))
-        except:
+        except Exception:
             pass
         self.caseSurvolee = None
         self.listeHistorique = []
@@ -871,7 +871,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                                                     valide = True
                                                 else:
                                                     valide = False
-                                            except :
+                                            except Exception:
                                                  valide = True
 
                                         # Vérifie si condition étiquettes
@@ -1307,7 +1307,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         dictUnitesRemplissage = {}
         try :
             dictConsoIndividus = self.dictConsoIndividus
-        except :
+        except Exception:
             dictConsoIndividus = {}
         
         # Get Conditions
@@ -1520,7 +1520,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
     def GetDictMemoJournee(self, listeActivites=[], listePeriodes=[], listeIndividus=[]):
         try :
             dictMemos = self.dictMemos
-        except :
+        except Exception:
             dictMemos = {} 
         # Get Conditions
         conditions = self.GetSQLdates(listePeriodes)
@@ -1897,7 +1897,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         # MAJ du contrôle Forfaits
         try :
             self.GetGrandParent().panel_forfaits.MAJ(self.dictForfaits, self.listeSelectionIndividus)
-        except : 
+        except Exception: 
             pass
 
 
@@ -2219,7 +2219,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
 
         try :
             wx.CallAfter(self.ClearSelection)
-        except :
+        except Exception:
             pass
 
 
@@ -2469,7 +2469,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
             try :
                 self.tipFrame.Destroy()
                 del self.tipFrame
-            except :
+            except Exception:
                 pass
 
     def ActiveTooltip(self, actif=True, case=None):
@@ -2519,7 +2519,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         # 1 - Recherche les unités de la ligne
         try :
             dictUnites = self.dictConsoIndividus[IDindividu][date]
-        except :
+        except Exception:
             return
 
         dictUnitesUtilisees = {}
@@ -2984,7 +2984,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                                                     montantTmp = tarifsDegr[index]
                                                     if montantTmp == None or montantTmp == "" : 
                                                         montantTmp = 0.0
-                                                except : pass
+                                                except Exception: pass
                                             else:
                                                 montantTmp = montant_tarif_tmp
                                                 
@@ -3107,11 +3107,11 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         
         # Ecrit dans la fenêtre de TEST
         try : self.GetGrandParent().ctrl_facturation.SetValue(texte)
-        except : pass
+        except Exception: pass
         
         # Ecrit dans la fenêtre AUI
         try : self.GetGrandParent().panel_facturation.SetValue(texte)
-        except : pass
+        except Exception: pass
         
         
     def RechercheCombinaisonDict(self, dictUnitesUtilisees={}, combinaison=[], dictTarif={}):
@@ -4003,7 +4003,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                             montantTmp = tarifsDegr[index]
                             if montantTmp == None or montantTmp == "" : 
                                 montantTmp = 0.0
-                        except : pass
+                        except Exception: pass
                     else:
                         montantTmp = montant_tarif
 
@@ -4185,7 +4185,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                                 duree, heure_debut_delta, heure_fin_delta = self.CalculeDuree(IDindividu, date, combinaisons_unites)
                                 taux_horaire = montant_tarif / UTILS_Dates.DeltaEnFloat(duree)
                                 label = label.replace("{TAUX_HORAIRE}", "%.2f" % taux_horaire)
-                            except:
+                            except Exception:
                                 pass
                         nom_tarif = label
                         
@@ -4320,7 +4320,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         try :
             if (IDprestation in self.GetGrandParent().panel_facturation.dictBranchesPrestations) == False :
                 return
-        except :
+        except Exception:
             pass
             
         try :
@@ -4333,7 +4333,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                     self.listeActivites,
                     self.listePeriodes,
                     )
-        except :
+        except Exception:
             pass
     
 
@@ -4582,7 +4582,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         """ Programme un transport """
         try :
             dictUnites = self.dictConsoIndividus[IDindividu][date]
-        except :
+        except Exception:
             return
         
         # Recherche les unités de la ligne
@@ -5881,7 +5881,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         try :
             topWindow = wx.GetApp().GetTopWindow() 
             topWindow.SetStatusText(texte)
-        except : 
+        except Exception: 
             pass
         
 

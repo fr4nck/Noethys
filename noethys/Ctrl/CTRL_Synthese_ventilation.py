@@ -716,7 +716,7 @@ class CTRL(HTL.HyperTreeList):
                     else:
                         format = format_money
                     return (nbre, format)
-                except :
+                except Exception:
                     pass
                     
             else:
@@ -724,7 +724,7 @@ class CTRL(HTL.HyperTreeList):
                 try :
                     nbre = float(valeur)
                     return (nbre, None)
-                except :
+                except Exception:
                     pass
             
             return False, None

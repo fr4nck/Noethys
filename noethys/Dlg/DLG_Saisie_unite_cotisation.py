@@ -264,7 +264,7 @@ class Dialog(wx.Dialog):
         montant = self.ctrl_montant.GetValue()
         try :
             montant = float(montant)
-        except :
+        except Exception:
             dlg = wx.MessageDialog(self, _(u"Le montant que vous avez saisi n'est pas valide !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()

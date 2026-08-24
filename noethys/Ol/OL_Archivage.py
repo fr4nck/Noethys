@@ -321,7 +321,7 @@ class ListView(FastObjectListView):
                     self.MAJ(IDindividu)
                 try:
                     dlg.Destroy()
-                except:
+                except Exception:
                     pass
 
     def Archiver(self):

@@ -11,7 +11,7 @@
 try:
     from Crypto.Cipher import AES
     from Crypto import Random
-except:
+except Exception:
     from Cryptodome.Cipher import AES
     from Cryptodome import Random
 

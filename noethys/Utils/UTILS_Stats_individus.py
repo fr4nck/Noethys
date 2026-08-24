@@ -50,7 +50,7 @@ def GetComparatifNombre(DB, dictParametres) :
             return dictResultats
         date_min = MODELES.DateEngEnDateDD(listeDonnees[0][0])
         date_max = MODELES.DateEngEnDateDD(listeDonnees[0][1])
-    except :
+    except Exception:
         return dictResultats
     listePeriodes = MODELES.GetPeriodesComparatives(DB, dictParametres, date_min, date_max)
     
@@ -306,7 +306,7 @@ def GetDictVilles(DB, dictParametres):
         if  cp != None and cp != "" and ville != None and ville != "" :
             origine = listeDonnees[0]
             dictDistances = GetDistancesVilles(dictParametres, origine, destinations)
-    except :
+    except Exception:
         pass
 
     for key, valeurs in dictVilles.items() :

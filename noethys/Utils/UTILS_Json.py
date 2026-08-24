@@ -77,7 +77,7 @@ def MyDecoder(objet):
     elif objet.get('__type__') == 'bytes':
         try:
             resultat = bytes(objet['data'], 'utf-8')
-        except:
+        except Exception:
             resultat = bytes(objet['data'])
         return resultat
     # Si autre

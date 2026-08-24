@@ -977,7 +977,7 @@ class Informations() :
             }
         try :
             dbdest.CreationTables(dicoDB=dictTables)
-        except :
+        except Exception:
             pass
         
 

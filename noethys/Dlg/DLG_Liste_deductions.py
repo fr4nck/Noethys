@@ -308,7 +308,7 @@ class Parametres(wx.Panel):
         self.ctrl_groupes.Enable(self.radio_groupes.GetValue())
         try :
             self.parent.MAJ()
-        except : pass
+        except Exception: pass
             
     def OnBoutonActualiser(self, event):
         """ Validation des données saisies """

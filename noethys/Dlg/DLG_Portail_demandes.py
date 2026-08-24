@@ -70,7 +70,7 @@ class CTRL_Log(wx.TextCtrl):
             texte = u""
         try :
             texte += u"[%s] %s " % (horodatage, message)
-        except :
+        except Exception:
             texte += u"[%s] %s " % (horodatage, str(message).decode("utf8"))
         self.AppendText(texte)
 

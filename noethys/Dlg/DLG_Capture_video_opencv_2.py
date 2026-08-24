@@ -17,7 +17,7 @@ from Ctrl import CTRL_Bouton_image
 import time
 try:
     import cv2.cv as cv
-except:
+except Exception:
     import cv2 as cv
 from Ctrl import CTRL_Bandeau
 
@@ -77,7 +77,7 @@ class CTRL_Video(wx.Panel):
 
     def OnClose(self, event):
         try : self.StopVideo()
-        except : pass
+        except Exception: pass
     
     def IsRunning(self):
         return self.timer.IsRunning()
@@ -150,7 +150,7 @@ class CTRL_Video(wx.Panel):
             dc = wx.BufferedDC(wx.ClientDC(self), wx.NullBitmap, wx.BUFFER_VIRTUAL_AREA)
             try :
                 dc.SetBackground(wx.Brush(wx.Colour(0, 0, 0)))
-            except :
+            except Exception:
                 pass
             dc.Clear()
             dc.DrawBitmap(self.bmp, int(x), int(y))
@@ -164,7 +164,7 @@ class CTRL_Video(wx.Panel):
             self.listeVisages = listeVisages
             del dc
 
-        except:
+        except Exception:
             pass
 
     def OnErase(self, evt):

@@ -212,7 +212,7 @@ class Groupe():
             ctrl.Show(True)
             try :
                 ctrl.Activer()
-            except :
+            except Exception:
                 pass
         
     def Cacher(self):

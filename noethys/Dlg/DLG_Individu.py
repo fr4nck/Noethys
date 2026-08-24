@@ -385,7 +385,7 @@ class Dialog(wx.Dialog):
         # Fermeture de la fenêtre
         try :
             self.EndModal(wx.ID_OK)
-        except :
+        except Exception:
             pass
 
     def GetFamillesRattachees(self):
@@ -607,7 +607,7 @@ class Dialog(wx.Dialog):
             # Ferme la fenêtre
             try :
                 self.Destroy()
-            except :
+            except Exception:
                 pass
 
     def MenuEditionEtiquettes(self, event):

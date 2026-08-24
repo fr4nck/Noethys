@@ -223,7 +223,7 @@ class CTRL_Parametres(wxpg.PropertyGrid) :
             ancienneValeur = None
         try :
             propriete.SetValue(ancienneValeur)
-        except :
+        except Exception:
             pass
 
     def MAJ_tiers_solidaire(self):
@@ -256,7 +256,7 @@ class CTRL_Parametres(wxpg.PropertyGrid) :
             ancienneValeur = None
         try :
             propriete.SetValue(ancienneValeur)
-        except :
+        except Exception:
             pass
 
     def SetAdresseFacturation(self, autre_adresse_facturation=None):
@@ -270,7 +270,7 @@ class CTRL_Parametres(wxpg.PropertyGrid) :
                 self.SetPropertyValue("adresse_rue", valeurs[1])
                 self.SetPropertyValue("adresse_cp", valeurs[2])
                 self.SetPropertyValue("adresse_ville", valeurs[3])
-            except :
+            except Exception:
                 self.SetPropertyValue("autre_adresse_facturation", False)
         self.Switch()
 

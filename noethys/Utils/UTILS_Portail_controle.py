@@ -17,7 +17,7 @@ import time
 try :
     import psutil
     IMPORT_PSUTIL_OK = True
-except :
+except Exception:
     IMPORT_PSUTIL_OK = False
 
 import subprocess

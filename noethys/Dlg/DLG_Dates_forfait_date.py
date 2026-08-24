@@ -327,7 +327,7 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                 try :
                     if IDunite in self.dictSelections[self.clipboard][IDgroupe] :
                         etat = True
-                except :
+                except Exception:
                     pass
                 self.OnChangeSelection(numLigne, numColonne, etat)
                 numColonne += 1
@@ -402,7 +402,7 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                             try :
                                 if IDunite in self.dictSelections[dateModele][IDgroupe] :
                                     etat = True
-                            except :
+                            except Exception:
                                 pass
                         else :
                             etat = False
@@ -470,7 +470,7 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                 if etat == True and self.activeIncompatibilites == True :
                     try :
                         listeUnitesLigne = list(self.dictSelections[dateDD][IDgroupe])
-                    except :
+                    except Exception:
                         listeUnitesLigne = []
                     listeUnitesLigne.append(IDunite)
                     for IDunite_incompat, IDunite1, IDunite2 in self.listeIncompatibilites :

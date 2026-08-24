@@ -29,7 +29,7 @@ from Utils import UTILS_Utilisateurs
 
 try :
     import smartcard
-except :
+except Exception:
     pass
 
 
@@ -161,7 +161,7 @@ class ListView(FastObjectListView):
         FastObjectListView.__init__(self, *args, **kwds)
         try :
             self.SetEmptyListMsgFont(wx.FFont(11, wx.DEFAULT, faceName="Tekton"))
-        except :
+        except Exception:
             self.SetEmptyListMsgFont(wx.FFont(11, wx.DEFAULT, False, "Tekton"))
         self.SetEmptyListMsg(_(u"Aucun individu"))
         # Binds perso
@@ -286,7 +286,7 @@ class ListView(FastObjectListView):
                     age = (datedujour.year - datenaissDD.year) - int((datedujour.month, datedujour.day) < (datenaissDD.month, datenaissDD.day))
                     dictTemp["age"] = age
                     dictTemp["date_naiss"] = datenaissDD
-                except :
+                except Exception:
                     dictTemp["age"] = None
 
             dictIndividus[IDindividu] = dictTemp
@@ -495,7 +495,7 @@ class ListView(FastObjectListView):
 ##                self.GetGrandParent().ctrl_remplissage.MAJ() 
             else:
                 self.MAJ() 
-        except : pass
+        except Exception: pass
 
     def Modifier(self, event):
         if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("familles_fiche", "consulter") == False : return
@@ -599,7 +599,7 @@ class ListView(FastObjectListView):
                 self.MAJ(IDindividu)
             try :
                 dlg.Destroy()
-            except :
+            except Exception:
                 pass
             # MAJ du remplissage
             try :
@@ -607,7 +607,7 @@ class ListView(FastObjectListView):
                     self.GetGrandParent().MAJ() 
                 else:
                     self.MAJ() 
-            except :
+            except Exception:
                 pass
             # Mémorisation pour l'historique de la barre de recherche rapide
             try :
@@ -615,7 +615,7 @@ class ListView(FastObjectListView):
                     self.historique.append(IDindividu)
                     if len(self.historique) > 30 :
                         self.historique.pop(0)
-            except :
+            except Exception:
                 pass
 
     def Supprimer(self, event):
@@ -691,7 +691,7 @@ class ListView(FastObjectListView):
             else:
                 self.MAJ() 
 
-        except : pass
+        except Exception: pass
 
 
     def InitialisationRFID(self):
@@ -705,7 +705,7 @@ class ListView(FastObjectListView):
             if len(self.lecteurs) > 0 :
                 self.lecteur = self.lecteurs[0]
                 self.connexion = self.lecteur.createConnection()
-        except :
+        except Exception:
             pass
 
         # Préparation du timer
@@ -721,7 +721,7 @@ class ListView(FastObjectListView):
     def StopRFID(self):
         try:
             self.timer_rfid.Stop()
-        except:
+        except Exception:
             pass
 
     def RechercherSiDlgOuverte(self, widget=None):
@@ -876,7 +876,7 @@ class BarreRecherche(wx.SearchCtrl):
             IDindividu = None
             try :
                 IDindividu = int(txtSearch)
-            except :
+            except Exception:
                 IDfamille = None
             if IDindividu != None and IDindividu in self.listView.dictTracks :
                 track = self.listView.dictTracks[IDindividu]
@@ -891,7 +891,7 @@ class BarreRecherche(wx.SearchCtrl):
             IDfamille = None
             try :
                 IDfamille = int(txtSearch)
-            except :
+            except Exception:
                 IDfamille = None
             if IDfamille != None :
                 DB = GestionDB.DB()
@@ -905,11 +905,14 @@ class BarreRecherche(wx.SearchCtrl):
                     dlg = DLG_Famille.Dialog(self, IDfamille)
                     dlg.ShowModal()
                     dlg.Destroy()
-                    # MAJ du remplissage
-                    if self.GetGrandParent().GetName() == "general" :
-                        self.GetGrandParent().MAJ() 
+                    # Actualise le conteneur métier quand il expose MAJ,
+                    # sinon recharge directement la liste. BarreRecherche n'a
+                    # volontairement pas de méthode MAJ propre.
+                    actualiser = getattr(self.parent, "MAJ", None)
+                    if callable(actualiser):
+                        actualiser()
                     else:
-                        self.MAJ() 
+                        self.listView.MAJ(forceActualisation=True)
                     self.OnCancel(None)
                     return
 

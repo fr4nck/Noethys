@@ -50,7 +50,7 @@ class Dialog(wx.Dialog):
         self.barreOutils.AddLabelTool(ID_AJOUTER_VIREMENT, label=_(u"Ajouter un virement"), bitmap=wx.Bitmap(Chemins.GetStaticPath("Images/22x22/Addition.png"), wx.BITMAP_TYPE_PNG), shortHelp=_(u"Ajouter un virement"), longHelp=_(u"Ajouter un virement"))
         try :
             self.barreOutils.AddStretchableSpace()
-        except :
+        except Exception:
             self.barreOutils.AddSeparator()
         self.ctrl_comptes = CTRL_Saisie_compte.CTRL(self.barreOutils, IDcompte_bancaire=IDcompte_bancaire, size=(400, -1))
         self.barreOutils.AddControl(self.ctrl_comptes)

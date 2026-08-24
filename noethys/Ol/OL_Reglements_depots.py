@@ -85,7 +85,7 @@ class ListView(FastObjectListView):
                     self.GetGrandParent().ctrl_ordre.Select(0)
                 else :
                     self.GetGrandParent().ctrl_ordre.Select(1)
-            except :
+            except Exception:
                 pass
 
     def OnItemActivated(self,event):

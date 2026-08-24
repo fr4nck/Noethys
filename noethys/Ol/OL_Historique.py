@@ -205,7 +205,7 @@ class ListView(FastObjectListView):
         # Envoie des données au Timeline
         try :
             self.GetParent().MAJ_timeline(self.donnees)
-        except : 
+        except Exception: 
             pass
 
     def Selection(self):

@@ -59,7 +59,7 @@ class MyTextDropTarget(wx.TextDropTarget):
     def OnDropText(self, x, y, text):
         try :
             quotient = int(text)
-        except :
+        except Exception:
             dlg = wx.MessageDialog(self.window, _(u"La donnée que vous avez déposé ne semble pas valide. Il ne peut s'agit que d'un nombre entier !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_ERROR)
             dlg.ShowModal()
             dlg.Destroy()
@@ -127,7 +127,7 @@ class CTRL_Drop(wx.StaticBitmap):
         else :
             try :
                 quotient = int(texte)
-            except :
+            except Exception:
                 dlg = wx.MessageDialog(self, _(u"La donnée que vous avez saisi ne semble pas valide !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_ERROR)
                 dlg.ShowModal()
                 dlg.Destroy()

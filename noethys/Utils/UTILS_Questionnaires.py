@@ -31,7 +31,7 @@ def FormateStr(valeur=u""):
         elif type(valeur) == int : return str(valeur)
         elif type(valeur) == float : return str(valeur)
         else : return valeur
-    except : 
+    except Exception: 
         return u""
 
 def GetReponse(dictReponses={}, IDquestion=None, ID=None):
@@ -110,12 +110,12 @@ class Questionnaires():
         if filtre == "entier" :
             try:
                 texteReponse = int(float(reponse))
-            except:
+            except Exception:
                 pass
         if filtre == "montant" :
             try:
                 texteReponse = float(reponse)#decimal.Decimal(reponse)
-            except:
+            except Exception:
                 pass
         if filtre == "choix" :
             if reponse != None :
@@ -129,7 +129,7 @@ class Questionnaires():
                         IDchoix = int(IDchoix)
                         if IDchoix in self.dictChoix :
                             listeTemp2.append(self.dictChoix[IDchoix])
-                    except :
+                    except Exception:
                         pass
                 texteReponse = ", ".join(listeTemp2)
         if filtre == "coche" : 
@@ -140,12 +140,12 @@ class Questionnaires():
         if filtre == "date" :
             try:
                 texteReponse = DateEngEnDateDD(reponse)
-            except:
+            except Exception:
                 pass
         if filtre == "decimal":
             try:
                 texteReponse = float(reponse)
-            except:
+            except Exception:
                 pass
         return texteReponse
 

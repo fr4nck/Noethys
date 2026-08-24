@@ -207,7 +207,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                 if self.affichage_regroupement.startswith("question_") and "famille" in self.affichage_regroupement:
                     regroupement = self.dictInfosFamilles[IDfamille]["QUESTION_%s" % self.affichage_regroupement[17:]]
 
-            except :
+            except Exception:
                 regroupement = None
 
             if regroupement in ("", None):

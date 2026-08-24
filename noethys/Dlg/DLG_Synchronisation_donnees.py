@@ -172,7 +172,7 @@ class Dialog(wx.Dialog):
             return
         try :
             self.EndModal(wx.ID_CANCEL)
-        except :
+        except Exception:
             pass
         
     def OnChoixRegroupement(self, event):
@@ -198,10 +198,10 @@ class Dialog(wx.Dialog):
         track.statut = statut
         try :
             self.ctrl_donnees.EnsureCellVisible(self.ctrl_donnees.GetIndexOf(track)+1, 0)
-        except :
+        except Exception:
             try :
                 self.ctrl_donnees.EnsureCellVisible(self.ctrl_donnees.GetIndexOf(track), 0)
-            except :
+            except Exception:
                 pass
 
         self.ctrl_donnees.RefreshObject(track)

@@ -76,7 +76,7 @@ def ParametresCategorie(mode="get", categorie="", dictParametres={}, nomFichier=
                     if type_parametre == dict : valeur = ast.literal_eval(valeur)
                     if type_parametre == bool : valeur = ast.literal_eval(valeur)
                     if type_parametre == TYPE_COULEUR and valeur != "" : valeur = ast.literal_eval(valeur)
-                except :
+                except Exception:
                     valeur = None
                 dictFinal[nom] = valeur
                 

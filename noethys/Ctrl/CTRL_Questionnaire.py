@@ -223,7 +223,7 @@ class CTRL_entier(wx.SpinCtrl):
         try :
             valeur = int(valeur)
             self.SetValeur(valeur)
-        except :
+        except Exception:
             pass
 
     def ValidationValeur(self):
@@ -269,7 +269,7 @@ class CTRL_decimal(FS.FloatSpin):
         try :
             valeur = float(valeur)
             self.SetValeur(valeur)
-        except :
+        except Exception:
             pass
 
     def ValidationValeur(self):
@@ -301,7 +301,7 @@ class CTRL_montant(CTRL_Saisie_euros.CTRL):
         try :
             valeur = float(valeur)
             self.SetMontant(valeur)
-        except :
+        except Exception:
             pass
 
     def SetValeurStr(self, valeur=None):
@@ -353,7 +353,7 @@ class CTRL_liste_deroulante(wx.Choice):
         try :
             valeur = int(valeur)
             self.SetValeur(valeur)
-        except :
+        except Exception:
             pass
 
     def ValidationValeur(self):
@@ -412,7 +412,7 @@ class CTRL_liste_coches(wx.CheckListBox):
             for IDchoix in listTemp :
                 listeIDchoix.append(int(IDchoix))
             self.SetValeur(listeIDchoix)
-        except :
+        except Exception:
             pass
 
     def ValidationValeur(self):
@@ -488,7 +488,7 @@ class CTRL_case_coche(wx.CheckBox):
         try :
             valeur = int(valeur)
             self.SetValeur(valeur)
-        except :
+        except Exception:
             pass
 
     def ValidationValeur(self):
@@ -589,7 +589,7 @@ class CTRL_slider(wx.Panel):
         try :
             valeur = int(valeur)
             self.SetValeur(valeur)
-        except :
+        except Exception:
             pass
 
     def ValidationValeur(self):
@@ -625,7 +625,7 @@ class CTRL_couleur(wx.lib.colourselect.ColourSelect):
         try :
             valeur = ConvertCouleur(valeur)
             self.SetValeur(valeur)
-        except :
+        except Exception:
             pass
 
     def ValidationValeur(self):

@@ -189,7 +189,7 @@ class DB:
         try :
             topWindow = wx.GetApp().GetTopWindow()
             nomWindow = topWindow.GetName()
-        except :
+        except Exception:
             nomWindow = None
         if nomWindow == "general" : 
             # Si la frame 'General' est chargée, on y récupère le dict de config
@@ -292,7 +292,7 @@ class DB:
             # Pour contrer MySQL qui fournit des tuples alors que SQLITE fournit des listes
             if self.isNetwork == True and type(resultat) == tuple : 
                 resultat = list(resultat)
-        except : 
+        except Exception: 
             pass
         return resultat
 
@@ -1295,7 +1295,7 @@ def DecodeMdpReseau(mdp=None):
             mdp = base64.b64decode(mdp[4:])
             if six.PY3:
                 mdp = mdp.decode('utf-8')
-        except:
+        except Exception:
             pass
     return mdp
 

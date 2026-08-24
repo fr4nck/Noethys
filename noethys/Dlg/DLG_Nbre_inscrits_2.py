@@ -619,7 +619,7 @@ class CTRL(HTL.HyperTreeList):
                 if titre == True :
                     format = format_total
                 return (nbre, format)
-            except :
+            except Exception:
                 pass
 
             return False, None

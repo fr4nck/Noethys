@@ -37,7 +37,7 @@ from Data.DATA_Tables import DB_DATA as DICT_TABLES
 
 try :
     from wx.adv import PseudoDC
-except :
+except Exception:
     from wx import PseudoDC
 
 

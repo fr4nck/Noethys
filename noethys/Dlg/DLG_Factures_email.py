@@ -160,7 +160,7 @@ class Dialog(wx.Dialog):
             for IDfacture, fichier in dictPieces.items() :
                 try :
                     os.remove(fichier)  
-                except :
+                except Exception:
                     pass
 
         # Récupération de toutes les adresses Emails

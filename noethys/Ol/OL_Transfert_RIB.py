@@ -382,7 +382,7 @@ class ListView(FastObjectListView):
         try :
             topWindow = wx.GetApp().GetTopWindow() 
             topWindow.SetStatusText(texte)
-        except : 
+        except Exception: 
             pass
 
 

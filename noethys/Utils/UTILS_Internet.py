@@ -71,7 +71,7 @@ def DecrypteMDP(mdp="", IDfichier=None):
         cryptage = UTILS_Cryptage_fichier.AESCipher(IDfichier[-10:], bs=16, prefixe=u"#@#")
         try:
             mdp = cryptage.decrypt(mdp)
-        except:
+        except Exception:
             pass
     return mdp
 

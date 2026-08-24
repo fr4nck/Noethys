@@ -382,7 +382,7 @@ class Dialog(wx.Dialog):
         if IDindividu != None :
             try :
                 self.notebook.GetPageAvecCode("divers").ctrl_parametres.SetPropertyValue("titulaire_helios", IDindividu)
-            except :
+            except Exception:
                 pass
                 
     def MAJpageActive(self):
@@ -688,7 +688,7 @@ class Dialog(wx.Dialog):
             self.MAJpageActive() 
         try :
             dlg.Destroy()
-        except :
+        except Exception:
             pass
     
     def OuvrirGrilleIndividu(self, IDindividu=None):
@@ -700,7 +700,7 @@ class Dialog(wx.Dialog):
             self.MAJpageActive() 
         try :
             dlg.Destroy()
-        except :
+        except Exception:
             pass
     
     def OuvrirFicheIndividu(self, IDindividu=None):
@@ -763,7 +763,7 @@ class Dialog(wx.Dialog):
         # Fermeture de la fenêtre
         try :
             self.EndModal(wx.ID_OK)
-        except :
+        except Exception:
             pass
     
     def CreateIDfamille(self):
@@ -844,7 +844,7 @@ class Dialog(wx.Dialog):
             # Fermeture
             try :
                 self.Destroy() 
-            except :
+            except Exception:
                 pass
             
 ##            dlg = wx.MessageDialog(self, _(u"Souhaitez-vous vraiment annuler la création de cette nouvelle fiche ?"), _(u"Annulation"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_EXCLAMATION)

@@ -282,7 +282,7 @@ class Case():
     def GetStatutTexte(self, x, y):
         try :
             texte = u"%s - %s" % (self.dictCategorie["label"], self.dictAction["label"])
-        except :
+        except Exception:
             texte = ""
         return texte
 
@@ -895,7 +895,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
             try :
                 self.tipFrame.Destroy()
                 del self.tipFrame
-            except :
+            except Exception:
                 pass
 
     def ActiveTooltip(self, actif=True, case=None):
@@ -924,7 +924,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         try :
             topWindow = wx.GetApp().GetTopWindow() 
             topWindow.SetStatusText(texte)
-        except : 
+        except Exception: 
             pass
         
 

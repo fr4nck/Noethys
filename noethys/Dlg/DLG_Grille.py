@@ -93,7 +93,7 @@ class Commandes(wx.Panel):
             self.parent._mgr.UnInit()
         try :
             self.parent.EndModal(wx.ID_OK)
-        except :
+        except Exception:
             pass
 
     def OnBoutonAnnuler(self, event):
@@ -198,7 +198,7 @@ class PanelGrille(wx.Panel):
         self.barreOutils.AddControl(self.ctrl_recherche)
         try :
             self.barreOutils.AddStretchableSpace()
-        except :
+        except Exception:
             self.barreOutils.AddSeparator()
 
         self.ID_MODE_RESERVATION = wx.Window.NewControlId()

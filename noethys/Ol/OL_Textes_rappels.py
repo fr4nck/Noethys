@@ -227,7 +227,7 @@ class ListView(FastObjectListView):
             IDtexte = dlg.GetIDtexte()
             self.MAJ(IDtexte)
             try : self.GetParent().ctrl_rappels.MAJ() 
-            except : pass
+            except Exception: pass
         dlg.Destroy()
 
     def Modifier(self, event):
@@ -241,7 +241,7 @@ class ListView(FastObjectListView):
         if dlg.ShowModal() == wx.ID_OK:
             self.MAJ(IDtexte)
             try : self.GetParent().ctrl_rappels.MAJ() 
-            except : pass
+            except Exception: pass
         dlg.Destroy()
 
     def Supprimer(self, event):
@@ -258,7 +258,7 @@ class ListView(FastObjectListView):
             DB.Close() 
             self.MAJ()
             try : self.GetParent().ctrl_rappels.MAJ() 
-            except : pass
+            except Exception: pass
         dlg.Destroy()
 
 

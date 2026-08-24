@@ -89,7 +89,7 @@ class Inscription():
         try:
             topWindow = wx.GetApp().GetTopWindow()
             topWindow.SetStatusText(texte)
-        except:
+        except Exception:
             pass
 
     def GetDonneesImpression(self, listeInscriptions=[]):

@@ -23,7 +23,7 @@ def EcritStatusbar(texte=u""):
     try :
         topWindow = wx.GetApp().GetTopWindow() 
         topWindow.SetStatusText(texte)
-    except : 
+    except Exception: 
         pass
 
 # --------------------------------------------------------------------------------------------------------------------------------------------
@@ -283,7 +283,7 @@ class Depannage():
         try :
             for labelAnomalie, labelCorrection, listeAnomalies in self.listeResultats :
                 nbreAnomalies += len(listeAnomalies)
-        except :
+        except Exception:
             pass
         return nbreAnomalies
 
@@ -294,7 +294,7 @@ class Depannage():
             dlgAttente = wx.BusyInfo(_(u"Recherche d'anomalies en cours. Veuillez patienter..."), self.parent)
             if 'phoenix' not in wx.PlatformInfo:
                 wx.Yield()
-        except :
+        except Exception:
             dlgAttente = None
         
         # Init DB

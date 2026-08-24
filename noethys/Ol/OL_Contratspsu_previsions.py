@@ -196,7 +196,7 @@ class ListView(FastObjectListView):
             label = _(u"Consommations (%d)") % nbreConso
         try :
             self.GetGrandParent().GetParent().SetLabelPage(1, label)
-        except :
+        except Exception:
             pass
 
     def GetTracks(self):

@@ -276,7 +276,7 @@ class Dialog(DLG_Saisie_lot_tresor_public.Dialog):
             if code == "id_bordereau" :
                 try :
                     test = int(donnee) 
-                except :
+                except Exception:
                     dlg = wx.MessageDialog(self, _(u"Vous devez saisir une valeur numérique valide pour le paramètre de bordereau 'ID Bordereau' !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
                     dlg.ShowModal()
                     dlg.Destroy()
@@ -285,7 +285,7 @@ class Dialog(DLG_Saisie_lot_tresor_public.Dialog):
             if code == "id_collectivite" :
                 try :
                     test = int(donnee) 
-                except :
+                except Exception:
                     dlg = wx.MessageDialog(self, _(u"Vous devez saisir une valeur numérique valide pour le paramètre de bordereau 'ID Collectivité' !"), _(u"Erreur"), wx.OK | wx.ICON_EXCLAMATION)
                     dlg.ShowModal()
                     dlg.Destroy()

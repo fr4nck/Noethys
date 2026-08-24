@@ -77,7 +77,7 @@ class Propriete_date(wxpg.PyProperty):
             return (True, None)
         try:
             date = datetime.datetime.strptime(s, "%d/%m/%Y")
-        except:
+        except Exception:
             return (False, None)
         return (True, date)
 
@@ -91,7 +91,7 @@ class EditeurChoix(ChoiceEditor):
             ctrl = super(EditeurChoix, self).CreateControls(propGrid, property, pos, size)
             try:
                 ctrl = ctrl.GetPrimary()
-            except:
+            except Exception:
                 ctrl = ctrl.m_primary
             Style.appliquer_saisie(ctrl)
             self.SetControlIntValue(property, ctrl, 0)
@@ -136,7 +136,7 @@ class Propriete_choix(Property):
         try:
             valeur = self.liste_choix[index][0]
             return (True, valeur)
-        except:
+        except Exception:
             return False
 
 
@@ -303,7 +303,7 @@ class Propriete_liste(ArrayStringProperty):
             for valeur in valeurs_saisies :
                 try :
                     liste_id.append(self.type_donnees(valeur))
-                except :
+                except Exception:
                     liste_id = self.m_value
                     break
         return (True, liste_id)
@@ -331,7 +331,7 @@ class EditeurComboBoxAvecBoutons(ChoiceEditor):
             wnd = super(EditeurComboBoxAvecBoutons, self).CreateControls(propGrid, property, pos, buttons.GetPrimarySize())
             try:
                 wnd = wnd.GetPrimary()
-            except:
+            except Exception:
                 wnd = wnd.m_primary
             Style.appliquer_saisie(wnd)
             buttons.Finalize(propGrid, pos)
@@ -370,7 +370,7 @@ class EditeurHeure(Editor):
                 return wxpg.PGWindowList(ctrl)
             else :
                 return ctrl
-        except:
+        except Exception:
             import traceback
             print((traceback.print_exc()))
 
@@ -440,7 +440,7 @@ class EditeurDate(Editor):
                 return wxpg.PGWindowList(ctrl)
             else :
                 return ctrl
-        except:
+        except Exception:
             import traceback
             print((traceback.print_exc()))
 

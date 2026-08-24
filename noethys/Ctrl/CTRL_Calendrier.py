@@ -22,7 +22,7 @@ import sys
 
 try :
     from wx.adv import PseudoDC
-except :
+except Exception:
     from wx import PseudoDC
 
 
@@ -70,7 +70,7 @@ class Calendrier(wx.ScrolledWindow):
 
         # Pour statusBar :
         try : self.frameParente = self.GetGrandParent().GetGrandParent().GetParent()
-        except : pass
+        except Exception: pass
 
         self.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
         self.Bind(wx.EVT_MOTION, self.OnMotion)
@@ -155,9 +155,9 @@ class Calendrier(wx.ScrolledWindow):
                        
     def Calendrier(self, dc):
         try : self.joursVacances
-        except : self.joursVacances, self.listePeriodesVacs = self.Importation_Vacances(self.anneeCalendrier)
+        except Exception: self.joursVacances, self.listePeriodesVacs = self.Importation_Vacances(self.anneeCalendrier)
         try : self.listeFeriesFixes
-        except : self.listeFeriesFixes, self.listeFeriesVariables = self.Importation_Feries(self.anneeCalendrier)
+        except Exception: self.listeFeriesFixes, self.listeFeriesVariables = self.Importation_Feries(self.anneeCalendrier)
         
         self.dictCases = {}
         self.listeCasesJours = []
@@ -379,15 +379,15 @@ class Calendrier(wx.ScrolledWindow):
                 self.RedrawCase(self.caseSurvol, survol=False)
                 self.caseSurvol = None
                 try : wx.GetApp().GetTopWindow().SetStatusText("", 0)
-                except : pass
+                except Exception: pass
         try : wx.GetApp().GetTopWindow().SetStatusText("", 0)
-        except : pass
+        except Exception: pass
         event.Skip()
         
     def OnEnter(self, event):
         txt = _(u"Restez appuyer sur les touches CONTROL, SHIFT ou ALT pour sélectionner plusieurs jours à la fois.")
         try : wx.GetApp().GetTopWindow().SetStatusText(txt, 1)
-        except : pass
+        except Exception: pass
         event.Skip()
 
     def RedrawCase(self, IDobjet, survol=False):
@@ -442,7 +442,7 @@ class Calendrier(wx.ScrolledWindow):
             
             # Actualisation la statusBar
             try : wx.GetApp().GetTopWindow().SetStatusText(texteStatusBar,0)
-            except : pass
+            except Exception: pass
 
             
             return
@@ -452,7 +452,7 @@ class Calendrier(wx.ScrolledWindow):
             self.RedrawCase(self.caseSurvol, survol=False)
             self.caseSurvol = None
             try : wx.GetApp().GetTopWindow().SetStatusText("",0)
-            except : pass
+            except Exception: pass
 
     def DrawMonth(self, dc, mois, annee, xMois, yMois, largMois, hautMois):
         """ Dessine un mois entier """
@@ -926,7 +926,7 @@ class Calendrier(wx.ScrolledWindow):
         self.MAJAffichage()
         # Met à jour l'affichage des contrôles de navigation du calendrier
         try : self.GetParent().MAJcontrolesNavigation(self.moisCalendrier, self.anneeCalendrier)
-        except : pass
+        except Exception: pass
 
     def GetSelections(self):
         return self.listeSelections

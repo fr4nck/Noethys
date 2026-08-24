@@ -585,7 +585,7 @@ class CTRL(HTL.HyperTreeList):
         try :
             if 'phoenix' not in wx.PlatformInfo:
                 wx.Yield()
-        except :
+        except Exception:
             pass
         
         self.dictComptes = Importation(   liste_activites=self.listeActivites,

@@ -438,7 +438,7 @@ class EventSizer(object):
             EventSizer._initialized = True
         try :
             self.metrics = self.drawing_area.drawing_algorithm.metrics
-        except :
+        except Exception:
             pass
 
     def sizing_starts(self, m_x, m_y):
@@ -750,10 +750,10 @@ class DrawingArea(wx.Panel):
         try:
             navigation_fn(self.time_period)
             self._redraw_timeline()
-        except : pass
+        except Exception: pass
         try :
             wx.GetTopLevelParent(self).SetStatusText("")
-        except : pass
+        except Exception: pass
 ##        except (ValueError, OverflowError), e:
 ##            print e.message
 
@@ -932,7 +932,7 @@ class DrawingArea(wx.Panel):
             if not evt.ControlDown() : #evt.m_controlDown:
                 try :
                     self._mouse_move(evt.GetX(), evt.GetY()) # (evt.m_x, evt.m_y)
-                except :
+                except Exception:
                     pass
                 
     def _mouse_drag(self, x, y, ctrl=False):
@@ -1216,13 +1216,13 @@ class DrawingArea(wx.Panel):
     def _display_text_in_statusbar(self, text):
         try :
             wx.GetTopLevelParent(self).SetStatusText(text)
-        except : 
+        except Exception: 
             pass
 
     def _reset_text_in_statusbar(self):
         try :
             wx.GetTopLevelParent(self).SetStatusText("")
-        except :
+        except Exception:
             pass
 
     def _set_select_period_cursor(self):

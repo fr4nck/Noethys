@@ -739,7 +739,7 @@ class Dialog(wx.Dialog):
                 if type(regroupement) == datetime.date :
                     regroupement = str(regroupement)
 
-            except :
+            except Exception:
                 regroupement = None
 
             # ------------------------------------ ANALYSE DONNEES -----------------------------------

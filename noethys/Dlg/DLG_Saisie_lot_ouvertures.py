@@ -283,7 +283,7 @@ class Dialog(wx.Dialog):
     def SetDate(self, date=None):
         try :
             self.ctrl_date.SetDate(date)
-        except :
+        except Exception:
             pass
         
     def GetMode(self):

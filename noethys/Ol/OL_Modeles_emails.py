@@ -20,7 +20,7 @@ from Utils import UTILS_Utilisateurs
 
 try :
     from Dlg.DLG_Modeles_docs import LISTE_CATEGORIES
-except :
+except Exception:
     LISTE_CATEGORIES = []
     pass
 

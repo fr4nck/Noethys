@@ -186,7 +186,7 @@ class Dialog(wx.Dialog):
             frais_pourcentage = self.ctrl_frais_prorata.GetValue()
             try :
                 frais_pourcentage = float(frais_pourcentage) 
-            except :
+            except Exception:
                 dlg = wx.MessageDialog(self, _(u"Le pourcentage que vous avez saisi pour les frais de gestion n'est pas valide !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
                 dlg.ShowModal()
                 dlg.Destroy()

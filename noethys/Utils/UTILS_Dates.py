@@ -185,7 +185,7 @@ def HeureStrEnTime(heureStr):
     if len(heureStr.split(":")) == 3 : heures, minutes, secondes = heureStr.split(":")
     try :
         return datetime.time(int(heures), int(minutes))
-    except :
+    except Exception:
         return datetime.time(0, 0)
 
 def DatetimeTimeEnStr(heure, separateur="h"):

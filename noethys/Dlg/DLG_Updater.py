@@ -176,7 +176,7 @@ class Download(Thread):
             else:
                 # Téléchargement non complet
                 self.parent.Suite(succes=False)
-        except: 
+        except Exception: 
             self.stop = True 
             raise 
 
@@ -301,7 +301,7 @@ class Page_recherche(wx.Panel):
                     fichierVersions = urlopen('http://www.noethys.com/fichiers/windows/phoenix/Versions.txt', timeout=10)
             self.texteNouveautes= fichierVersions.read()
             fichierVersions.close()
-        except :
+        except Exception:
             self.Suite(etat="erreur") 
             return
 
@@ -514,7 +514,7 @@ class Page_telechargement(wx.Panel):
     def __del__(self):
         try:
             self.timer.Stop()
-        except:
+        except Exception:
             pass
 
     def TimerHandler(self, event):
@@ -551,7 +551,7 @@ class Page_telechargement(wx.Panel):
                 fichier = "%s-%s-%s" % (typeFichier, versionFichier, id)
                 req = Request("http://www.noethys.com/fichiers/telechargement.cgi?fichier=%s" % fichier)
                 handle = urlopen(req)
-            except :
+            except Exception:
                 pass
             # Si téléchargement complet, on passe à la page de fin de téléchargement
             sleep(1) # Attend 2 secondes avant de continuer
@@ -790,7 +790,7 @@ class Page_installation(wx.Panel):
         else :
             try :
                 FonctionsPerso.LanceFichierExterne(fichierMAJ)
-            except :
+            except Exception:
                 self.journal.WriteText(_(u"\nErreur : Impossible d'ouvrir l'installeur."))
                 dlg = wx.MessageDialog(self, _(u"Noethys n'a pas réussi à ouvrir l'installeur.\n\nCe blocage peut peut-être venir de votre antivirus. Essayez éventuellement de le désactiver le temps de l'installation de la mise à jour."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
                 dlg.ShowModal()
@@ -801,7 +801,7 @@ class Page_installation(wx.Panel):
         try :
             topWindow = wx.GetApp().GetTopWindow()
             nomWindow = topWindow.GetName()
-        except :
+        except Exception:
             nomWindow = None
         if nomWindow == "general" : 
             # Si la frame 'General' est chargée, on sauvegarde et on ferme le logiciel
@@ -834,7 +834,7 @@ class Dialog(wx.Dialog):
         # Met en pause le serveur Connecthys si besoin
         try :
             self.parent.ctrl_serveur_portail.PauseServeur()
-        except:
+        except Exception:
             pass
 
         # Fichiers
@@ -920,7 +920,7 @@ class Dialog(wx.Dialog):
         if self.GetEtat() == False :
             try :
                 self.parent.ctrl_serveur_portail.RepriseServeur()
-            except:
+            except Exception:
                 pass
 
     def Fermer(self):

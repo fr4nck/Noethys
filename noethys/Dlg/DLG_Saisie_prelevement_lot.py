@@ -249,7 +249,7 @@ class CTRL_Parametres(CTRL_Propertygrid.CTRL):
 
         try:
             propriete.SetValue(ancienneValeur)
-        except:
+        except Exception:
             pass
 
     def OnPropGridChange(self, event):

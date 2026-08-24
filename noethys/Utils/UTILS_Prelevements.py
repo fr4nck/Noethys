@@ -178,7 +178,7 @@ def ControleIBAN(iban=""):
         iban = replaceAll(iban[4:]+iban[0:4], IBAN_CHAR_MAP)
         res = int(iban) % 97
         return res == 1
-    except :
+    except Exception:
         return False
 
 
@@ -824,7 +824,7 @@ def Extraire_numero_rue(rue=""):
             numero = blocs[0].strip()
             voie = blocs[4].strip().capitalize()
             return numero, voie
-    except:
+    except Exception:
         pass
     return None
 

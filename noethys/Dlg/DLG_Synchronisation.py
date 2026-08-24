@@ -730,7 +730,7 @@ class Dialog(wx.Dialog):
                 if "actions_%s" % IDfichier in nomFichier and (nomFichier.endswith(UTILS_Export_nomade.EXTENSION_CRYPTE) or nomFichier.endswith(UTILS_Export_nomade.EXTENSION_DECRYPTE)) :
                     try :
                         tailleFichier = ftp.size(nomFichier)
-                    except :
+                    except Exception:
                         ftp.voidcmd('TYPE I')
                         tailleFichier = ftp.size(nomFichier)
                     ftp.retrbinary("RETR %s" % nomFichier, open(UTILS_Fichiers.GetRepSync(nomFichier), "wb").write)

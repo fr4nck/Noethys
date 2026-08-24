@@ -223,7 +223,7 @@ class Dialog(wx.Dialog):
     def GetQuotient(self):
         try :
             quotient = int(self.ctrl_quotient.GetValue())
-        except :
+        except Exception:
             quotient = None
         return quotient
 
@@ -256,7 +256,7 @@ class Dialog(wx.Dialog):
         if len(quotient) > 0 :
             try :
                 test = int(quotient)
-            except :
+            except Exception:
                 dlg = wx.MessageDialog(self, _(u"Le quotient familial que vous avez saisi n'est pas valide !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
                 dlg.ShowModal()
                 dlg.Destroy()

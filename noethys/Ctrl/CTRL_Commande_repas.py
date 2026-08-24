@@ -628,7 +628,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
             for case in list(self.dictCases.values()):
                 if case.ouvert == True :
                     self.dictValeursAnterieures[(case.date, case.IDcolonne)] = case.GetValeur()
-        except:
+        except Exception:
             pass
 
         # Importation
@@ -691,7 +691,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                     try :
                         valeur = self.dictDonnees["valeurs"][date][dictColonne["IDcolonne"]]["valeur"]
                         IDvaleur = self.dictDonnees["valeurs"][date][dictColonne["IDcolonne"]]["IDvaleur"]
-                    except :
+                    except Exception:
                         pass
 
                     # Récupération de la valeur avant MAJ
@@ -708,7 +708,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                             # Recherche le nombre de conso
                             try :
                                 suggestion += self.dictDonnees["dict_conso"][date][IDgroupe][IDunite]
-                            except :
+                            except Exception:
                                 pass
 
                     # Recherche information
@@ -773,7 +773,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                 listeColonneTotal.append({"IDcolonne" : dictColonne["IDcolonne"], "nom_colonne" : dictColonne["nom_colonne"], "valeur" : 0, "isTotal" : "total" in case.categorieColonne})
         try :
             self.GetParent().ctrl_totaux.SetColonnes(listeColonneTotal)
-        except:
+        except Exception:
             pass
 
         # Calcule les totaux
@@ -912,7 +912,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                 dictTotaux[dictColonne["IDcolonne"]] = case.GetValeur()
         try :
             self.GetParent().ctrl_totaux.SetValeurs(dictTotaux)
-        except:
+        except Exception:
             pass
 
     def GetDonnees(self):

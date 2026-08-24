@@ -289,7 +289,7 @@ class ListView(FastObjectListView):
             # Titulaires
             try:
                 dictTemp["noms_titulaires"] = dict_titulaires[dictTemp["IDfamille"]]["titulairesSansCivilite"]
-            except:
+            except Exception:
                 dictTemp["noms_titulaires"] = _(u"Famille inconnue")
 
             # Formatage sous forme de TRACK

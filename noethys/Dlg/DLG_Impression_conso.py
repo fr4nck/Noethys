@@ -1357,7 +1357,7 @@ class Dialog(wx.Dialog):
                         for element in valeur :
                             try :
                                 valeur = element.text
-                            except :
+                            except Exception:
                                 valeur = element.P.text
                             if valeur == "X":
                                 valeur = "1"
@@ -1913,7 +1913,7 @@ class Dialog(wx.Dialog):
                 if element != "PageBreak()" :
                     story.append(PageBreak())
                     CreationTitreDocument()
-            except :
+            except Exception:
                 pass
 
         # Prépare liste pour Export Excel
@@ -2142,7 +2142,7 @@ class Dialog(wx.Dialog):
                                                 dateStr = u"<para align='center'>%s %d %s %d</para>" % (jourStr, date.day, listeMoisAbrege[date.month-1], date.year)
                                                 ligne[positionG] = Paragraph(dateStr, styleDate)
                                             ligneTempExport[positionG] = UTILS_Dates.DateEngFr(str(date))
-                                        except:
+                                        except Exception:
                                             pass
                                         index += 1
                                     dataTableau.append(ligne)
@@ -2315,7 +2315,7 @@ class Dialog(wx.Dialog):
                                                                                     valide = True
                                                                                 else:
                                                                                     valide = False
-                                                                        except:
+                                                                        except Exception:
                                                                             pass
 
                                                                         if valide == True :
@@ -2406,7 +2406,7 @@ class Dialog(wx.Dialog):
                                                     type_donnee = "code-barres"
                                                     donnee = code39.Extended39("I%06d" % IDindividu, humanReadable=False)
 
-                                            except :
+                                            except Exception:
                                                 donnee = ""
 
                                         if type_donnee == "unicode" :
@@ -2696,7 +2696,7 @@ class Dialog(wx.Dialog):
                 story.pop(-1)
                 story.pop(-1)
                 story.pop(-1)
-        except :
+        except Exception:
             pass
 
         # Suppression du dernier spacer s'il y en a un
@@ -2704,7 +2704,7 @@ class Dialog(wx.Dialog):
             element = str(story[-1])
             if element == "Spacer(0, 20)" :
                 story.pop(-1)
-        except :
+        except Exception:
             pass
 
         # Destruction de la DlgAttente

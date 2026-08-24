@@ -192,7 +192,7 @@ class ListView(FastObjectListView):
         dlg.Destroy()
         try :
             self.GetParent().InitCorrections()
-        except :
+        except Exception:
             pass
 
     def Modifier(self, event=None):
@@ -219,7 +219,7 @@ class ListView(FastObjectListView):
         dlg.Destroy()
         try :
             self.GetParent().InitCorrections()
-        except :
+        except Exception:
             pass
 
     def Supprimer(self, event=None):
@@ -241,7 +241,7 @@ class ListView(FastObjectListView):
         dlg.Destroy()
         try :
             self.GetParent().InitCorrections()
-        except :
+        except Exception:
             pass
 
 

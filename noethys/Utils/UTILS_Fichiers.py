@@ -140,7 +140,7 @@ def DeplaceFichiers():
                 shutil.copy(Chemins.GetMainPath(u"Data/%s" % nomFichier), GetRepData(nomFichier))
                 try :
                     os.rename(Chemins.GetMainPath(u"Data/%s" % nomFichier), Chemins.GetMainPath(u"Data/%s" % nomFichier.replace(".dat", "_archive.dat")))
-                except :
+                except Exception:
                     pass
 
 def DeplaceExemples():

@@ -30,7 +30,7 @@ def FormateStr(valeur=u""):
         elif type(valeur) == int : return str(valeur)
         elif type(valeur) == float : return str(valeur)
         else : return valeur
-    except : 
+    except Exception: 
         return u""
 
 

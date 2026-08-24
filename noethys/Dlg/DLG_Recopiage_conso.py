@@ -67,7 +67,7 @@ class CTRL_Unite(wx.Choice):
     def SetValeur(self, ID=0):
         try :
             ID = int(ID)
-        except :
+        except Exception:
             ID = None
         if ID == None :
             self.SetSelection(0)

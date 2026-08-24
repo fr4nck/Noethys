@@ -51,7 +51,7 @@ class Track(object):
         # Récupération du nom des titulaires
         try :
             self.nomTitulaires = self.parent.dict_titulaires[self.IDfamille]["titulairesSansCivilite"]
-        except :
+        except Exception:
             self.nomTitulaires = _(" ")
 
         # Récupération des réponses des questionnaires

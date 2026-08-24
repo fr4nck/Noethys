@@ -362,7 +362,7 @@ class Panel(wx.Panel):
             if track.ajustement not in ("", None) :
                 try :
                     ajustement = float(track.ajustement)
-                except :
+                except Exception:
                     dlg = wx.MessageDialog(self, _(u"L'ajustement que vous avez paramétré pour la prestation '%s' semble erroné !\n\nVous pouvez uniquement saisir des valeurs du type '-2.5' ou '+5'.") % track.label, _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
                     dlg.ShowModal()
                     dlg.Destroy()

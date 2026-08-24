@@ -48,7 +48,7 @@ def FormateStr(valeur=u""):
         elif type(valeur) == int : return str(valeur)
         elif type(valeur) == float : return str(valeur)
         else : return valeur
-    except : 
+    except Exception: 
         return u""
 
 
@@ -464,7 +464,7 @@ class ListView(FastObjectListView):
         self.MAJlabel()
         try :
             self.GetParent().OnCheck(track)
-        except :
+        except Exception:
             pass
         
     def OnContextMenu(self, event):

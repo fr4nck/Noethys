@@ -127,7 +127,7 @@ def EcritStatusbar(texte=u""):
     try:
         topWindow = wx.GetApp().GetTopWindow()
         topWindow.SetStatusText(texte)
-    except:
+    except Exception:
         pass
 
 # -------------------------------------------------------------------------------------------------------------------------
@@ -670,7 +670,7 @@ def A8574():
     valide = True
     try:
         version = tuple([int(x) for x in version.split(".")])
-    except:
+    except Exception:
         valide = False
     if len(version) != 4:
         valide = False
@@ -926,7 +926,7 @@ def A9001():
         DB = GestionDB.DB(suffixe="DOCUMENTS")
         DB.AjoutChamp("documents", "IDtype_piece", "INTEGER")
         DB.Close()
-    except:
+    except Exception:
         pass
 
 
@@ -1010,7 +1010,7 @@ def A9061():
         DB = GestionDB.DB(suffixe="DOCUMENTS")
         DB.AjoutChamp("documents", "last_update", "VARCHAR(50)")
         DB.Close()
-    except:
+    except Exception:
         pass
 
     # Ajoute l'horodatage dans chaque document
@@ -1020,7 +1020,7 @@ def A9061():
         DB.ExecuterReq(req)
         DB.Commit()
         DB.Close()
-    except:
+    except Exception:
         pass
 
 
@@ -1028,7 +1028,7 @@ def A9073():
     """ Cryptage des mots de passe utilisateurs """
     try:
         from Crypto.Hash import SHA256
-    except:
+    except Exception:
         from Cryptodome.Hash import SHA256
 
     DB = GestionDB.DB()
@@ -1050,7 +1050,7 @@ def A9074():
     """ Cryptage des mots de passe utilisateurs dans nouveau champ mdpcrypt """
     try:
         from Crypto.Hash import SHA256
-    except:
+    except Exception:
         from Cryptodome.Hash import SHA256
 
     DB = GestionDB.DB()
@@ -1585,7 +1585,7 @@ def A9062():
         return
     try:
         nom_table, nom_champ, type_champ = parametres.split(";")
-    except:
+    except Exception:
         return
     DB = GestionDB.DB()
     DB.ExecuterReq("ALTER TABLE %s MODIFY %s %s" %
@@ -1700,7 +1700,7 @@ def A9068():
     date_erreur = False
     try:
         date_desinscription = UTILS_Dates.DateFrEng(date)
-    except:
+    except Exception:
         date_erreur = True
     if date_erreur or not date_desinscription:
         dlg = wx.MessageDialog(None, u"La date semble erronée. Procédure annulée.", _(

@@ -30,7 +30,7 @@ class Calendrier():
             # Lecture du fichier
             self.cal = icalendar.Calendar.from_ical(fichier.read())
             fichier.close()
-        except :
+        except Exception:
             self.cal = None
 
     def GetEvents(self):
@@ -56,7 +56,7 @@ class Calendrier():
         """ Récupère le titre du calendrier """
         try :
             titre = self.cal["X-WR-CALNAME"]
-        except :
+        except Exception:
             titre = None
         return titre
     

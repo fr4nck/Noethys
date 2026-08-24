@@ -55,7 +55,7 @@ class ListView(FastObjectListView):
     def OnCheck(self, track=None):
         try :
             self.GetParent().OnCheck(track)
-        except :
+        except Exception:
             pass
 
     def SetIDcoches(self, listeID=[]):

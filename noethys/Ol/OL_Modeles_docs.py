@@ -21,7 +21,7 @@ from Utils import UTILS_Utilisateurs
 
 try :
     from Dlg.DLG_Modeles_docs import LISTE_CATEGORIES
-except :
+except Exception:
     LISTE_CATEGORIES = []
     pass
 
@@ -419,7 +419,7 @@ class ListView(FastObjectListView):
         # Demande confirmation
         try:
             dictInfos = UTILS_Export_documents.InfosFichier(nomFichierLong)
-        except:
+        except Exception:
             dlg = wx.MessageDialog(self, _(u"Ce modèle ne peut pas être importé ! Il a peut-être été créé avec une version obsolète de Noethys."), _(u"Importation"), wx.OK | wx.ICON_ERROR)
             dlg.ShowModal()
             dlg.Destroy()

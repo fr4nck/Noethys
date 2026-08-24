@@ -178,7 +178,7 @@ class CTRL(HTL.HyperTreeList):
             # Mémorise le groupe
             try:
                 dictActivites[IDactivite]["groupes"][IDgroupe] = {"nom" : nom, "nbre_places_disponibles" : nbre_places_disponibles, "nbre_inscrits" : nbre_inscrits, "nbre_inscrits_max" : nbre_inscrits_max}
-            except:
+            except Exception:
                 pass
 
         for IDactivite in list(dictActivites.keys()):

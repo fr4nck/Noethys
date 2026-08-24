@@ -167,7 +167,7 @@ class ObjectListView(OLV.ObjectListView):
             proportion = 2
         try :
             self.stEmptyListMsg.SetSize(0, int(sz.GetHeight()/proportion), int(sz.GetWidth()), sz.GetHeight()) # J'ai mis 2 a la place de 3
-        except :
+        except Exception:
             self.stEmptyListMsg.SetDimensions(0, int(sz.GetHeight() / proportion), int(sz.GetWidth()), sz.GetHeight())  # J'ai mis 2 a la place de 3
 
         # Masque le texte "Aucun" si version phoenix (à cause des colonnes bleues)
@@ -1145,7 +1145,7 @@ class GroupListView(OLV.GroupListView, FastObjectListView):
                 key = str(key)
             try:
                 return key.lower()
-            except:
+            except Exception:
                 return key
 
         if six.PY2:

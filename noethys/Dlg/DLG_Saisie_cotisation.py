@@ -677,7 +677,7 @@ class CTRL_Parametres(wx.Panel):
             try:
                 liste_numeros = [int(numero) for numero, IDcotisation in listeDonnees if numero]
                 prochainID = max(liste_numeros) + 1
-            except:
+            except Exception:
                 return
         numero = u"%06d" % prochainID
         self.ctrl_numero.SetValue(numero)

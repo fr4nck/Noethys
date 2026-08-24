@@ -1115,7 +1115,7 @@ class CTRL_Tableau(wx.Panel):
                 for barre in liste_barres :
                     try:
                         barre.Draw(dc, num_sousligne, rect_cadre_central)
-                    except:
+                    except Exception:
                         pass
 
         dc.DestroyClippingRegion()
@@ -1226,7 +1226,7 @@ class CTRL_Tableau(wx.Panel):
             try:
                 self.tipFrame.Destroy()
                 del self.tipFrame
-            except:
+            except Exception:
                 pass
 
     def ActiveTooltip(self, actif=True, barre=None):

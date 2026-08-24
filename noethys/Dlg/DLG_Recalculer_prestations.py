@@ -347,17 +347,17 @@ class Dialog(wx.Dialog):
             texte = u"\n" + texte
         try :
             self.ctrl_log.AppendText(texte)
-        except :
+        except Exception:
             pass
 
     def SetStatutTrack(self, track=None, statut=None):
         track.statut = statut
         try :
             self.ctrl_individus.EnsureCellVisible(self.ctrl_individus.GetIndexOf(track)+1, 0)
-        except :
+        except Exception:
             try :
                 self.ctrl_individus.EnsureCellVisible(self.ctrl_individus.GetIndexOf(track), 0)
-            except :
+            except Exception:
                 pass
 
         self.ctrl_individus.RefreshObject(track)

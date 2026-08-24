@@ -254,7 +254,7 @@ class CTRL_Forfait(HTL.HyperTreeList):
                         self.grille.listeActivites,
                         self.grille.listePeriodes,
                         )
-            except :
+            except Exception:
                 pass
                 
             # Affichage dans la liste des forfaits
@@ -350,7 +350,7 @@ class CTRL_Forfait(HTL.HyperTreeList):
                 self.grille.GetGrandParent().panel_facturation.ModifiePrestation(datePrestation, IDindividu, IDprestation, 
                                                                                 self.grille.dictPrestations[IDprestation]["montantVentilation"], nouveauMontant=montant,
                                                                                 nouveauLabel=label)
-            except :
+            except Exception:
                 pass
                 
             # Affichage dans la liste des forfaits
@@ -469,7 +469,7 @@ class CTRL_Forfait(HTL.HyperTreeList):
             self.grille.GetGrandParent().panel_facturation.ModifiePrestation(datePrestation, IDindividu, IDprestation,
                                                                              self.grille.dictPrestations[IDprestation]["montantVentilation"], nouveauMontant=montant,
                                                                              nouveauLabel=label)
-        except:
+        except Exception:
             pass
 
 

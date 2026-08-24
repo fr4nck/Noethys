@@ -21,7 +21,7 @@ from Ctrl import CTRL_Bandeau
 import wx.lib.agw.hyperlink as hl
 try:
     from Crypto.Hash import SHA256
-except:
+except Exception:
     from Cryptodome.Hash import SHA256
 
 

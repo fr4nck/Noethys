@@ -19,7 +19,7 @@ LIB_CHARGEES = True
 try :
     import win32ui
     import win32print
-except :
+except Exception:
     LIB_CHARGEES = False
 
 

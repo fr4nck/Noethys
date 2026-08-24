@@ -151,7 +151,7 @@ class Dialog(wx.Dialog):
             self.ctrl_prenom.SetValue(prenom)
             self.ctrl_adresse.SetValue(rue)
 
-        except :
+        except Exception:
             pass
 
     def Rechercher(self, event=None):

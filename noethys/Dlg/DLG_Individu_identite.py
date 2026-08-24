@@ -369,7 +369,7 @@ class Panel_identite(wx.Panel):
             self.ficheIndividu = self.Parent.GetParent()
             if self.ficheIndividu.GetName() != "fiche_individu" :
                 self.ficheIndividu = None
-        except : 
+        except Exception: 
             self.ficheIndividu = None
         if self.ficheIndividu != None :
             self.ficheIndividu.Set_Header(nomLigne, texte)
@@ -379,7 +379,7 @@ class Panel_identite(wx.Panel):
             self.ficheIndividu = self.Parent.GetParent()
             if self.ficheIndividu.GetName() != "fiche_individu" :
                 self.ficheIndividu = None
-        except : 
+        except Exception: 
             self.ficheIndividu = None
         if self.ficheIndividu != None :
             self.ficheIndividu.ctrl_photo.SetPhoto(self.IDindividu, nomFichier, taillePhoto=(128, 128), qualite=100)
@@ -404,7 +404,7 @@ class Panel_identite(wx.Panel):
         self.ctrl_civilite.SetID(individu[0])
         self.ctrl_nom.SetValue(individu[1])
         try : self.ctrl_nomjfille.SetValue(individu[2])
-        except : pass
+        except Exception: pass
         self.ctrl_prenom.SetValue(individu[3])
         self.ctrl_numsecu.SetValue(individu[4])
         self.ctrl_nationalite.SetValue(IDpays=individu[5])
@@ -467,7 +467,7 @@ class Panel_identite(wx.Panel):
             if self.ctrl_annee_deces.GetValue() != "" :
                 try :
                     annee_deces = int(self.ctrl_annee_deces.GetValue())
-                except :
+                except Exception:
                     dlg = wx.MessageDialog(self, _(u"L'année de décès que vous avez saisi n'est pas valide !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
                     dlg.ShowModal()
                     dlg.Destroy()

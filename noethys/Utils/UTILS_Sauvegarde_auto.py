@@ -65,7 +65,7 @@ class Sauvegarde_auto():
                 reponse = dlg.ShowModal() 
                 try :
                     dlg.Destroy() 
-                except :
+                except Exception:
                     pass
                 if reponse == wx.ID_NO :
                     valide = False
@@ -114,7 +114,7 @@ class Sauvegarde_auto():
                         if nbreJoursFichier >= nbreJours :
                             try:
                                 os.remove(fichier)
-                            except:
+                            except Exception:
                                 pass
                             
         return True       
@@ -301,7 +301,7 @@ class Sauvegarde_auto():
             dlg = dialogs.MultiMessageDialog(self.parent, message1, caption=_(u"Rappel de sauvegarde"), msg2=None, style = wx.NO | wx.CANCEL | wx.YES | wx.YES_DEFAULT, icon=image, btnLabels={wx.ID_YES : _(u"Oui"), wx.ID_NO : _(u"Ne plus rappeler"), wx.ID_CANCEL : _(u"Pas maintenant")})
             reponse = dlg.ShowModal() 
             dlg.Destroy() 
-        except :
+        except Exception:
             reponse = None
         if reponse == wx.ID_YES :
             from Dlg import DLG_Sauvegardes_auto

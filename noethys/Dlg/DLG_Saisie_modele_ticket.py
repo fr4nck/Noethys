@@ -45,7 +45,7 @@ class CTRL_Imprimante(wx.Choice):
             listeImprimantes = UTILS_Ticket.GetListeImprimantes()
             for nom in listeImprimantes :
                 listeItems.append(nom)
-        except :
+        except Exception:
             pass
         self.SetItems(listeItems)
                                         

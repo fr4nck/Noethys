@@ -791,7 +791,7 @@ class Panel_liens(wx.Panel):
             self.ficheIndividu = self.Parent.GetParent()
             if self.ficheIndividu.GetName() != "fiche_liens" :
                 self.ficheIndividu = None
-        except : 
+        except Exception: 
             self.ficheIndividu = None
         if self.ficheIndividu != None :
             self.ficheIndividu.Set_Header(nomLigne, texte)
