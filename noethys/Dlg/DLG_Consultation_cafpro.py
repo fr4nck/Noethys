@@ -17,6 +17,7 @@ from Ctrl import CTRL_Bouton_image
 from Ctrl import CTRL_Bandeau
 from Utils import UTILS_Dates
 from Utils import UTILS_Config
+from Utils import UTILS_StyleRepens as Style
 from Dlg import DLG_Saisie_quotient
 import GestionDB
 
@@ -26,7 +27,7 @@ class CTRL_Drag(wx.TextCtrl):
     def __init__(self, parent, texte=""):
         wx.TextCtrl.__init__(self, parent, -1, style=wx.TE_READONLY)
         self.parent = parent
-        self.SetBackgroundColour(wx.Colour(248, 248, 248))
+        Style.appliquer_saisie(self)
         self.SetValue(texte)
 
         # Propriétés
@@ -73,7 +74,7 @@ class CTRL_Drop_archive(wx.TextCtrl):
     def __init__(self, parent, texte=""):
         wx.TextCtrl.__init__(self, parent, -1, texte, style=wx.TE_MULTILINE|wx.TE_NO_VSCROLL|wx.TE_READONLY)
         self.parent = parent
-        self.SetBackgroundColour(wx.WHITE)
+        Style.appliquer_saisie(self)
 
         # Activation du drop
         dt = MyTextDropTarget(self)
@@ -90,9 +91,10 @@ class CTRL_Drop_archive(wx.TextCtrl):
 
 
 class CTRL_Drop(wx.StaticBitmap):
-    def __init__(self, parent, taille=(64, 64), texte_defaut="", tip=""):
+    def __init__(self, parent, controller, taille=(64, 64), texte_defaut="", tip=""):
         wx.StaticBitmap.__init__(self, parent, -1, size=taille)
         self.parent = parent
+        self.controller = controller
         self.taille = taille
         self.texte_defaut = texte_defaut
         self.texte = None
@@ -140,7 +142,7 @@ class CTRL_Drop(wx.StaticBitmap):
     def SetTexte(self, texte=None):
         self.texte = texte
         self.MAJ()
-        self.GetGrandParent().bouton_ok.Enable(True)
+        self.controller.bouton_ok.Enable(True)
 
     def GetTexte(self):
         return self.texte
@@ -162,17 +164,18 @@ class CTRL_Drop(wx.StaticBitmap):
         if self.texte == None :
             # Texte par défaut si valeur vide
             taille_police = 7
-            couleur_texte = wx.Colour(150, 150, 150)
-            couleur_fond = wx.Colour(248, 248, 248)
+            couleur_texte = Style.couleur("on_surface_variant")
+            couleur_fond = Style.couleur("surface_container_low")
             texte = self.texte_defaut
-            dc.SetFont(wx.Font(taille_police, wx.DEFAULT, wx.NORMAL, wx.NORMAL, 0, ""))
+            dc.SetFont(Style.police("caption"))
         else :
             # Texte si valeur
             taille_police = 20
-            couleur_texte = wx.Colour(50, 50, 50)
-            couleur_fond = wx.Colour(255, 255, 255)
+            couleur_texte = Style.couleur("on_surface")
+            couleur_fond = Style.couleur("surface_container_lowest")
             texte = self.texte
-            dc.SetFont(wx.Font(taille_police, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
+            police = Style.police("data_large")
+            dc.SetFont(police)
 
         dc.SetTextForeground(couleur_texte)
         largeurTexte, hauteurTexte = dc.GetTextExtent(texte)
@@ -185,17 +188,11 @@ class CTRL_Drop(wx.StaticBitmap):
         dc.SetBrush(wx.Brush(couleur_fond))
         dc.SetPen(wx.Pen(couleur_texte, width=2, style=wx.PENSTYLE_DOT))
         if 'phoenix' in wx.PlatformInfo:
-            dc.DrawRoundedRectangle(wx.Rect(0, 0, largeurImage, hauteurImage), 10)
+            dc.DrawRoundedRectangle(wx.Rect(0, 0, largeurImage, hauteurImage), Style.rayon("controle"))
         else:
-            dc.DrawRoundedRectangleRect(wx.Rect(0, 0, largeurImage, hauteurImage), 10)
+            dc.DrawRoundedRectangleRect(wx.Rect(0, 0, largeurImage, hauteurImage), Style.rayon("controle"))
 
         # Texte
-        if texte != None :
-            xTexte = largeurImage / 2.0 - largeurTexte / 2.0
-            yTexte = hauteurImage / 2.0 - hauteurTexte / 2.0 - 1
-            dc.DrawLabel(texte, wx.Rect(xTexte, yTexte, largeurTexte, hauteurTexte), wx.ALIGN_CENTER | wx.ALIGN_CENTER_VERTICAL)
-
-
         if texte != None :
             xTexte = largeurImage / 2.0 - largeurTexte / 2.0
             yTexte = hauteurImage / 2.0 - hauteurTexte / 2.0 - 1
@@ -215,6 +212,7 @@ class Frame(wx.Frame):
         self.IDfamille = IDfamille
 
         self.panel = wx.Panel(self)
+        Style.appliquer_fenetre(self.panel, "surface")
 
         # Bandeau
         titre = _(u"Consultation CAF-CDAP")
@@ -231,13 +229,12 @@ class Frame(wx.Frame):
 
         # Informations
         self.box_quotient = wx.StaticBox(self.panel, -1, _(u"Quotient familial/Revenu"))
-        self.ctrl_quotient = CTRL_Drop(self.panel, taille=(180, 80), texte_defaut=_(u"Sélectionnez et glissez-déposez\nle quotient familial ici"), tip=_(u"Double-cliquez sur le quotient dans votre navigateur internet pour le sélectionner et glissez-le jusqu'ici.\n\nVous pouvez également faire un double-clic pour saisir ou modifier la valeur manuellement."))
-        self.ctrl_revenu = CTRL_Drop(self.panel, taille=(180, 80), texte_defaut=_(u"Sélectionnez et glissez-déposez\nle revenu annuel ici"), tip=_(u"Double-cliquez sur le revenu dans votre navigateur internet pour le sélectionner et glissez-le jusqu'ici.\n\nVous pouvez également faire un double-clic pour saisir ou modifier la valeur manuellement."))
+        self.ctrl_quotient = CTRL_Drop(self.panel, controller=self, taille=(180, 80), texte_defaut=_(u"Sélectionnez et glissez-déposez\nle quotient familial ici"), tip=_(u"Double-cliquez sur le quotient dans votre navigateur internet pour le sélectionner et glissez-le jusqu'ici.\n\nVous pouvez également faire un double-clic pour saisir ou modifier la valeur manuellement."))
+        self.ctrl_revenu = CTRL_Drop(self.panel, controller=self, taille=(180, 80), texte_defaut=_(u"Sélectionnez et glissez-déposez\nle revenu annuel ici"), tip=_(u"Double-cliquez sur le revenu dans votre navigateur internet pour le sélectionner et glissez-le jusqu'ici.\n\nVous pouvez également faire un double-clic pour saisir ou modifier la valeur manuellement."))
 
         texte_dernier_qf = self.GetTexteDernierQF()
         self.label_dernier_qf = wx.StaticText(self.panel, -1, texte_dernier_qf, style=wx.ALIGN_CENTER)
-        self.label_dernier_qf.SetFont(wx.Font(7, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_LIGHT, False, 'Arial'))
-        self.label_dernier_qf.SetForegroundColour(wx.Colour(150, 150, 150))
+        Style.appliquer_texte(self.label_dernier_qf, role="caption", role_texte="on_surface_variant")
 
         # Boutons
         self.bouton_aide = CTRL_Bouton_image.CTRL(self.panel, texte=_(u"Aide"), cheminImage="Images/32x32/Aide.png")
