@@ -3,9 +3,8 @@
 """Inventorie les ``except Exception: pass`` silencieux du code applicatif.
 
 Le remplacement des anciens ``except:`` nus empêche désormais d'avaler les
-BaseException, mais un handler ``Exception`` silencieux peut encore masquer un
-bug métier. Cet audit sépare les imports optionnels et nettoyages best-effort
-des suppressions silencieuses de runtime à relire.
+BaseException. Cet audit cherche ensuite les erreurs encore réellement
+masquées, sans classer comme critique chaque simple affectation ou repli UI.
 """
 
 from __future__ import annotations
@@ -13,6 +12,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import re
 from collections import Counter
 from pathlib import Path
 
@@ -24,6 +24,11 @@ CLEANUP_METHODS = {
     "Close", "Destroy", "Stop", "disconnect", "Disconnect", "Unbind",
     "ReleaseMouse", "Thaw", "EndModal", "Remove", "Detach",
 }
+BUSINESS_MUTATION_METHODS = {
+    "ReqInsert", "ReqMAJ", "ReqDEL", "Commit",
+    "Sauvegarde", "Enregistrer", "Supprimer", "Ajouter", "Modifier",
+}
+SQL_WRITE_RE = re.compile(r"\b(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b", re.IGNORECASE)
 
 
 def iter_python_files(root=NOETHYS):
@@ -61,18 +66,28 @@ def _is_cleanup(body):
     return bool(methods) and all(method in CLEANUP_METHODS for method in methods)
 
 
-def _contains_db_or_mutation(body):
+def _contains_business_mutation(body):
+    return any(method in BUSINESS_MUTATION_METHODS for method in _called_methods(body))
+
+
+def _contains_silent_sql_write(body, source):
+    has_execute = any(method == "ExecuterReq" for method in _called_methods(body))
+    if not has_execute:
+        return False
+    fragments = []
     for stmt in body:
-        for node in ast.walk(stmt):
-            if isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Attribute) and node.func.attr in {
-                    "ExecuterReq", "ReqInsert", "ReqMAJ", "ReqDEL", "Commit",
-                    "Sauvegarde", "Enregistrer", "Supprimer", "Ajouter", "Modifier",
-                }:
-                    return True
-            if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
-                return True
-    return False
+        segment = ast.get_source_segment(source, stmt)
+        if segment:
+            fragments.append(segment)
+    return bool(SQL_WRITE_RE.search("\n".join(fragments)))
+
+
+def _contains_assignment(body):
+    return any(
+        isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign))
+        for stmt in body
+        for node in ast.walk(stmt)
+    )
 
 
 def _snippet(lines, start, end):
@@ -104,9 +119,12 @@ def scan_file(path, root=NOETHYS):
             elif _is_cleanup(node.body):
                 classification, priority = "best_effort_cleanup", "low"
                 reason = "nettoyage de ressource best-effort"
-            elif _contains_db_or_mutation(node.body):
-                classification, priority = "silent_runtime_mutation", "high"
-                reason = "opération/affectation runtime masquée par un pass silencieux"
+            elif _contains_business_mutation(node.body) or _contains_silent_sql_write(node.body, source):
+                classification, priority = "silent_business_mutation", "high"
+                reason = "écriture DB ou mutation métier masquée par un pass silencieux"
+            elif _contains_assignment(node.body):
+                classification, priority = "silent_state_fallback", "medium"
+                reason = "calcul/affectation ignoré : repli implicite à vérifier"
             else:
                 classification, priority = "silent_runtime", "medium"
                 reason = "exception runtime ignorée sans journal ni repli explicite"
