@@ -611,7 +611,11 @@ class CTRL(wx.TreeCtrl):
             req = """SELECT IDcaisse, num_allocataire, allocataire, titulaire_helios, code_comptable
             FROM familles WHERE IDfamille=%d""" % self.IDfamille
             self.DB.ExecuterReq(req)
-            IDcaisse, num_allocataire, allocataire, titulaire_helios, code_comptable = self.DB.ResultatReq()[0]
+            donneesFamille = self.DB.ResultatReq()
+            if donneesFamille:
+                IDcaisse, num_allocataire, allocataire, titulaire_helios, code_comptable = donneesFamille[0]
+            else:
+                IDcaisse = num_allocataire = allocataire = titulaire_helios = code_comptable = None
             dictDonneesFamille = {"IDcaisse":IDcaisse, "num_allocataire":num_allocataire, "allocataire":allocataire, "titulaire_helios":titulaire_helios, "code_comptable":code_comptable}
 
         # Récupère la liste des ID individus concernés

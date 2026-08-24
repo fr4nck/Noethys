@@ -1163,7 +1163,10 @@ class Dialog(wx.Dialog):
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
         DB.Close()
-        IDfamille, email_recus = listeDonnees[0]
+        if listeDonnees:
+            IDfamille, email_recus = listeDonnees[0]
+        else:
+            IDfamille, email_recus = None, None
         if email_recus != None and self.nouveauReglement == True :
 
             icone = wx.Bitmap(Chemins.GetStaticPath(u"Images/32x32/Emails_exp.png"), wx.BITMAP_TYPE_ANY)

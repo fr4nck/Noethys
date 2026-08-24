@@ -716,7 +716,10 @@ class Dialog(wx.Dialog):
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()      
         DB.Close() 
-        creancier_rue, creancier_cp, creancier_ville, creancier_siret = listeDonnees[0]
+        if listeDonnees:
+            creancier_rue, creancier_cp, creancier_ville, creancier_siret = listeDonnees[0]
+        else:
+            creancier_rue = creancier_cp = creancier_ville = creancier_siret = u""
 
         # Récupération des infos sur le compte créditeur
         parametres = self.ctrl_parametres.GetParametres()

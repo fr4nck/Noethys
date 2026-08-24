@@ -82,7 +82,10 @@ class CTRL_Email(wx.Panel):
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
         DB.Close()
-        temp, email_factures = listeDonnees[0]
+        if listeDonnees:
+            temp, email_factures = listeDonnees[0]
+        else:
+            temp, email_factures = None, None
         if email_factures == None :
             self.ctrl_image.SetBitmap(self.image_nonvalide)
         else :
@@ -259,7 +262,7 @@ class Panel(wx.Panel):
             DB.ExecuterReq(req)
             listeDonnees = DB.ResultatReq()
             DB.Close()
-            self.IDcompte_payeur = listeDonnees[0][0]
+            self.IDcompte_payeur = listeDonnees[0][0] if listeDonnees else 0
             self.ctrl_listview.SetIDcompte_payeur(self.IDcompte_payeur)
         # MAJ des contrôles
         self.ctrl_listview.MAJ() 

@@ -297,6 +297,7 @@ def GetDictVilles(DB, dictParametres):
     
     # Récupère les distances entre les villes
     dictDistances = {}
+    origine = None
     try :
         req = """SELECT cp, ville FROM organisateur
         WHERE IDorganisateur=1;"""
@@ -310,7 +311,7 @@ def GetDictVilles(DB, dictParametres):
         pass
 
     for key, valeurs in dictVilles.items() :
-        if key in dictDistances and key != origine :
+        if origine is not None and key in dictDistances and key != origine :
             dictVilles[key]["distance"] = dictDistances[key]["distance_texte"]
             dictVilles[key]["distance_metres"] = dictDistances[key]["distance_metres"]
 
