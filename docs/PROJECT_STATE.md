@@ -1,6 +1,6 @@
 # Upgrade Noethys — état et décisions durables
 
-> Consolidation au 22 août 2026. Ce document sert de point d’entrée durable afin que le chantier ne dépende pas de l’historique des conversations ChatGPT.
+> Consolidation au 24 août 2026. Ce document sert de point d’entrée durable afin que le chantier ne dépende pas de l’historique des conversations ChatGPT.
 
 ## 1. Positionnement du fork
 
@@ -28,6 +28,8 @@ Pour éviter que les décisions repartent dans les conversations, utiliser cet o
 
 Une décision durable prise en conversation doit donc finir dans une issue, un test ou un document du dépôt.
 
+Une PR fermée sans fusion reste une référence historique de conception ou de diff, pas un comportement livré.
+
 ## 3. Frontières avec les projets voisins
 
 ### Noethys Desktop
@@ -54,10 +56,20 @@ Références principales :
 
 - `docs/DEVELOPMENT.md` ;
 - `docs/CI-WINDOWS-AUDIT.md` ;
+- `docs/RC-CHECKLIST.md` ;
 - Noe-030 / issue #14 : recette sur copie de base existante ;
 - Noe-042 / issue #19 : sas de Release Candidate ;
 - Noe-005 / issue #40 : reliquat SQL strict ;
 - Noe-004 / issue #7 : mesures/index base de données.
+
+État courant de la CI :
+
+- `.github/workflows/ci.yml` est la porte d’entrée commune ;
+- PR / push `master` : validation rapide Ubuntu unique ;
+- lancement manuel `complete` : recette synthétique, smokes Windows/macOS/Linux et packaging Windows ;
+- `windows-package.yml` est réutilisable ;
+- les audits UI font partie de la validation commune ;
+- les diagnostics indépendants sont collectés avant le verdict final lorsque possible.
 
 Règles durables :
 
@@ -65,7 +77,8 @@ Règles durables :
 - ne jamais qualifier une RC sur l’unique base de production ;
 - les audits statiques classent des risques, ils ne transforment pas automatiquement chaque occurrence en bug ;
 - packaging Windows reproductible, mais sans fabriquer un paquet lourd à chaque modification sans raison ;
-- les corrections runtime importantes doivent recevoir un test de non-régression lorsque cela est raisonnablement automatisable.
+- les corrections runtime importantes doivent recevoir un test de non-régression lorsque cela est raisonnablement automatisable ;
+- la qualification finale porte toujours sur le SHA exact destiné à la RC.
 
 ## 5. SQL et compatibilité des bases
 
@@ -80,13 +93,14 @@ Ne pas moderniser une requête uniquement pour utiliser une fonctionnalité SQL 
 
 Le chantier SQL strict restant est une dette progressive : traiter les requêtes par sémantique métier, jamais par ajout mécanique de colonnes au `GROUP BY` ou agrégats arbitraires.
 
-## 6. UI/UX : direction canonique
+## 6. UI/UX : direction canonique et état actuel
 
 La référence actuelle est :
 
 - `docs/DESIGN_SYSTEM_UI_UX.md` ;
 - `docs/WXPYTHON_UI_RULES.md` ;
-- `docs/IMPLEMENTATION_ORDER.md` pour l’ordre de travail.
+- `docs/IMPLEMENTATION_ORDER.md` ;
+- `docs/CI-WINDOWS-AUDIT.md` pour la qualification réelle Windows.
 
 `docs/INTERFACE_MATERIAL3.md` documente une étape antérieure de la modernisation : Material 3 reste utile pour les tokens et thèmes, mais **Fluent 2 est désormais la référence principale pour la grammaire desktop**.
 
@@ -101,6 +115,10 @@ Principes synthétiques :
 - Fluent System Icons comme bibliothèque principale ;
 - pas de surcouche destinée à cacher une assertion ou une architecture de layout incorrecte.
 
+Le **socle transverse Repens est consolidé** depuis la PR #78 : listes/ObjectListView, grilles, outils de recherche/filtrage/cochage, navigation commune et états vides utilisent les règles partagées. Il n’existe plus de chantier générique « moderniser Noethys » à poursuivre pour lui-même.
+
+Les travaux UI suivants doivent partir d’un défaut concret observé en recette Windows — fenêtre vide, freeze, mauvais contraste, texte tronqué, scaling cassé, contrôle spécialisé incohérent — ou d’un besoin métier explicite.
+
 ## 7. Règles wxPython désormais figées
 
 Voir `docs/WXPYTHON_UI_RULES.md`.
@@ -113,7 +131,7 @@ Points à ne plus perdre :
 - supprimer les sizers historiques rigides lorsqu’ils sont la cause du problème au lieu d’ajouter une couche par-dessus ;
 - pas de hauteur de bandeau figée comme ancien contrat 76 px ;
 - pas de titre tronqué artificiellement par découpe de chaîne ;
-- tester les vrais contenus à 120 % et 150 % ;
+- tester les vrais contenus à 120/125 % et 150 % ;
 - préserver les couleurs qui portent une sémantique métier ;
 - traiter `Choicebook` avant les règles génériques de `Choice` dans le moteur de thème ;
 - garder le texte lisible lorsqu’un contrôle conserve explicitement un fond clair en thème sombre ;
@@ -149,7 +167,7 @@ Références :
 - #51 — Rapports métier fiables et prédéfinis ;
 - #54 — moteur partagé des indicateurs ;
 - #55 — communes partenaires ALSH ;
-- #53 — communes homonymes / codes postaux ;
+- #53 — communes homonymes / codes postaux, **terminé** ;
 - #56 — sorties écran/tableur/PDF du même résultat ;
 - #57 — résidence datée ;
 - #58 — annulations/absences ;
@@ -162,6 +180,8 @@ Principe :
 L’objectif est de supprimer les recopies et les combinaisons manuelles de filtres qui rendent les bilans PMSL fragiles.
 
 Les anciens rapports d’activité servent de cahier des charges empirique pour identifier les indicateurs réellement utiles.
+
+La saisie ville/code postal a déjà été sécurisée pour ne plus remplacer silencieusement un couple valide par un homonyme lors de l’autocomplétion ou de la perte de focus.
 
 ## 11. Conventions, tiers et mises à disposition
 
@@ -185,6 +205,8 @@ Réutiliser les briques Noethys existantes lorsque leur sémantique convient, to
 
 Une même donnée canonique doit pouvoir alimenter interface, convention, annexe, reporting et export.
 
+L’ancienne PR #61 a été fermée sans fusion car sa branche était devenue trop en retard sur `master`. Elle reste une référence d’architecture ; toute reprise doit reconstruire les lots utiles depuis le `master` courant.
+
 ## 12. Portail Connecthys et contenus dynamiques
 
 Références :
@@ -201,7 +223,17 @@ Principes :
 - afficher un barème applicable plutôt qu’un faux « prix personnel » lorsque la consommation réelle est nécessaire au calcul ;
 - les intégrations web doivent être une vue sécurisée des données, pas un accès direct à la base locale.
 
-## 13. Doctrine de développement
+Les anciennes PR #63/#66/#68/#69/#71/#72 ont été fermées sans fusion après inspection. Elles restent des références historiques ; les besoins continuent d’être suivis dans les issues et toute reprise repart du `master` courant.
+
+## 13. Extensions optionnelles
+
+Le besoin d’un registre d’extensions opt-in est conservé dans **l’issue #80**.
+
+La règle est de ne pas construire une architecture générique sans consommateur réel : le socle doit être repris uniquement lorsqu’un premier usage concret le justifie, sans chargement arbitraire, sans dépendance Internet obligatoire et sans migration implicite.
+
+L’ancienne PR #64 a été fermée et reste une référence historique de conception.
+
+## 14. Doctrine de développement
 
 À conserver pour les futurs chantiers :
 
@@ -211,9 +243,10 @@ Principes :
 - une correction centrale vaut mieux que des dizaines d’exceptions locales ;
 - conserver les anciennes configurations autant que possible ;
 - ne pas mélanger un refactoring esthétique et une modification métier non liée ;
-- lorsqu’un mécanisme historique reste correct, ne pas le réécrire pour le plaisir de le moderniser.
+- lorsqu’un mécanisme historique reste correct, ne pas le réécrire pour le plaisir de le moderniser ;
+- lorsqu’une branche de chantier dérive fortement de `master`, préserver le besoin dans une issue puis reconstruire un lot propre au lieu de forcer une fusion ancienne.
 
-## 14. Ce qui a été consolidé depuis les conversations
+## 15. Ce qui a été consolidé depuis les conversations
 
 Les points qui étaient encore particulièrement dépendants des échanges ont désormais une trace Git :
 
@@ -226,11 +259,14 @@ Les points qui étaient encore particulièrement dépendants des échanges ont d
 - méthode de diagnostic des freezes / MySQL distant ;
 - distinction performance technique / confort perceptif ;
 - filtrage des journées des commandes de repas ;
-- frontières Noethys / Teamworks / PMSL-Équipe / Connecthys.
+- frontières Noethys / Teamworks / PMSL-Équipe / Connecthys ;
+- consolidation CI rapide/lourde ;
+- ligne d’arrivée du chantier UI transverse ;
+- politique de fermeture/reconstruction des branches de chantier devenues obsolètes.
 
 À partir de ce point, ces décisions ne doivent plus dépendre de la conservation d’un chat.
 
-## 15. Entretien de ce document
+## 16. Entretien de ce document
 
 Mettre ce fichier à jour uniquement pour les décisions transversales qui seraient difficiles à retrouver dans une issue précise.
 
