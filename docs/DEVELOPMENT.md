@@ -1,6 +1,6 @@
 # Développement — fork Upgrade Noethys
 
-> Guide maintenu au 22 août 2026.
+> Guide maintenu au 24 août 2026.
 
 ## Positionnement
 
@@ -40,6 +40,14 @@ Pour reproduire le build Windows complet :
 python -m pip install --upgrade pip wheel
 python -m pip install -r requirements-build.txt
 ```
+
+Sous Windows, la recette locale depuis les sources doit privilégier :
+
+```text
+DEV-Noethys.cmd
+```
+
+qui prépare le venv Python 3.10, applique les correctifs runtime validés et lance l'application avec les journaux de diagnostic dans `noethys/Portable/`.
 
 ## Organisation du dépôt
 
@@ -153,7 +161,7 @@ Direction :
 - Liquid Glass : inspiration très ciblée pour profondeur/couches fonctionnelles ;
 - Fluent System Icons : iconographie principale.
 
-Ordre de migration : moteur de thème/tokens → listes/tableaux → saisies → boutons → toolbars/navigation → dialogues → composants métier → écrans particuliers.
+Le socle transverse Repens est désormais intégré : listes/ObjectListView, grilles, outils communs de recherche/filtrage/cochage et navigation utilisent les règles communes. La suite ne consiste plus à ouvrir un chantier générique de modernisation : les corrections UI doivent partir d'un défaut concret observé en recette ou d'un besoin métier identifié.
 
 Ne pas ajouter une dépendance lourde uniquement pour obtenir un effet visuel.
 
@@ -224,9 +232,14 @@ Les échanges doivent utiliser des identifiants stables et des interfaces contr�
 
 ## CI rapide et qualification lourde
 
-Le principe visé est de garder une boucle quotidienne rapide et de réserver les qualifications lourdes aux jalons/RC. Tant que la PR dédiée à cette séparation n'est pas fusionnée, **les workflows présents sur `master` sont la seule description exécutable de la CI courante**.
+La séparation est désormais intégrée dans `.github/workflows/ci.yml` :
 
-Ne jamais documenter une PR ouverte comme si elle était déjà intégrée.
+- PR et push `master` : un job rapide Ubuntu unique ;
+- lancement manuel `workflow_dispatch` en mode `complete` : même porte d'entrée, puis recette synthétique, smokes Windows/macOS/Linux et packaging Windows.
+
+`windows-package.yml` est un workflow réutilisable appelé par `ci.yml`. L'ancien workflow UI séparé a été supprimé ; les audits UI font partie de la validation rapide commune.
+
+La règle documentaire reste : **les workflows présents sur `master` sont la description exécutable de la CI courante**. Ne jamais documenter une PR ouverte comme si elle était déjà intégrée.
 
 ## Avant une PR ou une fusion
 
