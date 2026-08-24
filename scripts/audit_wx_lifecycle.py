@@ -290,9 +290,15 @@ def _target_key(node: ast.AST) -> str | None:
 
 
 def _runtime_nodes(node: ast.AST):
-    """Parcourt ce qui s'exécute maintenant, sans descendre dans une définition."""
+    """Parcourt seulement l'expression exécutée par l'instruction courante.
+
+    Les sous-blocs ``if``/``try``/``for`` sont analysés séparément par
+    ``_scan_destroy_block``. Ne pas y descendre ici évite qu'une réutilisation
+    légitime du nom ``dlg`` dans une branche soit attribuée au ``Destroy()`` du
+    bloc extérieur.
+    """
     for child in ast.iter_child_nodes(node):
-        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)):
+        if isinstance(child, ast.stmt) or isinstance(child, ast.Lambda):
             continue
         yield child
         yield from _runtime_nodes(child)
