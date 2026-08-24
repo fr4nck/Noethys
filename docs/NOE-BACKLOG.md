@@ -37,7 +37,7 @@ Ils restent suivis par leurs issues, sans PR de travail ancienne laissée ouvert
 
 - **Noe-060 / 061 — reporting et pilotage** : #51, #54, #55, #56, #57, #58, #59 ;
 - **Noe-062 — conventions et mises à disposition** : #60 ;
-- **Noe-063 — portail Connecthys** : #62, #65, #67 ;
+- **Noe-063 — portail Connecthys** : suivi consolidé dans #62 ;
 - **extensions optionnelles** : #80.
 
 Les anciennes PR de ces chantiers ont été fermées sans fusion lorsqu'elles étaient trop éloignées du `master`. Elles restent des références historiques de conception ; toute reprise doit repartir du `master` courant.
@@ -206,15 +206,15 @@ Référence : `ARCHITECTURE-TIERS-PRESTATIONS-PLANNING.md`.
 
 ## Noe-063 — Portail Connecthys : contenus dynamiques et source unique
 
-**Issue #62 — ouverte.**
+**Issue #62 — ouverte et désormais unique issue de suivi du portail.**
 
 Objectif : publier dans Connecthys des contenus et données maintenus dans Noethys ou des sources externes, sans double saisie et sans modification obligatoire du serveur hébergé pour les premiers lots.
 
-Sous-chantiers :
+Sous-chantiers conservés dans #62 :
 
 - **Contenus externes** — concept conservé ; ancienne PR #63 fermée sans fusion ;
-- **Noe-063B — RSS / Atom natif** — issue #65, ouverte ; ancienne PR #66 fermée ;
-- **Noe-063C — Barèmes Noethys / Mes tarifs** — issue #67, ouverte ; anciennes PR #68/#69 fermées ;
+- **RSS / Atom natif** — ancien suivi #65 consolidé dans #62 ; ancienne PR #66 fermée ;
+- **Barèmes Noethys / Mes tarifs** — ancien suivi #67 consolidé dans #62 ; anciennes PR #68/#69 fermées ;
 - **convergence portail** — ancienne PR #72 fermée après inspection : elle reste une référence de diff mais doit être reconstruite depuis le `master` courant avant toute reprise.
 
 Règles :
