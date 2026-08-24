@@ -27,7 +27,7 @@ class SilentExceptionHandlersAuditTests(unittest.TestCase):
         self.assertEqual(report["findings"][0]["classification"], "optional_import")
         self.assertEqual(report["findings"][0]["priority"], "low")
 
-    def test_silent_db_mutation_is_high_priority(self):
+    def test_silent_db_write_is_high_priority(self):
         report = self.report_for('''
             def f(DB):
                 try:
@@ -35,7 +35,29 @@ class SilentExceptionHandlersAuditTests(unittest.TestCase):
                 except Exception:
                     pass
         ''')
-        self.assertEqual(report["findings"][0]["classification"], "silent_runtime_mutation")
+        self.assertEqual(report["findings"][0]["classification"], "silent_business_mutation")
+        self.assertEqual(report["findings"][0]["priority"], "high")
+
+    def test_silent_select_with_local_assignment_is_not_high_priority(self):
+        report = self.report_for('''
+            def f(DB):
+                try:
+                    DB.ExecuterReq("SELECT value FROM t")
+                    value = DB.ResultatReq()[0]
+                except Exception:
+                    pass
+        ''')
+        self.assertEqual(report["findings"][0]["classification"], "silent_state_fallback")
+        self.assertEqual(report["findings"][0]["priority"], "medium")
+
+    def test_business_save_hidden_by_pass_is_high_priority(self):
+        report = self.report_for('''
+            def f(ctrl):
+                try:
+                    ctrl.Sauvegarde()
+                except Exception:
+                    pass
+        ''')
         self.assertEqual(report["findings"][0]["priority"], "high")
 
     def test_repository_inventory_is_exported(self):
