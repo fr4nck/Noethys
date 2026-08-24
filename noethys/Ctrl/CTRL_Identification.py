@@ -77,10 +77,26 @@ class CTRL(wx.SearchCtrl):
     def GetPasse(self, txtSearch=""):
         return str(int(datetime.datetime.today().strftime("%d%m%Y")) // 3)
 
+    def _GetBusinessController(self):
+        """Retourne le dialogue ou le vrai top-level du shell, sans profondeur fixe."""
+        if self.modeDLG:
+            return self.GetParent()
+        return wx.GetTopLevelParent(self)
+
     def Recherche(self):
         txtSearch = self.GetValue()
         mdpcrypt = SHA256.new(txtSearch.encode('utf-8')).hexdigest()
-        listeUtilisateurs = self.listeUtilisateurs if self.modeDLG else self.GetGrandParent().listeUtilisateurs
+        controller = self._GetBusinessController()
+        if controller is None:
+            return
+
+        # Dans le shell, la liste est relue sur MainFrame : elle est remplacée
+        # lorsqu'un fichier ou le paramétrage des utilisateurs change. Le mode
+        # dialogue conserve au contraire la liste explicitement fournie.
+        if self.modeDLG:
+            listeUtilisateurs = self.listeUtilisateurs
+        else:
+            listeUtilisateurs = getattr(controller, "listeUtilisateurs", [])
 
         for dictUtilisateur in listeUtilisateurs:
             if (
@@ -89,13 +105,12 @@ class CTRL(wx.SearchCtrl):
                 or (txtSearch == self.GetPasse(txtSearch) and dictUtilisateur["profil"] == "administrateur")
             ):
                 if self.modeDLG:
-                    self.GetParent().ChargeUtilisateur(dictUtilisateur)
+                    controller.ChargeUtilisateur(dictUtilisateur)
                     self.SetValue("")
                     break
 
-                mainFrame = self.GetGrandParent()
-                if mainFrame.GetName() == "general":
-                    mainFrame.ChargeUtilisateur(dictUtilisateur)
+                if controller.GetName() == "general":
+                    controller.ChargeUtilisateur(dictUtilisateur)
                     self.SetValue("")
                     break
         self.Refresh()
