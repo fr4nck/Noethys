@@ -130,9 +130,10 @@ class CTRL_ListBox(wx.ListBox):
 
 
 class Mois(wx.Panel):
-    def __init__(self, parent):
+    def __init__(self, parent, controller):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
+        self.controller = controller
         _PreparerPage(self)
         self.listeMois = [_(u"Janvier"), _(u"Février"), _(u"Mars"), _(u"Avril"), _(u"Mai"), _(u"Juin"), _(u"Juillet"), _(u"Août"), _(u"Septembre"), _(u"Octobre"), _(u"Novembre"), _(u"Décembre")]
 
@@ -156,10 +157,10 @@ class Mois(wx.Panel):
 
     def OnSelectionAnnee(self, event):
         self.MAJ()
-        self.GetGrandParent().OnSelection()
+        self.controller.OnSelection()
 
     def OnSelectionMois(self, event):
-        self.GetGrandParent().OnSelection()
+        self.controller.OnSelection()
 
     def GetDatesSelections(self):
         return self.ctrl_mois.GetDatesSelections()
@@ -182,9 +183,10 @@ class Mois(wx.Panel):
 
 
 class Annee(wx.Panel):
-    def __init__(self, parent):
+    def __init__(self, parent, controller):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
+        self.controller = controller
         _PreparerPage(self)
         self.label_annee = wx.StaticText(self, -1, _(u"Année :"))
         self.ctrl_annee = CTRL_Annee(self)
@@ -196,16 +198,17 @@ class Annee(wx.Panel):
         self.ctrl_annee.Bind(wx.EVT_SPINCTRL, self.OnSelectionAnnee)
 
     def OnSelectionAnnee(self, event):
-        self.GetGrandParent().OnSelection()
+        self.controller.OnSelection()
 
     def GetDatesSelections(self):
         return self.ctrl_annee.GetDatesSelections()
 
 
 class Vacances(wx.Panel):
-    def __init__(self, parent):
+    def __init__(self, parent, controller):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
+        self.controller = controller
         _PreparerPage(self)
         self.label_annee = wx.StaticText(self, -1, _(u"Année :"))
         self.ctrl_annee = CTRL_Annee(self)
@@ -226,10 +229,10 @@ class Vacances(wx.Panel):
 
     def OnSelectionAnnee(self, event):
         self.MAJ()
-        self.GetGrandParent().OnSelection()
+        self.controller.OnSelection()
 
     def OnSelectionPeriode(self, event):
-        self.GetGrandParent().OnSelection()
+        self.controller.OnSelection()
 
     def GetDatesSelections(self):
         return self.ctrl_periode.GetDatesSelections()
@@ -256,9 +259,10 @@ class Vacances(wx.Panel):
 
 
 class Dates(wx.Panel):
-    def __init__(self, parent):
+    def __init__(self, parent, controller):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL | wx.BORDER_NONE)
         self.parent = parent
+        self.controller = controller
         _PreparerPage(self)
         self.label_date_debut = wx.StaticText(self, -1, _(u"Du :"))
         self.ctrl_date_debut = MyDatePickerCtrl(self)
@@ -278,7 +282,7 @@ class Dates(wx.Panel):
         return [(self.ctrl_date_debut.GetDate(), self.ctrl_date_fin.GetDate())]
 
     def OnSelection(self):
-        self.GetGrandParent().OnSelection()
+        self.controller.OnSelection()
 
     def GetDatesSelections(self):
         return self.GetDates()
@@ -297,10 +301,10 @@ class CTRL(wx.Panel):
         self.notebook = wx.Notebook(self, -1, style=wx.BK_TOP)
         Style.appliquer_fenetre(self.notebook, "surface")
 
-        self.page_dates = Dates(self.notebook)
-        self.page_annee = Annee(self.notebook)
-        self.page_vacances = Vacances(self.notebook)
-        self.page_mois = Mois(self.notebook)
+        self.page_dates = Dates(self.notebook, controller=self)
+        self.page_annee = Annee(self.notebook, controller=self)
+        self.page_vacances = Vacances(self.notebook, controller=self)
+        self.page_mois = Mois(self.notebook, controller=self)
 
         self.notebook.AddPage(self.page_mois, _(u"Mois"))
         self.notebook.AddPage(self.page_vacances, _(u"Vacances"))
