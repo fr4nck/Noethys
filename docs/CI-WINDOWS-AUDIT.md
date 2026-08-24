@@ -169,7 +169,8 @@ Tester au minimum :
 6. un écran `wx.Grid` métier : sélection, scrolling, édition si autorisée, redimensionnement ;
 7. Préférences : apparence, thème et échelle ;
 8. présences/consommations puis un parcours d'impression représentatif ;
-9. fermeture de l'application sans assertion ni processus bloqué.
+9. une saisie d'adresse : saisir/valider ville + code postal puis changer de focus ; si possible tester un nom de commune homonyme ;
+10. fermeture de l'application sans assertion ni processus bloqué.
 
 ### 3. Clair, sombre et scaling
 
@@ -221,12 +222,14 @@ Les tests ne doivent pas être assouplis pour faire passer une implémentation c
 Les audits continuent de signaler notamment :
 
 - accès à des résultats SQL par index sans garde suffisante ;
+- connexions DB potentiellement non fermées ;
 - `except:` trop larges ;
+- séquences d'échappement invalides ;
+- usages `eval()` / `exec()` à qualifier ;
 - dépendances/chemins spécifiques à Windows ;
-- packaging et modules COM ;
-- autres frontières runtime inventoriées par les scripts de qualification.
+- packaging et modules COM.
 
-Ces sujets restent distincts du nettoyage wxPython mais participent à la même stratégie de stabilisation runtime.
+Ces sujets restent distincts du nettoyage wxPython mais sont exécutés dans la même stratégie de stabilisation runtime.
 
 ## Critère de sortie
 
@@ -238,5 +241,4 @@ Une zone UI peut être considérée stabilisée lorsque :
 - les contrôles ne déclenchent pas de callbacks avant leurs dépendances ;
 - les pages internes sont réellement construites et dimensionnées ;
 - le smoke Windows passe ;
-- la recette manuelle clair/sombre/scaling ne révèle pas de défaut bloquant ;
 - les tests métier associés restent inchangés ou explicitement justifiés.
