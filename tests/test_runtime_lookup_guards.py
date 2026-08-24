@@ -20,8 +20,11 @@ class RuntimeLookupGuardTests(unittest.TestCase):
             "Ol/OL_Inscriptions.py": "if donneesOrganisateur:",
             "Ctrl/CTRL_Detail_aides.py": "self.IDcompte_payeur = listeDonnees[0][0] if listeDonnees else 0",
             "Ctrl/CTRL_Repartition.py": "self.IDcompte_payeur = listeDonnees[0][0] if listeDonnees else 0",
+            "Dlg/DLG_Famille_factures.py": "self.IDcompte_payeur = listeDonnees[0][0] if listeDonnees else 0",
+            "Dlg/DLG_Saisie_prelevement_lot.py": "creancier_rue = creancier_cp = creancier_ville = creancier_siret = u\"\"",
+            "Dlg/DLG_Saisie_reglement.py": "IDfamille, email_recus = None, None",
             "Utils/UTILS_Locations.py": "if not listeDonnees:",
-            "Utils/UTILS_Organisateur.py": "if listeDonnees:",
+            "Utils/UTILS_Organisateur.py": "logo, logo_update = None, None",
         }
         for relative, expected in checks.items():
             with self.subTest(relative=relative):
@@ -32,9 +35,11 @@ class RuntimeLookupGuardTests(unittest.TestCase):
         self.assertIn("origine = None", source)
         self.assertIn("if origine is not None and key in dictDistances", source)
 
-    def test_reglement_email_lookup_handles_missing_family(self):
-        source = self.source("Dlg/DLG_Saisie_reglement.py")
-        self.assertIn("IDfamille, email_recus = None, None", source)
+    def test_missing_product_returns_empty_availability(self):
+        source = self.source("Utils/UTILS_Locations.py")
+        marker = "if not listeDonnees:"
+        self.assertIn(marker, source)
+        self.assertIn("return {}", source[source.index(marker):source.index(marker) + 180])
 
 
 if __name__ == "__main__":
