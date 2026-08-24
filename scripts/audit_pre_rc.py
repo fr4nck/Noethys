@@ -32,6 +32,7 @@ DEFAULT_OUTPUT = ROOT / "tmp" / "pre-rc-audits"
 WX_HIGH_RISK = (
     "constructor_parent_callback",
     "constructor_callback_before_dependency",
+    "use_after_destroy",
 )
 
 

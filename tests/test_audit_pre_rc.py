@@ -45,6 +45,11 @@ class AuditPreRcTests(unittest.TestCase):
                     "line": 10,
                 },
                 {
+                    "kind": "use_after_destroy",
+                    "file": "noethys/Dlg/DLG_Test.py",
+                    "line": 15,
+                },
+                {
                     "kind": "visual_parent_business_coupling",
                     "file": "noethys/Ctrl/CTRL_Test.py",
                     "line": 20,
@@ -72,6 +77,10 @@ class AuditPreRcTests(unittest.TestCase):
                 ],
                 1,
             )
+            self.assertEqual(
+                data["summary"]["wx_lifecycle"]["high_risk"]["use_after_destroy"],
+                1,
+            )
             self.assertEqual(data["summary"]["legacy_list_tools"]["screens"], 1)
 
             summary = json.loads((output / "pre-rc-summary.json").read_text(encoding="utf-8"))
@@ -81,7 +90,7 @@ class AuditPreRcTests(unittest.TestCase):
 
             self.assertEqual(summary["sql"]["REVIEW"], 1)
             self.assertEqual(len(sql_report["findings"]), 1)
-            self.assertEqual(len(wx_report["findings"]), 2)
+            self.assertEqual(len(wx_report["findings"]), 3)
             self.assertEqual(legacy_report["screens"], ["noethys/Ol/OL_Test.py"])
 
     def test_high_risk_wx_categories_are_explicit_even_when_zero(self):
@@ -99,6 +108,7 @@ class AuditPreRcTests(unittest.TestCase):
                 {
                     "constructor_parent_callback": 0,
                     "constructor_callback_before_dependency": 0,
+                    "use_after_destroy": 0,
                 },
             )
 
