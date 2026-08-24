@@ -4,10 +4,10 @@
 après un ``except`` qui peut continuer.
 
 Ce motif produit un ``UnboundLocalError`` uniquement sur le chemin d'erreur et
-échappe donc facilement aux tests heureux. L'analyse est volontairement
-conservative : elle ne signale que les noms simples dont aucune définition
-visible n'existe avant le ``try`` et qui ne sont pas définis dans tous les
-handlers susceptibles de poursuivre l'exécution.
+échappe donc facilement aux tests heureux. L'analyse reste conservative, mais
+respecte l'ordre d'exécution à l'intérieur des blocs suivants afin de ne pas
+confondre une réaffectation dans un nouveau ``try``/une boucle avec une lecture
+de l'ancienne variable.
 """
 
 from __future__ import annotations
@@ -40,7 +40,6 @@ def _loaded_names(node):
 
 
 def _handler_terminates(handler):
-    """Vrai si le handler termine toujours immédiatement le flot courant."""
     if not handler.body:
         return False
     last = handler.body[-1]
@@ -61,40 +60,109 @@ def _arguments(function):
     return args
 
 
-def _first_event(statements, name):
-    """Retourne ('load'|'store', ligne) pour le premier événement pertinent.
+def _first_name_line(node, name, ctx_type):
+    return min(
+        (getattr(child, "lineno", getattr(node, "lineno", 0))
+         for child in ast.walk(node)
+         if isinstance(child, ast.Name) and isinstance(child.ctx, ctx_type) and child.id == name),
+        default=0,
+    )
 
-    Une affectation top-level simple avant toute lecture neutralise le risque.
-    Dans une branche conditionnelle, une affectation n'est pas considérée
-    garantie et les lectures présentes restent prioritaires.
+
+def _first_event(statements, name):
+    """Retourne ('load'|'store', ligne) pour le premier événement exécutable.
+
+    Les affectations dans un bloc conditionnel ne sont pas considérées comme
+    garanties pour les instructions *suivantes*. En revanche, une affectation
+    qui précède une lecture dans le même bloc protège cette lecture : si cette
+    affectation lève une exception, le reste du bloc n'est pas exécuté.
     """
     for stmt in statements:
-        # Affectations simples garanties au niveau du bloc.
         if isinstance(stmt, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
-            loads = _loaded_names(stmt.value) if isinstance(stmt, ast.Assign) else set()
-            if isinstance(stmt, ast.AnnAssign) and stmt.value is not None:
+            loads = set()
+            if isinstance(stmt, ast.Assign):
                 loads = _loaded_names(stmt.value)
-            if isinstance(stmt, ast.AugAssign):
+            elif isinstance(stmt, ast.AnnAssign) and stmt.value is not None:
+                loads = _loaded_names(stmt.value)
+            elif isinstance(stmt, ast.AugAssign):
                 loads = _loaded_names(stmt.value) | _loaded_names(stmt.target)
             if name in loads:
-                return "load", getattr(stmt, "lineno", 0)
+                return "load", _first_name_line(stmt, name, ast.Load) or getattr(stmt, "lineno", 0)
             if name in _assigned_names(stmt):
                 return "store", getattr(stmt, "lineno", 0)
+            continue
 
-        # Pour les autres structures, toute lecture potentielle avant une
-        # affectation garantie est intéressante.
+        if isinstance(stmt, (ast.For, ast.AsyncFor)):
+            if name in _loaded_names(stmt.iter):
+                return "load", _first_name_line(stmt.iter, name, ast.Load)
+            target_assigns = name in _assigned_names(stmt.target)
+            if target_assigns:
+                # La cible est affectée avant chaque exécution du corps. Les
+                # lectures du corps sont donc sûres ; seul le ``else`` peut
+                # s'exécuter sans itération.
+                event, line = _first_event(stmt.orelse, name)
+                if event == "load":
+                    return event, line
+                continue
+            event, line = _first_event(stmt.body, name)
+            if event == "load":
+                return event, line
+            event, line = _first_event(stmt.orelse, name)
+            if event == "load":
+                return event, line
+            continue
+
+        if isinstance(stmt, ast.If):
+            if name in _loaded_names(stmt.test):
+                return "load", _first_name_line(stmt.test, name, ast.Load)
+            for branch in (stmt.body, stmt.orelse):
+                event, line = _first_event(branch, name)
+                if event == "load":
+                    return event, line
+            continue
+
+        if isinstance(stmt, ast.Try):
+            event, line = _first_event(stmt.body, name)
+            if event == "load":
+                return event, line
+            # Si le corps commence par une affectation, les lectures suivantes
+            # de ce même corps sont protégées. Un handler peut toutefois lire
+            # le nom si l'affectation a échoué avant de le lier.
+            for handler in stmt.handlers:
+                handler_event, handler_line = _first_event(handler.body, name)
+                if handler_event == "load":
+                    return handler_event, handler_line
+            for block in (stmt.orelse, stmt.finalbody):
+                block_event, block_line = _first_event(block, name)
+                if block_event == "load" and event != "store":
+                    return block_event, block_line
+            if event == "store":
+                return "store", line
+            continue
+
+        if isinstance(stmt, (ast.With, ast.AsyncWith)):
+            for item in stmt.items:
+                if name in _loaded_names(item.context_expr):
+                    return "load", _first_name_line(item.context_expr, name, ast.Load)
+                if item.optional_vars is not None and name in _assigned_names(item.optional_vars):
+                    # Affecté avant le corps si l'entrée du contexte réussit.
+                    event, line = _first_event(stmt.body, name)
+                    if event == "load":
+                        return "store", getattr(stmt, "lineno", line)
+            event, line = _first_event(stmt.body, name)
+            if event == "load":
+                return event, line
+            continue
+
         if name in _loaded_names(stmt):
-            line = min(
-                (getattr(child, "lineno", getattr(stmt, "lineno", 0))
-                 for child in ast.walk(stmt)
-                 if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load) and child.id == name),
-                default=getattr(stmt, "lineno", 0),
-            )
-            return "load", line
+            return "load", _first_name_line(stmt, name, ast.Load) or getattr(stmt, "lineno", 0)
+
+        # Une affectation top-level dans une instruction simple garantit le nom
+        # pour la suite. Pour les structures complexes, les cas ci-dessus ont
+        # déjà traité les branches sans prétendre à une garantie globale.
         if name in _assigned_names(stmt):
-            # Affectation dans une branche/boucle : elle n'est pas garantie ;
-            # continuer la recherche serait plus bruyant que réellement utile.
             return "store", getattr(stmt, "lineno", 0)
+
     return None, 0
 
 
@@ -108,7 +176,6 @@ def _scan_block(statements, relpath, inherited_defined=None):
             defined.add(stmt.name)
             continue
         if isinstance(stmt, ast.ClassDef):
-            # Les méthodes sont analysées séparément via le parcours ci-dessus.
             for child in stmt.body:
                 if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     findings.extend(_scan_block(child.body, relpath, _arguments(child)))
@@ -146,15 +213,11 @@ def _scan_block(statements, relpath, inherited_defined=None):
                             "reason": "variable définie dans try, handler continuant sans définition garantie, puis lecture après le try",
                         })
 
-            # Les affectations du try ne deviennent pas garanties : une
-            # exception peut avoir interrompu le bloc. En revanche finally est
-            # toujours exécuté.
             for child in stmt.finalbody:
                 defined |= _assigned_names(child)
         else:
             defined |= _assigned_names(stmt)
 
-        # Descendre dans les blocs imbriqués pour trouver leurs propres motifs.
         for attr in ("body", "orelse"):
             child_block = getattr(stmt, attr, None)
             if isinstance(child_block, list) and not isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Try)):
