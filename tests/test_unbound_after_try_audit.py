@@ -52,6 +52,36 @@ class UnboundAfterTryAuditTests(unittest.TestCase):
         ''')
         self.assertEqual(findings, [])
 
+    def test_reassignment_in_following_try_precedes_its_reads(self):
+        findings = self.scan_source('''
+            def f():
+                try:
+                    value = first()
+                except Exception:
+                    pass
+                try:
+                    value = second()
+                    if value:
+                        return value
+                except Exception:
+                    pass
+                return None
+        ''')
+        self.assertEqual(findings, [])
+
+    def test_for_target_is_bound_before_reads_in_loop_body(self):
+        findings = self.scan_source('''
+            def f(items):
+                try:
+                    for item in items:
+                        consume(item)
+                except Exception:
+                    pass
+                for item in items:
+                    consume(item)
+        ''')
+        self.assertEqual(findings, [])
+
     def test_repository_inventory_is_exported(self):
         findings = audit.scan()
         output = Path("tmp/unbound-after-try-audit.json")
