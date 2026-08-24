@@ -8,7 +8,7 @@ Ce dépôt est le fork `fr4nck/Noethys`, consacré à la **modernisation progres
 
 Le projet d'origine et sa documentation fonctionnelle restent les références historiques pour Noethys. Ce fork ne cherche pas à effacer cette origine ni à imposer une réécriture ou un basculement vers NoethysWeb.
 
-## État du projet — 22 août 2026
+## État du projet — 24 août 2026
 
 Le chantier a dépassé la seule remise à niveau Python/wxPython. Il comporte maintenant deux axes complémentaires.
 
@@ -25,11 +25,12 @@ Les principales portes automatisées d'une première Release Candidate conservat
 - portable Windows PyInstaller `onedir` réellement exécuté en CI ;
 - mode historique `Portable/` qualifié ;
 - préflight lecture seule des bases existantes ;
+- inventaires statiques pré-RC SQL/wx/listes regroupés par `scripts/audit_pre_rc.py` ;
 - sas RC manuel protégé.
 
-La publication d'une RC validée reste volontairement bloquée jusqu'à une **recette humaine sur une copie d'une base réellement utilisée** et une validation visuelle/métier Windows du SHA candidat.
+La publication d'une RC validée reste volontairement bloquée jusqu'à une **recette humaine sur une copie d'une base réellement utilisée** et une validation visuelle/métier Windows du SHA candidat. Le suivi opérationnel de ce chemin critique est centralisé dans l'issue #19.
 
-### 2. Modernisation métier et UI en cours
+### 2. Modernisation métier et UI
 
 Le fork porte également désormais :
 
@@ -40,8 +41,10 @@ Le fork porte également désormais :
 - commandes de repas par points de livraison ;
 - chantier de rapports métier fiables et rapports d'activité ;
 - architecture tiers / conventions / mises à disposition / EPS ;
-- portail Connecthys avec contenus dynamiques, RSS/Atom et barèmes Noethys en cours de développement ;
-- expérimentation d'un registre minimal d'extensions optionnelles.
+- chantier Connecthys suivi de façon consolidée dans l'issue #62 ;
+- piste d'extensions optionnelles conservée comme architecture dormante, à rouvrir seulement lorsqu'un usage concret la justifie.
+
+Le socle UI transverse Repens est considéré comme consolidé : les travaux d'interface suivants partent d'un défaut concret de recette ou d'un besoin métier, pas d'un restylage générique.
 
 ## Principes du fork
 
