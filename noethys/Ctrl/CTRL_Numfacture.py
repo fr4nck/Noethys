@@ -23,9 +23,10 @@ class CTRL(wx.SearchCtrl):
     sa toolbar parente : le shell reste propriétaire de son alignement.
     """
 
-    def __init__(self, parent, size=wx.DefaultSize, IDfamille=None):
+    def __init__(self, parent, size=wx.DefaultSize, IDfamille=None, controller=None):
         wx.SearchCtrl.__init__(self, parent, size=size, style=wx.TE_PROCESS_ENTER)
         self.parent = parent
+        self.controller = controller
         self.IDfamille = IDfamille
         self.IDutilisateurActif = None
         self.SetDescriptiveText(_(u"N° de facture"))
@@ -149,7 +150,7 @@ class CTRL(wx.SearchCtrl):
             return
 
         if self.IDfamille is not None:
-            self.GetGrandParent().ReglerFacture()
+            self.controller.ReglerFacture(IDfacture)
         else:
             from Dlg import DLG_Famille
             dlg = DLG_Famille.Dialog(self, IDfamille=IDfamille, AfficherMessagesOuverture=False)
@@ -194,7 +195,7 @@ class Dialog(wx.Dialog):
 
         self.label = wx.StaticText(self, -1, _(u"Saisissez le numéro de la facture à régler ou scannez directement son code-barres."))
         Style.appliquer_texte(self.label, role="body", role_texte="on_surface", role_fond="surface")
-        self.ctrl_mdp = CTRL(self, IDfamille=self.IDfamille)
+        self.ctrl_mdp = CTRL(self, IDfamille=self.IDfamille, controller=parent)
         self.bouton_annuler = CTRL_Bouton_image.CTRL(self, id=wx.ID_CANCEL, texte=_(u"Annuler"), iconeFluent="dismiss")
 
         self.bouton_annuler.SetToolTip(wx.ToolTip(_(u"Annuler")))
