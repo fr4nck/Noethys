@@ -1,6 +1,6 @@
 # Documentation du fork Upgrade Noethys
 
-> Index documentaire consolidé au 22 août 2026.
+> Index documentaire consolidé au 24 août 2026.
 
 Ce dossier contient à la fois des **documents canoniques actuels** et des **documents historiques d'audit ou de décision**. L'objectif de cet index est d'éviter qu'un ancien document soit pris par erreur pour l'état courant du projet.
 
@@ -24,6 +24,7 @@ Ce dossier contient à la fois des **documents canoniques actuels** et des **doc
 ### Développement, distribution et recette
 
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) — **canonique** : runtime, tests, CI, bases, wxPython et packaging.
+- [`CI-WINDOWS-AUDIT.md`](CI-WINDOWS-AUDIT.md) — **canonique pour la qualification runtime/UI et la recette Windows** : CI consolidée, audits wxPython et parcours manuel post-Repens.
 - [`USER-GUIDE-UPGRADE.md`](USER-GUIDE-UPGRADE.md) — **canonique** : test/utilisation du fork et retour arrière.
 - [`RC-CHECKLIST.md`](RC-CHECKLIST.md) — **canonique pour le prochain gel RC**.
 - [`NOE-042-RC-READINESS.md`](NOE-042-RC-READINESS.md) — **état du sas RC** ; à lire avec `RC-CHECKLIST.md`.
@@ -34,7 +35,7 @@ Ce dossier contient à la fois des **documents canoniques actuels** et des **doc
 
 - [`DESIGN_SYSTEM_UI_UX.md`](DESIGN_SYSTEM_UI_UX.md) — **référence UI/UX canonique** : Fluent 2 + Material Design 3 + profondeur ciblée.
 - [`WXPYTHON_UI_RULES.md`](WXPYTHON_UI_RULES.md) — **référence d'implémentation canonique** : parentage, sizers, scaling, dark mode, debugging.
-- [`IMPLEMENTATION_ORDER.md`](IMPLEMENTATION_ORDER.md) — ordre de migration UI.
+- [`IMPLEMENTATION_ORDER.md`](IMPLEMENTATION_ORDER.md) — état de la modernisation UI et règle de poursuite après consolidation transverse.
 - [`DASHBOARD_MODERNISATION.md`](DASHBOARD_MODERNISATION.md) — cible du dashboard.
 
 ### Métier et architecture
@@ -47,7 +48,6 @@ Ce dossier contient à la fois des **documents canoniques actuels** et des **doc
 
 Ces fichiers restent utiles comme **preuve de décision**, inventaire ou historique technique, mais ils ne doivent pas remplacer les documents canoniques ci-dessus.
 
-- [`CI-WINDOWS-AUDIT.md`](CI-WINDOWS-AUDIT.md) — audit ayant posé la première CI Windows frugale.
 - [`INTERFACE_MATERIAL3.md`](INTERFACE_MATERIAL3.md) — première direction Material 3, désormais explicitement historique ; la référence actuelle est `DESIGN_SYSTEM_UI_UX.md`.
 - [`NOE-001-AUDIT-REPORT.md`](NOE-001-AUDIT-REPORT.md) — rapport d'audit runtime initial.
 - [`NOE-001-SQL-AUDIT.md`](NOE-001-SQL-AUDIT.md) — inventaire SQL initial.
@@ -66,7 +66,11 @@ En cas de contradiction :
 3. **documents canoniques** listés ci-dessus pour l'architecture et les décisions ;
 4. documents historiques pour comprendre pourquoi une décision a été prise.
 
-Une PR ouverte n'est pas un comportement intégré tant qu'elle n'est pas fusionnée.
+Une PR ouverte n'est pas un comportement intégré tant qu'elle n'est pas fusionnée. Une PR fermée non fusionnée reste uniquement une référence historique de conception ou de diff.
+
+## État courant des branches de travail
+
+Les anciennes PR de consolidation UI et les anciennes branches empilées des chantiers Noe-060/062/063 ont été fermées lorsqu'elles étaient devenues trop en retard sur `master`. Les besoins non terminés restent portés par leurs issues ; toute reprise doit reconstruire un lot ciblé depuis le `master` courant plutôt que ressusciter une branche obsolète.
 
 ## Règle d'entretien
 
