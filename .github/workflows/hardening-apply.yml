@@ -6,6 +6,7 @@ on:
       - hardening/global-anti-bugs
     paths:
       - 'scripts/apply_hardening_batch.py'
+      - 'scripts/apply_runtime_lookup_guards.py'
       - '.github/workflows/hardening-apply.yml'
 
 permissions:
@@ -31,6 +32,9 @@ jobs:
 
       - name: Appliquer le lot mécanique
         run: python scripts/apply_hardening_batch.py
+
+      - name: Appliquer les gardes runtime confirmées
+        run: python scripts/apply_runtime_lookup_guards.py
 
       - name: Vérifier la syntaxe
         run: python -m compileall -q -x 'C866CA3A' noethys/
