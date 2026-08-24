@@ -141,9 +141,10 @@ class CTRL_Produits(wx.TextCtrl):
 
 
 class PAGE_Criteres(wx.Panel):
-    def __init__(self, parent, IDdemande=None):
+    def __init__(self, parent, IDdemande=None, controller=None):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
         self.parent = parent
+        self.controller = controller
         self.IDdemande = IDdemande
 
         self.label_categories = wx.StaticText(self, -1, _(u"Catégories :"))
@@ -258,8 +259,9 @@ class PAGE_Criteres(wx.Panel):
 
         # Recherche les produits disponibles à proposer
         dictPropositions = UTILS_Locations.GetPropositionsLocations(dictFiltresSelection=dictFiltres, dictDemandeSelection=dictDemande, uniquement_disponibles=False)
-        texte = self.GetGrandParent().ctrl_statut.GetPageByCode("attente").ctrl_propositions.SetDictPropositions(dictPropositions, IDdemande=self.IDdemande)
-        self.GetGrandParent().ctrl_statut.GetPageByCode("attente").label_propositions.SetLabel(texte)
+        page_attente = self.controller.ctrl_statut.GetPageByCode("attente")
+        texte = page_attente.ctrl_propositions.SetDictPropositions(dictPropositions, IDdemande=self.IDdemande)
+        page_attente.label_propositions.SetLabel(texte)
 
 
 
@@ -283,12 +285,12 @@ class PAGE_Questionnaire(wx.Panel):
 
 
 class Notebook(wx.Notebook):
-    def __init__(self, parent, IDdemande=None):
+    def __init__(self, parent, IDdemande=None, controller=None):
         wx.Notebook.__init__(self, parent, id=-1, style=wx.BK_DEFAULT)
         self.dictPages = {}
 
         self.listePages = [
-            ("criteres", _(u"Critères"), PAGE_Criteres(self, IDdemande=IDdemande)),
+            ("criteres", _(u"Critères"), PAGE_Criteres(self, IDdemande=IDdemande, controller=controller)),
             ("questionnaire", _(u"Questionnaire"), PAGE_Questionnaire(self, IDdemande=IDdemande)),
         ]
 
@@ -325,9 +327,10 @@ class Notebook(wx.Notebook):
 # ---------------------------------------------------------------------------------------------
 
 class PAGE_Statut_attente(wx.Panel):
-    def __init__(self, parent):
+    def __init__(self, parent, controller=None):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
         self.parent = parent
+        self.controller = controller
 
         # Propositions
         self.label_propositions = wx.StaticText(self, -1, _(u"Produits proposés :"))
@@ -373,7 +376,7 @@ class PAGE_Statut_attente(wx.Panel):
 
     def OnRadioProduits(self, event=None):
         self.ctrl_propositions.afficher_uniquement_disponibles = self.radio_produits_disponibles.GetValue()
-        self.GetGrandParent().notebook.GetPage("criteres").MAJListePropositions()
+        self.controller.notebook.GetPage("criteres").MAJListePropositions()
 
     def Validation(self):
         return True
@@ -387,7 +390,7 @@ class PAGE_Statut_attente(wx.Panel):
             return
 
         # Création d'une location
-        self.GetGrandParent().Attribution(IDproduit)
+        self.controller.Attribution(IDproduit)
 
 
 class PAGE_Statut_refusee(wx.Panel):
@@ -548,13 +551,13 @@ class PAGE_Statut_attribuee(wx.Panel):
 
 class CTRL_Statut(wx.Choicebook):
     """ Choicebook Statut """
-    def __init__(self, parent):
+    def __init__(self, parent, controller=None):
         wx.Choicebook.__init__(self, parent, id=-1)
         self.parent = parent
         self.SetToolTip(wx.ToolTip(_(u"Sélectionnez ici le statut de la demande")))
 
         self.listePanels = [
-            ("attente", _(u"En attente"), PAGE_Statut_attente(self)),
+            ("attente", _(u"En attente"), PAGE_Statut_attente(self, controller=controller)),
             ("refusee", _(u"Demande refusée"), PAGE_Statut_refusee(self)),
             #("attribuee", _(u"Demande satisfaite"), PAGE_Statut_attribuee(self)),
         ]
@@ -621,11 +624,11 @@ class Dialog(wx.Dialog):
         self.ctrl_observations = wx.TextCtrl(self, -1, u"", style=wx.TE_MULTILINE)
 
         # Notebook
-        self.notebook = Notebook(self, IDdemande=IDdemande)
+        self.notebook = Notebook(self, IDdemande=IDdemande, controller=self)
 
         # Statut
         self.staticbox_statut_staticbox = wx.StaticBox(self, -1, _(u"Statut"))
-        self.ctrl_statut = CTRL_Statut(self)
+        self.ctrl_statut = CTRL_Statut(self, controller=self)
         self.ctrl_statut.SetMinSize((50, 100))
 
         # Attribution
@@ -796,8 +799,9 @@ class Dialog(wx.Dialog):
 
             dlg = wx.SingleChoiceDialog(self, _(u"Sélectionnez la donnée qui vous intéresse :"), _(u"Sélection d'une donnée"), liste_labels, wx.CHOICEDLG_STYLE)
             if dlg.ShowModal() == wx.ID_OK:
+                selection = dlg.GetSelection()
                 dlg.Destroy()
-                donnees = liste_donnees[dlg.GetSelection()]
+                donnees = liste_donnees[selection]
                 if donnees[0] == "categories" :
                     IDcategorie = donnees[1]
                 if donnees[0] == "produits" :
