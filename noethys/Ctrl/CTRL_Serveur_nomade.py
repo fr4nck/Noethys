@@ -237,6 +237,10 @@ def StartServer(log=None):
         print(("Erreur lancement serveur Nomadhys :", err))
         log.EcritLog(_(u"Erreur dans le lancement du serveur Nomadhys [factory] :") )
         log.EcritLog(err)
+        # Sans socket d'écoute il ne faut ni annoncer un serveur prêt ni
+        # démarrer le reactor. Cela évite aussi de lire ``port`` avant son
+        # affectation si la préparation échoue plus tôt.
+        return
 
     try :
         # IP locale
