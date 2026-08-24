@@ -11,6 +11,7 @@ from scripts import audit_runtime_patterns as audit
 class RuntimeZeroDebtTests(unittest.TestCase):
     ZERO_DEBT = (
         "DB_UNCLOSED",
+        "BARE_EXCEPT",
         "PY2_BUILTINS",
         "UNSAFE_EXEC",
         "INVALID_ESCAPE",
