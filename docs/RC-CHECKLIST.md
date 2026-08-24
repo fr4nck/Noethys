@@ -8,13 +8,15 @@ Cette checklist sépare les garanties automatisées des vérifications qui néce
 
 ## Lecture rapide : un seul chemin critique
 
-Le suivi pré-RC est centralisé dans **l'issue #19 (Noe-042)**. Les anciens lots SQL déjà implémentés **#5 / Noe-002** et **#6 / Noe-003** sont clos ; leurs vérifications réelles sont intégrées au parcours Noe-030.
+Le suivi pré-RC est centralisé dans **l'issue #19 (Noe-042)**. Les anciens lots techniques **#5 / Noe-002**, **#6 / Noe-003**, **#7 / Noe-004** et **#14 / Noe-030** sont clos comme lots d'implémentation/outillage ; leurs vérifications réelles sont intégrées au cockpit #19.
 
-Avant de figer le SHA candidat, relire également les inventaires statiques sur le `master` courant :
+Avant de figer le SHA candidat, relire les inventaires statiques sur le `master` courant avec une seule commande :
 
-- `python scripts/audit_sql_strict.py --root noethys --format text --only review` ;
-- `python scripts/audit_wx_lifecycle.py` ;
-- `python scripts/audit_legacy_list_tools.py --root noethys`.
+```bash
+python scripts/audit_pre_rc.py
+```
+
+Elle regroupe l'audit SQL strict, l'audit du cycle de vie/parentage wxPython et l'inventaire des anciens outils de listes. Les rapports sont écrits dans `tmp/pre-rc-audits/`.
 
 Ces audits servent à **localiser** les zones à examiner. Ils ne doivent jamais déclencher une correction mécanique sans cause démontrée.
 
@@ -37,24 +39,26 @@ Ces audits servent à **localiser** les zones à examiner. Ils ne doivent jamais
 - smoke tests représentatifs Windows, macOS et Linux/GTK3 ;
 - tests de contrat UI/DB ajoutés au fil des corrections lorsqu'ils sont automatisables ;
 - socle transverse Repens des listes/ObjectListView, grilles, outils de liste, navigation et états vides ;
-- CI rapide unifiée sur PR/push, qualification multi-OS et packaging réservés au mode manuel `complete`.
+- CI rapide unifiée sur PR/push, qualification multi-OS et packaging réservés au mode manuel `complete` ;
+- agrégateur d'inventaires pré-RC fusionné via PR #81.
 
 ## Avant de déclarer une RC validée
 
 1. choisir un SHA candidat sur `master` ;
-2. lancer `CI Noethys` en mode `complete` pour ce SHA ;
-3. utiliser l'artefact construit depuis **ce même SHA** ;
-4. vérifier `BUILD-INFO.txt` ;
-5. conserver une sauvegarde indépendante et une copie de recette ;
-6. exécuter `scripts/rc_db_preflight.py` sur la copie avant ouverture ;
-7. lancer `Noethys.exe` manuellement ;
-8. vérifier l'accueil et l'absence de ressource/module manquant ;
-9. exécuter la recette métier complète ;
-10. effectuer la recette visuelle Windows ;
-11. fermer/réouvrir l'application ;
-12. exécuter le contrôle final de schéma/empreinte ;
-13. corriger tout défaut bloquant puis recommencer sur un nouvel artefact si le SHA change ;
-14. seulement ensuite déclencher le workflow `Release Candidate` et relire la release brouillon.
+2. exécuter `python scripts/audit_pre_rc.py` et relire les rapports ;
+3. lancer `CI Noethys` en mode `complete` pour ce SHA ;
+4. utiliser l'artefact construit depuis **ce même SHA** ;
+5. vérifier `BUILD-INFO.txt` ;
+6. conserver une sauvegarde indépendante et une copie de recette ;
+7. exécuter `scripts/rc_db_preflight.py` sur la copie avant ouverture ;
+8. lancer `Noethys.exe` manuellement ;
+9. vérifier l'accueil et l'absence de ressource/module manquant ;
+10. exécuter la recette métier complète ;
+11. effectuer la recette visuelle Windows ;
+12. fermer/réouvrir l'application ;
+13. exécuter le contrôle final de schéma/empreinte ;
+14. corriger tout défaut bloquant puis recommencer sur un nouvel artefact si le SHA change ;
+15. seulement ensuite déclencher le workflow `Release Candidate` et relire la release brouillon.
 
 ## Recette métier minimale historique
 
@@ -158,8 +162,9 @@ Les chantiers suivants restent suivis, mais ne bloquent pas la première RC tant
 - **Noe-005 / #40** — dette SQL progressive ;
 - **Noe-060 / 061** — #51, #54, #55, #56, #57, #58, #59 ;
 - **Noe-062** — #60 ;
-- **Noe-063** — #62, #65, #67 ;
-- **extensions optionnelles** — #80.
+- **Noe-063** — #62.
+
+Les sous-issues portail #65 et #67 sont closes après consolidation dans #62. L'issue #80 « extensions optionnelles » est close comme **non planifiée** tant qu'aucun premier consommateur concret ne justifie de rouvrir ce chantier.
 
 Les anciennes PR de ces chantiers sont des références historiques de conception. Toute reprise doit repartir du `master` courant.
 
