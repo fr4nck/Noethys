@@ -1,0 +1,54 @@
+name: Apply hardening batch
+
+on:
+  push:
+    branches:
+      - hardening/global-anti-bugs
+    paths:
+      - 'scripts/apply_hardening_batch.py'
+      - '.github/workflows/hardening-apply.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hardening-apply-global
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: hardening/global-anti-bugs
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+
+      - name: Appliquer le lot mécanique
+        run: python scripts/apply_hardening_batch.py
+
+      - name: Vérifier la syntaxe
+        run: python -m compileall -q -x 'C866CA3A' noethys/
+
+      - name: Vérifier les contrats sans dépendance GUI
+        env:
+          PYTHONPATH: ${{ github.workspace }}/noethys:${{ github.workspace }}
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+
+      - name: Committer uniquement les corrections générées
+        shell: bash
+        run: |
+          if git diff --quiet -- noethys; then
+            echo 'Aucune correction source à committer.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add noethys
+          git commit -m 'Hardening: appliquer le lot global de corrections sûres'
+          git push origin HEAD:hardening/global-anti-bugs
