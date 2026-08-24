@@ -620,7 +620,7 @@ class Dialog(wx.Dialog):
         self.ctrl_date_demande = CTRL_Saisie_date.Date2(self)
         self.ctrl_heure_demande = CTRL_Saisie_heure.Heure(self)
 
-        self.label_observations = wx.StaticText(self, -1, u"Notes :", style=wx.ALIGN_RIGHT)
+        self.label_observations = wx.StaticText(self, -1, _(u"Notes :"))
         self.ctrl_observations = wx.TextCtrl(self, -1, u"", style=wx.TE_MULTILINE)
 
         # Notebook
