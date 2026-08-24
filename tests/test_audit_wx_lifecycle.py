@@ -149,6 +149,34 @@ def ouvrir(ok):
         findings = audit._scan_use_after_destroy(self._path(), tree, source.splitlines())
         self.assertEqual(findings, [])
 
+    def test_reusing_same_variable_name_in_nested_branch_is_not_old_object_use(self):
+        source = '''
+def ouvrir(mode):
+    dlg = Fabrique()
+    dlg.Destroy()
+    if mode == "creation":
+        dlg = Fabrique()
+        dlg.ShowModal()
+        dlg.Destroy()
+'''
+        tree = ast.parse(source)
+        findings = audit._scan_use_after_destroy(self._path(), tree, source.splitlines())
+        self.assertEqual(findings, [])
+
+    def test_direct_use_in_if_condition_after_destroy_is_reported(self):
+        source = '''
+def ouvrir():
+    dlg = Fabrique()
+    dlg.Destroy()
+    if dlg.GetSelection() == 0:
+        return
+'''
+        tree = ast.parse(source)
+        findings = audit._scan_use_after_destroy(self._path(), tree, source.splitlines())
+        risky = [item for item in findings if item["kind"] == "use_after_destroy"]
+        self.assertEqual(len(risky), 1)
+        self.assertEqual(risky[0]["member"], "dlg")
+
     def test_self_attribute_used_after_destroy_is_reported(self):
         source = '''
 class Dialog(wx.Dialog):
