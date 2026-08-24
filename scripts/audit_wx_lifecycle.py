@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Audit statique des contrats de construction wxPython.
+"""Audit statique des contrats de construction et de cycle de vie wxPython.
 
 Objectif : repérer les contrôles qui confondent encore leur parent visuel wx
-avec un contrôleur métier, ainsi que les callbacks exécutés trop tôt pendant
-``__init__``. L'audit reste informatif pour les familles historiques larges,
-mais distingue désormais des signaux structurels plus précis avant de rendre
-une catégorie bloquante.
+avec un contrôleur métier, les callbacks exécutés trop tôt pendant ``__init__``
+et les accès directs à un objet wx local après son ``Destroy()``. L'audit reste
+informatif pour les familles historiques larges, mais distingue des signaux
+structurels précis avant de rendre une catégorie bloquante.
 """
 
 from __future__ import annotations
@@ -38,6 +38,7 @@ EARLY_SELF_CALLS = {
     "MAJ", "Actualise", "Actualiser", "Importation", "Refresh", "Update",
 }
 LAYOUT_MARKERS = {"__do_layout", "DoLayout", "Layout", "SetSizer", "SetSizerAndFit"}
+TERMINAL_STATEMENTS = (ast.Return, ast.Raise, ast.Break, ast.Continue)
 
 
 def _ui_file(path: Path) -> bool:
@@ -275,6 +276,151 @@ def _scan_constructor_order(path: Path, tree: ast.AST, lines: list[str]) -> list
     return findings
 
 
+def _target_key(node: ast.AST) -> str | None:
+    """Retourne une cible locale simple suivie par l'audit de destruction."""
+    if isinstance(node, ast.Name):
+        return node.id
+    if (
+        isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "self"
+    ):
+        return "self.%s" % node.attr
+    return None
+
+
+def _runtime_nodes(node: ast.AST):
+    """Parcourt seulement l'expression exécutée par l'instruction courante.
+
+    Les sous-blocs ``if``/``try``/``for`` sont analysés séparément par
+    ``_scan_destroy_block``. Ne pas y descendre ici évite qu'une réutilisation
+    légitime du nom ``dlg`` dans une branche soit attribuée au ``Destroy()`` du
+    bloc extérieur.
+    """
+    for child in ast.iter_child_nodes(node):
+        if isinstance(child, ast.stmt) or isinstance(child, ast.Lambda):
+            continue
+        yield child
+        yield from _runtime_nodes(child)
+
+
+def _loaded_targets(statement: ast.stmt) -> set[str]:
+    loaded: set[str] = set()
+    for node in _runtime_nodes(statement):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+            loaded.add(node.id)
+        elif isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Load):
+            key = _target_key(node)
+            if key:
+                loaded.add(key)
+    return loaded
+
+
+def _assigned_targets(statement: ast.stmt) -> set[str]:
+    assigned: set[str] = set()
+    for node in _runtime_nodes(statement):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
+            assigned.add(node.id)
+        elif isinstance(node, ast.Attribute) and isinstance(node.ctx, (ast.Store, ast.Del)):
+            key = _target_key(node)
+            if key:
+                assigned.add(key)
+    return assigned
+
+
+def _direct_destroy_target(statement: ast.stmt) -> str | None:
+    """Reconnaît uniquement ``objet.Destroy()`` exécuté sans condition."""
+    if not isinstance(statement, ast.Expr) or not isinstance(statement.value, ast.Call):
+        return None
+    call = statement.value
+    if not isinstance(call.func, ast.Attribute) or call.func.attr != "Destroy":
+        return None
+    return _target_key(call.func.value)
+
+
+def _nested_statement_blocks(statement: ast.stmt):
+    """Renvoie les blocs exécutables internes, chacun analysé indépendamment."""
+    for attr in ("body", "orelse", "finalbody"):
+        block = getattr(statement, attr, None)
+        if isinstance(block, list) and block:
+            yield block
+    handlers = getattr(statement, "handlers", None)
+    if handlers:
+        for handler in handlers:
+            if handler.body:
+                yield handler.body
+    cases = getattr(statement, "cases", None)
+    if cases:
+        for case in cases:
+            if case.body:
+                yield case.body
+
+
+def _scan_destroy_block(
+    path: Path,
+    statements: list[ast.stmt],
+    lines: list[str],
+    class_name: str,
+    method_name: str,
+) -> list[dict]:
+    findings: list[dict] = []
+    rel = str(path.relative_to(ROOT)).replace("\\", "/")
+    destroyed: dict[str, int] = {}
+
+    for statement in statements:
+        # Un usage dans une instruction ultérieure au Destroy est risqué. On
+        # inspecte avant de considérer les réaffectations de cette instruction,
+        # afin de ne pas masquer ``dlg = transformer(dlg)``.
+        for target in sorted(_loaded_targets(statement).intersection(destroyed)):
+            findings.append({
+                "kind": "use_after_destroy",
+                "file": rel,
+                "class": class_name,
+                "method": method_name,
+                "line": statement.lineno,
+                "member": target,
+                "destroy_line": destroyed[target],
+                "snippet": _line(lines, statement.lineno),
+            })
+
+        # Les branches sont analysées dans leur propre ordre séquentiel. Un
+        # Destroy conditionnel ne contamine donc pas artificiellement le bloc
+        # parent.
+        for block in _nested_statement_blocks(statement):
+            findings.extend(
+                _scan_destroy_block(path, block, lines, class_name, method_name)
+            )
+
+        for target in _assigned_targets(statement):
+            destroyed.pop(target, None)
+
+        target = _direct_destroy_target(statement)
+        if target:
+            destroyed[target] = statement.lineno
+
+        # Rien situé après un terminal direct du bloc n'est atteignable depuis
+        # ce chemin ; inutile de propager l'état de destruction.
+        if isinstance(statement, TERMINAL_STATEMENTS):
+            break
+
+    return findings
+
+
+def _scan_use_after_destroy(path: Path, tree: ast.AST, lines: list[str]) -> list[dict]:
+    """Détecte le motif Phoenix ``Destroy()`` puis réutilisation du même objet."""
+    findings: list[dict] = []
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            findings.extend(_scan_destroy_block(path, node.body, lines, "", node.name))
+        elif isinstance(node, ast.ClassDef):
+            for method in node.body:
+                if isinstance(method, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    findings.extend(
+                        _scan_destroy_block(path, method.body, lines, node.name, method.name)
+                    )
+    return findings
+
+
 def _dedupe(findings: list[dict]) -> list[dict]:
     result: list[dict] = []
     seen: set[tuple] = set()
@@ -303,6 +449,7 @@ def scan() -> list[dict]:
         lines = text.splitlines()
         findings.extend(_scan_parent_coupling(path, tree, lines))
         findings.extend(_scan_constructor_order(path, tree, lines))
+        findings.extend(_scan_use_after_destroy(path, tree, lines))
     return _dedupe(findings)
 
 
@@ -320,6 +467,7 @@ def main() -> int:
         "constructor_callback_before_layout",
         "constructor_callback_before_dependency",
         "constructor_parent_callback",
+        "use_after_destroy",
     }
 
     print("Audit contrats wxPython")
@@ -338,6 +486,8 @@ def main() -> int:
         detail = ""
         if item.get("dependencies"):
             detail = " dépend de " + ", ".join(item["dependencies"])
+        if item.get("destroy_line"):
+            detail += " détruit ligne %s" % item["destroy_line"]
         print(
             "  {kind}  {file}:{line}  {class}.{method} -> {member}{detail}  {snippet}".format(
                 detail=detail, **item

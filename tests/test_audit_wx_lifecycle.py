@@ -97,6 +97,99 @@ class Page(wx.Panel):
         self.assertEqual(len(ancestry), 1)
         self.assertEqual(ancestry[0]["member"], "ctrl_famille")
 
+    def test_local_object_used_after_destroy_is_reported(self):
+        source = '''
+class Dialog(wx.Dialog):
+    def OnChoice(self):
+        dlg = wx.SingleChoiceDialog(self, "x", "y", [])
+        if dlg.ShowModal() == wx.ID_OK:
+            dlg.Destroy()
+            selection = dlg.GetSelection()
+'''
+        tree = ast.parse(source)
+        findings = audit._scan_use_after_destroy(self._path(), tree, source.splitlines())
+        risky = [item for item in findings if item["kind"] == "use_after_destroy"]
+        self.assertEqual(len(risky), 1)
+        self.assertEqual(risky[0]["member"], "dlg")
+        self.assertEqual(risky[0]["destroy_line"], 6)
+
+    def test_return_after_destroy_does_not_create_false_positive(self):
+        source = '''
+def ouvrir():
+    dlg = Fabrique()
+    dlg.Destroy()
+    return
+    dlg.GetSelection()
+'''
+        tree = ast.parse(source)
+        findings = audit._scan_use_after_destroy(self._path(), tree, source.splitlines())
+        self.assertEqual(findings, [])
+
+    def test_reassignment_after_destroy_resets_tracking(self):
+        source = '''
+def ouvrir():
+    dlg = Fabrique()
+    dlg.Destroy()
+    dlg = Fabrique()
+    return dlg.GetSelection()
+'''
+        tree = ast.parse(source)
+        findings = audit._scan_use_after_destroy(self._path(), tree, source.splitlines())
+        self.assertEqual(findings, [])
+
+    def test_destroy_in_one_branch_does_not_poison_parent_block(self):
+        source = '''
+def ouvrir(ok):
+    dlg = Fabrique()
+    if ok:
+        dlg.Destroy()
+    return dlg.GetSelection()
+'''
+        tree = ast.parse(source)
+        findings = audit._scan_use_after_destroy(self._path(), tree, source.splitlines())
+        self.assertEqual(findings, [])
+
+    def test_reusing_same_variable_name_in_nested_branch_is_not_old_object_use(self):
+        source = '''
+def ouvrir(mode):
+    dlg = Fabrique()
+    dlg.Destroy()
+    if mode == "creation":
+        dlg = Fabrique()
+        dlg.ShowModal()
+        dlg.Destroy()
+'''
+        tree = ast.parse(source)
+        findings = audit._scan_use_after_destroy(self._path(), tree, source.splitlines())
+        self.assertEqual(findings, [])
+
+    def test_direct_use_in_if_condition_after_destroy_is_reported(self):
+        source = '''
+def ouvrir():
+    dlg = Fabrique()
+    dlg.Destroy()
+    if dlg.GetSelection() == 0:
+        return
+'''
+        tree = ast.parse(source)
+        findings = audit._scan_use_after_destroy(self._path(), tree, source.splitlines())
+        risky = [item for item in findings if item["kind"] == "use_after_destroy"]
+        self.assertEqual(len(risky), 1)
+        self.assertEqual(risky[0]["member"], "dlg")
+
+    def test_self_attribute_used_after_destroy_is_reported(self):
+        source = '''
+class Dialog(wx.Dialog):
+    def fermer(self):
+        self.popup.Destroy()
+        self.popup.Layout()
+'''
+        tree = ast.parse(source)
+        findings = audit._scan_use_after_destroy(self._path(), tree, source.splitlines())
+        risky = [item for item in findings if item["kind"] == "use_after_destroy"]
+        self.assertEqual(len(risky), 1)
+        self.assertEqual(risky[0]["member"], "self.popup")
+
 
 if __name__ == "__main__":
     unittest.main()
