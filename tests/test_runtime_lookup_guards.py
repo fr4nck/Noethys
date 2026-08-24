@@ -41,6 +41,20 @@ class RuntimeLookupGuardTests(unittest.TestCase):
         self.assertIn(marker, source)
         self.assertIn("return {}", source[source.index(marker):source.index(marker) + 180])
 
+    def test_avatar_query_failure_has_an_empty_fallback(self):
+        source = self.source("Utils/UTILS_Utilisateurs.py")
+        marker = "# chargement avatars"
+        section = source[source.index(marker):source.index("dictAvatars = {}", source.index(marker))]
+        self.assertIn("listeAvatars = []", section)
+
+    def test_nomadhys_aborts_before_ready_state_when_listen_setup_fails(self):
+        source = self.source("Ctrl/CTRL_Serveur_nomade.py")
+        start = source.index("def StartServer")
+        ready = source.index("Serveur prêt sur le port", start)
+        section = source[start:ready]
+        failure = section.index("Erreur dans le lancement du serveur Nomadhys [factory]")
+        self.assertIn("return", section[failure:])
+
 
 if __name__ == "__main__":
     unittest.main()
