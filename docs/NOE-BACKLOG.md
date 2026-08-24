@@ -27,7 +27,7 @@ Le **cockpit pré-RC est l'issue #19 (Noe-042)**. Elle rassemble les dernières 
 - relancer la qualification si le SHA change ;
 - déclencher ensuite le workflow Release Candidate et relire la release brouillon.
 
-Les issues techniques historiques **#5 (Noe-002)** et **#6 (Noe-003)** sont closes : leur code est terminé et leur validation réelle fait désormais partie de Noe-030 / #19. **#7 (Noe-004)** reste ouverte uniquement pour les mesures d'index sur copie réelle. **#40 (Noe-005)** reste une dette SQL progressive et non un blocage générique de RC.
+Les lots techniques historiques **#5 (Noe-002)**, **#6 (Noe-003)**, **#7 (Noe-004)** et **#14 (Noe-030)** sont clos comme lots d'implémentation/outillage. Leurs opérations de qualification sur copie réelle sont désormais suivies dans **#19**. **#40 (Noe-005)** reste une dette SQL progressive et non un blocage générique de RC.
 
 Avant de figer un SHA candidat, les inventaires statiques doivent être relus sur le `master` courant (`audit_sql_strict.py`, `audit_wx_lifecycle.py`, `audit_legacy_list_tools.py`) afin de ne pas baser une décision sur des chiffres anciens. Une occurrence d'audit n'est corrigée que si sa sémantique ou son risque concret est établi.
 
@@ -49,12 +49,12 @@ Le socle Repens a été consolidé via PR #78. Il n'existe plus de backlog gén�
 ## Noe-000 — SQL / base de données
 
 - **Noe-001 — Audit SQL strict complet** — terminé.
-- **Noe-002 — Réécriture OL_Reglements SQL strict** — code terminé ; issue #5 fermée ; validation réelle intégrée à Noe-030.
-- **Noe-003 — Nettoyage DLG_Export_compta** — code terminé ; issue #6 fermée ; validation réelle intégrée à Noe-030.
-- **Noe-004 — Audit index base de données** — outillage terminé ; mesures sur copie réelle restantes. Issue #7.
+- **Noe-002 — Réécriture OL_Reglements SQL strict** — code terminé ; issue #5 fermée ; validation réelle intégrée au cockpit #19.
+- **Noe-003 — Nettoyage DLG_Export_compta** — code terminé ; issue #6 fermée ; validation réelle intégrée au cockpit #19.
+- **Noe-004 — Audit index base de données** — outillage terminé ; issue #7 fermée ; mesures sur copie réelle intégrées au cockpit #19.
 - **Noe-005 — Reliquat SQL strict détecté par l'audit complet** — dette progressive, issue #40.
 
-Le préflight `scripts/rc_db_preflight.py` regroupe les contrôles encore nécessaires pour Noe-002, Noe-003, Noe-004 et Noe-030.
+Le préflight `scripts/rc_db_preflight.py` regroupe les contrôles Noe-002, Noe-003, Noe-004 et Noe-030 nécessaires à la qualification réelle suivie dans #19.
 
 ## Noe-010 — Runtime Python
 
@@ -74,7 +74,7 @@ Les travaux UI plus récents ne rouvrent pas ces tickets historiques : les règl
 
 ## Noe-030 — Tests et exploitation
 
-- **Noe-030 — Scénario de recette base existante** — outillage terminé ; recette sur copie réelle restante. Issue #14.
+- **Noe-030 — Scénario de recette base existante** — outillage et procédure terminés ; issue #14 fermée ; exécution réelle du prochain SHA suivie dans #19.
 - **Noe-031 — Tests non-régression métier** — terminé.
 - **Noe-032 — Audit sauvegarde/restauration** — terminé.
 
