@@ -334,10 +334,9 @@ class Traitement(Thread):
 
     def run(self):
         nbre_tracks = len(self.parent.listeTracks)
+        listeAnomalies = []
 
-        try: 
-            
-            listeAnomalies = []
+        try:
             for track in self.parent.listeTracks :
                 if self.stop:
                     raise Abort
@@ -348,7 +347,6 @@ class Traitement(Thread):
                 self.parent.ctrl_gauge.SetValue(self.index+1)
 
                 if track.anomalie != False :
-                    texte = track.detail + u" -> " + resultat
                     self.parent.parent.EcritLog(track.anomalie)
                     self.parent.parent.SetStatut(track, "erreur")
                     listeAnomalies.append(track.anomalie)
@@ -397,7 +395,7 @@ class Traitement(Thread):
                         req = """SELECT IDmemo, IDindividu, date, texte FROM memo_journee WHERE IDindividu=%d AND date='%s';""" % (track.IDindividu, track.date)
                         DB.ExecuterReq(req)
                         listeMemos = DB.ResultatReq()
-                        if len(listeMemos) > 1 :
+                        if len(listeMemos) > 0 :
                             IDmemo = listeMemos[0][0]
                         else :
                             IDmemo = None
@@ -526,7 +524,7 @@ class Dialog_Traitement(wx.Dialog):
     def Fermer(self, forcer=False):
         # On vérifie si le thread n'a jamais été lancé avant :
         try:
-            TraitmentEnCours = self.traitement.isAlive()
+            TraitmentEnCours = self.traitement.is_alive()
         except AttributeError :
             TraitmentEnCours = False
             
