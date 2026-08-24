@@ -1,6 +1,6 @@
 # Backlog Noe-xxx
 
-> État consolidé au 22 août 2026.
+> État consolidé au 24 août 2026.
 
 Ce document associe les séries Noe-xxx aux chantiers GitHub. Les **issues GitHub restent la source de suivi opérationnelle** ; ce fichier sert d'index lisible et de vue d'ensemble.
 
@@ -56,28 +56,35 @@ La recette finale doit être exécutée sur le SHA réellement candidat à la RC
 - **Noe-051 — Documentation utilisateur** — socle terminé ; entretien continu.
 - **Noe-052 — Historique Upgrade Noethys** — consolidation terminée. Issue #22, conservée comme index historique.
 
-Depuis le 22 août, la mémoire transversale est également portée par :
+La mémoire transversale est notamment portée par :
 
 - `PROJECT_STATE.md` ;
 - `DESIGN_SYSTEM_UI_UX.md` ;
 - `WXPYTHON_UI_RULES.md` ;
+- `CI-WINDOWS-AUDIT.md` ;
 - `ARCHITECTURE-TIERS-PRESTATIONS-PLANNING.md` ;
 - `COMMANDES_REPAS_POINTS_LIVRAISON.md`.
 
-## UI/UX transversal — socle intégré
+## UI/UX transversal — socle consolidé
 
 Ce chantier n'est pas renuméroté artificiellement dans la série Noe tant que les issues existantes ne le font pas.
 
-Éléments déjà intégrés :
+Éléments intégrés :
 
 - échelle générale et apparence Système / Clair / Sombre ;
 - design system et tokens sémantiques ;
-- règles de composants communs ;
-- diagnostic performance/freeze ;
+- instrumentation performance/freeze ;
 - direction Fluent 2 + Material 3 ;
-- règles de parentage/sizers wxPython.
+- règles de parentage/sizers wxPython ;
+- `ObjectListView` / `ListCtrl` et `wx.Grid` raccordés aux règles Repens ;
+- outils communs de recherche / filtrage / cochage ;
+- navigation commune AUI / Notebook / Choicebook / Listbook / Treebook ;
+- états vides ObjectListView sous Phoenix ;
+- tests de contrat UI associés.
 
-Références principales : PR #47, PR #49, PR #50 et documentation canonique UI/UX.
+La consolidation transverse a été fusionnée via PR #78. Les anciennes PR empilées #73/#74/#75 ont été fermées sans fusion après reconstruction propre sur `master`.
+
+La suite UI n'est plus un backlog générique de restylage : elle part d'un défaut concret observé en recette Windows ou d'un besoin métier explicite.
 
 ## Commandes de repas — lot intégré
 
@@ -101,21 +108,20 @@ Découpage :
 
 - **Noe-060A — Référentiel des indicateurs et moteur de calcul partagé** — issue #54, ouverte ;
 - **Noe-060B — Communes partenaires ALSH : pilotage, convention et états** — issue #55, ouverte ;
-- **Noe-060C — Communes homonymes et codes postaux** — issue #53, ouverte ;
+- **Noe-060C — Communes homonymes et codes postaux** — issue #53, **terminée et fermée** ;
 - **Noe-060D — Exports et rapports issus du même jeu de données** — issue #56, ouverte ;
 - **Noe-060E — Résidence datée et règles territoriales historisées** — issue #57, ouverte ;
 - **Noe-060F — Annulations, absences et historique compact** — issue #58, ouverte.
 
-Ordre recommandé :
+Ordre recommandé désormais :
 
-1. sécuriser l'identité des communes ;
-2. définir les indicateurs canoniques ;
-3. fiabiliser résidence et règles territoriales datées ;
-4. construire la vue communes partenaires ;
-5. ajouter l'historique compact annulations/absences ;
-6. brancher exports et PDF sur le même résultat.
+1. définir les indicateurs canoniques ;
+2. fiabiliser résidence et règles territoriales datées ;
+3. construire la vue communes partenaires ;
+4. ajouter l'historique compact annulations/absences ;
+5. brancher exports et PDF sur le même résultat.
 
-Une PR de chantier existe sous #52 ; elle reste une branche de construction et ne remplace pas les issues comme source de suivi.
+L'ancienne PR de chantier #52 a été fermée : elle ne contenait qu'un cadrage documentaire et était trop en retard sur `master`. Le travail restant est porté par les issues et doit repartir du `master` courant.
 
 ## Noe-061 — Pilotage annuel et rapports d'activité
 
@@ -135,11 +141,11 @@ Dépend principalement de Noe-060A et Noe-060D. Les rapports PMSL existants serv
 
 ## Noe-062 — Conventions et mises à disposition
 
-**Issue #60 — ouverte. PR de construction #61 en draft.**
+**Issue #60 — ouverte.**
 
 Objectif : ajouter les structures et relations contractuelles sans créer un second moteur parallèle de planning, facturation ou documents.
 
-Lots actuellement décrits/construits :
+Lots conçus dans l'ancienne branche de travail :
 
 - socle convention / avenant ;
 - structures et contacts ;
@@ -158,6 +164,8 @@ Règles :
 - aucune migration destructive ;
 - le stockage persistant ne doit être introduit qu'après cartographie et validation sur copie réelle.
 
+La PR #61 a été fermée sans fusion car sa branche était devenue trop en retard sur `master`. Elle reste une référence de conception ; les futurs lots devront être reconstruits proprement sur le `master` courant.
+
 Référence : `ARCHITECTURE-TIERS-PRESTATIONS-PLANNING.md`.
 
 ## Noe-063 — Portail Connecthys : contenus dynamiques et source unique
@@ -168,10 +176,10 @@ Objectif : publier dans Connecthys des contenus et données maintenus dans Noeth
 
 Sous-chantiers :
 
-- **Noe-063 — Contenus externes** — socle développé dans PR #63 ;
-- **Noe-063B — RSS / Atom natif** — issue #65, ouverte ; PR #66 en draft ;
-- **Noe-063C — Barèmes Noethys / Mes tarifs** — issue #67, ouverte ; PR #68 et prolongements #69 ;
-- **convergence du chantier portail** — PR #72 vise une reconstruction propre depuis le `master` courant afin de ne pas fusionner aveuglément les anciennes branches empilées.
+- **Contenus externes** — concept conservé ; ancienne PR #63 fermée sans fusion ;
+- **Noe-063B — RSS / Atom natif** — issue #65, ouverte ; ancienne PR #66 fermée ;
+- **Noe-063C — Barèmes Noethys / Mes tarifs** — issue #67, ouverte ; anciennes PR #68/#69 fermées ;
+- **convergence portail** — ancienne PR #72 fermée après inspection : elle reste une référence de diff mais doit être reconstruite depuis le `master` courant avant toute reprise.
 
 Règles :
 
@@ -182,30 +190,40 @@ Règles :
 - pas d'identifiant famille exposé en clair comme pseudo-personnalisation ;
 - aucune migration destructive.
 
-## Extensions optionnelles — expérimentation transversale
+## Extensions optionnelles — piste d'architecture
 
-La PR #64 introduit un registre minimal d'extensions, sans chargement automatique et sans modification du comportement historique.
+L'ancienne PR #64 a exploré un registre minimal d'extensions, sans chargement automatique et sans modification du comportement historique. Elle a été fermée car sa branche était devenue trop en retard sur `master`.
 
-Ce travail reste **transversal et expérimental** tant qu'aucune issue Noe dédiée ne fixe son périmètre définitif. Ne pas lui attribuer artificiellement un numéro Noe.
+Le besoin futur est désormais conservé dans **l'issue #80**. Une reprise ne doit avoir lieu que lorsqu'un premier usage concret le justifie et doit repartir du `master` courant.
 
 Usages envisagés : fournisseurs de communication, exports/reporting et connecteurs externes.
 
-## CI — boucle rapide vs qualification lourde
+## CI — boucle rapide et qualification lourde
 
-La PR #70 propose de séparer la boucle rapide quotidienne de la qualification RC lourde. Tant qu'elle n'est pas fusionnée, le comportement réel des workflows du `master` reste la référence.
+La consolidation CI a été fusionnée via PR #70.
 
-Principe retenu pour la trajectoire : réduire le temps de retour quotidien sans retirer les contrôles lourds nécessaires avant diffusion.
+État courant :
+
+- `.github/workflows/ci.yml` est la porte d'entrée unique ;
+- PR / push `master` : validation rapide Ubuntu unique ;
+- `workflow_dispatch` mode `complete` : recette synthétique, smokes Windows/macOS/Linux et packaging ;
+- `windows-package.yml` est réutilisable ;
+- l'ancien workflow UI séparé a été supprimé ;
+- les diagnostics indépendants sont collectés avant le verdict final lorsque possible.
+
+Le comportement réel des workflows présents sur `master` reste la référence exécutable.
 
 ## Situation pré-RC
 
 Le verrou pré-RC reste unique : **validation du SHA candidat sur une copie de base réellement utilisée puis recette métier/visuelle Windows**.
 
-Noe-005, Noe-060, Noe-061, Noe-062 et Noe-063 sont des chantiers parallèles ou post-socle ; ils ne doivent pas être confondus avec le minimum technique historiquement requis pour fabriquer la première RC. En revanche, tout code déjà fusionné dans `master` au moment du gel RC fait naturellement partie du SHA à qualifier.
+Noe-005, Noe-060, Noe-061, Noe-062, Noe-063 et l'issue #80 sont des chantiers parallèles ou post-socle ; ils ne doivent pas être confondus avec le minimum technique historiquement requis pour fabriquer la première RC. En revanche, tout code déjà fusionné dans `master` au moment du gel RC fait naturellement partie du SHA à qualifier.
 
 ## Règle de suivi
 
 - issue GitHub = travail restant / critères d'acceptation ;
 - PR = implémentation proposée ou en cours ;
+- PR fermée non fusionnée = référence historique, pas comportement livré ;
 - code + tests = comportement effectivement intégré ;
 - `PROJECT_STATE.md` = décisions transversales ;
 - ce backlog = index, pas seconde source concurrente.
