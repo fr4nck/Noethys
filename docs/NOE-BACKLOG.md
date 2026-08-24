@@ -10,11 +10,47 @@ Références complémentaires :
 - [`PROJECT_STATE.md`](PROJECT_STATE.md) — décisions transversales ;
 - [`UPGRADE-HISTORY.md`](UPGRADE-HISTORY.md) — historique des choix.
 
+## Vue consolidée actuelle
+
+Pour éviter de disperser à nouveau le chantier, le suivi courant se lit désormais en trois niveaux :
+
+### 1. Avant la prochaine RC — un seul chemin critique
+
+Le **cockpit pré-RC est l'issue #19 (Noe-042)**. Elle rassemble les dernières étapes qui exigent encore une action concrète avant publication :
+
+- choisir le SHA candidat sur `master` ;
+- lancer la qualification complète du même SHA ;
+- exécuter le préflight sur une copie de base réellement utilisée ;
+- effectuer la recette métier Noe-030 ;
+- effectuer la recette visuelle Windows ;
+- corriger uniquement les défauts réellement observés ;
+- relancer la qualification si le SHA change ;
+- déclencher ensuite le workflow Release Candidate et relire la release brouillon.
+
+Les issues techniques historiques **#5 (Noe-002)** et **#6 (Noe-003)** sont closes : leur code est terminé et leur validation réelle fait désormais partie de Noe-030 / #19. **#7 (Noe-004)** reste ouverte uniquement pour les mesures d'index sur copie réelle. **#40 (Noe-005)** reste une dette SQL progressive et non un blocage générique de RC.
+
+Avant de figer un SHA candidat, les inventaires statiques doivent être relus sur le `master` courant (`audit_sql_strict.py`, `audit_wx_lifecycle.py`, `audit_legacy_list_tools.py`) afin de ne pas baser une décision sur des chiffres anciens. Une occurrence d'audit n'est corrigée que si sa sémantique ou son risque concret est établi.
+
+### 2. Chantiers métier après / à côté de la RC
+
+Ils restent suivis par leurs issues, sans PR de travail ancienne laissée ouverte :
+
+- **Noe-060 / 061 — reporting et pilotage** : #51, #54, #55, #56, #57, #58, #59 ;
+- **Noe-062 — conventions et mises à disposition** : #60 ;
+- **Noe-063 — portail Connecthys** : #62, #65, #67 ;
+- **extensions optionnelles** : #80.
+
+Les anciennes PR de ces chantiers ont été fermées sans fusion lorsqu'elles étaient trop éloignées du `master`. Elles restent des références historiques de conception ; toute reprise doit repartir du `master` courant.
+
+### 3. UI/UX transverse
+
+Le socle Repens a été consolidé via PR #78. Il n'existe plus de backlog générique « moderniser toute l'interface ». La suite doit partir d'un **défaut visible en recette** ou d'un **besoin métier concret**. Les audits wxPython et listes servent à localiser les zones à relire, pas à déclencher une réécriture mécanique.
+
 ## Noe-000 — SQL / base de données
 
 - **Noe-001 — Audit SQL strict complet** — terminé.
-- **Noe-002 — Réécriture OL_Reglements SQL strict** — code terminé ; validation sur copie réelle incluse dans Noe-030 restante.
-- **Noe-003 — Nettoyage DLG_Export_compta** — code terminé ; validation sur copie réelle incluse dans Noe-030 restante.
+- **Noe-002 — Réécriture OL_Reglements SQL strict** — code terminé ; issue #5 fermée ; validation réelle intégrée à Noe-030.
+- **Noe-003 — Nettoyage DLG_Export_compta** — code terminé ; issue #6 fermée ; validation réelle intégrée à Noe-030.
 - **Noe-004 — Audit index base de données** — outillage terminé ; mesures sur copie réelle restantes. Issue #7.
 - **Noe-005 — Reliquat SQL strict détecté par l'audit complet** — dette progressive, issue #40.
 
@@ -48,7 +84,7 @@ La recette finale doit être exécutée sur le SHA réellement candidat à la RC
 
 - **Noe-040 — Packaging Windows final** — terminé.
 - **Noe-041 — Version portable Noethys** — terminé.
-- **Noe-042 — Préparation RC** — sas technique terminé ; recette réelle puis déclenchement RC restants. Issue #19.
+- **Noe-042 — Préparation RC** — sas technique terminé ; recette réelle puis déclenchement RC restants. Issue #19, cockpit pré-RC.
 
 ## Noe-050 — Documentation et mémoire du chantier
 
