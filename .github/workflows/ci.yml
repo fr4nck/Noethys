@@ -79,6 +79,7 @@ jobs:
           python -m py_compile scripts/build_synthetic_recette_db.py || status=1
           python -m py_compile scripts/recette_existing_db_readonly.py || status=1
           python -m py_compile scripts/rc_db_preflight.py || status=1
+          python -m py_compile scripts/audit_pre_rc.py || status=1
           exit "$status"
 
       - name: Audit runtime bloquant
@@ -296,6 +297,18 @@ jobs:
           python scripts/audit_csv_boundaries.py
           python scripts/audit_utf8_boundaries.py
           python scripts/audit_dependency_usage.py
+
+      - name: Consolider les inventaires statiques pré-RC
+        run: python scripts/audit_pre_rc.py --output-dir tmp/pre-rc-audits
+
+      - name: Conserver les inventaires pré-RC
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnostics-pre-rc
+          path: tmp/pre-rc-audits/*.json
+          if-no-files-found: error
+          retention-days: 14
 
   windows-smoke:
     name: Smoke test Windows
