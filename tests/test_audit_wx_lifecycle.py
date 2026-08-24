@@ -205,6 +205,14 @@ class Dialog(wx.Dialog):
         self.assertEqual(len(risky), 1)
         self.assertEqual(risky[0]["member"], "self.popup")
 
+    def test_badgeage_interface_has_no_use_after_destroy(self):
+        path = audit.NOETHYS / "Dlg" / "DLG_Badgeage_interface.py"
+        source = path.read_text(encoding="utf-8", errors="replace")
+        tree = ast.parse(source)
+        findings = audit._scan_use_after_destroy(path, tree, source.splitlines())
+        risky = [item for item in findings if item["kind"] == "use_after_destroy"]
+        self.assertEqual(risky, [])
+
 
 if __name__ == "__main__":
     unittest.main()
