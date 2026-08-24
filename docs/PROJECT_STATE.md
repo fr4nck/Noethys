@@ -57,10 +57,11 @@ Références principales :
 - `docs/DEVELOPMENT.md` ;
 - `docs/CI-WINDOWS-AUDIT.md` ;
 - `docs/RC-CHECKLIST.md` ;
-- Noe-030 / issue #14 : recette sur copie de base existante ;
-- Noe-042 / issue #19 : sas de Release Candidate ;
-- Noe-005 / issue #40 : reliquat SQL strict ;
-- Noe-004 / issue #7 : mesures/index base de données.
+- `docs/NOE-030-RECETTE-BASE-EXISTANTE.md` — procédure de recette sur copie réelle ;
+- Noe-042 / issue #19 — **cockpit unique pré-RC** ;
+- Noe-005 / issue #40 — reliquat SQL strict.
+
+Les anciens lots Noe-002/#5, Noe-003/#6, Noe-004/#7 et Noe-030/#14 sont clos comme lots d’implémentation/outillage. Leurs opérations de validation réelle sont absorbées par le cockpit #19.
 
 État courant de la CI :
 
@@ -69,7 +70,8 @@ Références principales :
 - lancement manuel `complete` : recette synthétique, smokes Windows/macOS/Linux et packaging Windows ;
 - `windows-package.yml` est réutilisable ;
 - les audits UI font partie de la validation commune ;
-- les diagnostics indépendants sont collectés avant le verdict final lorsque possible.
+- les diagnostics indépendants sont collectés avant le verdict final lorsque possible ;
+- `scripts/audit_pre_rc.py` regroupe les inventaires SQL strict, cycle de vie wxPython et anciens outils de listes avant gel d’un SHA candidat.
 
 Règles durables :
 
@@ -209,11 +211,11 @@ L’ancienne PR #61 a été fermée sans fusion car sa branche était devenue tr
 
 ## 12. Portail Connecthys et contenus dynamiques
 
-Références :
+Référence opérationnelle unique :
 
-- #62 — contenus dynamiques et source unique ;
-- #65 — RSS/Atom natif ;
-- #67 — barèmes Noethys dans le portail.
+- #62 — contenus dynamiques, RSS/Atom, barèmes Noethys et source unique.
+
+Les anciennes sous-issues #65 (RSS/Atom) et #67 (barèmes) sont closes après consolidation de leurs exigences dans #62.
 
 Principes :
 
@@ -223,13 +225,13 @@ Principes :
 - afficher un barème applicable plutôt qu’un faux « prix personnel » lorsque la consommation réelle est nécessaire au calcul ;
 - les intégrations web doivent être une vue sécurisée des données, pas un accès direct à la base locale.
 
-Les anciennes PR #63/#66/#68/#69/#71/#72 ont été fermées sans fusion après inspection. Elles restent des références historiques ; les besoins continuent d’être suivis dans les issues et toute reprise repart du `master` courant.
+Les anciennes PR #63/#66/#68/#69/#71/#72 ont été fermées sans fusion après inspection. Elles restent des références historiques ; toute reprise repart du `master` courant.
 
 ## 13. Extensions optionnelles
 
-Le besoin d’un registre d’extensions opt-in est conservé dans **l’issue #80**.
+Le besoin d’un registre d’extensions opt-in reste une **piste dormante**, pas un chantier actif. L’issue #80 est close comme `not planned` tant qu’aucun premier consommateur concret ne justifie de rouvrir le sujet.
 
-La règle est de ne pas construire une architecture générique sans consommateur réel : le socle doit être repris uniquement lorsqu’un premier usage concret le justifie, sans chargement arbitraire, sans dépendance Internet obligatoire et sans migration implicite.
+Si un besoin réel apparaît, conserver ces règles : pas de chargement arbitraire, pas de dépendance Internet obligatoire et pas de migration implicite.
 
 L’ancienne PR #64 a été fermée et reste une référence historique de conception.
 
@@ -261,8 +263,10 @@ Les points qui étaient encore particulièrement dépendants des échanges ont d
 - filtrage des journées des commandes de repas ;
 - frontières Noethys / Teamworks / PMSL-Équipe / Connecthys ;
 - consolidation CI rapide/lourde ;
+- agrégation des inventaires pré-RC via `scripts/audit_pre_rc.py` ;
 - ligne d’arrivée du chantier UI transverse ;
-- politique de fermeture/reconstruction des branches de chantier devenues obsolètes.
+- politique de fermeture/reconstruction des branches de chantier devenues obsolètes ;
+- regroupement du suivi pré-RC dans #19 et du suivi portail dans #62.
 
 À partir de ce point, ces décisions ne doivent plus dépendre de la conservation d’un chat.
 
