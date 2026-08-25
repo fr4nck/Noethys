@@ -3665,6 +3665,7 @@ class MainFrame(wx.Frame):
         fichier.close()
         dlg = wx.lib.dialogs.ScrolledMessageDialog(self, msg, _(u"Licence"), size=(500, 500))
         dlg.ShowModal()
+        dlg.Destroy()
 
     def On_propos_soutenir(self, event):
         """ A propos : Soutenir Noethys """

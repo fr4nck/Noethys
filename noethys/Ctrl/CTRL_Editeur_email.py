@@ -1062,6 +1062,7 @@ class CTRL(wx.Panel):
         sizer.Fit(dlg)
 
         dlg.ShowModal()
+        dlg.Destroy()
 
         handler.DeleteTemporaryImages()
 

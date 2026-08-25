@@ -572,7 +572,9 @@ class Dialog(wx.Dialog):
                 message += _(u"   - Ainsi que %d autres...\n") % (len(listeResultats) - affichageMax)
             message += _(u"\nSouhaitez-vous tout de même continuer l'envoi ?")
             dlgErreur = wx.MessageDialog(self, message, _(u"Anomalies"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_EXCLAMATION)
-            if dlgErreur.ShowModal() == wx.ID_YES :
+            reponse = dlgErreur.ShowModal()
+            dlgErreur.Destroy()
+            if reponse == wx.ID_YES :
                 return True
             else :
                 return False
