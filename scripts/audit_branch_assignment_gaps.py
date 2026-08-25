@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Détecte les variables locales potentiellement non définies après un ``if``.
+
+Le contrôle est volontairement conservateur : il ne signale qu'une affectation
+présente dans une seule branche, sans définition antérieure visible, lorsque le
+premier usage ultérieur de ce nom est une lecture. Les résultats restent des
+candidats à qualifier humainement.
+"""
+
+from __future__ import annotations
+
+import argparse
+import ast
+import json
+from collections import Counter
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+NOETHYS = ROOT / "noethys"
+EXCLUDED_PARTS = {"ObjectListView", "Outils"}
+
+
+def iter_python_files(root=NOETHYS):
+    for path in root.rglob("*.py"):
+        relative = path.relative_to(root)
+        if any(part in EXCLUDED_PARTS for part in relative.parts):
+            continue
+        yield path
+
+
+class NameEvents(ast.NodeVisitor):
+    def __init__(self, name):
+        self.name = name
+        self.events = []
+
+    def visit_Name(self, node):
+        if node.id == self.name:
+            mode = "load" if isinstance(node.ctx, ast.Load) else "store"
+            self.events.append((node.lineno, mode))
+
+    def visit_FunctionDef(self, node):
+        return
+
+    def visit_AsyncFunctionDef(self, node):
+        return
+
+    def visit_Lambda(self, node):
+        return
+
+    def visit_ClassDef(self, node):
+        return
+
+
+def assigned_names(statements):
+    names = set()
+
+    class Stores(ast.NodeVisitor):
+        def visit_Name(self, node):
+            if isinstance(node.ctx, (ast.Store, ast.Del)):
+                names.add(node.id)
+
+        def visit_FunctionDef(self, node):
+            return
+
+        def visit_AsyncFunctionDef(self, node):
+            return
+
+        def visit_Lambda(self, node):
+            return
+
+        def visit_ClassDef(self, node):
+            return
+
+    visitor = Stores()
+    for statement in statements:
+        visitor.visit(statement)
+    return names
+
+
+def block_terminates(statements):
+    if not statements:
+        return False
+    last = statements[-1]
+    if isinstance(last, (ast.Return, ast.Raise, ast.Break, ast.Continue)):
+        return True
+    if isinstance(last, ast.If) and last.orelse:
+        return block_terminates(last.body) and block_terminates(last.orelse)
+    return False
+
+
+def first_event(statements, name):
+    visitor = NameEvents(name)
+    for statement in statements:
+        visitor.visit(statement)
+    if not visitor.events:
+        return None
+    return min(visitor.events, key=lambda item: item[0])
+
+
+def function_args(function):
+    result = {arg.arg for arg in function.args.posonlyargs}
+    result.update(arg.arg for arg in function.args.args)
+    result.update(arg.arg for arg in function.args.kwonlyargs)
+    if function.args.vararg:
+        result.add(function.args.vararg.arg)
+    if function.args.kwarg:
+        result.add(function.args.kwarg.arg)
+    return result
+
+
+def scan_sequence(statements, predefined, relpath, function_name, findings):
+    defined = set(predefined)
+    for index, statement in enumerate(statements):
+        if isinstance(statement, ast.If):
+            body_assigned = assigned_names(statement.body)
+            else_assigned = assigned_names(statement.orelse)
+            only_body = body_assigned - else_assigned
+            only_else = else_assigned - body_assigned
+            following = statements[index + 1 :]
+
+            for name in sorted(only_body | only_else):
+                if name in defined:
+                    continue
+                if name in only_body:
+                    unassigned_path_terminates = block_terminates(statement.orelse) if statement.orelse else False
+                    branch = "body_only"
+                else:
+                    unassigned_path_terminates = block_terminates(statement.body)
+                    branch = "else_only"
+                if unassigned_path_terminates:
+                    continue
+                event = first_event(following, name)
+                if event and event[1] == "load":
+                    findings.append({
+                        "kind": "branch_assignment_gap",
+                        "priority": "high",
+                        "file": relpath,
+                        "function": function_name,
+                        "if_line": statement.lineno,
+                        "line": event[0],
+                        "name": name,
+                        "detail": branch,
+                    })
+
+            scan_sequence(statement.body, defined, relpath, function_name, findings)
+            scan_sequence(statement.orelse, defined, relpath, function_name, findings)
+        elif isinstance(statement, (ast.For, ast.AsyncFor, ast.While, ast.With, ast.AsyncWith)):
+            scan_sequence(statement.body, defined, relpath, function_name, findings)
+            scan_sequence(getattr(statement, "orelse", []), defined, relpath, function_name, findings)
+        elif isinstance(statement, ast.Try):
+            scan_sequence(statement.body, defined, relpath, function_name, findings)
+            for handler in statement.handlers:
+                scan_sequence(handler.body, defined, relpath, function_name, findings)
+            scan_sequence(statement.orelse, defined, relpath, function_name, findings)
+            scan_sequence(statement.finalbody, defined, relpath, function_name, findings)
+
+        defined.update(assigned_names([statement]))
+
+
+def scan_file(path, root=NOETHYS):
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"), filename=str(path))
+    except (OSError, SyntaxError):
+        return []
+    relpath = str(path.relative_to(root)).replace("\\", "/")
+    findings = []
+    for function in (node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))):
+        scan_sequence(function.body, function_args(function), relpath, function.name, findings)
+    return findings
+
+
+def build_report(root=NOETHYS):
+    findings = []
+    for path in iter_python_files(root):
+        findings.extend(scan_file(path, root))
+    unique = {}
+    for item in findings:
+        key = (item["file"], item["function"], item["if_line"], item["line"], item["name"])
+        unique[key] = item
+    findings = sorted(unique.values(), key=lambda item: (item["file"], item["line"], item["name"]))
+    return {
+        "count": len(findings),
+        "kinds": dict(Counter(item["kind"] for item in findings)),
+        "priorities": dict(Counter(item["priority"] for item in findings)),
+        "findings": findings,
+    }
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--json", default="", metavar="FILE")
+    args = parser.parse_args(argv)
+    report = build_report()
+    print(f"BRANCH_ASSIGNMENT_GAPS={report['count']}")
+    for item in report["findings"]:
+        print(f"- {item['file']}:{item['line']} {item['function']} — {item['name']} ({item['detail']})")
+    if args.json:
+        output = Path(args.json)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
