@@ -1,0 +1,55 @@
+name: Apply home announcement disablement
+
+on:
+  push:
+    branches:
+      - fix/vanilla-maintenance-channel
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/vanilla-maintenance-channel
+          fetch-depth: 0
+
+      - name: Disable bundled historical announcements
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("noethys/Ctrl/CTRL_Accueil.py")
+          text = path.read_text(encoding="utf-8")
+          old = 'def GetAnnonce():\n    """ Fonction de récupération de l\'annonce é afficher """\n'
+          new = (
+              'def GetAnnonce():\n'
+              '    """ Fonction de récupération de l\'annonce é afficher """\n'
+              '    # FORK_MAINTENANCE: ne plus afficher les annonces promotionnelles/historiques embarquées.\n'
+              '    return None\n'
+          )
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f"GetAnnonce block count: {count}")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+      - name: Verify and compile
+        shell: python
+        run: |
+          from pathlib import Path
+          text = Path("noethys/Ctrl/CTRL_Accueil.py").read_text(encoding="utf-8")
+          assert 'ne plus afficher les annonces promotionnelles/historiques embarquées' in text
+          compile(text, "noethys/Ctrl/CTRL_Accueil.py", "exec")
+
+      - name: Commit fix and remove helper workflow
+        shell: bash
+        run: |
+          rm .github/workflows/_apply-home-announcements.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Ctrl/CTRL_Accueil.py .github/workflows/_apply-home-announcements.yml
+          git commit -m "Vanilla: retirer les annonces historiques de l'accueil"
+          git push origin HEAD:fix/vanilla-maintenance-channel
