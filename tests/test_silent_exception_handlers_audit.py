@@ -67,6 +67,11 @@ class SilentExceptionHandlersAuditTests(unittest.TestCase):
         output.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
         self.assertIn("findings", report)
 
+    def test_repository_has_no_high_priority_silent_handler(self):
+        report = audit.build_report()
+        high = [finding for finding in report["findings"] if finding["priority"] == "high"]
+        self.assertEqual(high, [], msg=f"Exceptions silencieuses critiques restantes : {high}")
+
 
 if __name__ == "__main__":
     unittest.main()
