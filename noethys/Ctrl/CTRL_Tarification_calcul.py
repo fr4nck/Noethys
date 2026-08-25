@@ -283,7 +283,7 @@ class EditeurChoix(GridCellEditor):
                 if id == idTemp :
                     self._tc.SetSelection(index)
                 index += 1
-        except :
+        except Exception:
             pass
 
     def EndEdit(self, row, col, grid, oldVal):
@@ -323,7 +323,7 @@ class RendererChoix(GridCellRenderer):
                 if id == idTemp :
                     texte = label
                 idx += 1
-        except :
+        except Exception:
             pass
         return texte
     
@@ -1419,7 +1419,7 @@ class Panel(wx.Panel):
         try :
             typeTarif = self.parent.GetPage("type").GetType()
             self.SetFiltreTypeTarif(typeTarif)
-        except :
+        except Exception:
             pass
 
 

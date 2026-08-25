@@ -51,7 +51,7 @@ from Dlg.DLG_Portail_config import LISTE_THEMES
 
 try:
     from Crypto.Hash import SHA256
-except:
+except Exception:
     from Cryptodome.Hash import SHA256
 
 def patch_crypto_be_discovery():
@@ -107,7 +107,7 @@ class Synchro():
         num = 100 * self.num_etape / self.nbre_etapes
         try :
             self.log.SetGauge(num)
-        except :
+        except Exception:
             pass
 
     def Synchro_totale(self, full_synchro=False):
@@ -141,7 +141,7 @@ class Synchro():
         self.log.EcritLog(_(u"Client de synchronisation prêt"))
         try :
             self.log.SetGauge(0)
-        except :
+        except Exception:
             pass
 
     # FTP mode
@@ -220,7 +220,7 @@ class Synchro():
                 liste_lignes.append(Ecrit_ligne("MAIL_DEFAULT_SENDER", MAIL_DEFAULT_SENDER, type_valeur=str))
                 try:
                     MAIL_PORT = int(MAIL_PORT)
-                except:
+                except Exception:
                     MAIL_PORT = None
                 liste_lignes.append(Ecrit_ligne("MAIL_PORT", MAIL_PORT))
 
@@ -392,7 +392,7 @@ class Synchro():
                 self.log.EcritLog(_(u"[ERREUR] Connexion SSH/SFTP impossible."))
                 try:
                     self.log.EcritLog(_(u"[ERREUR] err: %s") % err.encode('ascii', 'ignore'))
-                except:
+                except Exception:
                     self.log.EcritLog(_(u"[ERREUR] err: %s") % err)
                 return False
 
@@ -740,7 +740,7 @@ class Synchro():
                         # Solde de la famille
                         try:
                             solde = dictReglements.get(IDfamille, 0.0) - dictPrestations.get(IDfamille, 0.0)
-                        except:
+                        except Exception:
                             solde = 0
                         liste_parametres.append("solde==%s" % solde)
                     parametres = "##".join(liste_parametres)
@@ -1571,7 +1571,7 @@ class Synchro():
         if len(listeDonnees) > 0 :
             try:
                 last = int(listeDonnees[0])
-            except:
+            except Exception:
                 pass
 
         # Téléchargement des demandes non enregistrées
@@ -1692,7 +1692,7 @@ class Synchro():
                             try:
                                 valeur = cryptage.decrypt(renseignement["valeur"])
                                 listeRenseignements.append([renseignement["champ"], valeur, prochainIDaction])
-                            except:
+                            except Exception:
                                 pass
 
                     # Mémorisation des locations
@@ -1889,7 +1889,7 @@ class Synchro():
         repDestination = UTILS_Fichiers.GetRepTemp("portail_temp")
         try :
             os.mkdir(repDestination)
-        except :
+        except Exception:
             pass
 
         # Téléchargement du fichier vers le répertoire temporaire

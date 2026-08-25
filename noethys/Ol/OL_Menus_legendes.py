@@ -314,7 +314,7 @@ class DLG_Saisie(wx.Dialog):
         try:
             valeur = ConvertCouleur(valeur)
             self.ctrl_couleur.SetValue(valeur)
-        except:
+        except Exception:
             pass
 
     def GetCouleur(self):

@@ -24,7 +24,7 @@ class Calendrier():
             fichier = urlopen("https://www.data.gouv.fr/fr/datasets/r/000ae493-9fa8-4088-9f53-76d375204036", timeout=5)
             self.data = json.load(fichier)
             fichier.close()
-        except:
+        except Exception:
             self.data = {}
 
     def GetVacances(self):

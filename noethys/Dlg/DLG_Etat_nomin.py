@@ -913,7 +913,7 @@ class Dialog(wx.Dialog):
     def OnBoutonFermer(self, event): 
         try :
             self.EndModal(wx.ID_CANCEL)
-        except :
+        except Exception:
             pass
 
     def OnCheckActivites(self, event=None):

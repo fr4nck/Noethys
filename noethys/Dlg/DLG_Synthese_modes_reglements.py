@@ -347,7 +347,7 @@ class Parametres(wx.Panel):
         self.ctrl_groupes.Enable(self.radio_groupes.GetValue())
         try :
             self.parent.MAJ()
-        except : pass
+        except Exception: pass
 
     def OnRadioMode(self, event):
         self.parent.MAJ()
@@ -633,7 +633,7 @@ class Dialog(wx.Dialog):
         self.ctrl_ventilation.Select(0)
         try :
             self.ctrl_ventilation.SetStringSelection(valeur)
-        except :
+        except Exception:
             pass
     
     def GetVentilation(self):

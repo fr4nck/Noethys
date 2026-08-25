@@ -136,7 +136,7 @@ class Impression():
         
         try :
             FonctionsPerso.LanceFichierExterne(nomDoc)
-        except :
+        except Exception:
             print("Probleme dans l'edition des etiquettes")
         
 

@@ -21,7 +21,7 @@ import GestionDB
 
 try :
     import smartcard
-except :
+except Exception:
     pass
 
 if wx.VERSION < (2, 9, 0, 0) :
@@ -113,7 +113,7 @@ class CTRL_Barre_numerique(wx.SearchCtrl):
             if len(self.lecteurs) > 0 :
                 self.lecteur = self.lecteurs[0]
                 self.connexion = self.lecteur.createConnection()
-        except :
+        except Exception:
             pass
                 
         
@@ -179,7 +179,7 @@ class CTRL_Barre_numerique(wx.SearchCtrl):
             txtSearch = txtSearch.replace(x, "")
         try :
             IDindividu = int(txtSearch)
-        except :
+        except Exception:
             DIALOGUES.DLG_Message(self.interface, message=_(u"Ce numéro de badge ne semble pas valide !"), icone="erreur")
             return False
         self.ValidationIdentification(IDindividu, mode="CLAVIER")
@@ -328,12 +328,12 @@ class CTRL_Liste_individus(ULC.UltimateListCtrl):
         if valeur == "monter" :
             try :
                 self.EnsureVisible(top-nbreLignesAffichees)
-            except :
+            except Exception:
                 self.EnsureVisible(0)
         else :
             try :
                 self.EnsureVisible(bottom+nbreLignesAffichees)
-            except :
+            except Exception:
                 self.EnsureVisible(self.GetItemCount()-1)
         self._mainWin.RecalculatePositions(True)
 
@@ -342,7 +342,7 @@ class CTRL_Liste_individus(ULC.UltimateListCtrl):
             self.Select(index, False)
         try :
             self.EnsureVisible(0)
-        except :
+        except Exception:
             pass
         self._mainWin.RecalculatePositions(True)
     

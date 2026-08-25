@@ -29,7 +29,7 @@ from Utils import UTILS_Utilisateurs
 
 try :
     import smartcard
-except :
+except Exception:
     pass
 
 
@@ -161,7 +161,7 @@ class ListView(FastObjectListView):
         FastObjectListView.__init__(self, *args, **kwds)
         try :
             self.SetEmptyListMsgFont(wx.FFont(11, wx.DEFAULT, faceName="Tekton"))
-        except :
+        except Exception:
             self.SetEmptyListMsgFont(wx.FFont(11, wx.DEFAULT, False, "Tekton"))
         self.SetEmptyListMsg(_(u"Aucun individu"))
         # Binds perso
@@ -286,13 +286,13 @@ class ListView(FastObjectListView):
                     age = (datedujour.year - datenaissDD.year) - int((datedujour.month, datedujour.day) < (datenaissDD.month, datenaissDD.day))
                     dictTemp["age"] = age
                     dictTemp["date_naiss"] = datenaissDD
-                except :
+                except Exception:
                     dictTemp["age"] = None
 
             dictIndividus[IDindividu] = dictTemp
         
         # Vérifie si le dictIndividus est différent du précédent pour empêcher l'actualisation de la liste
-        if dictIndividus == self.dictIndividus and self.forceActualisation == False :
+        if dictIndividus == self.dictIndividus and self.forceActualisation == False and self.donnees :
             return None
         else :
             self.dictIndividus = dictIndividus
@@ -486,6 +486,7 @@ class ListView(FastObjectListView):
         dlg = DLG_Famille.Dialog(self, IDfamille=None)
         if dlg.ShowModal() == wx.ID_OK:
             pass
+        dlg.Destroy()
         # MAJ du listView
 ##        self.MAJ()
         # MAJ du remplissage
@@ -495,7 +496,7 @@ class ListView(FastObjectListView):
 ##                self.GetGrandParent().ctrl_remplissage.MAJ() 
             else:
                 self.MAJ() 
-        except : pass
+        except Exception: pass
 
     def Modifier(self, event):
         if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("familles_fiche", "consulter") == False : return
@@ -599,7 +600,7 @@ class ListView(FastObjectListView):
                 self.MAJ(IDindividu)
             try :
                 dlg.Destroy()
-            except :
+            except Exception:
                 pass
             # MAJ du remplissage
             try :
@@ -607,7 +608,7 @@ class ListView(FastObjectListView):
                     self.GetGrandParent().MAJ() 
                 else:
                     self.MAJ() 
-            except :
+            except Exception:
                 pass
             # Mémorisation pour l'historique de la barre de recherche rapide
             try :
@@ -615,7 +616,7 @@ class ListView(FastObjectListView):
                     self.historique.append(IDindividu)
                     if len(self.historique) > 30 :
                         self.historique.pop(0)
-            except :
+            except Exception:
                 pass
 
     def Supprimer(self, event):
@@ -691,7 +692,7 @@ class ListView(FastObjectListView):
             else:
                 self.MAJ() 
 
-        except : pass
+        except Exception: pass
 
 
     def InitialisationRFID(self):
@@ -705,7 +706,7 @@ class ListView(FastObjectListView):
             if len(self.lecteurs) > 0 :
                 self.lecteur = self.lecteurs[0]
                 self.connexion = self.lecteur.createConnection()
-        except :
+        except Exception:
             pass
 
         # Préparation du timer
@@ -721,7 +722,7 @@ class ListView(FastObjectListView):
     def StopRFID(self):
         try:
             self.timer_rfid.Stop()
-        except:
+        except Exception:
             pass
 
     def RechercherSiDlgOuverte(self, widget=None):
@@ -759,8 +760,11 @@ class ListView(FastObjectListView):
                 if sw1 == 144:
                     IDbadge = ListToHex(data)
                     self.connexion.disconnect()
-                    if self.dernierRFID != IDbadge :
-                        self.dernierRFID = IDbadge
+                    # Ignore une lecture répétée du même badge pendant
+                    # la fenêtre anti-rebond.
+                    if self.dernierRFID == IDbadge:
+                        return False
+                    self.dernierRFID = IDbadge
 
                     # Recherche du badge RFID dans les questionnaires
                     DB = GestionDB.DB()
@@ -776,25 +780,25 @@ class ListView(FastObjectListView):
                     if len(listeDonnees) > 0 :
                         IDindividu, IDfamille = listeDonnees[0]
 
-                    # On stoppe le timer de détection RFID
-                    self.timer_rfid.Stop()
-
-                    time.sleep(2)
-
-                    # Ouverture de la fiche famille
+                    # Ne bloque pas la boucle wx et ne coupe pas le timer :
+                    # l'anti-rebond est assuré par dernierRFID/delai.
                     if IDindividu != None:
-                        track = self.dictTracks[IDindividu]
-                        self.SelectObject(track)
-                        self.OuvrirFicheFamille(track)
+                        track = self.dictTracks.get(IDindividu)
+                        if track is not None:
+                            self.SelectObject(track)
+                            self.OuvrirFicheFamille(track)
+                        elif IDfamille != None:
+                            self.OuvrirFicheFamille(IDfamille=IDfamille)
 
-                    if IDfamille != None:
+                    elif IDfamille != None:
                         self.OuvrirFicheFamille(IDfamille=IDfamille)
 
-                    # On relance le timer de détection RFID
-                    self.timer_rfid.Start()
-
             except Exception as err:
-                pass
+                try:
+                    if not self.timer_rfid.IsRunning():
+                        self.timer_rfid.Start()
+                except Exception:
+                    pass
 
 
 
@@ -876,8 +880,8 @@ class BarreRecherche(wx.SearchCtrl):
             IDindividu = None
             try :
                 IDindividu = int(txtSearch)
-            except :
-                IDfamille = None
+            except Exception:
+                IDindividu = None
             if IDindividu != None and IDindividu in self.listView.dictTracks :
                 track = self.listView.dictTracks[IDindividu]
                 self.listView.SelectObject(track)
@@ -891,7 +895,7 @@ class BarreRecherche(wx.SearchCtrl):
             IDfamille = None
             try :
                 IDfamille = int(txtSearch)
-            except :
+            except Exception:
                 IDfamille = None
             if IDfamille != None :
                 DB = GestionDB.DB()
@@ -905,11 +909,14 @@ class BarreRecherche(wx.SearchCtrl):
                     dlg = DLG_Famille.Dialog(self, IDfamille)
                     dlg.ShowModal()
                     dlg.Destroy()
-                    # MAJ du remplissage
-                    if self.GetGrandParent().GetName() == "general" :
-                        self.GetGrandParent().MAJ() 
+                    # Actualise le conteneur métier quand il expose MAJ,
+                    # sinon recharge directement la liste. BarreRecherche n'a
+                    # volontairement pas de méthode MAJ propre.
+                    actualiser = getattr(self.parent, "MAJ", None)
+                    if callable(actualiser):
+                        actualiser()
                     else:
-                        self.MAJ() 
+                        self.listView.MAJ(forceActualisation=True)
                     self.OnCancel(None)
                     return
 

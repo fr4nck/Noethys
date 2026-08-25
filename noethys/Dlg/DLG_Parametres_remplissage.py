@@ -154,7 +154,7 @@ class Dialog(wx.Dialog):
         self.ctrl_maj_auto = wx.Choice(self, -1, choices=[label for valeur, label in self.liste_choix_maj_auto])
         try:
             self.ctrl_maj_auto.Select([index for index, (valeur, label) in enumerate(self.liste_choix_maj_auto) if valeur == maj_auto_remplissage][0])
-        except:
+        except Exception:
             pass
 
         if afficheAbregeGroupes == False :

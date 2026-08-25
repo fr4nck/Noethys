@@ -188,7 +188,7 @@ class Panel(wx.Panel):
         self.ctrl_previsions = Notebook(self, clsbase)
         try :
             self.ctrl_previsions.SetBackgroundColour(self.GetParent().GetThemeBackgroundColour())
-        except :
+        except Exception:
             pass
 
         # Absences

@@ -96,7 +96,7 @@ class Track(object):
         if self.parent.mode == "liste":
             try:
                 self.nomTitulaires = self.parent.dict_titulaires[self.IDfamille]["titulairesSansCivilite"]
-            except:
+            except Exception:
                 pass
 
 

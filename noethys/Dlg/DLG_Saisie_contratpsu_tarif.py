@@ -42,7 +42,7 @@ class CTRL_Montant(wx.TextCtrl):
         montantStr = self.GetValue()
         try :
             test = float(montantStr)
-        except :
+        except Exception:
             message = _(u"Le montant que vous avez saisi n'est pas valide.")
             return False, message
         return True, None
@@ -243,7 +243,7 @@ class Dialog(wx.Dialog):
         if len(self.ctrl_qf.GetValue()) > 0 :
             try :
                 quotient = int(self.ctrl_qf.GetValue())
-            except :
+            except Exception:
                 dlg = wx.MessageDialog(self, _(u"Le quotient familial que vous avez saisi ne semble pas valide !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
                 dlg.ShowModal()
                 dlg.Destroy()
@@ -290,7 +290,7 @@ class Dialog(wx.Dialog):
         revenu = self.ctrl_revenu.GetMontant()
         try :
             quotient = int(self.ctrl_qf.GetValue())
-        except :
+        except Exception:
             quotient = 0
         taux = self.ctrl_taux_retenu.GetMontant()
         tarif_base = self.ctrl_base_retenu.GetMontant()

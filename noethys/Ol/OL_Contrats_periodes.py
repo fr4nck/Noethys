@@ -311,7 +311,7 @@ class ListView(FastObjectListView):
         if dlg.ShowModal() == wx.ID_OK:
             try:
                 nouveau_montant = float(dlg.GetValue())
-            except:
+            except Exception:
                 dlg = wx.MessageDialog(self, _(u"Le montant saisi ne semble pas valide !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
                 dlg.ShowModal()
                 dlg.Destroy()

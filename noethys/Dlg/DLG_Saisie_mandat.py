@@ -617,7 +617,7 @@ class Dialog(wx.Dialog):
                 self.ctrl_iban.SetValue(iban) 
             if len(bic) > 5 :
                 self.ctrl_bic.SetValue(bic)
-        except :
+        except Exception:
             pass
 
     def Importation(self):

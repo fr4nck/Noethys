@@ -12,7 +12,7 @@
 import re
 try:
     from Utils.UTILS_Traduction import _
-except:
+except Exception:
     pass
 
 

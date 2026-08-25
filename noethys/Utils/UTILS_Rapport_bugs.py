@@ -41,7 +41,7 @@ def Activer_rapport_erreurs(version=""):
         try :
             if UTILS_Config.GetParametre("rapports_bugs", True) == False :
                 return
-        except :
+        except Exception:
             pass
         try :
             if six.PY2:
@@ -50,7 +50,7 @@ def Activer_rapport_erreurs(version=""):
             dlg = DLG_Rapport(None, texte)
             dlg.ShowModal()
             dlg.Destroy()
-        except :
+        except Exception:
             pass
 
     sys.excepthook = my_excepthook

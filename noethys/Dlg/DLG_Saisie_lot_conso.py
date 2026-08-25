@@ -744,7 +744,7 @@ class Dialog(wx.Dialog):
         if IDactivite != None :
             try :
                 self.ctrl_activite.SetActivite(int(IDactivite))
-            except :
+            except Exception:
                 pass
         self.OnRadioAction(None)
         self.OnChoixActivite(None)

@@ -301,7 +301,7 @@ class ListView(FastObjectListView):
                 self.parent.box_destinataires_staticbox.SetLabel("Destinataires (%d)" % len(self.listeDonnees))
             else:
                 self.parent.box_destinataires_staticbox.SetLabel("Destinataires")
-        except :
+        except Exception:
             pass
     
     def SetDonneesManuelles(self, listeDonnees=[], modificationAutorisee=None):

@@ -102,7 +102,7 @@ class Facturation():
         try :
             topWindow = wx.GetApp().GetTopWindow() 
             topWindow.SetStatusText(texte)
-        except : 
+        except Exception: 
             pass
 
 
@@ -240,7 +240,7 @@ class Facturation():
         try :
             if 'phoenix' not in wx.PlatformInfo:
                 wx.Yield()
-        except :
+        except Exception:
             pass
         
         # Récupère les données de la facture

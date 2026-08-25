@@ -457,7 +457,7 @@ class City(object):
                 self.latitude = info[2]
                 self.longitude = info[3]
                 self.timezone = info[4]
-            except:
+            except Exception:
                 pass
 
     def __repr__(self):
@@ -878,7 +878,7 @@ class CityGroup(object):
 
         try:
             city_name, country_name = name.split(',', 1)
-        except:
+        except Exception:
             city_name = name
             country_name = ''
 
@@ -958,7 +958,7 @@ class CityDB(object):
                 timezone_group = city._timezone_group.lower()
                 try:
                     group = self.__getattr__(timezone_group)
-                except:
+                except Exception:
                     group = CityGroup(city._timezone_group)
                     self._groups[timezone_group] = group
                     
@@ -1076,7 +1076,7 @@ class Astral(object):
                         'civil': 6,
                         'nautical': 12,
                         'astronomical': 18}[depression]
-                except:
+                except Exception:
                     raise KeyError(("solar_depression must be either a number "
                         "or one of 'civil', 'nautical' or 'astronomical'"))
             else:
@@ -1144,7 +1144,7 @@ class Astral(object):
         
         try:
             hourangle = self._hour_angle_sunrise(latitude, solarDec)
-        except:
+        except Exception:
             raise AstralError(('Sun remains below horizon '
                 'on this day, at this location.'))
 
@@ -1214,7 +1214,7 @@ class Astral(object):
 
         try:
             hourangle = self._hour_angle_sunrise(latitude, solarDec)
-        except:
+        except Exception:
             raise AstralError(('Sun remains below horizon on this day, '
                 'at this location.'))
 
@@ -1336,7 +1336,7 @@ class Astral(object):
 
         try:
             hourangle = self._hour_angle_sunset(latitude, solarDec)
-        except:
+        except Exception:
             raise AstralError(('Sun remains below horizon on this day, '
                 'at this location.'))
 
@@ -1412,7 +1412,7 @@ class Astral(object):
 
         try:
             hourangle = self._hour_angle_sunset(latitude, solarDec)
-        except:
+        except Exception:
             raise AstralError(('Sun remains below horizon on this day, '
                 'at this location.'))
 
@@ -1480,7 +1480,7 @@ class Astral(object):
         try:
             sunrise = self.sunrise_utc(date, latitude, longitude)
             sunset = self.sunset_utc(date, latitude, longitude)
-        except:
+        except Exception:
             raise AstralError(('Sun remains below horizon on this day, '
                 'at this location.'))
         

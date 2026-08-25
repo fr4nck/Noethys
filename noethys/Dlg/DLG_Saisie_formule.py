@@ -225,7 +225,7 @@ def ResolveurCalcul(texte=u"", dictValeurs={}):
             resultat = u"%.02f %s" % (resultat, SYMBOLE)
         else :
             resultat = str(resultat)
-    except :
+    except Exception:
         pass
             
     return resultat
@@ -282,7 +282,7 @@ def ResolveurFormule(formule=u"", listeChamps=[], dictValeurs={}):
                 if valeurChamp <= condition : return valeur
             if operateur == "=" and len(listeConditions) > 0 : 
                 if valeurChamp in listeConditions : return valeur
-        except :
+        except Exception:
             return u""
             
     # Renvoie la formule si elle n'a pas été résolue

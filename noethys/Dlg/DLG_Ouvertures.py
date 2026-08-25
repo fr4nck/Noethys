@@ -377,7 +377,7 @@ class CaseOuverture():
 
         try :
             couleur = self.renderer.GetCouleur()
-        except :
+        except Exception:
             couleur = wx.Colour(255, 255, 255)
 
         dictDonnees = {
@@ -1118,7 +1118,7 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                 IDunite = dictUnite["IDunite"]
                 try :
                     etat = self.dictOuvertures[self.clipboard][IDgroupe][IDunite]["etat"]
-                except :
+                except Exception:
                     etat = False
 
                 try :
@@ -1128,7 +1128,7 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                         track = copy.deepcopy(track)
                         track.Reinit(date=dateDD)
                         liste_evenements.append(track)
-                except :
+                except Exception:
                     liste_evenements = []
                 self.OnChangeOuverture(numLigne, numColonne, etat, liste_evenements)
                 numColonne += 1
@@ -1141,7 +1141,7 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                     nbrePlaces = self.dictRemplissage[self.clipboard][IDgroupe][IDunite_remplissage]["places"]
                     self.SetCellValue(numLigne, numColonne, str(nbrePlaces))
                     self.OnChangeRemplissage(numLigne, numColonne, nbrePlaces)
-                except : 
+                except Exception: 
                     pass
                 numColonne += 1
                 
@@ -1256,7 +1256,7 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                                         etat = self.dictOuvertures[dictDonnees["date"]][IDgroupe][IDunite]["etat"]
                                     if action == "schema":
                                         etat = dictDonnees["dictOuvertures"][IDgroupe][IDunite]["etat"]
-                                except :
+                                except Exception:
                                     etat = False
                             else :
                                 # Mode réinit
@@ -1265,7 +1265,7 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                             # Vérifie si pas de conso
                             try :
                                 nbreConso = self.dictConso[date][IDgroupe][IDunite]
-                            except :
+                            except Exception:
                                 nbreConso = 0
 
                             if nbreConso == 0 :
@@ -1287,7 +1287,7 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
 
                             try:
                                 nbreConso = self.dictConso[date][IDgroupe][IDunite]
-                            except:
+                            except Exception:
                                 nbreConso = 0
 
                             liste_evenements = None
@@ -1307,7 +1307,7 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                                         track = copy.deepcopy(track)
                                         track.Reinit(date=date)
                                         liste_evenements.append(track)
-                                except:
+                                except Exception:
                                     liste_evenements = []
 
                             if action == "reinit" and nbreConso == 0 :
@@ -1318,14 +1318,14 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                             if liste_evenements != None:
                                 try:
                                     self.dictOuvertures[date][IDgroupe][IDunite]["liste_evenements"] = liste_evenements
-                                except:
+                                except Exception:
                                     self.MemoriseOuverture(date, IDouverture=None, IDunite=IDunite, IDgroupe=IDgroupe, etat=True, initial=False, liste_evenements=liste_evenements, forcer=True)
 
                             # Ajout des évènements
                             if (action == "ajouter" and IDunite== dictDonnees["IDunite"] and IDgroupe == dictDonnees["IDgroupe"]) or action == "supprimer" :
                                 try:
                                     liste_evenements = self.dictOuvertures[date][IDgroupe][IDunite]["liste_evenements"]
-                                except:
+                                except Exception:
                                     liste_evenements = []
 
                                 if action == "ajouter" :
@@ -1339,7 +1339,7 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                                         if liste_evenements != None:
                                             try:
                                                 self.dictOuvertures[date][IDgroupe][IDunite]["liste_evenements"] = liste_evenements
-                                            except:
+                                            except Exception:
                                                 self.MemoriseOuverture(date, IDouverture=None, IDunite=IDunite, IDgroupe=IDgroupe, etat=True, initial=False, liste_evenements=liste_evenements, forcer=True)
 
                                 if action == "supprimer" :
@@ -1350,7 +1350,7 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                                     liste_evenements = liste_temp
                                     try :
                                         self.dictOuvertures[date][IDgroupe][IDunite]["liste_evenements"] = liste_evenements
-                                    except :
+                                    except Exception:
                                         pass
 
 
@@ -1365,7 +1365,7 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                                         nbrePlaces = self.dictRemplissage[dictDonnees["date"]][IDgroupe][IDunite_remplissage]["places"]
                                     if action == "schema" :
                                         nbrePlaces = dictDonnees["dictRemplissage"][IDgroupe][IDunite_remplissage]["places"]
-                                except : 
+                                except Exception: 
                                     nbrePlaces = 0
                             else :
                                 # Mode réinit
@@ -1951,7 +1951,7 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
             try:
                 self.tipFrame.Destroy()
                 del self.tipFrame
-            except:
+            except Exception:
                 pass
 
     def ActiveTooltip(self, actif=True, case=None):

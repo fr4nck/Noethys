@@ -26,7 +26,7 @@ def Affiche_assistance():
         if topWindow.GetName() == "general":
             if topWindow.EstFichierExemple() == True:
                 return False
-    except :
+    except Exception:
         pass
 
     try:
@@ -34,7 +34,7 @@ def Affiche_assistance():
         anciennete = datetime.datetime.today() - datetime.datetime.strptime(IDfichier[:8], "%Y%m%d")
         if anciennete.days / 365 >= 4:
             return True
-    except:
+    except Exception:
         pass
 
     return False
@@ -145,7 +145,7 @@ class Page_documentation(wx.Panel):
     def OnBoutonImprimer(self, event):
         try:
             FonctionsPerso.LanceFichierExterne("https://noethys.com/public/bon_commande_documentation.pdf")
-        except:
+        except Exception:
             dlg = wx.MessageDialog(None, _(u"Noethys ne peut pas ouvrir le PDF !\n\nVeuillez vérifier qu'un autre PDF n'est pas déjà ouvert en arrière-plan..."),_(u"Erreur"), wx.OK | wx.ICON_ERROR)
             dlg.ShowModal()
             dlg.Destroy()
@@ -228,7 +228,7 @@ class Page_connecthys(wx.Panel):
     def OnBoutonImprimer(self, event):
         try:
             FonctionsPerso.LanceFichierExterne("https://www.connecthys.com/bon_commande_connecthys.pdf")
-        except:
+        except Exception:
             dlg = wx.MessageDialog(None, _(u"Noethys ne peut pas ouvrir le PDF !\n\nVeuillez vérifier qu'un autre PDF n'est pas déjà ouvert en arrière-plan..."),_(u"Erreur"), wx.OK | wx.ICON_ERROR)
             dlg.ShowModal()
             dlg.Destroy()
@@ -310,7 +310,7 @@ class Page_noethysweb(wx.Panel):
     def OnBoutonImprimer(self, event):
         try:
             FonctionsPerso.LanceFichierExterne("https://www.noethysweb.com/bon_commande_noethysweb.pdf")
-        except:
+        except Exception:
             dlg = wx.MessageDialog(None, _(u"Noethys ne peut pas ouvrir le PDF !\n\nVeuillez vérifier qu'un autre PDF n'est pas déjà ouvert en arrière-plan..."),_(u"Erreur"), wx.OK | wx.ICON_ERROR)
             dlg.ShowModal()
             dlg.Destroy()
@@ -529,7 +529,7 @@ class Page_assistance(wx.Panel):
     def OnBoutonImprimer(self, event):
         try:
             FonctionsPerso.LanceFichierExterne("https://noethys.com/public/bon_commande_assistance.pdf")
-        except:
+        except Exception:
             dlg = wx.MessageDialog(None, _(u"Noethys ne peut pas ouvrir le PDF !\n\nVeuillez vérifier qu'un autre PDF n'est pas déjà ouvert en arrière-plan..."),_(u"Erreur"), wx.OK | wx.ICON_ERROR)
             dlg.ShowModal()
             dlg.Destroy()

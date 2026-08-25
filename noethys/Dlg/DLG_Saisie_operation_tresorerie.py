@@ -378,7 +378,7 @@ class Dialog(wx.Dialog):
                 try :
                     numero = int(self.ctrl_num_cheque.GetValue())
                     self.ctrl_num_cheque.SetValue(("%0" + str(nbre_chiffres) + "d") % numero)
-                except :
+                except Exception:
                     pass
 
     def OnBoutonReleves(self, event):  

@@ -175,10 +175,10 @@ class Installer():
             keepGoing, skip = self.dlgprogress.Update(pourcentage, _(u"Décompression de Connecthys en cours... %s %%") % pourcentage)
             if os.path.isdir(os.path.join(chemin_dest, i)) or "2.5" in i or "." not in i :
                 try: os.makedirs(os.path.join(chemin_dest, i))
-                except: pass
+                except Exception: pass
             else:
                 try: os.makedirs(os.path.join(chemin_dest, os.path.dirname(i)))
-                except: pass
+                except Exception: pass
                 data = zfile.read(i)
                 fp = open(os.path.join(chemin_dest, i), "wb")
                 fp.write(data)
@@ -505,7 +505,7 @@ class Installer():
         try :
             wx.CallAfter(self.dlgprogress.Destroy)
             del self.dlgprogress
-        except :
+        except Exception:
             pass
 
         # Message de confirmation

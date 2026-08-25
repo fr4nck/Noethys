@@ -294,7 +294,7 @@ class PanelGrille(wx.Panel):
 
         try:
             self.barreOutils.AddStretchableSpace()
-        except:
+        except Exception:
             self.barreOutils.AddSeparator()
 
         AddTool(self.barreOutils, self.ID_MODE_RESERVATION, label=_(u"Réservation"), bitmap=CTRL_Grille.CreationImage(10, 20, CTRL_Grille.COULEUR_RESERVATION), kind=wx.ITEM_RADIO)
@@ -1085,7 +1085,7 @@ class Dialog(wx.Dialog):
             newLargeur = dlg.GetValue()
             try:
                 newLargeur = int(newLargeur)
-            except:
+            except Exception:
                 dlg2 = wx.MessageDialog(self, _(u"La valeur saisie semble incorrecte !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_INFORMATION)
                 dlg2.ShowModal()
                 dlg2.Destroy()

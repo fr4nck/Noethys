@@ -73,7 +73,7 @@ def GetValidite(identifiant="", code=""):
         h = urlopen(url, timeout=5)
         html = h.read()
         h.close()
-    except :
+    except Exception:
         return False
 
     if six.PY3:
@@ -83,7 +83,7 @@ def GetValidite(identifiant="", code=""):
     if html.startswith("codeok") :
         try :
             date = DateEngEnDateDD(html[7:])
-        except :
+        except Exception:
             date = None
     else :
         date = None
@@ -277,7 +277,7 @@ class Dialog(wx.Dialog):
         if html.startswith("codeok") :
             try :
                 date = DateEngEnDateDD(html[7:])
-            except :
+            except Exception:
                 date = None
         else :
             date = None

@@ -78,7 +78,7 @@ class Track(object):
         # Numéro de cotisation
         try:
             self.numero_int = int(self.numero)
-        except:
+        except Exception:
             self.numero_int = None
 
         # Titulaires famille
@@ -607,7 +607,7 @@ class ListView(FastObjectListView):
                 if self.checkColonne == True:
                     tri += 1
                 self.SetSortColumn(self.columns[tri])
-            except:
+            except Exception:
                 pass
 
         self.SetEmptyListMsg(_(u"Aucune cotisation"))

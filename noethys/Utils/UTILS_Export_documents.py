@@ -140,7 +140,7 @@ def Importer(fichier="", dictDonnees={}, IDfond=None, defaut=0):
             if champ == "image" :
                 try :
                     donnee = base64.b64decode(donnee)
-                except:
+                except Exception:
                     pass
                 blob = donnee
                 donnee = None

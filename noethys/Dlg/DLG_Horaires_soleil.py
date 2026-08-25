@@ -89,7 +89,7 @@ class Dialog(wx.Dialog):
             try :
                 self.ctrl_ville.SetValueCP(self.dictOrganisateur["cp"])
                 self.ctrl_ville.SetValueVille(self.dictOrganisateur["ville"])
-            except :
+            except Exception:
                 pass
 
     def __set_properties(self):

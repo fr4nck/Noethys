@@ -511,7 +511,7 @@ class Panel_coords(wx.Panel):
             self.ficheIndividu = self.Parent.GetParent()
             if self.ficheIndividu.GetName() != "fiche_individu" :
                 self.ficheIndividu = None
-        except : 
+        except Exception: 
             self.ficheIndividu = None
         if self.ficheIndividu != None :
             self.ficheIndividu.Set_Header(nomLigne, texte)
@@ -678,7 +678,7 @@ class Panel_coords(wx.Panel):
                 else:
                     self.radio_adresse_manuelle.SetValue(True)
                     try : self.ctrl_rue.SetValue(individu[1])
-                    except : pass
+                    except Exception: pass
                     self.ctrl_ville.SetValueCP(individu[2])
                     self.ctrl_ville.SetValueVille(individu[3])
                     self.ctrl_secteur.SetID(individu[14])
@@ -686,9 +686,9 @@ class Panel_coords(wx.Panel):
                 # Activité professionnelle
                 self.ctrl_categorie.SetID(individu[4])
                 try : self.ctrl_profession.SetValue(individu[5])
-                except : pass
+                except Exception: pass
                 try : self.ctrl_employeur.SetValue(individu[6])
-                except : pass
+                except Exception: pass
                 self.ctrl_travail_tel.SetNumero(individu[7])
                 self.ctrl_travail_fax.SetNumero(individu[8])
                 self.ctrl_travail_mail.SetMail(individu[9])

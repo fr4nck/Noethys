@@ -14,7 +14,7 @@ from Utils.UTILS_Traduction import _
 import wx
 try:
     from Crypto.Hash import SHA256
-except:
+except Exception:
     from Cryptodome.Hash import SHA256
 import GestionDB
 
@@ -66,12 +66,13 @@ def GetListeUtilisateurs(nomFichier=""):
     listeUtilisateurs = []
     
     # chargement avatars
+    listeAvatars = []
     try :
         req = """SELECT IDutilisateur, image
         FROM utilisateurs;"""
         DB.ExecuterReq(req)
         listeAvatars = DB.ResultatReq()
-    except :
+    except Exception:
         pass
     dictAvatars = {}
     for IDutilisateur, image in listeAvatars :
@@ -152,7 +153,7 @@ def VerificationDroitsUtilisateurActuel(categorie="", action="", IDactivite="", 
     try :
         topWindow = wx.GetApp().GetTopWindow()
         nomWindow = topWindow.GetName()
-    except :
+    except Exception:
         nomWindow = None
     if nomWindow == "general" : 
         # Si la frame 'General' est chargée, on y récupère le dict de config

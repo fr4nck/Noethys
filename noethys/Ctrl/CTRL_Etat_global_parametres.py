@@ -21,7 +21,7 @@ import wx.lib.agw.hyperlink as Hyperlink
 from Ctrl import CTRL_Saisie_heure
 try:
     from wx.combo import ComboCtrl
-except:
+except Exception:
     from wx import ComboCtrl
 import six
 
@@ -247,7 +247,7 @@ class CTRL_Coeff(wx.TextCtrl):
         if valeur == "" : return True
         try :
             test = float(valeur)
-        except :
+        except Exception:
             return False
         return True
     
@@ -269,7 +269,7 @@ class CTRL_Coeff(wx.TextCtrl):
             valeur = ""
         try :
             self.SetValue(str(valeur))
-        except :
+        except Exception:
             pass
                     
 # -------------------------------------------------------------------------------------------------------------------

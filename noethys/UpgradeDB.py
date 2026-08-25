@@ -681,7 +681,7 @@ class DB(GestionDB.DB):
                 if self.IsTableExists("compta_releves") == False : self.CreationTable("compta_releves", Tables.DB_DATA) 
                 try :
                     self.Importation_valeurs_defaut([[u"", ("compta_comptes_comptables",), True],])
-                except :
+                except Exception:
                     print("Table 'compta_comptes_comptables' impossible a remplir : Elle a deja ete remplie !")
             except Exception as err :
                 return " filtre de conversion %s | " % ".".join([str(x) for x in versionFiltre]) + str(err)

@@ -28,7 +28,7 @@ except ImportError:
 
 try:
     import unicodecsv as csv
-except:
+except Exception:
     from Outils import unicodecsvpy2 as csv
 
 import GestionDB
@@ -40,7 +40,7 @@ from Ctrl.CTRL_ObjectListView import FastObjectListView, ColumnDefn, Filter, CTR
 
 try :
     from Utils import UTILS_CS1504
-except:
+except Exception:
     pass
 from Utils import UTILS_Config
 

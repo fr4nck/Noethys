@@ -391,7 +391,7 @@ class Dialog(wx.Dialog):
     def EcritStatusBar(self, texte=u""):
         try:
             wx.GetApp().GetTopWindow().SetStatusText(texte, 0)
-        except:
+        except Exception:
             pass
 
     def OnBoutonOk(self, event):

@@ -403,7 +403,7 @@ class Dialog(wx.Dialog):
         dlg.ShowModal() 
         try :
             dlg.Destroy()
-        except :
+        except Exception:
             pass
 
         # Envoi l'info de l'arrêt au log

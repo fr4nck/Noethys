@@ -144,7 +144,7 @@ def Sauvegarde(listeFichiersLocaux=[], listeFichiersReseau=[], nom="", repertoir
                 try :
                     if six.PY2:
                         out = str(out).decode("utf8")
-                except :
+                except Exception:
                     pass
                 dlgprogress.Destroy()
                 dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de sauvegarde !\n\nErreur : %s") % out, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
@@ -161,7 +161,7 @@ def Sauvegarde(listeFichiersLocaux=[], listeFichiersReseau=[], nom="", repertoir
                 try :
                     if six.PY2:
                         err = str(err).decode("utf8")
-                except :
+                except Exception:
                     pass
                 dlgErreur = wx.MessageDialog(None, _(u"Une erreur est survenue dans la sauvegarde !\n\nErreur : %s") % err, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
                 dlgErreur.ShowModal() 
@@ -463,7 +463,7 @@ def GetRepertoireMySQL(dictValeurs={}):
                                     chemin = u"C:/%s/%s/%s/" % (fichier1, fichier2, fichier3)
                                     if os.path.isfile(chemin + "bin/mysql.exe") :
                                         return chemin
-        except :
+        except Exception:
             pass
         
     # 2- Recherche dans le fichier Config
@@ -472,7 +472,7 @@ def GetRepertoireMySQL(dictValeurs={}):
         if chemin != None :
             if os.path.isdir(chemin) :
                 return chemin
-    except :
+    except Exception:
         pass
         
     # 3- Demande le chemin à l'utilisateur
@@ -488,14 +488,14 @@ def GetRepertoireMySQL(dictValeurs={}):
         else:
             dlg.Destroy()    
             return None
-    except :
+    except Exception:
         pass
     
     try :
         if os.path.isdir(chemin + _(u"bin/")) :
             UTILS_Config.SetParametre("sauvegarde_cheminmysql", chemin)
             return chemin
-    except :
+    except Exception:
         pass
         
     return None

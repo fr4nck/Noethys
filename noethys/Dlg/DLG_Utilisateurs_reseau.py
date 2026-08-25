@@ -156,7 +156,7 @@ class Panel(wx.Panel):
         try :
             topWindow = wx.GetApp().GetTopWindow()
             nomWindow = topWindow.GetName()
-        except :
+        except Exception:
             nomWindow = None
         if nomWindow == "general" : 
             # Si la frame 'General' est chargée, on y récupère le dict de config

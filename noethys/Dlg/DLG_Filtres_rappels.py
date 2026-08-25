@@ -401,7 +401,7 @@ class Dialog(wx.Dialog):
                 listeNumeros = []
                 for numero in listeTemp.split(";") :
                     listeNumeros.append(int(numero))
-            except :
+            except Exception:
                 dlg = wx.MessageDialog(self, _(u"Filtre Liste de numéros : Les numéros de lettres saisis ne sont pas valides !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
                 dlg.ShowModal()
                 dlg.Destroy()

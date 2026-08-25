@@ -86,7 +86,7 @@ class Panel(wx.Panel):
         item = self.ctrl_infos.GetSelection()
         try :
             dataItem = self.ctrl_infos.GetPyData(item) 
-        except :
+        except Exception:
             dataItem = None
         if dataItem == None or dataItem["type"] != "message":
             dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucun message à modifier dans la liste !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
@@ -105,7 +105,7 @@ class Panel(wx.Panel):
         item = self.ctrl_infos.GetSelection()
         try :
             dataItem = self.ctrl_infos.GetPyData(item) 
-        except :
+        except Exception:
             dataItem = None
         if dataItem == None or dataItem["type"] != "message":
             dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucun message à supprimer dans la liste !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)

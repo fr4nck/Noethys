@@ -128,7 +128,7 @@ class Analyse():
             
             try :
                 pourcentage = 100.0 * realise / plafond
-            except :
+            except Exception:
                 pourcentage = 0.0
             
             totalSolde += solde 
@@ -177,7 +177,7 @@ class Analyse():
         # Total
         try :
             pourcentage = 100.0 * totalRealise / totalPlafond
-        except :
+        except Exception:
             pourcentage = None
             
         listeCategories.append({
@@ -267,7 +267,7 @@ class ListView(GroupListView):
             try :
                 montant = float(valeur)
                 return u"%.2f %s" % (float(valeur), SYMBOLE)
-            except :
+            except Exception:
                 return valeur
         
         def FormateEcart(valeur):

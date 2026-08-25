@@ -356,7 +356,7 @@ class ListView(FastObjectListView):
         try :
             if self.GetParent().GetName() == "panel_prestations" :
                 self.GetParent().MAJtotal()
-        except :
+        except Exception:
             pass
     
     def Selection(self):

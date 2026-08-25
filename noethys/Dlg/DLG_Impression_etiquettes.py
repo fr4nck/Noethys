@@ -257,7 +257,7 @@ class Dialog(wx.Dialog):
         try :
             if 'phoenix' not in wx.PlatformInfo:
                 wx.Yield()
-        except :
+        except Exception:
             pass
 
         # Si on vient d'une fiche famille ou d'une fiche individuelle

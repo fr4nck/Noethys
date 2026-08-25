@@ -32,7 +32,7 @@ def GPS(numero="", rue="", cp="", ville="", pays=""):
                     pays = dictTemp["long_name"]
             
         return {'lat':lat, 'long':long, 'pays':pays}
-    except :
+    except Exception:
         return None
 
 

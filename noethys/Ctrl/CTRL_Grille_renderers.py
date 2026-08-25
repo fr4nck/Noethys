@@ -496,7 +496,7 @@ class CaseMultihoraires(GridCellRenderer):
                 nbre_quarts_heures = UTILS_Dates.SoustractionHeures(self.case.heure_max, self.case.heure_min).seconds / 900.0
                 largeur = rect.width - PADDING_MULTIHORAIRES["horizontal"] * 2
                 largeur_quarts_heures = largeur / nbre_quarts_heures
-            except:
+            except Exception:
                 largeur_quarts_heures = 99
 
             h = datetime.timedelta(minutes=0)
@@ -1063,7 +1063,7 @@ class LabelColonneMultihoraires(glr.GridLabelRenderer):
             nbre_quarts_heures = UTILS_Dates.SoustractionHeures(self.heure_max, self.heure_min).seconds / 900.0
             largeur = rect.width - PADDING_MULTIHORAIRES["horizontal"] * 2
             largeur_quarts_heures = largeur / nbre_quarts_heures
-        except:
+        except Exception:
             largeur_quarts_heures = 99
 
         h = datetime.timedelta(minutes=0)

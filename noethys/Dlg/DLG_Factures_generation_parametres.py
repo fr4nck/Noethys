@@ -590,7 +590,7 @@ class Panel(wx.Panel):
             # Numéro perso
             try:
                 prochain_numero = int(self.ctrl_prochain_numero.GetValue())
-            except:
+            except Exception:
                 prochain_numero = None
             if prochain_numero in (None, ""):
                 dlg = wx.MessageDialog(self, _(u"Le prochain numéro de facture ne semble pas valide !"), _(

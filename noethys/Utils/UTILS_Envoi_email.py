@@ -105,7 +105,7 @@ def EnvoiEmailFamille(parent=None, IDfamille=None, nomDoc="", categorie="", list
     if nomDoc != False :
         try :
             os.remove(nomDoc)
-        except :
+        except Exception:
             pass
 
     return resultat
@@ -646,7 +646,7 @@ class SmtpV2(Base_messagerie):
                 adresse = message.GetLabelDestinataires()
                 try:
                     labelAdresse = adresse.decode("utf8")
-                except:
+                except Exception:
                     labelAdresse = adresse
                 label = _(u"Envoi %d/%d : %s...") % (index, len(messages), labelAdresse)
 
@@ -755,7 +755,7 @@ class SmtpV2(Base_messagerie):
                 adresse = message.GetLabelDestinataires()
                 try:
                     lignes.append(u"- %s : %s" % (adresse.decode("utf8"), erreur))
-                except:
+                except Exception:
                     lignes.append(u"- %s : %s" % (adresse, erreur))
             dlg = DLG_Messagebox.Dialog(None, titre=_(u"Compte-rendu de l'envoi"), introduction=intro,
                                         detail="\n".join(lignes), icone=wx.ICON_INFORMATION, boutons=[_(u"Ok"), ])
@@ -976,7 +976,7 @@ class Mailjet(Base_messagerie):
                 adresse = message.GetLabelDestinataires()
                 try:
                     labelAdresse = adresse.decode("utf8")
-                except:
+                except Exception:
                     labelAdresse = adresse
                 label = _(u"Envoi %d/%d : %s...") % (index, len(messages), labelAdresse)
 
@@ -1055,7 +1055,7 @@ class Mailjet(Base_messagerie):
                 adresse = message.GetLabelDestinataires()
                 try:
                     lignes.append(u"- %s : %s" % (adresse.decode("utf8"), erreur))
-                except:
+                except Exception:
                     lignes.append(u"- %s : %s" % (adresse, erreur))
             dlg = DLG_Messagebox.Dialog(None, titre=_(u"Compte-rendu de l'envoi"), introduction=intro, detail="\n".join(lignes), icone=wx.ICON_INFORMATION, boutons=[_(u"Ok"), ])
             dlg.ShowModal()

@@ -368,7 +368,7 @@ class GetValeurs() :
                     txtDatenaiss = _(u"Né le %s (%d ans)") % (datenaissFR, age)
                 else:
                     txtDatenaiss = _(u"Née le %s (%d ans)") % (datenaissFR, age)
-            except :
+            except Exception:
                 pass
         return txtDatenaiss
         
@@ -485,7 +485,7 @@ class CadreIndividu():
                 img = img.Rescale(width=int(taillePhoto), height=int(taillePhoto), quality=wx.IMAGE_QUALITY_HIGH)
                 self.bmp = img.ConvertToBitmap()
                 self.dc.DrawBitmap(self.bmp, int(x+paddingCadre), int(y+paddingCadre))
-            except:
+            except Exception:
                 pass
         
         # Dessin du texte
@@ -1116,7 +1116,7 @@ class CTRL_Graphique(wx.ScrolledWindow):
         if hasattr(self, "tipFrame"):
             try :
                 self.tipFrame.Destroy()
-            except :
+            except Exception:
                 pass
             del self.tipFrame
             self.tip.IDindividu = None
@@ -1151,7 +1151,7 @@ class CTRL_Graphique(wx.ScrolledWindow):
             self.MAJnotebook()
         try :
             dlg.Destroy()
-        except :
+        except Exception:
             pass
     
     def Calendrier_selection(self):
@@ -1387,7 +1387,7 @@ class CTRL_Graphique(wx.ScrolledWindow):
             pass
         try :
             dlg.Destroy()
-        except:
+        except Exception:
             pass
         self.MAJ() 
         self.MAJnotebook() 
@@ -1966,7 +1966,7 @@ class CTRL_Liste(HTL.HyperTreeList):
         if hasattr(self, "tipFrame"):
             try :
                 self.tipFrame.Destroy()
-            except :
+            except Exception:
                 pass
             del self.tipFrame
             self.tip.IDindividu = None

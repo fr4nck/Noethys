@@ -17,7 +17,7 @@ IMPORT_PYTTSX = False
 try :
     import pyttsx
     IMPORT_PYTTSX = True
-except :
+except Exception:
     pass
 
 # Sinon, essaye d'importer pyttsx3
@@ -25,7 +25,7 @@ if IMPORT_PYTTSX == False:
     try :
         import pyttsx3 as pyttsx
         IMPORT_PYTTSX = True
-    except :
+    except Exception:
         pass
 
 import GestionDB
@@ -117,7 +117,7 @@ class Vocal() :
         self.engine.say(texte)
         try :
             self.engine.runAndWait() 
-        except :
+        except Exception:
             pass
 
 

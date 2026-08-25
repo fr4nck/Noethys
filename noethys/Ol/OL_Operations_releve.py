@@ -337,7 +337,7 @@ class ListView(FastObjectListView):
         
         try :
             self.GetParent().SetInformations(texte) 
-        except :
+        except Exception:
             print((texte,))
         
         

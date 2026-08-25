@@ -92,7 +92,7 @@ class Panel(wx.Panel):
         # Montant
         try:
             montant = UTILS_Parametres.Parametres(mode="get", categorie="generation_factures", nom="cocher_montant_sup", valeur=0.0)
-        except:
+        except Exception:
             montant = 0.0
         self.ctrl_option_montant.SetMontant(montant)
 
@@ -143,7 +143,7 @@ class Panel(wx.Panel):
         try :
             topWindow = wx.GetApp().GetTopWindow()
             topWindow.SetStatusText(texte)
-        except :
+        except Exception:
             pass
 
     def OnBoutonApercu(self, event):

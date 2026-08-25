@@ -513,7 +513,7 @@ class Case():
         """ Recherche s'il y a une conso pour cette case """
         try :
             dictInfosInscriptions = self.grid.dictInfosInscriptions[self.IDindividu][self.IDactivite]
-        except : 
+        except Exception: 
             dictInfosInscriptions = None
         return dictInfosInscriptions
 
@@ -898,7 +898,7 @@ class Case():
     def AppliquerForfaitCredit(self, event=None):
         try:
             self.grid.GetGrandParent().panel_forfaits.Ajouter(date_debut=self.date, IDfamille=self.IDfamille)
-        except:
+        except Exception:
             self.grid.GetGrandParent().GetParent().panel_forfaits.Ajouter(date_debut=self.date, IDfamille=self.IDfamille)
         
     def GetInfosPlaces(self):
@@ -907,7 +907,7 @@ class Case():
         
         try :
             etiquettesCoches = self.grid.GetGrandParent().panel_etiquettes.GetCoches(self.IDactivite)
-        except :
+        except Exception:
             etiquettesCoches = []
             
         # Recherche des nbre de places
@@ -920,7 +920,7 @@ class Case():
             nbrePlacesInitial = 0
             try :
                 nbrePlacesInitial = self.grid.dictRemplissage[IDunite_remplissage][self.date][self.IDgroupe]
-            except :
+            except Exception:
                 nbrePlacesInitial = 0
             
             # Filtre étiquettes
@@ -936,7 +936,7 @@ class Case():
                 if "reservation" in d : nbrePlacesPrises += d["reservation"]
                 if "present" in d : nbrePlacesPrises += d["present"]
                 if "attente" in d : nbreAttente += d["attente"]
-            except :
+            except Exception:
                 nbrePlacesPrises = 0
                 nbreAttente = 0
             
@@ -948,7 +948,7 @@ class Case():
             nbrePlacesInitialTousGroupes = 0
             try :
                 nbrePlacesInitialTousGroupes = self.grid.dictRemplissage[IDunite_remplissage][self.date][None]
-            except :
+            except Exception:
                 nbrePlacesInitialTousGroupes = 0
             
             if nbrePlacesInitialTousGroupes > 0 :
@@ -957,7 +957,7 @@ class Case():
                     for IDgroupe, d in self.grid.dictRemplissage2[IDunite_remplissage][self.date].items() :
                         if "reservation" in d : nbrePlacesPrisesTousGroupes += d["reservation"]
                         if "present" in d : nbrePlacesPrisesTousGroupes += d["present"]
-                except :
+                except Exception:
                     nbrePlacesPrisesTousGroupes = 0
                 
                 nbrePlacesRestantesTousGroupes = nbrePlacesInitialTousGroupes - nbrePlacesPrisesTousGroupes
@@ -1204,7 +1204,7 @@ class CaseStandard(Case):
         """ Recherche s'il y a une conso pour cette case """
         try :
             conso = self.grid.dictConsoIndividus[self.IDindividu][self.date][self.IDunite][0]
-        except : 
+        except Exception: 
             conso = None
         return conso
     
@@ -2594,7 +2594,7 @@ class CaseEvenement(Case):
         """ Génére les évènements """
         try :
             liste_donnees = self.grid.dictOuvertures[self.date][self.IDgroupe][self.IDunite]["liste_evenements"]
-        except :
+        except Exception:
             liste_donnees = []
         liste_evenements = []
         for dict_evenement in liste_donnees :

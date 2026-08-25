@@ -24,7 +24,7 @@ import wx.lib.agw.hyperlink as Hyperlink
 import xlrd
 try:
     import unicodecsv as csv
-except:
+except Exception:
     from Outils import unicodecsvpy2 as csv
 import os
 import datetime
@@ -204,7 +204,7 @@ class Importation_Excel() :
                         valeur = six.text_type(valeur)[:-2]
                     ligne.append(valeur)
                 listeDonnees.append(ligne)
-        except :
+        except Exception:
             listeDonnees = None
         return listeDonnees
 
@@ -228,7 +228,7 @@ class Importation_CSV() :
         if self.fichierValide == True :
             try :
                 self.fichier = csv.reader(open(nomFichier,"rb"), encoding="utf8", delimiter=separation)
-            except :
+            except Exception:
                 self.fichierValide = False
                 
     def GetDonnees(self, colonnes=[]):
@@ -243,12 +243,12 @@ class Importation_CSV() :
                         if valeur[2] == "/" and valeur[5] == "/" :
                             try :
                                 valeur = datetime.datetime.strptime(valeur[:10], '%d/%m/%Y').date()
-                            except :
+                            except Exception:
                                 pass
                     
                     ligne.append(valeur)
                 listeDonnees.append(ligne)
-        except :
+        except Exception:
             listeDonnees = None
         return listeDonnees
 

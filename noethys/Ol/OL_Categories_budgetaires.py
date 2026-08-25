@@ -118,7 +118,7 @@ class ListView(FastObjectListView):
             try :
                 montant = float(valeur)
                 return u"%.2f %s" % (float(valeur), SYMBOLE)
-            except :
+            except Exception:
                 return valeur
 
         liste_Colonnes = [

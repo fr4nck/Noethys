@@ -675,7 +675,7 @@ class Dialog(wx.Dialog):
         date_edition = dictDonnees["date"]
         try :
             date_editionDD = DateEngEnDateDD(DateFrEng(date_edition))
-        except :
+        except Exception:
             date_editionDD = ""
                 
         # Insertion des données de base dans le dictValeurs

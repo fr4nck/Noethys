@@ -697,7 +697,7 @@ class Impression():
                                     dictLegende = self.dictDonnees["legendes"][IDlegende]
                                     if dictLegende not in liste_legendes and IDlegende in self.dictDonnees["legendes"] :
                                         liste_legendes.append(dictLegende)
-                                except :
+                                except Exception:
                                     pass
 
                 if len(liste_legendes) > 0 :
@@ -742,7 +742,7 @@ class Impression():
 
         try:
             FonctionsPerso.LanceFichierExterne(nomDoc)
-        except:
+        except Exception:
             print("Probleme dans l'edition du menu")
 
     def GetDateAndTextes(self, num_ligne=0, num_colonne=0, dict_page={}, calendrier={}):

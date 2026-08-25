@@ -120,8 +120,12 @@ class ListView(FastObjectListView):
         DB = GestionDB.DB()
         req = "SELECT nom, logo FROM organisateur WHERE IDorganisateur=1;"
         DB.ExecuterReq(req)
-        nom, logo = DB.ResultatReq()[0]
+        donneesOrganisateur = DB.ResultatReq()
         DB.Close()
+        if donneesOrganisateur:
+            nom, logo = donneesOrganisateur[0]
+        else:
+            nom, logo = u"", None
         if logo != None :
             io = six.BytesIO(logo)
             img = wx.ImageFromStream(io, wx.BITMAP_TYPE_ANY)
@@ -395,7 +399,7 @@ class ListView(FastObjectListView):
             dictAdresse = self.GetGrandParent().GetPageAvecCode("coords").GetAdresseIndividu()
             cp = dictAdresse["cp"]
             ville = dictAdresse["ville"]
-        except :
+        except Exception:
             pass
 
         from Dlg import DLG_Inscription

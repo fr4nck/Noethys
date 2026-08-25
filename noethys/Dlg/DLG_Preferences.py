@@ -576,7 +576,7 @@ class DerniersFichiers(wx.Panel):
         topWindow = wx.GetApp().GetTopWindow()
         try :
             topWindow.PurgeListeDerniersFichiers(nbre)
-        except :
+        except Exception:
             pass
 
     def OnBoutonPurge(self, event):
@@ -673,7 +673,7 @@ class Autodeconnect(wx.Panel):
             topWindow = wx.GetApp().GetTopWindow()
             topWindow.userConfig["autodeconnect"] = valeur
             topWindow.Start_autodeconnect_timer()
-        except :
+        except Exception:
             pass
 
 # ---------------------------------------------------------------------------------------------------------------------------

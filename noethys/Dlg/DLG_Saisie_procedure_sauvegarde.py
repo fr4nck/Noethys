@@ -140,7 +140,7 @@ class CTRL_Conditions(wx.Panel) :
                 labelPoste = _(u"Ce poste (%s)") % socket.gethostname().decode("utf8")
             else :
                 labelPoste = _(u"Ce poste (%s)") % socket.gethostname()
-        except :
+        except Exception:
             labelPoste = _(u"Ce poste")
         self.radio_poste_1 = wx.RadioButton(self, wx.ID_ANY, labelPoste, style=wx.RB_GROUP)
         self.radio_poste_2 = wx.RadioButton(self, wx.ID_ANY, _(u"Parmi les postes suivants :"))

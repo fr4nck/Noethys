@@ -56,7 +56,7 @@ def SetModalFrameParente(frameActuelle):
     """ Rend modale la frame parente """
     try :
         frameActuelle.GetParent().GetTopLevelParent().MakeModal(True)
-    except : 
+    except Exception: 
         pass
 
 # -------------------------------------------------------------------------------------------------------
@@ -192,7 +192,7 @@ def Recup_liste_pb_personnes(recalc=False):
         dictProblemesPersonnes = topWindow.dictProblemesPersonnes
 ##        print _(u"Recuperation dans le topWindow")
         return dictNomsPersonnes, dictProblemesPersonnes
-    except :
+    except Exception:
         topWindow.dictNomsPersonnes, topWindow.dictProblemesPersonnes = Creation_liste_pb_personnes()
 ##        print _(u"Recuperation dans la topWindow impossible : on calcule les donnees")
         return topWindow.dictNomsPersonnes, topWindow.dictProblemesPersonnes
@@ -910,18 +910,18 @@ def ListeImprimantes():
         for (Flags,pDescription,pName,pComment) in list(win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL,None,1)):
             listeImprimantesLocales.append(pName)
             listeToutesImprimantes.append(pName)
-    except : pass
+    except Exception: pass
         
     try:   
         for (Flags,pDescription,pName,pComment) in list(win32print.EnumPrinters(win32print.PRINTER_ENUM_CONNECTIONS,None,1)):
             listeImprimantesReseau.append(pName)
             listeToutesImprimantes.append(pName)
-    except : pass
+    except Exception: pass
     
     nomImprimanteDefaut = ""
     try :
         nomImprimanteDefaut = win32print.GetDefaultPrinter()
-    except : pass
+    except Exception: pass
 
     return nomImprimanteDefaut, listeToutesImprimantes, listeImprimantesLocales, listeImprimantesReseau
 
@@ -1030,7 +1030,7 @@ def GetNomDB():
     try :
         topWindow = wx.GetApp().GetTopWindow()
         nomWindow = topWindow.GetName()
-    except :
+    except Exception:
         nomWindow = None
     if nomWindow == "general" : 
         # Si la frame 'General' est chargée, on y récupère le dict de config
@@ -1301,7 +1301,7 @@ def GetIDfichier():
         listeTemp = DB.ResultatReq()
         DB.Close()
         IDfichier = listeTemp[0][2]
-    except :
+    except Exception:
         IDfichier = ""
     return IDfichier
 

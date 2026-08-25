@@ -19,7 +19,7 @@ from Ctrl import CTRL_Droits
 import wx.lib.agw.hyperlink as Hyperlink
 try:
     from Crypto.Hash import SHA256
-except:
+except Exception:
     from Cryptodome.Hash import SHA256
 from Utils import UTILS_Internet
 from Utils import UTILS_Parametres

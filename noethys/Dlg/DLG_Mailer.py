@@ -502,14 +502,14 @@ class Dialog(wx.Dialog):
         # Fermeture messagerie
         try :
             messagerie.Fermer()
-        except:
+        except Exception:
             pass
 
         # Fermeture dlg_progress si besoin
         if dlg_progress != None:
             try :
                 dlg_progress.Destroy()
-            except:
+            except Exception:
                 pass
 
         # Suppression des images temporaires incluses dans le message
@@ -552,7 +552,7 @@ class Dialog(wx.Dialog):
                     if valeur == None : valeur = u""
                     if type(valeur) == int : valeur = str(valeur)
                     texte = texte.replace(motcle, valeur)
-                except :
+                except Exception:
                     pass
             
             # Vérifie si champs non remplacés

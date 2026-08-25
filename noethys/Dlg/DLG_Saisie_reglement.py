@@ -693,7 +693,7 @@ class Dialog(wx.Dialog):
         try :
             dictTitulaires = UTILS_Titulaires.GetTitulaires(listeIDfamille=[self.IDcompte_payeur,])
             nomsTitulaires = dictTitulaires[self.IDcompte_payeur]["titulairesSansCivilite"]
-        except :
+        except Exception:
             nomsTitulaires = None
         
         # Importation des données
@@ -1078,7 +1078,7 @@ class Dialog(wx.Dialog):
                 try :
                     numero = int(self.ctrl_numero.GetValue())
                     self.ctrl_numero.SetValue(("%0" + str(nbre_chiffres) + "d") % numero)
-                except :
+                except Exception:
                     pass
 
     def SetFraisGestion(self):
@@ -1163,7 +1163,10 @@ class Dialog(wx.Dialog):
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
         DB.Close()
-        IDfamille, email_recus = listeDonnees[0]
+        if listeDonnees:
+            IDfamille, email_recus = listeDonnees[0]
+        else:
+            IDfamille, email_recus = None, None
         if email_recus != None and self.nouveauReglement == True :
 
             icone = wx.Bitmap(Chemins.GetStaticPath(u"Images/32x32/Emails_exp.png"), wx.BITMAP_TYPE_ANY)
@@ -1191,7 +1194,7 @@ class Dialog(wx.Dialog):
                     try :
                         if int(IDindividu) in dictAdressesIndividus :
                             adresse = dictAdressesIndividus[int(IDindividu)][categorie]
-                    except :
+                    except Exception:
                         pass
                 
                 if adresse == None :
@@ -1232,12 +1235,12 @@ class Dialog(wx.Dialog):
                             if len(dlg2.listeAnomalies) == 0 :
                                 succes = True
                             dlg2.Destroy()
-                        except :
+                        except Exception:
                             pass
 
                         try :
                             os.remove(nomDoc)     
-                        except :
+                        except Exception:
                             pass
                         
                         # Mémorisation de l'édition du reçu
@@ -1261,7 +1264,7 @@ class Dialog(wx.Dialog):
     def OnBoutonAnnuler(self, event):
         try :
             self.EndModal(wx.ID_CANCEL)
-        except :
+        except Exception:
             pass
     
     def Importation(self):

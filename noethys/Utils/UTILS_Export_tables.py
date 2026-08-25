@@ -428,7 +428,7 @@ class Importer():
     def GetNewID(self, champCle="", ancienID=None):
         try :
             return self.dictID[champCle][ancienID]
-        except :
+        except Exception:
             pass
         
 

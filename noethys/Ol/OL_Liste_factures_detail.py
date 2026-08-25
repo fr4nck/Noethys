@@ -48,7 +48,7 @@ class Track(object):
         self.nomTitulaires = _(" ")
         try :
             self.nomTitulaires = self.parent.dict_titulaires[self.IDfamille]["titulairesSansCivilite"]
-        except :
+        except Exception:
             pass
 
         # Prestations

@@ -265,7 +265,7 @@ class CTRL_Colonnes_numeriques(wx.CheckListBox):
         # Importation des colonnes numériques
         try :
             tracks_colonnes = self.GetGrandParent().GetGrandParent().donnees
-        except :
+        except Exception:
             tracks_colonnes = []
         listeDonnees = []
         for track in tracks_colonnes :

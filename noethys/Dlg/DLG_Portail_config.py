@@ -1726,7 +1726,7 @@ class Dialog(wx.Dialog):
             texte = u""
         try :
             texte += u"[%s] %s" % (horodatage, message)
-        except :
+        except Exception:
             texte += u"[%s] %s" % (horodatage, str(message).decode('UTF-8'))
         self.log.AppendText(texte)
 
@@ -2271,7 +2271,7 @@ class Synchro():
     def Update_gauge(self):
         try :
             keepGoing, skip = self.dlgprogress.Update(self.num_etape, self.texte_etape)
-        except :
+        except Exception:
             pass
 
 

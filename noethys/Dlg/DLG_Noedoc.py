@@ -1688,7 +1688,7 @@ class Panel_proprietes_doc(wx.Panel):
         nom = self.ctrl_nom.GetValue()
         try :
             self.parent.SetNomDoc(nom)
-        except :
+        except Exception:
             pass
 
     def OnChangeLargeur(self, event): 
@@ -1751,7 +1751,7 @@ class Panel_proprietes_image_interactive(wx.Panel):
         nom = self.ctrl_nom.GetValue()
         try:
             self.parent.SetNomDoc(nom)
-        except:
+        except Exception:
             pass
 
 # -------------------------------------------------------------------------------------------------------------------------------------------
@@ -1968,14 +1968,14 @@ class Proprietes_position(wx.Panel):
         valeur = self.ctrl_x.GetValue()
         if valeur == "" : valeur = 0
         try : valeur = Arrondir(valeur)
-        except : valeur = 0
+        except Exception: valeur = 0
         return Arrondir(valeur)
     
     def GetY(self):
         valeur = self.ctrl_y.GetValue()
         if valeur == "" : valeur = 0
         try : valeur = Arrondir(valeur)
-        except : valeur = 0
+        except Exception: valeur = 0
         return Arrondir(valeur)
 
     def VerrouX(self, etat=False):
@@ -2093,7 +2093,7 @@ class Proprietes_taille(wx.Panel):
         valeur = self.ctrl_largeur.GetValue()
         if valeur == "" : valeur = self.objet.largeurMin
         try : valeur = Arrondir(valeur)
-        except : valeur = self.objet.largeurMin
+        except Exception: valeur = self.objet.largeurMin
         if valeur < self.objet.largeurMin : valeur = self.objet.largeurMin
         return Arrondir(valeur)
     
@@ -2101,7 +2101,7 @@ class Proprietes_taille(wx.Panel):
         valeur = self.ctrl_hauteur.GetValue()
         if valeur == "" : valeur = self.objet.hauteurMin
         try : valeur = Arrondir(valeur)
-        except : valeur = self.objet.hauteurMin
+        except Exception: valeur = self.objet.hauteurMin
         if valeur < self.objet.hauteurMin : valeur = self.objet.hauteurMin
         return Arrondir(valeur)
 
@@ -2202,7 +2202,7 @@ class Proprietes_largeur(wx.Panel):
                 valeur = self.objet.largeurMin
             try:
                 valeur = Arrondir(valeur)
-            except:
+            except Exception:
                 valeur = self.objet.largeurMin
             if valeur < self.objet.largeurMin:
                 valeur = self.objet.largeurMin
@@ -2325,7 +2325,7 @@ class Proprietes_trait(wx.Panel):
         valeur = self.ctrl_epaisseur.GetValue()
         if valeur == "" : valeur = 0
         try : valeur = valeur
-        except : valeur = 0
+        except Exception: valeur = 0
         if valeur < 0 : valeur = 0
         return valeur
     
@@ -3519,7 +3519,7 @@ class Panel_canvas(wx.Panel):
         self.SupprimerFond()
         try :
             self.canvas.RemoveObject(self.grille)
-        except :
+        except Exception:
             pass
         self.Init_canvas() 
 
@@ -4180,7 +4180,7 @@ class Panel_canvas(wx.Panel):
         if MAJpanel_proprietes == True :
             try :
                 self.ctrl_proprietes.SetObjet(None)
-            except :
+            except Exception:
                 pass
         
         self.afficheStatusBarPerso(info=u"")
@@ -4911,7 +4911,7 @@ class Panel_canvas(wx.Panel):
         if x == None or y == None:
             try:
                 tailleDC = wx.ClientDC(self.canvas).GetSize()
-            except:
+            except Exception:
                 tailleDC = (self.Size.x, self.Size.y)
             x, y = self.canvas.PixelToWorld((tailleDC[0] / 2, tailleDC[1] / 2))
             x, y = Arrondir(x - largeur / 2), Arrondir(y - hauteur / 2)
@@ -5181,7 +5181,7 @@ class Panel_canvas(wx.Panel):
             try:
                 self.tipFrame.Destroy()
                 del self.tipFrame
-            except:
+            except Exception:
                 pass
 
     def ActiveTooltip(self, actif=True, objet=None):
@@ -5489,8 +5489,9 @@ def GetLogo_organisateur():
     DB = GestionDB.DB()
     req = """SELECT logo FROM organisateur WHERE IDorganisateur=1;"""
     DB.ExecuterReq(req)
-    buffer = DB.ResultatReq()[0][0]
+    donneesLogo = DB.ResultatReq()
     DB.Close()
+    buffer = donneesLogo[0][0] if donneesLogo else None
     if buffer == None : 
         # Si aucun logo, renvoie une image vide
         return wx.Image(Chemins.GetStaticPath("Images/Special/Logo_nb.png"), wx.BITMAP_TYPE_ANY), False

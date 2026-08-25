@@ -247,7 +247,7 @@ class CS1504:
       try :
         if s < 0 or s > 59 :
             s = 0
-      except :
+      except Exception:
         s = 0
         
       ts = datetime.datetime(y, m, d, h, mi, s) + self.delta

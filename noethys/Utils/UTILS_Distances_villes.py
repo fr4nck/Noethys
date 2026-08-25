@@ -81,7 +81,7 @@ def GetDistances(origine="", destinations=[], moyen="voiture") :
                     
             index += 1
     
-    except :
+    except Exception:
         dictResultats = {}
         
     return dictResultats

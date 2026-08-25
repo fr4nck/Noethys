@@ -117,7 +117,7 @@ class CTRL(HTL.HyperTreeList):
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
         DB.Close()
-        self.IDcompte_payeur = listeDonnees[0][0]
+        self.IDcompte_payeur = listeDonnees[0][0] if listeDonnees else 0
 
         # Création des colonnes
         listeColonnes = [

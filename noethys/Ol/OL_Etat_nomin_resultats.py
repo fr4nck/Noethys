@@ -212,7 +212,7 @@ def GetQuestionnaires():
                             try :
                                 if int(IDchoix) in dictChoix :
                                     listeTemp2.append(dictChoix[int(IDchoix)])
-                            except :
+                            except Exception:
                                 pass
                         texteReponse = ", ".join(listeTemp2)
                     if filtre == "coche" : 
@@ -680,7 +680,7 @@ class ListView(FastObjectListView):
             for track in self.donnees :
                 try :
                     valeur = getattr(track, champ.code)
-                except :
+                except Exception:
                     valeur = None
                 # Entier
                 if isinstance(valeur, int) : 
@@ -770,7 +770,7 @@ class ListView(FastObjectListView):
         try :
             texte = _(u"---- TOTAUX pour les %d individus de la liste ----\n%s") % (len(listeTracks), ", ".join(listeTextes))
             self.GetParent().ctrl_totaux.SetValue(texte)
-        except :
+        except Exception:
             pass
             
         

@@ -117,7 +117,7 @@ class CTRL_Activites(ULC.UltimateListCtrl):
         try :
             listeSelections = self.GetIDcoches()
             self.GetGrandParent().SetListeSelectionActivites(listeSelections)
-        except :
+        except Exception:
             print("Erreur dans le SetListeSelectionIndividus du ultimatelistctrl.")
     
     def Importation(self, listeIDindividus=[]):
@@ -231,7 +231,7 @@ class CTRL_Activites(ULC.UltimateListCtrl):
         try :
             self.GetGrandParent().SetListeSelectionActivites(listeSelections)
             self.GetGrandParent().MAJ_grille(autoCocheActivites=False)
-        except :
+        except Exception:
             print("Erreur dans le Check du ultimatelistctrl.", listeSelections)
         # Déselectionne l'item après la coche
         if event != None :

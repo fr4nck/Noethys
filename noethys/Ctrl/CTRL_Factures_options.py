@@ -447,7 +447,7 @@ class CTRL_Parametres(CTRL_Propertygrid.CTRL) :
             self.MAJ_modeles()   
         try :
             propriete.SetValue(ancienneValeur)
-        except :
+        except Exception:
             pass
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

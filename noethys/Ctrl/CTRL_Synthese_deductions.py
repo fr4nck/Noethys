@@ -264,7 +264,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                         regroupement = self.dictInfosFamilles[IDfamille]["QUESTION_%s" %
                                                                          self.affichage_regroupement[17:]]
 
-                except:
+                except Exception:
                     regroupement = None
 
                 if regroupement in ("", None):
@@ -414,11 +414,11 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                 if code_colonne == "prestation":
                     try:
                         valeur = valeurs["prestations"][label_colonne]["nbre"]
-                    except:
+                    except Exception:
                         pass
                 try:
                     dict_totaux[numColonne] += valeur
-                except:
+                except Exception:
                     pass
                 self.SetCellValue(numLigne, numColonne, str(valeur))
                 self.SetCellAlignment(

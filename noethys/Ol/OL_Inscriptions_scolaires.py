@@ -182,7 +182,7 @@ class ListView(FastObjectListView):
         nbre = len(self.donnees)
         try :
             self.GetParent().SetLabelBoxInscrits(nbre)
-        except :
+        except Exception:
             pass
         
     def InitObjectListView(self):

@@ -408,7 +408,7 @@ class CTRL_Parametres(wx.Panel) :
         if motdepasse != "" and motdepasse != None :
             try :
                 motdepasse = base64.b64decode(motdepasse)
-            except :
+            except Exception:
                 pass
             self.check_cryptage.SetValue(True)
             self.ctrl_mdp.SetValue(motdepasse)

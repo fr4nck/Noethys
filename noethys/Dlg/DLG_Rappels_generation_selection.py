@@ -185,7 +185,7 @@ class Panel(wx.Panel):
         try :
             topWindow = wx.GetApp().GetTopWindow() 
             topWindow.SetStatusText(texte)
-        except : 
+        except Exception: 
             pass
 
     def SauvegardeRappels(self):

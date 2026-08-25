@@ -272,7 +272,7 @@ class CTRL(ULC.UltimateListCtrl):
                     cursor.execute(req)
                     description, logo = cursor.fetchone()
                     connexion.close()
-                except:
+                except Exception:
                     pass
 
                 if logo != None:
@@ -284,7 +284,7 @@ class CTRL(ULC.UltimateListCtrl):
                             img = wx.ImageFromStream(io, wx.BITMAP_TYPE_ANY)
                         img = RecadreImg(img)
                         image = img.ConvertToBitmap()
-                    except:
+                    except Exception:
                         image = None
                 else:
                     image = None
@@ -361,7 +361,7 @@ class CTRL(ULC.UltimateListCtrl):
                     DB.ExecuterReq("""USE %s_data;""" % titre)
                     DB.ExecuterReq("""SELECT nom, logo FROM organisateur WHERE IDorganisateur=1;""")
                     description, logo = DB.ResultatReq()[0]
-                except:
+                except Exception:
                     pass
 
                 if logo != None:
@@ -373,7 +373,7 @@ class CTRL(ULC.UltimateListCtrl):
                             img = wx.ImageFromStream(io, wx.BITMAP_TYPE_ANY)
                         img = RecadreImg(img)
                         image = img.ConvertToBitmap()
-                    except:
+                    except Exception:
                         image = None
                 else:
                     image = None

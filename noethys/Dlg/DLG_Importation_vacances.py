@@ -389,7 +389,7 @@ class Dialog(wx.Dialog):
         # Recherche sur internet
         try :
             zone = RechercherZone(ville, cp)
-        except :
+        except Exception:
             zone = None
         if zone == None :
             dlg = wx.MessageDialog(self, _(u"Désolé, Noethys n'a pas réussi à trouver la zone scolaire de l'organisateur sur internet !"), _(u"Erreur"), wx.OK | wx.ICON_ERROR)

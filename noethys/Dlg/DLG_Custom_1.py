@@ -366,7 +366,7 @@ class CTRL_Donnees(FastObjectListView):
         try:
             classeur = xlrd.open_workbook(self.nom_fichier)
             feuille = classeur.sheet_by_index(0)
-        except:
+        except Exception:
             dlg = wx.MessageDialog(self, _(u"Impossible d'ouvrir ce fichier Excel !"), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
             dlg.ShowModal()
             dlg.Destroy()
@@ -775,7 +775,7 @@ class CTRL_Log(wx.TextCtrl):
             texte = u""
         try :
             texte += u"[%s] %s " % (horodatage, message)
-        except :
+        except Exception:
             texte += u"[%s] %s " % (horodatage, str(message).decode("utf8"))
         self.AppendText(texte)
 

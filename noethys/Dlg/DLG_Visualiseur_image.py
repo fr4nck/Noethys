@@ -28,7 +28,7 @@ try :
     if not wx.USE_UNICODE:
         phrase1 = phrase1.encode("iso8859-15", "replace")
         phrase1 = phrase1.encode("iso8859-15", "replace")
-except :
+except Exception:
     pass
 
 def pil2wx(image):

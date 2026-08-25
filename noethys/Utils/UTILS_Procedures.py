@@ -127,7 +127,7 @@ def EcritStatusbar(texte=u""):
     try:
         topWindow = wx.GetApp().GetTopWindow()
         topWindow.SetStatusText(texte)
-    except:
+    except Exception:
         pass
 
 # -------------------------------------------------------------------------------------------------------------------------
@@ -670,7 +670,7 @@ def A8574():
     valide = True
     try:
         version = tuple([int(x) for x in version.split(".")])
-    except:
+    except Exception:
         valide = False
     if len(version) != 4:
         valide = False
@@ -926,7 +926,7 @@ def A9001():
         DB = GestionDB.DB(suffixe="DOCUMENTS")
         DB.AjoutChamp("documents", "IDtype_piece", "INTEGER")
         DB.Close()
-    except:
+    except Exception:
         pass
 
 
@@ -1010,25 +1010,25 @@ def A9061():
         DB = GestionDB.DB(suffixe="DOCUMENTS")
         DB.AjoutChamp("documents", "last_update", "VARCHAR(50)")
         DB.Close()
-    except:
+    except Exception:
         pass
 
-    # Ajoute l'horodatage dans chaque document
+    # Ajoute l'horodatage dans chaque document. Une erreur d'écriture doit
+    # remonter à Procedure(), qui sait déjà l'afficher à l'utilisateur.
+    DB = GestionDB.DB(suffixe="DOCUMENTS")
     try:
-        DB = GestionDB.DB(suffixe="DOCUMENTS")
         req = "UPDATE documents SET last_update='%s';" % datetime.datetime.now()
         DB.ExecuterReq(req)
         DB.Commit()
+    finally:
         DB.Close()
-    except:
-        pass
 
 
 def A9073():
     """ Cryptage des mots de passe utilisateurs """
     try:
         from Crypto.Hash import SHA256
-    except:
+    except Exception:
         from Cryptodome.Hash import SHA256
 
     DB = GestionDB.DB()
@@ -1050,7 +1050,7 @@ def A9074():
     """ Cryptage des mots de passe utilisateurs dans nouveau champ mdpcrypt """
     try:
         from Crypto.Hash import SHA256
-    except:
+    except Exception:
         from Cryptodome.Hash import SHA256
 
     DB = GestionDB.DB()
@@ -1585,7 +1585,7 @@ def A9062():
         return
     try:
         nom_table, nom_champ, type_champ = parametres.split(";")
-    except:
+    except Exception:
         return
     DB = GestionDB.DB()
     DB.ExecuterReq("ALTER TABLE %s MODIFY %s %s" %
@@ -1683,6 +1683,9 @@ def A9068():
         listeIDinscription = [listeInscriptions[index][0]
                               for index in dlg.GetSelections()]
         dlg.Destroy()
+        if not listeIDinscription:
+            DB.Close()
+            return
     else:
         DB.Close()
         dlg.Destroy()
@@ -1698,9 +1701,10 @@ def A9068():
         return
     from Utils import UTILS_Dates
     date_erreur = False
+    date_desinscription = None
     try:
         date_desinscription = UTILS_Dates.DateFrEng(date)
-    except:
+    except Exception:
         date_erreur = True
     if date_erreur or not date_desinscription:
         dlg = wx.MessageDialog(None, u"La date semble erronée. Procédure annulée.", _(
@@ -1710,9 +1714,7 @@ def A9068():
         DB.Close()
         return
 
-    if len(listeIDinscription) == 0:
-        condition = "IDinscription > 0"
-    elif len(listeIDinscription) == 1:
+    if len(listeIDinscription) == 1:
         condition = "IDinscription IN (%d)" % listeIDinscription[0]
     else:
         condition = "IDinscription IN %s" % str(tuple(listeIDinscription))

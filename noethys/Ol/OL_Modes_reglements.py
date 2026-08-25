@@ -43,7 +43,7 @@ def GetImage(bufferImage):
             bmp = img.Rescale(width=TAILLE_IMAGE[0], height=TAILLE_IMAGE[1], quality=qualite)
             bmp = bmp.ConvertToBitmap()
             return bmp
-        except :
+        except Exception:
             return None
 
     else:

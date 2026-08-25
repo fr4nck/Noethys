@@ -164,7 +164,7 @@ class Track(object):
         self.nomTitulaires = _(" ")
         try :
             self.nomTitulaires = self.parent.dict_titulaires[self.IDfamille]["titulairesSansCivilite"]
-        except :
+        except Exception:
             pass
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -668,7 +668,7 @@ class Dialog(wx.Dialog):
                     try :
                         if int(IDindividu) in dictAdressesIndividus :
                             adresse = dictAdressesIndividus[int(IDindividu)][categorie]
-                    except :
+                    except Exception:
                         adresse = u""
 
                 # Noms des titulaires de la famille

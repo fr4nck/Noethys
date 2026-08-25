@@ -97,7 +97,7 @@ class Attestations_fiscales():
         try :
             topWindow = wx.GetApp().GetTopWindow() 
             topWindow.SetStatusText(texte)
-        except : 
+        except Exception: 
             pass
 
     def GetDonneesImpression(self, tracks=[], dictOptions={}):
@@ -106,7 +106,7 @@ class Attestations_fiscales():
         try :
             if 'phoenix' not in wx.PlatformInfo:
                 wx.Yield()
-        except :
+        except Exception:
             pass
         
         dictDonnees = {}
@@ -294,7 +294,7 @@ class Attestations_fiscales():
             try :
                 if 'phoenix' not in wx.PlatformInfo:
                     wx.Yield()
-            except :
+            except Exception:
                 pass
             self.EcritStatusbar(_(u"Création du PDF des attestations fiscales en cours... veuillez patienter..."))
             try :

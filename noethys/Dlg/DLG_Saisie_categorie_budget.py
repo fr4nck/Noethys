@@ -283,7 +283,7 @@ class Dialog(wx.Dialog):
             montant = float(self.track.valeur)
             self.ctrl_montant.SetMontant(montant)
             self.radio_montant.SetValue(True)
-        except :
+        except Exception:
             self.ctrl_formule.SetValue(self.track.valeur)
             self.radio_formule.SetValue(True)
     

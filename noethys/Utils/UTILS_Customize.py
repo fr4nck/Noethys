@@ -14,7 +14,7 @@ import os
 from six.moves import configparser
 try :
     from Utils import UTILS_Adaptations
-except:
+except Exception:
     import UTILS_Adaptations
 UTILS_Fichiers = UTILS_Adaptations.Import("Utils.UTILS_Fichiers")
 
@@ -119,7 +119,7 @@ def GetCustomize():
     try :
         topWindow = wx.GetApp().GetTopWindow()
         nomWindow = topWindow.GetName()
-    except :
+    except Exception:
         nomWindow = None
     if nomWindow == "general" :
         return topWindow.GetCustomize()

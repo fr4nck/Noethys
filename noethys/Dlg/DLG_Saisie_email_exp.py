@@ -404,7 +404,7 @@ class Page_SMTP(wx.Panel):
             if self.ctrl_port.GetValue() != "":
                 try:
                     test = int(self.ctrl_port.GetValue())
-                except:
+                except Exception:
                     dlg = wx.MessageDialog(self, _(u"Le numéro de port que vous avez saisi n'est pas valide !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_ERROR)
                     dlg.ShowModal()
                     dlg.Destroy()

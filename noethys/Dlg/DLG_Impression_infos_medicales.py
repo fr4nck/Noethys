@@ -212,7 +212,7 @@ class CTRL_Options(CTRL_Propertygrid.CTRL):
             try :
                 propriete = self.GetPropertyByName(nom)
                 propriete.SetValue(valeur)
-            except :
+            except Exception:
                 pass
 
 

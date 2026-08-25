@@ -69,7 +69,7 @@ class GenerationFichier(Thread):
             nomFichier = export.Run() 
             self.parent.EnvoyerInfosSurFichierAEnvoyer(nomFichier) 
             self.parent.log.SetImage("on")
-        except: 
+        except Exception: 
             self.stop = True 
             self.parent.log.SetImage("on")
             raise 
@@ -189,7 +189,7 @@ class Echo(Protocol):
         try :
             message = json.loads(data)
             return True
-        except :
+        except Exception:
             return False
 
     def Envoyer(self):
@@ -237,6 +237,10 @@ def StartServer(log=None):
         print(("Erreur lancement serveur Nomadhys :", err))
         log.EcritLog(_(u"Erreur dans le lancement du serveur Nomadhys [factory] :") )
         log.EcritLog(err)
+        # Sans socket d'écoute il ne faut ni annoncer un serveur prêt ni
+        # démarrer le reactor. Cela évite aussi de lire ``port`` avant son
+        # affectation si la préparation échoue plus tôt.
+        return
 
     try :
         # IP locale
@@ -389,7 +393,7 @@ class Panel(wx.Panel):
             texte = u""
         try :
             texte += u"[%s] %s" % (horodatage, message)
-        except :
+        except Exception:
             texte += u"[%s] %s" % (horodatage, str(message).decode("utf8"))
         self.log.AppendText(texte)
         

@@ -130,7 +130,7 @@ class MyDialog(wx.Dialog):
         for IDferie, nom, jour, mois, annee in listeDonnees :
             try :
                 listeJoursExistants.append(datetime.date(annee, mois, jour))
-            except :
+            except Exception:
                 pass
         
         def SauvegarderDate(nom="", date=None):

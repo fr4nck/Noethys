@@ -503,7 +503,7 @@ class Graphe(Objet):
         if self.bitmap != None :
             try :
                 self.stockImages.RemoveFile(self.nomImage)
-            except : pass
+            except Exception: pass
         
         # Mémorise l'image dans le stockImages
         self.bitmap = self.ConvertMPLtoBMP(figure)

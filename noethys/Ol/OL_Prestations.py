@@ -397,7 +397,7 @@ class ListView(GroupListView):
         try :
             if self.GetParent().GetName() == "panel_prestations" :
                 self.GetParent().MAJtotal()
-        except :
+        except Exception:
             pass
         self.Refresh()
     

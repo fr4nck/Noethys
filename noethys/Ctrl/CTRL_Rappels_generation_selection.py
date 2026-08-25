@@ -61,7 +61,7 @@ class CTRL_document(wx.Choice):
             donnees = self.parent.GetGrandParent().ctrl_textes.donnees 
             for track in donnees :
                 liste.append((track.IDtexte, track.label, track.couleur, (track.retard_min, track.retard_max), track.titre, track.texte ))
-        except:
+        except Exception:
             pass
         index = 0
         for IDtexte, label, couleur, retardDefaut, titre, texte in liste :

@@ -73,7 +73,7 @@ import shelve
 try :
     import dbhash
     import anydbm
-except:
+except Exception:
     pass
 
 import random 
@@ -81,7 +81,7 @@ from six.moves.urllib.request import urlopen
 
 try:
     from Crypto.Hash import SHA256
-except:
+except Exception:
     from Cryptodome.Hash import SHA256
 
 import wx.lib.agw.aui as aui
@@ -123,7 +123,7 @@ class MainFrame(wx.Frame):
         # Icône
         try :
             icon = wx.Icon()
-        except :
+        except Exception:
             icon = wx.EmptyIcon()
         icon.CopyFromBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/Interface/%s/Icone.png" % theme), wx.BITMAP_TYPE_ANY))
         self.SetIcon(icon)
@@ -217,7 +217,7 @@ class MainFrame(wx.Frame):
         if "linux" not in sys.platform :
             try :
                 self._mgr.SetArtProvider(aui.ModernDockArt(self))
-            except :
+            except Exception:
                 pass
         self._mgr.SetManagedWindow(self)
 
@@ -358,7 +358,7 @@ class MainFrame(wx.Frame):
                     "IDcategorie" : 1,
                     "action" : _(u"Fermeture du fichier"),
                     },])
-            except :
+            except Exception:
                 pass
                 
         # Mémorisation du paramètre de la taille d'écran
@@ -1156,7 +1156,7 @@ class MainFrame(wx.Frame):
                 itemMenu.SetBitmap(wx.Bitmap(Chemins.GetStaticPath(item["image"]), wx.BITMAP_TYPE_PNG))
             try :
                 menuParent.Append(itemMenu)
-            except :
+            except Exception:
                 if 'phoenix' in wx.PlatformInfo:
                     menuParent.Append(itemMenu)
                 else :
@@ -1222,7 +1222,7 @@ class MainFrame(wx.Frame):
                 item = wx.MenuItem(menu_fichier, ID_DERNIER_FICHIER + index, u"%d. %s" % (index+1, nomFichier), _(u"Ouvrir le fichier : '%s'") % nomFichier)
                 try :
                     menu_fichier.Append(item)
-                except :
+                except Exception:
                     if 'phoenix' in wx.PlatformInfo:
                         menu_fichier.Append(item)
                     else :
@@ -1266,7 +1266,7 @@ class MainFrame(wx.Frame):
             item = wx.MenuItem(menu_affichage, dictPanneau["IDmenu"], label, _(u"Afficher l'élément '%s'") % label, wx.ITEM_CHECK)
             try :
                 menu_affichage.Insert(position, item)
-            except :
+            except Exception:
                 menu_affichage.InsertItem(position, item)
             position += 1
             ID += 1
@@ -1810,7 +1810,7 @@ class MainFrame(wx.Frame):
         dlg.ShowModal() 
         try :
             dlg.Destroy()
-        except :
+        except Exception:
             pass
         if CUSTOMIZE.GetValeur("ephemeride", "actif", "1") == "1" :
             self.ctrl_ephemeride.Initialisation()
@@ -2948,7 +2948,7 @@ class MainFrame(wx.Frame):
         dlg = DLG_Factures_generation.Dialog(self)
         dlg.ShowModal() 
         try : dlg.Destroy()
-        except : pass
+        except Exception: pass
         
     def On_facturation_factures_liste(self, event):
         if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("facturation_factures", "consulter") == False : return
@@ -3851,7 +3851,7 @@ class MainFrame(wx.Frame):
         # Mémorise dans l'historique l'ouverture du fichier
         try:
             UTILS_Historique.InsertActions([{"IDcategorie":1, "action":_(u"Ouverture du fichier %s") % nomFichier},])
-        except:
+        except Exception:
             pass
 
         # Affiche les messages importants
@@ -4173,7 +4173,7 @@ class MainFrame(wx.Frame):
             pos_debut_numVersion =texteNouveautes.find("n")
             pos_fin_numVersion = texteNouveautes.find("(")
             versionMaj = texteNouveautes[pos_debut_numVersion+1:pos_fin_numVersion].strip()
-        except :
+        except Exception:
             print("Recuperation du num de version de la MAJ sur internet impossible.")
             versionMaj = "0.0.0.0"
         # Compare les deux versions et renvois le résultat
@@ -4183,7 +4183,7 @@ class MainFrame(wx.Frame):
                 return True
             else:
                 return False
-        except :
+        except Exception:
             return False
 
     def GetVersionAnnonce(self):

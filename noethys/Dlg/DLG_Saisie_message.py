@@ -390,7 +390,7 @@ class Dialog(wx.Dialog):
         try :
             dictTitulaires = UTILS_Titulaires.GetTitulaires(listeIDfamille=[self.IDfamille,])
             nomTitulaires = dictTitulaires[self.IDfamille]["titulairesSansCivilite"]
-        except :
+        except Exception:
             nomTitulaires = u""
         return nomTitulaires
                 
