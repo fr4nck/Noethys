@@ -122,7 +122,7 @@ class Dialog(wx.Dialog):
         
     def OnBouton_ok(self, event):
         IDbanque = self.GetIDbanque()
-        if IDmedecin == None :
+        if IDbanque == None :
             dlg = wx.MessageDialog(self, _(u"Vous n'avez sélectionné aucun établissement bancaire dans la liste"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
