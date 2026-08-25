@@ -50,6 +50,16 @@ class BranchAssignmentGapTests(unittest.TestCase):
         ''')
         self.assertEqual(report["count"], 0)
 
+    def test_loop_target_is_already_defined_inside_loop(self):
+        report = self.report_for('''
+            def f(rows):
+                for value in rows:
+                    if value is not None:
+                        value = str(value)
+                    print(value)
+        ''')
+        self.assertEqual(report["count"], 0)
+
     def test_repository_inventory_is_exported(self):
         report = audit.build_report()
         output = Path("tmp/branch-assignment-audit.json")
