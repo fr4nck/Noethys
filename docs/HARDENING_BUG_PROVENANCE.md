@@ -36,14 +36,17 @@ Les références `upstream` ci-dessous pointent vers le `master` public de `Noet
 | 21 | Plusieurs dialogues de badgeage lisent `GetSelections()` après `dlg.Destroy()`, dépendant d'un cycle de vie wx historique fragile. | `Dlg/DLG_Badgeage_interface.py` — choix famille / arrivée-départ / réservation | `PORTAGE_PY3_WX` | blob `54d1190bf89783d7f5e0b1a597747b2d0dcd7989` : trois lectures après `Destroy()`. | commit `19ec4312b40bc62ba1d861e6ae46fd88a751acf9`, audit `use_after_destroy=0` | oui |
 | 22 | Le dialogue de mesure de distance détruit le `wx.SingleChoiceDialog` avant de lire `GetSelection()`. | `Dlg/DLG_Saisie_location_demande.py` — `Dialog.Mesurer_distance` | `PORTAGE_PY3_WX` | blob `918ce8fd884d9ae6ae8f523a69bb849e2eee6eec` : `dlg.Destroy()` précède `dlg.GetSelection()`. | commit `dd93f248d3b15f548a365563ec342bf118a18765`, `test_location_request_wx_lifecycle_contract.py` | oui |
 | 23 | Le traitement manuel des réservations portail détruit le dialogue avant de sauvegarder `dlg.ctrl_grille`. | `Dlg/DLG_Saisie_portail_demande.py` — `Dialog.Traitement_reservations` | `PORTAGE_PY3_WX` | blob `6921ce7cb14f2216c8c8f58f74b6270dba6f8a65` : `dlg.Destroy()` précède `Save_grille(dlg.ctrl_grille)`. | commit `c56294238c77c300c2bde397e8f6693be1ff7917`, `test_portail_destroy_contract.py` | oui |
+| 24 | Une date invalide dans la procédure de désinscription par lot peut lever `UnboundLocalError` au lieu d'afficher le message d'erreur prévu, car `date_desinscription` n'est affectée que dans le `try`. | `Utils/UTILS_Procedures.py` — `A9068` | `HISTORIQUE_IVAN` | blob `f8eedb72fa263085ae6e04d042ee0dd797a8bfee` : après l'exception, le code évalue `not date_desinscription` sans valeur de repli. | #98, initialisation `date_desinscription = None` avant conversion | oui |
+| 25 | L'absence de la ligne `organisateur` fait échouer plusieurs chemins qui disposent pourtant d'un repli « sans logo / données vides », car ils indexent `ResultatReq()[0]` avant ce repli. | `Utils/UTILS_Organisateur.GetDonnees`, `Dlg/DLG_Noedoc.GetLogo_organisateur`, `Ol/OL_Inscriptions.GetLogoOrganisateur` | `HISTORIQUE_IVAN` | blobs `665f4992976728be6ccd451ebb530225ca0b100b`, `8be48b2fa091651770a2cb17e88c66308d8431dd`, `5f2b81efdedf230004353995384c821afbcd3330` : accès direct à la première ligne. | #98, gardes de résultat DB et replis neutres | oui |
+| 26 | Le calcul de disponibilité d'un produit de location lève `IndexError` si l'`IDproduit` n'existe plus, au lieu de retourner une disponibilité vide. | `Utils/UTILS_Locations.py` — `GetStockDisponible` | `HISTORIQUE_IVAN` | blob `7d10ae36cd477094356ae552f5a09f1871a5dd57` : `stock_initial = listeDonnees[0][1]` sans vérifier le résultat. | #98, garde `if not listeDonnees: return {}` | oui |
 
 ## Compteur provisoire vérifié
 
 Au stade de cette photographie :
 
-- `HISTORIQUE_IVAN` démontré : **15** ;
+- `HISTORIQUE_IVAN` démontré : **18** ;
 - `PORTAGE_PY3_WX` démontré : **8** ;
-- total de défauts/familles confirmés et sourcés dans ce tableau : **23** ;
+- total de défauts/familles confirmés et sourcés dans ce tableau : **26** ;
 - `FORK_REPENS` : à inventorier séparément à partir des PR/commits du fork ;
 - `INDETERMINE` : tout défaut non encore comparé à une source upstream reste dans cette catégorie par défaut.
 
