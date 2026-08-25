@@ -1683,6 +1683,9 @@ def A9068():
         listeIDinscription = [listeInscriptions[index][0]
                               for index in dlg.GetSelections()]
         dlg.Destroy()
+        if not listeIDinscription:
+            DB.Close()
+            return
     else:
         DB.Close()
         dlg.Destroy()
@@ -1711,9 +1714,7 @@ def A9068():
         DB.Close()
         return
 
-    if len(listeIDinscription) == 0:
-        condition = "IDinscription > 0"
-    elif len(listeIDinscription) == 1:
+    if len(listeIDinscription) == 1:
         condition = "IDinscription IN (%d)" % listeIDinscription[0]
     else:
         condition = "IDinscription IN %s" % str(tuple(listeIDinscription))
