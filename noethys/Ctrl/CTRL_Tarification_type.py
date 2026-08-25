@@ -120,7 +120,7 @@ class Panel_type_sans_parametres(wx.Panel):
 ##        self.CreationPages()
 ##    
 ##    def CreationPages(self):
-##        self.liste_pages = [
+##        liste_pages = [
 ##            ("SIMPLE", _(u"Prestation simple"), Panel_type_sans_parametres(self, self.nouveauTarif)),
 ##            ("JOURN", _(u"Prestation journalière"), CTRL_Tarification_journ.Panel(self, self.IDactivite, self.IDtarif, self.nouveauTarif)),
 ##            ("FORFAIT", _(u"Forfait daté"), CTRL_Tarification_forfait.Panel(self, self.IDactivite, self.IDtarif, self.nouveauTarif)),
@@ -128,7 +128,7 @@ class Panel_type_sans_parametres(wx.Panel):
 ##            ]
 ##        self.dictPages = {}
 ##        index = 0
-##        for code, label, ctrl in self.liste_pages :
+##        for code, label, ctrl in liste_pages :
 ##            self.AddPage(ctrl, label)
 ##            self.dictPages[code] = {"index":index, "ctrl":ctrl}
 ##            index += 1
