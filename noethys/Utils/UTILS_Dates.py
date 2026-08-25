@@ -171,10 +171,10 @@ def HeureStrEnDelta(heureStr):
         heureStr = heureStr.replace("h", ":")
     if ":" not in heureStr :
         heureStr += u":"
-    if len(heureStr.split(":")) == 2 :
-        heures, minutes = heureStr.split(":")
-    if len(heureStr.split(":")) == 3 :
-        heures, minutes, secondes = heureStr.split(":")
+    elements = heureStr.split(":")
+    if len(elements) not in (2, 3):
+        return datetime.timedelta(hours=0, minutes=0)
+    heures, minutes = elements[:2]
     if heures == "" : heures = 0
     if minutes == "" : minutes = 0
     return datetime.timedelta(hours=int(heures), minutes=int(minutes))
