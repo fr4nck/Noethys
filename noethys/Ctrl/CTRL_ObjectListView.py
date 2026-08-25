@@ -1163,8 +1163,13 @@ class GroupListView(OLV.GroupListView, FastObjectListView):
 # -----------------------------------------------------------------------------------------------
 
 class PanelAvecFooter(wx.Panel):
-    def __init__(self, parent, listview=None, kwargs={}, dictColonnes={}, style=wx.SUNKEN_BORDER|wx.TAB_TRAVERSAL):
+    def __init__(self, parent, listview=None, kwargs=None, dictColonnes=None, style=wx.SUNKEN_BORDER|wx.TAB_TRAVERSAL):
         wx.Panel.__init__(self, parent, id=-1, style=style)
+
+        if kwargs is None:
+            kwargs = {}
+        if dictColonnes is None:
+            dictColonnes = {}
         
         # Contrôles
         kwargs["parent"] = self
