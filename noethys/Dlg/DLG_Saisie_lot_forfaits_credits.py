@@ -562,7 +562,7 @@ class Dialog(wx.Dialog):
     
     def Arreter(self, forcer=False):
         try:
-            TraitmentEnCours = self.traitement.isAlive()
+            TraitmentEnCours = self.traitement.is_alive()
         except AttributeError :
             TraitmentEnCours = False
             
@@ -585,7 +585,7 @@ class Dialog(wx.Dialog):
 
     def OnBoutonOk(self, event): 
         try:
-            TraitmentEnCours = self.traitement.isAlive()
+            TraitmentEnCours = self.traitement.is_alive()
         except AttributeError :
             TraitmentEnCours = False
             

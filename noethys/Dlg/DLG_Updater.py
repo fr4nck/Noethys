@@ -583,7 +583,7 @@ class Page_telechargement(wx.Panel):
         """ Arrete le téléchargement """
         # On vérifie si le thread n'a jamais été lancé avant :
         try:
-            downloadEnCours = self.downloader.isAlive()
+            downloadEnCours = self.downloader.is_alive()
         except AttributeError :
             downloadEnCours = False
 
