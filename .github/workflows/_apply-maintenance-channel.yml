@@ -1,0 +1,127 @@
+name: Apply maintained update channel fixes
+
+on:
+  push:
+    branches:
+      - fix/vanilla-maintenance-channel
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/vanilla-maintenance-channel
+          fetch-depth: 0
+
+      - name: Apply exact fork-maintenance fixes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              text = path.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one occurrence in {path}: {old!r}; got {count}")
+              path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          noethys = Path("noethys/Noethys.py")
+          text = noethys.read_text(encoding="utf-8")
+
+          old = '    def RechercheMAJinternet(self):\n'
+          new = (
+              '    def RechercheMAJinternet(self):\n'
+              '        # FORK_MAINTENANCE: ne jamais interroger automatiquement le canal upstream.\n'
+              '        return False\n'
+          )
+          if text.count(old) != 1:
+              raise SystemExit(f"RechercheMAJinternet definition count: {text.count(old)}")
+          text = text.replace(old, new, 1)
+
+          old = '    def On_outils_updater(self, event):\n'
+          new = (
+              '    def On_outils_updater(self, event):\n'
+              '        # FORK_MAINTENANCE: les versions installables proviennent de notre canal de releases.\n'
+              '        wx.LaunchDefaultBrowser("https://github.com/fr4nck/Noethys/releases")\n'
+              '        return\n'
+          )
+          if text.count(old) != 1:
+              raise SystemExit(f"On_outils_updater definition count: {text.count(old)}")
+          text = text.replace(old, new, 1)
+
+          phrase = 'Rechercher une mise à jour du logiciel'
+          if text.count(phrase) != 2:
+              raise SystemExit(f"Updater menu phrase count: {text.count(phrase)}")
+          text = text.replace(phrase, 'Consulter les mises à jour de la Vanilla maintenue')
+
+          for name in ("AnnonceTemoignages", "AnnonceFinancement"):
+              definition = f'    def {name}(self):\n'
+              guarded = (
+                  definition
+                  + '        # FORK_MAINTENANCE: annonce externe ponctuelle désactivée.\n'
+                  + '        return False\n'
+              )
+              if text.count(definition) != 1:
+                  raise SystemExit(f"{name} definition count: {text.count(definition)}")
+              text = text.replace(definition, guarded, 1)
+              call = f'self.{name}()'
+              if text.count(call) != 1:
+                  raise SystemExit(f"{name} call count: {text.count(call)}")
+              text = text.replace(call, f'# FORK_MAINTENANCE: {name} désactivée', 1)
+
+          noethys.write_text(text, encoding="utf-8")
+
+          updater = Path("noethys/Dlg/DLG_Updater.py")
+          text = updater.read_text(encoding="utf-8")
+          old = '    def Recherche(self):\n        """ Recherche internet """\n'
+          new = (
+              '    def Recherche(self):\n'
+              '        """ Recherche internet """\n'
+              '        # FORK_MAINTENANCE: l\'updater historique ne doit plus installer l\'exécutable upstream.\n'
+              '        wx.LaunchDefaultBrowser("https://github.com/fr4nck/Noethys/releases")\n'
+              '        self.label_introduction.SetLabel(_(u"Les mises à jour de la Vanilla maintenue sont publiées sur notre canal de releases."))\n'
+              '        self.timer.Stop()\n'
+              '        return\n'
+          )
+          if text.count(old) != 1:
+              raise SystemExit(f"Legacy updater Recherche block count: {text.count(old)}")
+          text = text.replace(old, new, 1)
+
+          old = '        if self.tailleFichier == 0 :\n'
+          new = '        if taille == 0 :\n'
+          if text.count(old) != 1:
+              raise SystemExit(f"Size guard count: {text.count(old)}")
+          text = text.replace(old, new, 1)
+          updater.write_text(text, encoding="utf-8")
+
+      - name: Verify invariants
+        shell: python
+        run: |
+          from pathlib import Path
+          n = Path("noethys/Noethys.py").read_text(encoding="utf-8")
+          u = Path("noethys/Dlg/DLG_Updater.py").read_text(encoding="utf-8")
+          assert 'wx.LaunchDefaultBrowser("https://github.com/fr4nck/Noethys/releases")' in n
+          assert 'Consulter les mises à jour de la Vanilla maintenue' in n
+          assert 'self.AnnonceTemoignages()' not in n
+          assert 'self.AnnonceFinancement()' not in n
+          assert 'annonce externe ponctuelle désactivée' in n
+          assert 'l\'updater historique ne doit plus installer l\'exécutable upstream' in u
+          assert 'if taille == 0 :' in u
+
+      - name: Compile changed Python files
+        run: python -m py_compile noethys/Noethys.py noethys/Dlg/DLG_Updater.py
+
+      - name: Commit application fixes and remove helper workflow
+        shell: bash
+        run: |
+          rm .github/workflows/_apply-maintenance-channel.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Noethys.py noethys/Dlg/DLG_Updater.py .github/workflows/_apply-maintenance-channel.yml
+          git commit -m "Vanilla: reprendre le canal de mise à jour et retirer les annonces externes"
+          git push origin HEAD:fix/vanilla-maintenance-channel
