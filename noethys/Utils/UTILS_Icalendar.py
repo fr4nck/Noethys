@@ -71,11 +71,12 @@ class Calendrier():
             (_(u"printemps"), _(u"Pâques")),
             (_(u"Toussaint"), _(u"Toussaint")),
             (_(u"Noël"), _(u"Noël")),
-            ]
+        ]
 
         for nomOriginal, nomFinal in listeCorrespondances :
             for dictEvent in listeEvents :
-                if nomOriginal in dictEvent["description"] :
+                description = dictEvent.get("description") or u""
+                if nomOriginal in description :
                     if dictEvent["date_debut"] != None and dictEvent["date_fin"] != None :
                         annee = dictEvent["date_debut"].year
                         date_debut = dictEvent["date_debut"]
@@ -85,14 +86,16 @@ class Calendrier():
         # Recherche les grandes vacances
         dictTemp = {}
         for dictEvent in listeEvents :
-            if u"élèves" or u"été" in dictEvent["description"] :
-                annee = dictEvent["date_debut"].year
+            description = dictEvent.get("description") or u""
+            date_debut = dictEvent.get("date_debut")
+            if (u"élèves" in description or u"été" in description) and date_debut != None :
+                annee = date_debut.year
                 if (annee in dictTemp) == False :
                     dictTemp[annee] = {"date_debut" : None, "date_fin" : None}
-                if u"été" in dictEvent["description"] :
-                    dictTemp[annee]["date_debut"] = dictEvent["date_debut"] + datetime.timedelta(days=1)
-                if u"élèves" in dictEvent["description"] :
-                    dictTemp[annee]["date_fin"] = dictEvent["date_debut"] - datetime.timedelta(days=1)
+                if u"été" in description :
+                    dictTemp[annee]["date_debut"] = date_debut + datetime.timedelta(days=1)
+                if u"élèves" in description :
+                    dictTemp[annee]["date_fin"] = date_debut - datetime.timedelta(days=1)
 
         for annee, dictDates in dictTemp.items() :
             if dictDates["date_debut"] != None and dictDates["date_fin"] != None :
@@ -118,4 +121,3 @@ if __name__ == "__main__":
 ##        print event
     for x in cal.GetVacances() :
         print(x)
-        
