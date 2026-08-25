@@ -1013,15 +1013,15 @@ def A9061():
     except Exception:
         pass
 
-    # Ajoute l'horodatage dans chaque document
+    # Ajoute l'horodatage dans chaque document. Une erreur d'écriture doit
+    # remonter à Procedure(), qui sait déjà l'afficher à l'utilisateur.
+    DB = GestionDB.DB(suffixe="DOCUMENTS")
     try:
-        DB = GestionDB.DB(suffixe="DOCUMENTS")
         req = "UPDATE documents SET last_update='%s';" % datetime.datetime.now()
         DB.ExecuterReq(req)
         DB.Commit()
+    finally:
         DB.Close()
-    except Exception:
-        pass
 
 
 def A9073():
