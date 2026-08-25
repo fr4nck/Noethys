@@ -23,13 +23,6 @@ jobs:
         run: |
           from pathlib import Path
 
-          def replace_once(path, old, new):
-              text = path.read_text(encoding="utf-8")
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f"Expected exactly one occurrence in {path}: {old!r}; got {count}")
-              path.write_text(text.replace(old, new, 1), encoding="utf-8")
-
           noethys = Path("noethys/Noethys.py")
           text = noethys.read_text(encoding="utf-8")
 
@@ -69,10 +62,6 @@ jobs:
               if text.count(definition) != 1:
                   raise SystemExit(f"{name} definition count: {text.count(definition)}")
               text = text.replace(definition, guarded, 1)
-              call = f'self.{name}()'
-              if text.count(call) != 1:
-                  raise SystemExit(f"{name} call count: {text.count(call)}")
-              text = text.replace(call, f'# FORK_MAINTENANCE: {name} désactivée', 1)
 
           noethys.write_text(text, encoding="utf-8")
 
@@ -107,9 +96,7 @@ jobs:
           u = Path("noethys/Dlg/DLG_Updater.py").read_text(encoding="utf-8")
           assert 'wx.LaunchDefaultBrowser("https://github.com/fr4nck/Noethys/releases")' in n
           assert 'Consulter les mises à jour de la Vanilla maintenue' in n
-          assert 'self.AnnonceTemoignages()' not in n
-          assert 'self.AnnonceFinancement()' not in n
-          assert 'annonce externe ponctuelle désactivée' in n
+          assert n.count('annonce externe ponctuelle désactivée') == 2
           assert 'l\'updater historique ne doit plus installer l\'exécutable upstream' in u
           assert 'if taille == 0 :' in u
 
