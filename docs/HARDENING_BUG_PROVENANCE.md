@@ -40,14 +40,15 @@ Les références `upstream` ci-dessous pointent vers le `master` public de `Noet
 | 25 | L'absence de la ligne `organisateur` fait échouer plusieurs chemins qui disposent pourtant d'un repli « sans logo / données vides », car ils indexent `ResultatReq()[0]` avant ce repli. | `Utils/UTILS_Organisateur.GetDonnees`, `Dlg/DLG_Noedoc.GetLogo_organisateur`, `Ol/OL_Inscriptions.GetLogoOrganisateur` | `HISTORIQUE_IVAN` | blobs `665f4992976728be6ccd451ebb530225ca0b100b`, `8be48b2fa091651770a2cb17e88c66308d8431dd`, `5f2b81efdedf230004353995384c821afbcd3330` : accès direct à la première ligne. | #98, gardes de résultat DB et replis neutres | oui |
 | 26 | Le calcul de disponibilité d'un produit de location lève `IndexError` si l'`IDproduit` n'existe plus, au lieu de retourner une disponibilité vide. | `Utils/UTILS_Locations.py` — `GetStockDisponible` | `HISTORIQUE_IVAN` | blob `7d10ae36cd477094356ae552f5a09f1871a5dd57` : `stock_initial = listeDonnees[0][1]` sans vérifier le résultat. | #98, garde `if not listeDonnees: return {}` | oui |
 | 27 | Les paramètres « Comptes internet » sont validés mais jamais sauvegardés lorsque l'utilisateur confirme les Préférences. | `Dlg/DLG_Preferences.py` — `Dialog.OnBoutonOk` | `HISTORIQUE_IVAN` | blob `b330402900bfd4c6a18ce708ae562a08b22a070b` : `ctrl_comptes_internet.Validation()` est appelé, mais le bloc de sauvegarde saute `ctrl_comptes_internet.Sauvegarde()` entre `ctrl_interface_mysql` et `ctrl_email`. | commit `5159aa1fbf386e5cd5f6e507af73c018f49237d6` contient la ligne correcte ; pour Vanilla, extraire uniquement `self.ctrl_comptes_internet.Sauvegarde()` sans la refonte UI Repens | oui |
+| 28 | Dans la désinscription par lot, valider le dialogue sans cocher aucun individu transforme une sélection vide en `IDinscription > 0` : l'UPDATE peut alors désinscrire **toutes les inscriptions de la base**, toutes activités confondues. | `Utils/UTILS_Procedures.py` — `A9068` | `HISTORIQUE_IVAN` | blob `f8eedb72fa263085ae6e04d042ee0dd797a8bfee` : `if len(listeIDinscription) == 0: condition = "IDinscription > 0"`, puis `UPDATE inscriptions ... WHERE %s` sans condition d'activité. | correction à intégrer dans #98 : une sélection vide doit annuler la procédure sans UPDATE ; ajouter un contrat ciblé avant rétroport Vanilla | oui — **priorité haute** |
 
 ## Compteur provisoire vérifié
 
 Au stade de cette photographie :
 
-- `HISTORIQUE_IVAN` démontré : **19** ;
+- `HISTORIQUE_IVAN` démontré : **20** ;
 - `PORTAGE_PY3_WX` démontré : **8** ;
-- total de défauts/familles confirmés et sourcés dans ce tableau : **27** ;
+- total de défauts/familles confirmés et sourcés dans ce tableau : **28** ;
 - `FORK_REPENS` : à inventorier séparément à partir des PR/commits du fork ;
 - `INDETERMINE` : tout défaut non encore comparé à une source upstream reste dans cette catégorie par défaut.
 
