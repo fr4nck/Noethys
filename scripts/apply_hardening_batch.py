@@ -90,8 +90,6 @@ def fix_user_avatar_default() -> bool:
 def fix_sync_anomalies_default() -> bool:
     path = NOETHYS / "Dlg/DLG_Synchronisation_donnees.py"
     source = path.read_text(encoding="utf-8")
-    # Les premières passes ont produit les deux variantes ci-dessous ; elles
-    # sont toutes deux correctes et doivent être reconnues comme idempotentes.
     if "        listeAnomalies = []\n\n        try:\n" in source or "        listeAnomalies = []\n        try:\n" in source:
         return False
     old = '''        try: \n            \n            listeAnomalies = []\n            for track in self.parent.listeTracks :\n'''
@@ -110,6 +108,17 @@ def fix_unsubscribe_date_default() -> bool:
     return _replace_idempotent("Utils/UTILS_Procedures.py", old, new, "date_desinscription = None\n    try:")
 
 
+def fix_documents_timestamp_mutation() -> bool:
+    old = '''    # Ajoute l'horodatage dans chaque document\n    try:\n        DB = GestionDB.DB(suffixe="DOCUMENTS")\n        req = "UPDATE documents SET last_update='%s';" % datetime.datetime.now()\n        DB.ExecuterReq(req)\n        DB.Commit()\n        DB.Close()\n    except Exception:\n        pass\n'''
+    new = '''    # Ajoute l'horodatage dans chaque document. Une erreur d'écriture doit\n    # remonter à Procedure(), qui sait déjà l'afficher à l'utilisateur.\n    DB = GestionDB.DB(suffixe="DOCUMENTS")\n    try:\n        req = "UPDATE documents SET last_update='%s';" % datetime.datetime.now()\n        DB.ExecuterReq(req)\n        DB.Commit()\n    finally:\n        DB.Close()\n'''
+    return _replace_idempotent(
+        "Utils/UTILS_Procedures.py",
+        old,
+        new,
+        "Une erreur d'écriture doit\n    # remonter à Procedure()",
+    )
+
+
 def fix_rfid_timer_restart() -> bool:
     old = '''            except Exception as err:\n                pass\n\n\n\n\n\n\n# -------------------------------------------------------------------------------------------------------------------------------------------\n'''
     new = '''            except Exception as err:\n                try:\n                    if not self.timer_rfid.IsRunning():\n                        self.timer_rfid.Start()\n                except Exception:\n                    pass\n\n\n\n\n\n\n# -------------------------------------------------------------------------------------------------------------------------------------------\n'''
@@ -120,7 +129,6 @@ def fix_individuals_rfid_flow() -> bool:
     path = NOETHYS / "Ol/OL_Individus.py"
     source = path.read_text(encoding="utf-8")
     changed = False
-
     replacements = [
         (
             '''                    if self.dernierRFID != IDbadge :\n                        self.dernierRFID = IDbadge\n\n                    # Recherche du badge RFID dans les questionnaires\n''',
@@ -148,7 +156,6 @@ def fix_individuals_rfid_flow() -> bool:
             "and self.forceActualisation == False and self.donnees",
         ),
     ]
-
     for old, new, marker in replacements:
         if marker in source:
             continue
@@ -156,7 +163,6 @@ def fix_individuals_rfid_flow() -> bool:
             raise RuntimeError(f"Motif RFID/individus introuvable : {marker}")
         source = source.replace(old, new, 1)
         changed = True
-
     ast.parse(source)
     if changed:
         path.write_text(source, encoding="utf-8")
@@ -184,13 +190,13 @@ def main() -> int:
         if changed:
             changed_files += 1
             changed_handlers += changed
-
     fixes = {
         "code-barres famille": fix_individual_barcode_refresh(),
         "serveur Nomadhys": fix_nomad_server_abort(),
         "avatars utilisateurs": fix_user_avatar_default(),
         "anomalies synchronisation": fix_sync_anomalies_default(),
         "date désinscription": fix_unsubscribe_date_default(),
+        "horodatage DOCUMENTS": fix_documents_timestamp_mutation(),
         "timer RFID": fix_rfid_timer_restart(),
         "flux RFID individus": fix_individuals_rfid_flow(),
     }
