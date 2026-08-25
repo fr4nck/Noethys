@@ -236,8 +236,10 @@ def GetParametres(dictParametres={}):
 
 
 
-def SetParametres(dictParametres={}):
+def SetParametres(dictParametres=None):
     """ dictParametres = {nom : valeur, nom: valeur...} """
+    if dictParametres is None:
+        dictParametres = {}
     try :
         topWindow = wx.GetApp().GetTopWindow()
         nomWindow = topWindow.GetName()
