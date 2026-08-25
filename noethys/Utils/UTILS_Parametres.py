@@ -20,10 +20,12 @@ else:
     TYPE_COULEUR = wx._gdi.Colour
 
 
-def ParametresCategorie(mode="get", categorie="", dictParametres={}, nomFichier=""):
+def ParametresCategorie(mode="get", categorie="", dictParametres=None, nomFichier=""):
     """ Pour mémoriser ou récupérer des paramètres dans la base de données """
     """ Renseigner categorie et dictParametres obligatoirement !!!  (pour avoir les valeurs par défaut et deviner les types de valeur) """
     """ dictParametres = {nom:valeur, nom:valeur, ....} """
+    if dictParametres is None:
+        dictParametres = {}
     # Recherche du parametre
     DB = GestionDB.DB(nomFichier=nomFichier)
     
@@ -185,5 +187,3 @@ if __name__ == u"__main__":
     #print(ParametresCategorie(mode="get", categorie="parametres_grille_conso", dictParametres={"affiche_colonne_memo":True, "test":u"ça marche !"}, nomFichier=""))
     reponse = Parametres(mode="get", categorie="dlg_ouvertures", nom="afficher_tous_groupes", valeur=False)
     print(reponse, type(reponse))
-    
-    
