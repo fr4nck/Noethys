@@ -282,6 +282,11 @@ class Page_recherche(wx.Panel):
 
     def Recherche(self):
         """ Recherche internet """
+        # FORK_MAINTENANCE: l'updater historique ne doit plus installer l'exécutable upstream.
+        wx.LaunchDefaultBrowser("https://github.com/fr4nck/Noethys/releases")
+        self.label_introduction.SetLabel(_(u"Les mises à jour de la Vanilla maintenue sont publiées sur notre canal de releases."))
+        self.timer.Stop()
+        return
         texteIntro = _(u"Recherche d'une mise à jour internet en cours...")
         self.label_introduction.SetLabel(texteIntro)
         
@@ -325,7 +330,7 @@ class Page_recherche(wx.Panel):
         taille = int(AffichetailleFichier(self.parent.fichierURL))
         self.tailleFichier = FormateTailleFichier(taille)
         self.parent.tailleFichier = taille
-        if self.tailleFichier == 0 :
+        if taille == 0 :
             self.Suite(etat="erreur")
         
         # Si le fichier est bien trouvé, on passe à la suite...
