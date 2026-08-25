@@ -3,7 +3,7 @@
 #------------------------------------------------------------------------
 # Application :    Noethys, gestion multi-activités
 # Site internet :  www.noethys.com
-# Auteur:          Ivan LUCAS
+# Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-18 Ivan LUCAS
 # Licence:         Licence GNU GPL
 #------------------------------------------------------------------------
@@ -49,7 +49,8 @@ class CTRL_Modele(wx.Choice):
                 selection_defaut = index
             index += 1
 
-        self.SetItems(listeItems)
+        self.listeItems = listeItems
+        self.SetItems(self.listeItems)
         if len(self.dictDonnees) > 0:
             self.Enable(True)
             if selection_defaut != None :
@@ -58,7 +59,7 @@ class CTRL_Modele(wx.Choice):
             self.Enable(False)
 
     def GetListeDonnees(self):
-        return listeItems
+        return self.listeItems
 
     def SetID(self, ID=0):
         for index, values in self.dictDonnees.items():
