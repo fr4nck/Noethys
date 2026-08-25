@@ -28,6 +28,9 @@ BUSINESS_MUTATION_METHODS = {
     "ReqInsert", "ReqMAJ", "ReqDEL", "Commit",
     "Sauvegarde", "Enregistrer", "Supprimer", "Ajouter", "Modifier",
 }
+# Les déplacements/renommages persistants ne sont pas de simples nettoyages :
+# les masquer peut laisser une migration de données à moitié effectuée.
+FILESYSTEM_MUTATION_METHODS = {"rename", "replace", "move"}
 SQL_WRITE_RE = re.compile(r"\b(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b", re.IGNORECASE)
 
 
@@ -68,6 +71,10 @@ def _is_cleanup(body):
 
 def _contains_business_mutation(body):
     return any(method in BUSINESS_MUTATION_METHODS for method in _called_methods(body))
+
+
+def _contains_filesystem_mutation(body):
+    return any(method in FILESYSTEM_MUTATION_METHODS for method in _called_methods(body))
 
 
 def _contains_silent_sql_write(body, source):
@@ -122,6 +129,9 @@ def scan_file(path, root=NOETHYS):
             elif _contains_business_mutation(node.body) or _contains_silent_sql_write(node.body, source):
                 classification, priority = "silent_business_mutation", "high"
                 reason = "écriture DB ou mutation métier masquée par un pass silencieux"
+            elif _contains_filesystem_mutation(node.body):
+                classification, priority = "silent_filesystem_mutation", "high"
+                reason = "renommage/déplacement persistant masqué : migration potentiellement incomplète"
             elif _contains_assignment(node.body):
                 classification, priority = "silent_state_fallback", "medium"
                 reason = "calcul/affectation ignoré : repli implicite à vérifier"
