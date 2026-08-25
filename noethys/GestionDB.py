@@ -349,6 +349,7 @@ class DB:
         champs = champs[:-2] + ")"
         interr = interr[:-2] + ")"
         req = "INSERT INTO %s %s VALUES %s" % (nomTable, champs, interr)
+        newID = None
         
         try:
             # Enregistrement
