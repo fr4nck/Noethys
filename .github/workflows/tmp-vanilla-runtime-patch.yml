@@ -66,11 +66,11 @@ jobs:
               "                if IDfamille not in listeID :\n",
           )
 
-          # Contrats : mémoriser l'ID de consommation réellement parcouru.
+          # Contrats : mémoriser l'ID de consommation réellement parcouru dans cette action précise.
           replace_once(
               "noethys/Ol/OL_Contrats_periodes.py",
-              "                self.GetGrandParent().listeSuppressionConso.append(IDconso)\n",
-              "                self.GetGrandParent().listeSuppressionConso.append(dictConso[\"IDconso\"])\n",
+              "        for dictConso in track.listeConso :\n            if dictConso[\"IDconso\"] != None :\n                self.GetGrandParent().listeSuppressionConso.append(IDconso)\n        self.listeDonnees[track.index][\"listeConso\"] = []\n",
+              "        for dictConso in track.listeConso :\n            if dictConso[\"IDconso\"] != None :\n                self.GetGrandParent().listeSuppressionConso.append(dictConso[\"IDconso\"])\n        self.listeDonnees[track.index][\"listeConso\"] = []\n",
           )
 
           # Contrats : définir le symbole monétaire comme dans les contrôles voisins.
