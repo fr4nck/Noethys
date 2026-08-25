@@ -79,6 +79,32 @@ def assigned_names(statements):
     return names
 
 
+def target_names(target):
+    names = set()
+    for node in ast.walk(target):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            names.add(node.id)
+    return names
+
+
+def direct_definitions(statement):
+    if isinstance(statement, ast.Assign):
+        result = set()
+        for target in statement.targets:
+            result.update(target_names(target))
+        return result
+    if isinstance(statement, ast.AnnAssign):
+        return target_names(statement.target)
+    if isinstance(statement, ast.AugAssign):
+        return target_names(statement.target)
+    if isinstance(statement, (ast.Import, ast.ImportFrom)):
+        result = set()
+        for alias in statement.names:
+            result.add(alias.asname or alias.name.split(".")[0])
+        return result
+    return set()
+
+
 def block_terminates(statements):
     if not statements:
         return False
@@ -146,17 +172,34 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
 
             scan_sequence(statement.body, defined, relpath, function_name, findings)
             scan_sequence(statement.orelse, defined, relpath, function_name, findings)
-        elif isinstance(statement, (ast.For, ast.AsyncFor, ast.While, ast.With, ast.AsyncWith)):
+
+        elif isinstance(statement, (ast.For, ast.AsyncFor)):
+            loop_defined = defined | target_names(statement.target)
+            scan_sequence(statement.body, loop_defined, relpath, function_name, findings)
+            scan_sequence(statement.orelse, defined, relpath, function_name, findings)
+
+        elif isinstance(statement, ast.While):
             scan_sequence(statement.body, defined, relpath, function_name, findings)
-            scan_sequence(getattr(statement, "orelse", []), defined, relpath, function_name, findings)
+            scan_sequence(statement.orelse, defined, relpath, function_name, findings)
+
+        elif isinstance(statement, (ast.With, ast.AsyncWith)):
+            with_defined = set(defined)
+            for item in statement.items:
+                if item.optional_vars is not None:
+                    with_defined.update(target_names(item.optional_vars))
+            scan_sequence(statement.body, with_defined, relpath, function_name, findings)
+
         elif isinstance(statement, ast.Try):
             scan_sequence(statement.body, defined, relpath, function_name, findings)
             for handler in statement.handlers:
-                scan_sequence(handler.body, defined, relpath, function_name, findings)
+                handler_defined = set(defined)
+                if handler.name:
+                    handler_defined.add(handler.name)
+                scan_sequence(handler.body, handler_defined, relpath, function_name, findings)
             scan_sequence(statement.orelse, defined, relpath, function_name, findings)
             scan_sequence(statement.finalbody, defined, relpath, function_name, findings)
 
-        defined.update(assigned_names([statement]))
+        defined.update(direct_definitions(statement))
 
 
 def scan_file(path, root=NOETHYS):
