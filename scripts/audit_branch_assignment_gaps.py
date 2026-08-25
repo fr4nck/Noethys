@@ -105,6 +105,18 @@ def direct_definitions(statement):
     return set()
 
 
+def direct_definitions_in_sequence(statements):
+    """Noms définis par des instructions inconditionnelles du bloc courant.
+
+    On ne descend volontairement pas dans les ``if``/boucles/``try`` imbriqués :
+    leur exécution ne garantit pas qu'un nom existe à la sortie du bloc.
+    """
+    result = set()
+    for statement in statements:
+        result.update(direct_definitions(statement))
+    return result
+
+
 def block_terminates(statements):
     if not statements:
         return False
@@ -172,6 +184,14 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
 
             scan_sequence(statement.body, defined, relpath, function_name, findings)
             scan_sequence(statement.orelse, defined, relpath, function_name, findings)
+
+            # Si les deux branches affectent directement un nom, celui-ci est
+            # garanti pour les instructions suivantes. Sans cette propagation,
+            # un second ``if`` qui réaffecte ce nom était signalé à tort.
+            if statement.orelse:
+                body_defined = direct_definitions_in_sequence(statement.body)
+                else_defined = direct_definitions_in_sequence(statement.orelse)
+                defined.update(body_defined & else_defined)
 
         elif isinstance(statement, (ast.For, ast.AsyncFor)):
             loop_defined = defined | target_names(statement.target)
