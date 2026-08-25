@@ -11,6 +11,20 @@ ROOT = Path(__file__).resolve().parents[1]
 FICHIER = ROOT / "noethys" / "Utils" / "UTILS_Dates.py"
 
 
+def _charger_heures_en_decimal():
+    arbre = ast.parse(FICHIER.read_text(encoding="utf-8"), filename=str(FICHIER))
+    fonction = next(
+        noeud
+        for noeud in arbre.body
+        if isinstance(noeud, ast.FunctionDef) and noeud.name == "HeuresEnDecimal"
+    )
+    module = ast.Module(body=[fonction], type_ignores=[])
+    ast.fix_missing_locations(module)
+    espace = {"datetime": datetime, "six": type("Six", (), {"text_type": str})}
+    exec(compile(module, str(FICHIER), "exec"), espace)
+    return espace["HeuresEnDecimal"]
+
+
 def _charger_heure_str_en_delta():
     arbre = ast.parse(FICHIER.read_text(encoding="utf-8"), filename=str(FICHIER))
     fonction = next(
@@ -44,6 +58,29 @@ def _charger_calculer_arrondi():
 
 
 class UtilsDatesDurationTests(unittest.TestCase):
+    def test_heures_en_decimal_conserve_les_formats_historiques(self):
+        convertir = _charger_heures_en_decimal()
+
+        self.assertEqual(convertir("07:00"), 700)
+        self.assertEqual(convertir("14:30"), 1450)
+        self.assertEqual(convertir(datetime.time(9, 15)), 925)
+
+    def test_heures_en_decimal_replie_un_type_inattendu_sur_zero(self):
+        convertir = _charger_heures_en_decimal()
+
+        self.assertEqual(convertir(None), 0)
+        self.assertEqual(convertir(object()), 0)
+
+    def test_l_audit_ne_signale_plus_heures_en_decimal(self):
+        signaux = [
+            signal
+            for signal in audit_branch_assignment_gaps.scan_file(FICHIER)
+            if signal["function"] == "HeuresEnDecimal"
+            and signal["name"] in {"heures", "minutes"}
+        ]
+
+        self.assertEqual(signaux, [])
+
     def test_les_formats_historiques_restent_acceptes(self):
         convertir = _charger_heure_str_en_delta()
 

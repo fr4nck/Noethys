@@ -80,6 +80,8 @@ def HeuresEnDecimal(texteHeure="07:00"):
     """ Transforme une heure string ou datetime.time en entier de type 2075"""
     if texteHeure == None :
         return 0
+    heures = "0"
+    minutes = 0
     if type(texteHeure) == datetime.time :
         heures = str(texteHeure.hour)
         minutes = int(texteHeure.minute)
