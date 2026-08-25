@@ -270,9 +270,14 @@ def GetFamillesRattachees(IDindividu=None):
     listeRattachements = db.ResultatReq()
     dictFamilles = {}
     for IDrattachement, IDfamille, IDcategorie, titulaire, IDcompte_payeur in listeRattachements :
-        if IDcategorie == 1 : nomCategorie = _(u"représentant")
-        if IDcategorie == 2 : nomCategorie = _(u"enfant")
-        if IDcategorie == 3 : nomCategorie = _(u"contact")
+        if IDcategorie == 1 :
+            nomCategorie = _(u"représentant")
+        elif IDcategorie == 2 :
+            nomCategorie = _(u"enfant")
+        elif IDcategorie == 3 :
+            nomCategorie = _(u"contact")
+        else :
+            nomCategorie = _(u"catégorie inconnue")
         dictFamilles[IDfamille] = {"nomsTitulaires" : u"", "listeNomsTitulaires" : [], "IDcategorie" : IDcategorie, "nomCategorie" : nomCategorie, "IDcompte_payeur" : IDcompte_payeur }
     # Recherche des noms des titulaires
     if len(dictFamilles) == 0 : condition = "()"
@@ -295,9 +300,9 @@ def GetFamillesRattachees(IDindividu=None):
             dictFamilles[IDfamille]["nomsTitulaires"] = _(u"%s et %s") % (dictFamilles[IDfamille]["listeNomsTitulaires"][0], dictFamilles[IDfamille]["listeNomsTitulaires"][1])
         if nbreTitulaires > 2 :
             texteNoms = ""
-            for nomTitulaire in dictFamilles[IDfamille]["listeNomsTitulaires"][:-1] :
+            for nomTitulaire in dictFamilles[IDfamille]["listeNomsTitulaires"][:-2] :
                 texteNoms += u"%s, " % nomTitulaire
-            texteNoms = _(u"%s et %s") % (dictFamilles[IDfamille]["listeNomsTitulaires"][-2], dictFamilles[IDfamille]["listeNomsTitulaires"][-1])
+            texteNoms += _(u"%s et %s") % (dictFamilles[IDfamille]["listeNomsTitulaires"][-2], dictFamilles[IDfamille]["listeNomsTitulaires"][-1])
             dictFamilles[IDfamille]["nomsTitulaires"] = texteNoms
     return dictFamilles
 
