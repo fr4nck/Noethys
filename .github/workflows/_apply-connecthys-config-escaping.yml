@@ -37,27 +37,26 @@ jobs:
               raise SystemExit("Unable to locate Ecrit_ligne helper")
           start = text.index(start_marker)
           end = text.index(end_marker, start)
-          new_helper = '''        def Ecrit_ligne(key="", valeur="", type_valeur=None):
-              if type_valeur in (six.text_type, str):
-                  valeur = repr(valeur)
-              elif type_valeur == None :
-                  valeur = valeur
-              else :
-                  valeur = str(valeur)
-              return u"     %s = %s\\n" % (key, valeur)
-
-          def Encode_uri_component(valeur):
-              if valeur is None:
-                  valeur = u""
-              elif not isinstance(valeur, six.text_type):
-                  valeur = six.text_type(valeur)
-              if six.PY2:
-                  valeur = valeur.encode("utf8")
-              return quote(valeur, safe="")
-
-          '''
-          # YAML indentation strips six spaces from this block; normalize nested Python indentation explicitly.
-          new_helper = new_helper.replace('\n      ', '\n            ').replace('\n  def Encode_uri_component', '\n        def Encode_uri_component')
+          new_helper = (
+              '        def Ecrit_ligne(key="", valeur="", type_valeur=None):\n'
+              '            if type_valeur in (six.text_type, str):\n'
+              '                valeur = repr(valeur)\n'
+              '            elif type_valeur == None :\n'
+              '                valeur = valeur\n'
+              '            else :\n'
+              '                valeur = str(valeur)\n'
+              '            return u"     %s = %s\\n" % (key, valeur)\n'
+              '\n'
+              '        def Encode_uri_component(valeur):\n'
+              '            if valeur is None:\n'
+              '                valeur = u""\n'
+              '            elif not isinstance(valeur, six.text_type):\n'
+              '                valeur = six.text_type(valeur)\n'
+              '            if six.PY2:\n'
+              '                valeur = valeur.encode("utf8")\n'
+              '            return quote(valeur, safe="")\n'
+              '\n'
+          )
           text = text[:start] + new_helper + text[end:]
 
           replacements = {
