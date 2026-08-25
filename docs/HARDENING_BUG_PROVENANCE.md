@@ -34,14 +34,16 @@ Les références `upstream` ci-dessous pointent vers le `master` public de `Noet
 | 19 | Saisie globale de consommations : même défaut `isAlive()` dans les chemins arrêt/lancement. | `Dlg/DLG_Saisie_lot_conso_global.py` — `Arreter` / `OnBoutonOk` | `PORTAGE_PY3_WX` | blob `78f7172059cd1a3599a16635c2398127ca62fa8c`. | #98, audit API supprimées, `is_alive()` | oui |
 | 20 | Saisie de forfaits-crédits : même défaut `isAlive()` dans les chemins arrêt/lancement. | `Dlg/DLG_Saisie_lot_forfaits_credits.py` — `Arreter` / `OnBoutonOk` | `PORTAGE_PY3_WX` | blob `817e33409a486f047c489baf04ba4285a0a4b412`. | #98, audit API supprimées, `is_alive()` | oui |
 | 21 | Plusieurs dialogues de badgeage lisent `GetSelections()` après `dlg.Destroy()`, dépendant d'un cycle de vie wx historique fragile. | `Dlg/DLG_Badgeage_interface.py` — choix famille / arrivée-départ / réservation | `PORTAGE_PY3_WX` | blob `54d1190bf89783d7f5e0b1a597747b2d0dcd7989` : trois lectures après `Destroy()`. | commit `19ec4312b40bc62ba1d861e6ae46fd88a751acf9`, audit `use_after_destroy=0` | oui |
+| 22 | Le dialogue de mesure de distance détruit le `wx.SingleChoiceDialog` avant de lire `GetSelection()`. | `Dlg/DLG_Saisie_location_demande.py` — `Dialog.Mesurer_distance` | `PORTAGE_PY3_WX` | blob `918ce8fd884d9ae6ae8f523a69bb849e2eee6eec` : `dlg.Destroy()` précède `dlg.GetSelection()`. | commit `dd93f248d3b15f548a365563ec342bf118a18765`, `test_location_request_wx_lifecycle_contract.py` | oui |
+| 23 | Le traitement manuel des réservations portail détruit le dialogue avant de sauvegarder `dlg.ctrl_grille`. | `Dlg/DLG_Saisie_portail_demande.py` — `Dialog.Traitement_reservations` | `PORTAGE_PY3_WX` | blob `6921ce7cb14f2216c8c8f58f74b6270dba6f8a65` : `dlg.Destroy()` précède `Save_grille(dlg.ctrl_grille)`. | commit `c56294238c77c300c2bde397e8f6693be1ff7917`, `test_portail_destroy_contract.py` | oui |
 
 ## Compteur provisoire vérifié
 
 Au stade de cette photographie :
 
 - `HISTORIQUE_IVAN` démontré : **15** ;
-- `PORTAGE_PY3_WX` démontré : **6** ;
-- total de défauts/familles confirmés et sourcés dans ce tableau : **21** ;
+- `PORTAGE_PY3_WX` démontré : **8** ;
+- total de défauts/familles confirmés et sourcés dans ce tableau : **23** ;
 - `FORK_REPENS` : à inventorier séparément à partir des PR/commits du fork ;
 - `INDETERMINE` : tout défaut non encore comparé à une source upstream reste dans cette catégorie par défaut.
 
