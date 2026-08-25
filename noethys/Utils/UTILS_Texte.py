@@ -45,10 +45,10 @@ def Supprime_accent(texte):
         texte = texte.replace(a.upper(), b.upper())
     return texte
 
-def ConvertStrToListe(texte=None, siVide=[], separateur=";", typeDonnee="entier"):
+def ConvertStrToListe(texte=None, siVide=None, separateur=";", typeDonnee="entier"):
     """ Convertit un texte "1;2;3;4" en [1, 2, 3, 4] """
     if texte == None or texte == "" :
-        return siVide
+        return list(siVide) if siVide is not None else []
     listeResultats = []
     temp = texte.split(separateur)
     for ID in temp :
