@@ -219,6 +219,21 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
             scan_sequence(statement.orelse, defined, relpath, function_name, findings)
             scan_sequence(statement.finalbody, defined, relpath, function_name, findings)
 
+            # Si chaque chemin d'exception quitte le bloc courant, continuer
+            # après le ``try`` implique que son corps (et son ``else`` éventuel)
+            # s'est terminé normalement. Leurs affectations directes sont donc
+            # disponibles pour les contrôles suivants.
+            handlers_terminate = not statement.handlers or all(
+                block_terminates(handler.body) for handler in statement.handlers
+            )
+            if handlers_terminate:
+                defined.update(direct_definitions_in_sequence(statement.body))
+                defined.update(direct_definitions_in_sequence(statement.orelse))
+
+            # Un ``finally`` exécuté jusqu'au bout l'est sur tout chemin qui
+            # continue après le ``try``.
+            defined.update(direct_definitions_in_sequence(statement.finalbody))
+
         defined.update(direct_definitions(statement))
 
 

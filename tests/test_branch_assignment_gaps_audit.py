@@ -89,6 +89,45 @@ class BranchAssignmentGapTests(unittest.TestCase):
         # doit surtout pas faire considérer ``value`` comme garanti ensuite.
         self.assertTrue(any(item["name"] == "value" for item in report["findings"]))
 
+    def test_try_assignment_with_terminating_handler_is_propagated(self):
+        report = self.report_for('''
+            def f(flag):
+                try:
+                    value = operation()
+                except Exception:
+                    return None
+                if flag:
+                    value = 2
+                return value
+        ''')
+        self.assertEqual(report["count"], 0)
+
+    def test_try_assignment_with_non_terminating_handler_is_not_guaranteed(self):
+        report = self.report_for('''
+            def f(flag):
+                try:
+                    value = operation()
+                except Exception:
+                    pass
+                if flag:
+                    value = 2
+                return value
+        ''')
+        self.assertTrue(any(item["name"] == "value" for item in report["findings"]))
+
+    def test_finally_assignment_is_guaranteed_on_continuing_paths(self):
+        report = self.report_for('''
+            def f(flag):
+                try:
+                    operation()
+                finally:
+                    value = 1
+                if flag:
+                    value = 2
+                return value
+        ''')
+        self.assertEqual(report["count"], 0)
+
     def test_repository_inventory_is_exported(self):
         report = audit.build_report()
         output = Path("tmp/branch-assignment-audit.json")
