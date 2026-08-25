@@ -445,8 +445,7 @@ class Panel(wx.Panel):
 
     def OnClose(self, evt):
         self.serveur.Stop()
-        time.sleep(0.1)
-        self.Destroy()
+        wx.CallLater(100, self.Destroy)
 
     def OnDestroy(self, evt):
         self.serveur.Stop()
