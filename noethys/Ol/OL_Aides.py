@@ -194,7 +194,7 @@ class ListView(FastObjectListView):
         for IDaide, dictValeurs in dictDonnees.items() :
             valide = True
             if listeID != None :
-                if item[0] not in listeID :
+                if IDaide not in listeID :
                     valide = False
             if valide == True :
                 track = Track(dictValeurs)

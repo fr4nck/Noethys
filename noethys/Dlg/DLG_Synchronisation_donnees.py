@@ -348,7 +348,6 @@ class Traitement(Thread):
                 self.parent.ctrl_gauge.SetValue(self.index+1)
 
                 if track.anomalie != False :
-                    texte = track.detail + u" -> " + resultat
                     self.parent.parent.EcritLog(track.anomalie)
                     self.parent.parent.SetStatut(track, "erreur")
                     listeAnomalies.append(track.anomalie)

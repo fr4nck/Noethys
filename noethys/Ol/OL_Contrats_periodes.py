@@ -407,7 +407,7 @@ class ListView(FastObjectListView):
             return
         for dictConso in track.listeConso :
             if dictConso["IDconso"] != None :
-                self.GetGrandParent().listeSuppressionConso.append(IDconso)
+                self.GetGrandParent().listeSuppressionConso.append(dictConso["IDconso"])
         self.listeDonnees[track.index]["listeConso"] = []
         self.MAJ()
         

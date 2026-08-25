@@ -564,6 +564,13 @@ class Dialog(wx.Dialog):
     def GetInfosDepot(self):
         nom = self.ctrl_nom.GetValue() 
         date = self.ctrl_date.GetDate() 
+        IDcompte = self.ctrl_compte.GetID()
+        if IDcompte not in (0, None) :
+            nomCompte = self.ctrl_compte.GetStringSelection()
+            numCompte = self.ctrl_compte.GetNumero()
+        else :
+            nomCompte = ""
+            numCompte = ""
         return {"nom":nom, "date":date, "nomCompte":nomCompte, "numCompte":numCompte}
 
     def GetLabelParametres(self):

@@ -545,7 +545,7 @@ class ListView(FastObjectListView):
             "IDreglement" : None, "dateReglement" : None, "IDdepot" : None, "IDcompte_payeur" : None,
             }
         track = Track(dictTemp, dictTitulaires, self.dictIndividus)
-        dlg = DLG_Saisie_prelevement.Dialog(self, track=track)      
+        dlg = DLG_Saisie_pes_piece.Dialog(self, track=track)
         if dlg.ShowModal() == wx.ID_OK:
             track = dlg.GetTrack()
             self.AddObject(track)

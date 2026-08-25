@@ -1167,9 +1167,10 @@ class CTRL(HTL.HyperTreeList):
 
     def SetValeurs(self, dictValeurs={}):
         # Remplit le ctrl avec les valeurs données. Ex : {IDquestion : valeur} """
-        for track in self.dictCategories[IDcategorie]["questions"] :
-            if track.IDquestion in dictValeurs :
-                track.SetValeurStr(dictValeurs[track.IDquestion])
+        for IDcategorie in self.listeIDcategorie :
+            for track in self.dictCategories[IDcategorie]["questions"] :
+                if track.IDquestion in dictValeurs :
+                    track.SetValeurStr(dictValeurs[track.IDquestion])
         
     def OnContextMenu(self, event):
         """Ouverture du menu contextuel """      

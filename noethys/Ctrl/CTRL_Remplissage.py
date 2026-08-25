@@ -424,10 +424,10 @@ class Case():
         texte += _(u"Informations concernant %s %s : \n") % (prenom, nom)
         date_naiss = self.grid.dictInfosIndividus[self.IDindividu]["date_naiss"]
         if date_naiss != None :
-            ageActuel = CalculeAge(datetime.date.today(), date_naiss)
+            ageActuel = UTILS_Dates.CalculeAge(datetime.date.today(), date_naiss)
             texte += _(u"Age actuel : %d ans \n") % ageActuel
             if self.etat != None :
-                ageConso = CalculeAge(self.date, date_naiss)
+                ageConso = UTILS_Dates.CalculeAge(self.date, date_naiss)
                 texte += _(u"Age lors de la consommation : %d ans \n") % ageConso
         else:
             texte += _(u"Date de naissance inconnue ! \n")

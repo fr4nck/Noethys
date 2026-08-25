@@ -156,7 +156,7 @@ class TextCtrlCp(masked.TextCtrl):
         """ Créé une info-bulle pour les cp et villes pour indiquer les régions et départements """
         cp = self.GetValue()
         if cp == "" or cp == "     " :
-            controle.SetToolTip(wx.ToolTip(_(u"Saisissez un code postal")))
+            self.SetToolTip(wx.ToolTip(_(u"Saisissez un code postal")))
         else:
             try :
                 num_dep = cp[:2]
