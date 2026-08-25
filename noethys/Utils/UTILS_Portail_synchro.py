@@ -22,6 +22,7 @@ import shutil
 import json
 import six
 from six.moves.urllib.request import Request, urlopen
+from six.moves.urllib.parse import quote
 import sys
 import importlib
 import platform
@@ -158,15 +159,22 @@ class Synchro():
         ]
 
         def Ecrit_ligne(key="", valeur="", type_valeur=None):
-            if type_valeur == six.text_type :
-                valeur = u'u"%s"' % valeur
-            elif type_valeur == str :
-                valeur = u'"%s"' % valeur
+            if type_valeur in (six.text_type, str):
+                valeur = repr(valeur)
             elif type_valeur == None :
                 valeur = valeur
             else :
                 valeur = str(valeur)
             return u"     %s = %s\n" % (key, valeur)
+
+        def Encode_uri_component(valeur):
+            if valeur is None:
+                valeur = u""
+            elif not isinstance(valeur, six.text_type):
+                valeur = six.text_type(valeur)
+            if six.PY2:
+                valeur = valeur.encode("utf8")
+            return quote(valeur, safe="")
 
         # Valeurs Application
         if self.dict_parametres["db_type"] == 0 :
@@ -175,9 +183,9 @@ class Synchro():
         else :
             # Base MySQL
             db_serveur = self.dict_parametres["db_serveur"]
-            db_utilisateur = self.dict_parametres["db_utilisateur"]
-            db_mdp = self.dict_parametres["db_mdp"]
-            db_nom = self.dict_parametres["db_nom"]
+            db_utilisateur = Encode_uri_component(self.dict_parametres["db_utilisateur"])
+            db_mdp = Encode_uri_component(self.dict_parametres["db_mdp"])
+            db_nom = Encode_uri_component(self.dict_parametres["db_nom"])
             liste_lignes.append(Ecrit_ligne("SQLALCHEMY_DATABASE_URI", "mysql://%s:%s@%s/%s?charset=utf8" % (db_utilisateur, db_mdp, db_serveur, db_nom), type_valeur=str))
 
         liste_lignes.append(Ecrit_ligne("SQLALCHEMY_TRACK_MODIFICATIONS", True, type_valeur=bool))
