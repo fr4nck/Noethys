@@ -1698,6 +1698,7 @@ def A9068():
         return
     from Utils import UTILS_Dates
     date_erreur = False
+    date_desinscription = None
     try:
         date_desinscription = UTILS_Dates.DateFrEng(date)
     except Exception:

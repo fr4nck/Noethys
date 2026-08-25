@@ -292,7 +292,7 @@ class ListView(FastObjectListView):
             dictIndividus[IDindividu] = dictTemp
         
         # Vérifie si le dictIndividus est différent du précédent pour empêcher l'actualisation de la liste
-        if dictIndividus == self.dictIndividus and self.forceActualisation == False :
+        if dictIndividus == self.dictIndividus and self.forceActualisation == False and self.donnees :
             return None
         else :
             self.dictIndividus = dictIndividus
@@ -486,6 +486,7 @@ class ListView(FastObjectListView):
         dlg = DLG_Famille.Dialog(self, IDfamille=None)
         if dlg.ShowModal() == wx.ID_OK:
             pass
+        dlg.Destroy()
         # MAJ du listView
 ##        self.MAJ()
         # MAJ du remplissage
@@ -759,8 +760,11 @@ class ListView(FastObjectListView):
                 if sw1 == 144:
                     IDbadge = ListToHex(data)
                     self.connexion.disconnect()
-                    if self.dernierRFID != IDbadge :
-                        self.dernierRFID = IDbadge
+                    # Ignore une lecture répétée du même badge pendant
+                    # la fenêtre anti-rebond.
+                    if self.dernierRFID == IDbadge:
+                        return False
+                    self.dernierRFID = IDbadge
 
                     # Recherche du badge RFID dans les questionnaires
                     DB = GestionDB.DB()
@@ -776,25 +780,25 @@ class ListView(FastObjectListView):
                     if len(listeDonnees) > 0 :
                         IDindividu, IDfamille = listeDonnees[0]
 
-                    # On stoppe le timer de détection RFID
-                    self.timer_rfid.Stop()
-
-                    time.sleep(2)
-
-                    # Ouverture de la fiche famille
+                    # Ne bloque pas la boucle wx et ne coupe pas le timer :
+                    # l'anti-rebond est assuré par dernierRFID/delai.
                     if IDindividu != None:
-                        track = self.dictTracks[IDindividu]
-                        self.SelectObject(track)
-                        self.OuvrirFicheFamille(track)
+                        track = self.dictTracks.get(IDindividu)
+                        if track is not None:
+                            self.SelectObject(track)
+                            self.OuvrirFicheFamille(track)
+                        elif IDfamille != None:
+                            self.OuvrirFicheFamille(IDfamille=IDfamille)
 
-                    if IDfamille != None:
+                    elif IDfamille != None:
                         self.OuvrirFicheFamille(IDfamille=IDfamille)
 
-                    # On relance le timer de détection RFID
-                    self.timer_rfid.Start()
-
             except Exception as err:
-                pass
+                try:
+                    if not self.timer_rfid.IsRunning():
+                        self.timer_rfid.Start()
+                except Exception:
+                    pass
 
 
 
@@ -877,7 +881,7 @@ class BarreRecherche(wx.SearchCtrl):
             try :
                 IDindividu = int(txtSearch)
             except Exception:
-                IDfamille = None
+                IDindividu = None
             if IDindividu != None and IDindividu in self.listView.dictTracks :
                 track = self.listView.dictTracks[IDindividu]
                 self.listView.SelectObject(track)
