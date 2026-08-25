@@ -30,7 +30,6 @@ jobs:
                   raise SystemExit(f"{path}: motif attendu 1 fois, trouvé {count}: {old!r}")
               p.write_text(text.replace(old, new, 1), encoding="utf-8")
 
-          # Remplissage : les deux calculs d'âge doivent passer par le module déjà importé.
           replace_once(
               "noethys/Ctrl/CTRL_Remplissage.py",
               "            ageActuel = CalculeAge(datetime.date.today(), date_naiss)\n",
@@ -42,14 +41,12 @@ jobs:
               "                ageConso = UTILS_Dates.CalculeAge(self.date, date_naiss)\n",
           )
 
-          # Synchronisation : une anomalie existante ne doit pas concaténer un résultat non initialisé.
           replace_once(
               "noethys/Dlg/DLG_Synchronisation_donnees.py",
               "                if track.anomalie != False :\n                    texte = track.detail + u\" -> \" + resultat\n                    self.parent.parent.EcritLog(track.anomalie)\n",
               "                if track.anomalie != False :\n                    self.parent.parent.EcritLog(track.anomalie)\n",
           )
 
-          # Filtres de listes : utiliser l'identifiant de l'itération courante.
           replace_once(
               "noethys/Ol/OL_Aides.py",
               "                if item[0] not in listeID :\n",
@@ -66,42 +63,36 @@ jobs:
               "                if IDfamille not in listeID :\n",
           )
 
-          # Contrats : mémoriser l'ID de consommation réellement parcouru dans cette action précise.
           replace_once(
               "noethys/Ol/OL_Contrats_periodes.py",
               "        for dictConso in track.listeConso :\n            if dictConso[\"IDconso\"] != None :\n                self.GetGrandParent().listeSuppressionConso.append(IDconso)\n        self.listeDonnees[track.index][\"listeConso\"] = []\n",
               "        for dictConso in track.listeConso :\n            if dictConso[\"IDconso\"] != None :\n                self.GetGrandParent().listeSuppressionConso.append(dictConso[\"IDconso\"])\n        self.listeDonnees[track.index][\"listeConso\"] = []\n",
           )
 
-          # Contrats : définir le symbole monétaire comme dans les contrôles voisins.
           replace_once(
               "noethys/Ol/OL_Contrats_planning_elements.py",
               "from Utils import UTILS_Dates\nfrom Dlg import DLG_Saisie_contrat_conso_detail\n",
               "from Utils import UTILS_Dates\nfrom Utils import UTILS_Config\nSYMBOLE = UTILS_Config.GetParametre(\"monnaie_symbole\", u\"€\")\nfrom Dlg import DLG_Saisie_contrat_conso_detail\n",
           )
 
-          # Questionnaire : SetValeurs doit parcourir les catégories comme GetValeurs.
           replace_once(
               "noethys/Ctrl/CTRL_Questionnaire.py",
               "    def SetValeurs(self, dictValeurs={}):\n        # Remplit le ctrl avec les valeurs données. Ex : {IDquestion : valeur} \"\"\"\n        for track in self.dictCategories[IDcategorie][\"questions\"] :\n            if track.IDquestion in dictValeurs :\n                track.SetValeurStr(dictValeurs[track.IDquestion])\n",
               "    def SetValeurs(self, dictValeurs={}):\n        # Remplit le ctrl avec les valeurs données. Ex : {IDquestion : valeur} \"\"\"\n        for IDcategorie in self.listeIDcategorie :\n            for track in self.dictCategories[IDcategorie][\"questions\"] :\n                if track.IDquestion in dictValeurs :\n                    track.SetValeurStr(dictValeurs[track.IDquestion])\n",
           )
 
-          # Adresse : l'infobulle appartient au contrôle courant.
           replace_once(
               "noethys/Ctrl/CTRL_Saisie_adresse.py",
               "            controle.SetToolTip(wx.ToolTip(_(u\"Saisissez un code postal\")))\n",
               "            self.SetToolTip(wx.ToolTip(_(u\"Saisissez un code postal\")))\n",
           )
 
-          # PES : le dialogue importé porte le nom DLG_Saisie_pes_piece.
           replace_once(
               "noethys/Ol/OL_PES_pieces.py",
               "        dlg = DLG_Saisie_prelevement.Dialog(self, track=track)      \n",
-              "        dlg = DLG_Saisie_pes_piece.Dialog(self, track=track)      \n",
+              "        dlg = DLG_Saisie_pes_piece.Dialog(self, track=track)\n",
           )
 
-          # Dépôt : construire les informations de compte avant de les retourner.
           replace_once(
               "noethys/Dlg/DLG_Saisie_depot.py",
               "        return {\"nom\":nom, \"date\":date, \"nomCompte\":nomCompte, \"numCompte\":numCompte}\n",
