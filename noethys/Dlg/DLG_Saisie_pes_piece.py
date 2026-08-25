@@ -341,39 +341,9 @@ class Dialog(wx.Dialog):
         self.CenterOnScreen() 
     
     def OnChoixFamille(self, event):
-        print("A CODER")
-        return
-##        IDfamille = self.ctrl_famille.GetIDfamille() 
-##        if IDfamille == None :
-##            return
-##        DB = GestionDB.DB()
-##        req = """SELECT 
-##        prelevement_activation, prelevement_etab, prelevement_guichet, prelevement_numero, prelevement_cle, 
-##        prelevement_banque, prelevement_individu, prelevement_nom, individus.nom, individus.prenom
-##        FROM familles
-##        LEFT JOIN individus ON individus.IDindividu = familles.prelevement_individu
-##        WHERE IDfamille=%d;""" % IDfamille
-##        DB.ExecuterReq(req)
-##        listeDonnees = DB.ResultatReq()
-##        DB.Close()
-##        if len(listeDonnees) == 0 :
-##            return
-##        activation, etab, guichet, numero, cle, banque, IDindividu, nomIndividu, nomMembre, prenomMembre = listeDonnees[0]
-##        
-##        if etab != None : self.ctrl_code_etab.SetValue(etab)
-##        if guichet != None : self.ctrl_code_guichet.SetValue(guichet)
-##        if numero != None : self.ctrl_numero.SetValue(numero)
-##        if cle != None : self.ctrl_cle.SetValue(cle)
-##        if nomIndividu == None : nomIndividu = u""
-##        
-##        self.ctrl_banque.SetID(banque) 
-##        
-##        if IDindividu != None :
-##            titulaireCompte = u"%s %s" % (nomMembre, prenomMembre)
-##        else :
-##            titulaireCompte = nomIndividu
-##        self.ctrl_titulaire.SetValue(titulaireCompte)
-        
+        IDfamille = self.ctrl_famille.GetIDfamille()
+        self.ctrl_titulaire_helios.MAJ(IDfamille)
+        self.ctrl_tiers_solidaire.MAJ(IDfamille)
 
     def OnSaisieIBAN(self, event):
         self.ControleIBAN() 
@@ -402,7 +372,8 @@ class Dialog(wx.Dialog):
             return
         
         self.ctrl_famille.SetIDfamille(self.track.IDfamille)
-        self.ctrl_famille.Enable(False) 
+        if self.track.IDfamille != None:
+            self.ctrl_famille.Enable(False)
         self.ctrl_titulaire_helios.MAJ(self.track.IDfamille)
         self.ctrl_titulaire_helios.SetID(self.track.titulaire_helios)
         self.ctrl_tiers_solidaire.MAJ(self.track.IDfamille)
@@ -497,8 +468,10 @@ class Dialog(wx.Dialog):
 
         # MAJ du track
         track = self.track
-        track.IDfamille = IDfamille
-        track.InitNomsTitulaires() 
+        if track.IDfamille != IDfamille:
+            track.SetFamille(IDfamille)
+        else:
+            track.InitNomsTitulaires()
         
         track.titulaire_helios = titulaire_helios
         track.tiers_solidaire = tiers_solidaire

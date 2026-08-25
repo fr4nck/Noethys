@@ -35,6 +35,36 @@ from Utils import UTILS_Titulaires
 
 
 
+def GetDonneesTrackManuel(IDlot=None):
+    """Retourne les données minimales cohérentes d'une nouvelle pièce PES manuelle."""
+    return {
+        "IDpiece": None,
+        "IDlot": IDlot,
+        "IDfamille": None,
+        "IDcompte_payeur": None,
+        "prelevement": 0,
+        "prelevement_iban": "",
+        "prelevement_bic": "",
+        "prelevement_rum": "",
+        "prelevement_date_mandat": None,
+        "prelevement_IDmandat": None,
+        "prelevement_sequence": "",
+        "prelevement_titulaire": "",
+        "prelevement_statut": "attente",
+        "type": "manuel",
+        "IDfacture": None,
+        "numero": "",
+        "libelle": "",
+        "montant": 0.00,
+        "IDreglement": None,
+        "dateReglement": None,
+        "IDdepot": None,
+        "titulaire_helios": None,
+        "tiers_solidaire": None,
+        "dictAutresDonnees": {},
+        "etat": "ajout",
+    }
+
 class Track(object):
     def __init__(self, donnees, dictTitulaires={}, dictIndividus={}):
         self.dictTitulaires = dictTitulaires
@@ -116,7 +146,10 @@ class Track(object):
             self.natjur_helios = "01"
 
         # Code tiers de la famille
-        self.code_tiers = u"FAM%06d" % self.IDfamille
+        if self.IDfamille == None:
+            self.code_tiers = ""
+        else:
+            self.code_tiers = u"FAM%06d" % self.IDfamille
 
         # Code compta de la famille
         self.code_compta = ""
@@ -179,7 +212,33 @@ class Track(object):
     def InitNomsTitulaires(self):
         if self.IDfamille != None :
             self.titulaires = self.dictTitulaires[self.IDfamille]["titulairesSansCivilite"]
-    
+
+    def SetFamille(self, IDfamille):
+        """Affecte la famille d'un brouillon manuel et recharge ses données Hélios."""
+        self.IDfamille = IDfamille
+        self.InitNomsTitulaires()
+        self.code_tiers = u"FAM%06d" % IDfamille
+
+        dictAutresDonnees = GetDictAutresDonnees().get(IDfamille, {})
+        self.idtiers_helios = dictAutresDonnees.get("idtiers_helios") or ""
+        natidtiers_helios = dictAutresDonnees.get("natidtiers_helios")
+        if natidtiers_helios in (9999, None):
+            self.natidtiers_helios = ""
+        else:
+            self.natidtiers_helios = "0%d" % natidtiers_helios
+        self.reftiers_helios = dictAutresDonnees.get("reftiers_helios") or ""
+        cattiers_helios = dictAutresDonnees.get("cattiers_helios")
+        if cattiers_helios == None:
+            self.cattiers_helios = "01"
+        else:
+            self.cattiers_helios = "%02d" % cattiers_helios
+        natjur_helios = dictAutresDonnees.get("natjur_helios")
+        if natjur_helios == None:
+            self.natjur_helios = "01"
+        else:
+            self.natjur_helios = "%02d" % natjur_helios
+        self.code_compta = dictAutresDonnees.get("code_compta") or ""
+
     def AnalysePiece(self):
         listeProblemes = []
         
@@ -536,22 +595,15 @@ class ListView(FastObjectListView):
         
     def Saisie_manuelle(self, event=None):
         """ Saisie manuelle """
-        dictTitulaires = UTILS_Titulaires.GetTitulaires() 
-        dictTemp = {
-            "IDprelevement" : None, "IDfamille" : None, "prelevement" : 0, "prelevement_iban" : "", "prelevement_bic" : "", 
-            "prelevement_rum" : "", "prelevement_date_mandat" : None,
-            "prelevement_titulaire" : "", "prelevement_statut" : "attente", "type" : "manuel", "IDfacture" : None, 
-            "libelle" : "", "montant" : 0.00, "IDlot" : self.IDlot, "etat" : "ajout",
-            "IDreglement" : None, "dateReglement" : None, "IDdepot" : None, "IDcompte_payeur" : None,
-            }
-        track = Track(dictTemp, dictTitulaires, self.dictIndividus)
-        dlg = DLG_Saisie_prelevement.Dialog(self, track=track)      
+        dictTitulaires = UTILS_Titulaires.GetTitulaires()
+        track = Track(GetDonneesTrackManuel(self.IDlot), dictTitulaires, self.dictIndividus)
+        dlg = DLG_Saisie_pes_piece.Dialog(self, track=track)
         if dlg.ShowModal() == wx.ID_OK:
             track = dlg.GetTrack()
             self.AddObject(track)
-            self.MAJtotaux() 
-        dlg.Destroy() 
-        
+            self.MAJtotaux()
+        dlg.Destroy()
+
     def Saisie_factures(self, event=None):
         """ Saisie de factures """
         if self.GetParent().GetVerrouillage() == True :
