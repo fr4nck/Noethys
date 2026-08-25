@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import re
 import tempfile
 import textwrap
 import unittest
@@ -91,6 +92,28 @@ class UnboundAfterTryAuditTests(unittest.TestCase):
             encoding="utf-8",
         )
         self.assertIsInstance(findings, list)
+
+    def test_repository_findings_are_only_the_safe_topwindow_guard_idiom(self):
+        """Les signaux résiduels partagent tous le même garde corrélé historique.
+
+        ``topWindow`` est lié avant ``nomWindow = topWindow.GetName()``. Si l'un
+        de ces appels échoue, le handler force ``nomWindow = None`` ; la branche
+        qui relit ``topWindow`` n'est donc atteignable que lorsque le ``try`` a
+        réussi. On garde les occurrences visibles dans l'inventaire, mais toute
+        autre forme d'UnboundLocalError potentiel doit faire échouer ce contrat.
+        """
+        findings = audit.scan()
+        self.assertGreater(len(findings), 0)
+
+        for item in findings:
+            self.assertEqual(item["name"], "topWindow", msg=f"Signal non qualifié : {item}")
+            path = audit.NOETHYS / item["file"]
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+            window = "\n".join(lines[item["try_line"] - 1:item["read_line"]])
+            self.assertRegex(window, r"topWindow\s*=\s*wx\.GetApp\(\)\.GetTopWindow\(\)")
+            self.assertRegex(window, r"nomWindow\s*=\s*topWindow\.GetName\(\)")
+            self.assertRegex(window, r"except\s+Exception\s*:\s*\n\s*nomWindow\s*=\s*None")
+            self.assertRegex(window, r"if\s+nomWindow\s*==\s*[\"']general[\"']")
 
 
 if __name__ == "__main__":
