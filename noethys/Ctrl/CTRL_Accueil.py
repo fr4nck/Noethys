@@ -27,6 +27,8 @@ def ConvertVersionTuple(texteVersion=""):
 
 def GetAnnonce():
     """ Fonction de récupération de l'annonce é afficher """
+    # FORK_MAINTENANCE: ne plus afficher les annonces promotionnelles/historiques embarquées.
+    return None
     dateJour = datetime.date.today() 
     dictAnnonce = None
     found = False

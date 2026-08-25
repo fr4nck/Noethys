@@ -873,7 +873,7 @@ class MainFrame(wx.Frame):
                     {"code": "extensions", "label": _(u"Extensions"), "infobulle": _(u"Extensions"), "image": "Images/16x16/Terminal.png", "action": self.On_outils_extensions},
                     "-",
                     {"code": "traductions", "label": _(u"Traduire le logiciel"), "infobulle": _(u"Traduire le logiciel"), "image": "Images/16x16/Traduction.png", "action": self.On_outils_traductions},
-                    {"code": "updater", "label": _(u"Rechercher une mise à jour du logiciel"), "infobulle": _(u"Rechercher une mise à jour du logiciel"), "image": "Images/16x16/Updater.png", "action": self.On_outils_updater},
+                    {"code": "updater", "label": _(u"Consulter les mises à jour de la Vanilla maintenue"), "infobulle": _(u"Consulter les mises à jour de la Vanilla maintenue"), "image": "Images/16x16/Updater.png", "action": self.On_outils_updater},
                     "-",
                     {"code" : "menu_outils_utilitaires", "label" : _(u"Utilitaires administrateur"), "items" : [
                             {"code" : "correcteur", "label" : _(u"Correcteur d'anomalies"), "infobulle" : _(u"Correcteur d'anomalies"), "image" : "Images/16x16/Depannage.png", "action" : self.On_outils_correcteur},
@@ -2836,6 +2836,9 @@ class MainFrame(wx.Frame):
         self.ChargeTraduction() 
 
     def On_outils_updater(self, event):
+        # FORK_MAINTENANCE: les versions installables proviennent de notre canal de releases.
+        wx.LaunchDefaultBrowser("https://github.com/fr4nck/Noethys/releases")
+        return
         """Mises à jour internet """
         from Dlg import DLG_Updater
         dlg = DLG_Updater.Dialog(self)
@@ -4145,6 +4148,8 @@ class MainFrame(wx.Frame):
         tb.Play()
 
     def RechercheMAJinternet(self):
+        # FORK_MAINTENANCE: ne jamais interroger automatiquement le canal upstream.
+        return False
         """ Recherche une mise à jour sur internet """
         # Récupère la version de l'application
         versionApplication = VERSION_APPLICATION
@@ -4231,6 +4236,8 @@ class MainFrame(wx.Frame):
         return False
     
     def AnnonceTemoignages(self):
+        # FORK_MAINTENANCE: annonce externe ponctuelle désactivée.
+        return False
         # Se déclenche uniquement dans 40% des cas
         if random.randrange(1, 100) > 40 :
             return False
@@ -4265,6 +4272,8 @@ Merci pour votre participation !
 
 
     def AnnonceFinancement(self):
+        # FORK_MAINTENANCE: annonce externe ponctuelle désactivée.
+        return False
         # Vérifie si identifiant saisi et valide
         identifiant = UTILS_Config.GetParametre("enregistrement_identifiant", defaut=None)
         if identifiant != None :
