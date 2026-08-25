@@ -286,6 +286,7 @@ class ListView(FastObjectListView):
             else:
                 dlg.Destroy()
                 return False, False
+        classe = None
         if format == "pes":
             classe = DLG_Saisie_lot_tresor_public_pes.Dialog
         if format == "magnus":
@@ -294,6 +295,8 @@ class ListView(FastObjectListView):
             classe = DLG_Saisie_lot_tresor_public_jvs.Dialog
         if format == "corail":
             classe = DLG_Saisie_lot_tresor_public_corail.Dialog
+        if classe is None:
+            return False, False
         return (format, classe)
 
 # -------------------------------------------------------------------------------------------------------------------------------------------
