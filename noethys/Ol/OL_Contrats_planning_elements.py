@@ -17,6 +17,8 @@ from Ctrl import CTRL_Bouton_image
 import datetime
 import GestionDB
 from Utils import UTILS_Dates
+from Utils import UTILS_Config
+SYMBOLE = UTILS_Config.GetParametre("monnaie_symbole", u"€")
 from Dlg import DLG_Saisie_contrat_conso_detail
 from six.moves import cPickle
 import copy
