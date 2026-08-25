@@ -240,9 +240,7 @@ def CalculerArrondi(arrondi_type="duree", arrondi_delta=15, heure_debut=None, he
     :return: datetime.time
     """
     duree_reelle = SoustractionHeures(heure_fin, heure_debut)
-
-    if arrondi_type == None :
-        duree_arrondie = duree_reelle
+    duree_arrondie = duree_reelle
 
     if arrondi_type == "tranche_horaire" :
         heure_debut_temp = ArrondirTime(heure=heure_debut, delta_minutes=arrondi_delta, sens="inf")
