@@ -46,7 +46,9 @@ class ServeurConnecthys():
         try :
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(self.dict_parametres["ssh_serveur"], port=int(self.dict_parametres["ssh_port"]), username=self.dict_parametres["ssh_utilisateur"], password=self.dict_parametres["ssh_mdp"])
+            key_filename = self.dict_parametres.get("ssh_key_file") or None
+            password = self.dict_parametres.get("ssh_mdp") or None
+            ssh.connect(self.dict_parametres["ssh_serveur"], port=int(self.dict_parametres["ssh_port"]), username=self.dict_parametres["ssh_utilisateur"], password=password, key_filename=key_filename)
             return ssh
         except Exception as err:
             self.parent.EcritLog(_(u"PROBLEME..."))
@@ -78,17 +80,11 @@ class ServeurConnecthys():
         elif self.dict_parametres["hebergement_type"] == 1 :
             return False
         elif self.dict_parametres["hebergement_type"] == 2 and self.ssh != None:
-            stdin, stdout, stderr = self.ssh.exec_command('ps -C python -opid,command:100')
-
-            for line in stdout.readlines() :
-                if line != "" and "run.py" in line :
-                    server_is_running = True
+            server_is_running = len(self.GetListeProcessBySSH()) > 0
         else :
             server_is_running = False
 
-        if server_is_running == True :
-            self.isrunnig = True
-
+        self.isrunning = server_is_running
         return server_is_running
 
     def Demarrer_serveur(self, event):
@@ -197,10 +193,13 @@ class ServeurConnecthys():
 
     def Arreter_serveurBySSH(self):
         """ Kill les process déjà ouverts """
-        process_pid = self.GetListeProcessBySSH()[0]
-
-        commande = "kill " + process_pid
-        stdin, stdout, stderr = self.ssh.exec_command(commande)
+        liste_process = self.GetListeProcessBySSH()
+        if len(liste_process) == 0 :
+            return False
+        for process_pid in liste_process :
+            commande = "kill " + process_pid
+            self.ssh.exec_command(commande)
+        return True
 
     def GetListeProcessLocal(self):
         """ Recherche les process ouverts du portail """
@@ -217,12 +216,13 @@ class ServeurConnecthys():
         """ Recherche les process ouverts du portail via SSH"""
         listeProcess = []
 
-        stdin, stdout, stderr = self.ssh.exec_command('ps -C python -opid=,command=')
+        stdin, stdout, stderr = self.ssh.exec_command('ps -eo pid=,comm=,args=')
         for line in stdout.readlines() :
-            if line != "" and "run.py" in line :
-                for param in line.split(" ") :
-                    if param != " ":
-                        listeProcess.append(param)
+            elements = line.strip().split(None, 2)
+            if len(elements) == 3 :
+                pid, commande, arguments = elements
+                if "python" in commande.lower() and "run.py" in arguments :
+                    listeProcess.append(pid)
         return listeProcess
 
 if __name__ == u"__main__":

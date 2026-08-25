@@ -346,7 +346,9 @@ class Synchro():
             try :
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                ssh.connect(self.dict_parametres["ssh_serveur"], port=int(self.dict_parametres["ssh_port"]), username=self.dict_parametres["ssh_utilisateur"], password=self.dict_parametres["ssh_mdp"])
+                key_filename = self.dict_parametres.get("ssh_key_file") or None
+                password = self.dict_parametres.get("ssh_mdp") or None
+                ssh.connect(self.dict_parametres["ssh_serveur"], port=int(self.dict_parametres["ssh_port"]), username=self.dict_parametres["ssh_utilisateur"], password=password, key_filename=key_filename)
                 ftp = ssh.open_sftp()
                 ftp.chdir("/" + self.dict_parametres["ssh_repertoire"])
             except Exception as err :
