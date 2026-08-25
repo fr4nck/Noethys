@@ -8,6 +8,7 @@ on:
       - 'scripts/apply_hardening_batch.py'
       - 'scripts/apply_runtime_lookup_guards.py'
       - 'scripts/apply_deprecated_runtime_fixes.py'
+      - 'scripts/apply_unsubscribe_empty_guard.py'
       - '.github/workflows/hardening-apply.yml'
 
 permissions:
@@ -39,6 +40,9 @@ jobs:
 
       - name: Corriger les API runtime supprimées
         run: python scripts/apply_deprecated_runtime_fixes.py
+
+      - name: Protéger la désinscription par lot vide
+        run: python scripts/apply_unsubscribe_empty_guard.py
 
       - name: Vérifier la syntaxe
         run: python -m compileall -q -x 'C866CA3A' noethys/
