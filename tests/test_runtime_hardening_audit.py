@@ -24,6 +24,15 @@ class RuntimeHardeningAuditTests(unittest.TestCase):
         self.assertIn("BARE_EXCEPT", report["summary"])
         self.assertTrue(all(value == 0 for value in report["zero_debt"].values()))
 
+        # La passe globale a ramené à zéro la file réellement ambiguë : les
+        # accès restants sont soit garantis par SQL, soit explicitement gardés,
+        # soit des invariants d'entité à valider en recette. Toute nouvelle
+        # classification ``review`` doit donc casser le contrat au lieu de se
+        # perdre dans l'inventaire JSON.
+        for kind in ("RESULT_UNGUARDED", "RESULT_ASSIGN"):
+            reviews = report["summary"][kind]["classifications"].get("review", 0)
+            self.assertEqual(reviews, 0, msg=f"Nouvelle alerte runtime à revoir : {kind}={reviews}")
+
 
 if __name__ == "__main__":
     unittest.main()
