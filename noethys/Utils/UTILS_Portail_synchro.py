@@ -114,7 +114,7 @@ class Synchro():
         self.log.EcritLog(_(u"Lancement de la synchronisation..."))
 
         # Téléchargement des données en ligne
-        self.Download_data(full_synchro=full_synchro)
+        resultat_download = self.Download_data(full_synchro=full_synchro)
 
         # Recherche de mises à jours logicielles Connecthys
         if self.dict_parametres["client_rechercher_updates"] == True :
@@ -130,9 +130,10 @@ class Synchro():
                     UTILS_Parametres.Parametres(mode="set", categorie="portail", nom="last_update", valeur=data)
 
         # Upload des données locales
-        resultat = self.Upload_data(full_synchro=full_synchro)
+        resultat_upload = self.Upload_data(full_synchro=full_synchro)
+        resultat = resultat_download is True and resultat_upload is True
         if resultat == False :
-            self.log.EcritLog(_(u"Synchronisation arrêtée."))
+            self.log.EcritLog(_(u"Synchronisation incomplète : au moins un échange a échoué."))
         else :
             secondes = time.time() - t1
             self.log.EcritLog(_(u"Synchronisation effectuée en %d secondes.") % secondes)
@@ -141,6 +142,7 @@ class Synchro():
             self.log.SetGauge(0)
         except :
             pass
+        return resultat
 
     # FTP mode
     def Upload_config(self, ftp=None):
@@ -1431,10 +1433,14 @@ class Synchro():
         self.Pulse_gauge()
         time.sleep(0.5)
 
-        self.UploadFichier(ftp=ftp, nomFichierComplet=nomFichierCRYPT, repDest="application/data")
+        resultat_upload = self.UploadFichier(ftp=ftp, nomFichierComplet=nomFichierCRYPT, repDest="application/data")
 
         # Fermeture connexion FTP ou SFTP
         self.Deconnexion(ftp)
+        if resultat_upload == False :
+            self.log.EcritLog(_(u"[ERREUR] Envoi du fichier de données impossible."))
+            self.Pulse_gauge(0)
+            return False
 
         # Envoi de la requête de traitement du fichier d'import
         self.log.EcritLog(_(u"Envoi de la requête de traitement du fichier d'export..."))
@@ -1459,6 +1465,8 @@ class Synchro():
         except Exception as err :
             print(err)
             self.log.EcritLog(_(u"[ERREUR] Erreur dans le traitement du fichier"))
+            self.Pulse_gauge(0)
+            return False
 
         # Suppression du fichier
         #ftp = ftplib.FTP(hote, identifiant, mdp)
@@ -1466,19 +1474,21 @@ class Synchro():
         #ftp.delete(os.path.basename(nomFichierDB))
         #ftp.quit()
 
-        if page != None and page != "True" and page != b"True" :
+        if page not in ("True", b"True") :
             # Affichage erreur
             print("Erreur dans le traitement du fichier :", page)
             self.log.EcritLog(_(u"[ERREUR] Erreur dans le traitement du fichier. Réponse reçue :"))
             self.log.EcritLog(page)
+            self.Pulse_gauge(0)
+            return False
 
-        else :
-            # Mémorisation horodatage synchro
-            UTILS_Parametres.Parametres(mode="set", categorie="portail", nom="last_synchro", valeur=str(datetime.datetime.now()))
+        # Mémorisation horodatage synchro
+        UTILS_Parametres.Parametres(mode="set", categorie="portail", nom="last_synchro", valeur=str(datetime.datetime.now()))
 
         print("Temps upload_data = ", time.time() - t1)
         self.Pulse_gauge(0)
         time.sleep(0.5)
+        return True
 
     def GetSecretInteger(self):
         secret = str(datetime.datetime.now().strftime("%Y%m%d"))
@@ -1559,7 +1569,7 @@ class Synchro():
         except Exception as err :
             print(err)
             self.log.EcritLog(_(u"Téléchargement des demandes impossible"))
-            liste_actions = []
+            return False
 
         # Sauvegarde des actions
         if liste_actions != None and len(liste_actions) > 0 :
