@@ -548,7 +548,7 @@ class ListView(FastObjectListView):
             if dict_inscrits:
                 individus = dict_inscrits.get(dictTemp["{IDFAMILLE}"], {})
                 if individus:
-                    dictTemp["{FAMILLE_NOM}"] = individus.items()[0][1]["nom_complet_individu"]
+                    dictTemp["{FAMILLE_NOM}"] = next(iter(individus.values()))["nom_complet_individu"]
 
             listeDonnees.append(dictTemp)
         return listeDonnees
