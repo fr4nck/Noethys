@@ -7,6 +7,7 @@ on:
     paths:
       - 'scripts/apply_hardening_batch.py'
       - 'scripts/apply_runtime_lookup_guards.py'
+      - 'scripts/apply_deprecated_runtime_fixes.py'
       - '.github/workflows/hardening-apply.yml'
 
 permissions:
@@ -35,6 +36,9 @@ jobs:
 
       - name: Appliquer les gardes runtime confirmées
         run: python scripts/apply_runtime_lookup_guards.py
+
+      - name: Corriger les API runtime supprimées
+        run: python scripts/apply_deprecated_runtime_fixes.py
 
       - name: Vérifier la syntaxe
         run: python -m compileall -q -x 'C866CA3A' noethys/
