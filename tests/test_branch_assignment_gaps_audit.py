@@ -60,6 +60,35 @@ class BranchAssignmentGapTests(unittest.TestCase):
         ''')
         self.assertEqual(report["count"], 0)
 
+    def test_assignment_in_both_branches_is_propagated_to_following_if(self):
+        report = self.report_for('''
+            def f(flag, other):
+                if flag:
+                    value = 1
+                else:
+                    value = 2
+                if other:
+                    value = 3
+                return value
+        ''')
+        self.assertEqual(report["count"], 0)
+
+    def test_nested_conditional_assignment_is_not_treated_as_guaranteed(self):
+        report = self.report_for('''
+            def f(flag, nested, other):
+                if flag:
+                    if nested:
+                        value = 1
+                else:
+                    value = 2
+                if other:
+                    value = 3
+                return value
+        ''')
+        # Le premier if reste trop complexe pour être qualifié ici, mais il ne
+        # doit surtout pas faire considérer ``value`` comme garanti ensuite.
+        self.assertTrue(any(item["name"] == "value" for item in report["findings"]))
+
     def test_repository_inventory_is_exported(self):
         report = audit.build_report()
         output = Path("tmp/branch-assignment-audit.json")
