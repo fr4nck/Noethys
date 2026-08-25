@@ -7,12 +7,15 @@ from scripts import audit_wx_lifecycle as audit
 
 
 class WxLifecycleZeroDebtTests(unittest.TestCase):
-    def test_no_use_after_destroy_remains_in_noethys_ui(self):
-        risky = [
-            item for item in audit.scan()
-            if item["kind"] == "use_after_destroy"
-        ]
-        self.assertEqual(risky, [])
+    def test_no_high_risk_wx_lifecycle_debt_returns(self):
+        findings = audit.scan()
+        strong_kinds = {
+            "use_after_destroy",
+            "constructor_parent_callback",
+            "constructor_callback_before_dependency",
+        }
+        risky = [item for item in findings if item["kind"] in strong_kinds]
+        self.assertEqual(risky, [], msg=f"Risque wx fort réintroduit : {risky}")
 
 
 if __name__ == "__main__":
