@@ -1,0 +1,100 @@
+name: Apply Connecthys sync result fixes
+
+on:
+  push:
+    branches:
+      - fix/vanilla-connecthys-sync-result
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/vanilla-connecthys-sync-result
+          fetch-depth: 0
+
+      - name: Apply exact source fixes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("noethys/Utils/UTILS_Portail_synchro.py")
+          text = path.read_text(encoding="utf-8")
+
+          def replace_once(old, new):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected one occurrence, got {count}: {old!r}")
+              text = text.replace(old, new, 1)
+
+          # #145 — conserver le résultat du sens descendant et calculer un état global fiable
+          replace_once(
+              '''        # Téléchargement des données en ligne\n        self.Download_data(full_synchro=full_synchro)\n''',
+              '''        # Téléchargement des données en ligne\n        resultat_download = self.Download_data(full_synchro=full_synchro)\n''',
+          )
+
+          replace_once(
+              '''        # Upload des données locales\n        resultat = self.Upload_data(full_synchro=full_synchro)\n        if resultat == False :\n            self.log.EcritLog(_(u"Synchronisation arrêtée."))\n        else :\n            secondes = time.time() - t1\n            self.log.EcritLog(_(u"Synchronisation effectuée en %d secondes.") % secondes)\n        self.log.EcritLog(_(u"Client de synchronisation prêt"))\n        try :\n            self.log.SetGauge(0)\n        except :\n            pass\n''',
+              '''        # Upload des données locales\n        resultat_upload = self.Upload_data(full_synchro=full_synchro)\n        resultat = resultat_download is True and resultat_upload is True\n        if resultat == False :\n            self.log.EcritLog(_(u"Synchronisation incomplète : au moins un échange a échoué."))\n        else :\n            secondes = time.time() - t1\n            self.log.EcritLog(_(u"Synchronisation effectuée en %d secondes.") % secondes)\n        self.log.EcritLog(_(u"Client de synchronisation prêt"))\n        try :\n            self.log.SetGauge(0)\n        except :\n            pass\n        return resultat\n''',
+          )
+
+          # #145 — un échec d'upload du fichier doit arrêter le sens montant
+          replace_once(
+              '''        self.UploadFichier(ftp=ftp, nomFichierComplet=nomFichierCRYPT, repDest="application/data")\n\n        # Fermeture connexion FTP ou SFTP\n        self.Deconnexion(ftp)\n''',
+              '''        resultat_upload = self.UploadFichier(ftp=ftp, nomFichierComplet=nomFichierCRYPT, repDest="application/data")\n\n        # Fermeture connexion FTP ou SFTP\n        self.Deconnexion(ftp)\n        if resultat_upload == False :\n            self.log.EcritLog(_(u"[ERREUR] Envoi du fichier de données impossible."))\n            self.Pulse_gauge(0)\n            return False\n''',
+          )
+
+          # #145 — une erreur HTTP/traitement serveur est un échec, jamais un succès implicite
+          replace_once(
+              '''        except Exception as err :\n            print(err)\n            self.log.EcritLog(_(u"[ERREUR] Erreur dans le traitement du fichier"))\n\n        # Suppression du fichier\n''',
+              '''        except Exception as err :\n            print(err)\n            self.log.EcritLog(_(u"[ERREUR] Erreur dans le traitement du fichier"))\n            self.Pulse_gauge(0)\n            return False\n\n        # Suppression du fichier\n''',
+          )
+
+          replace_once(
+              '''        if page != None and page != "True" and page != b"True" :\n            # Affichage erreur\n            print("Erreur dans le traitement du fichier :", page)\n            self.log.EcritLog(_(u"[ERREUR] Erreur dans le traitement du fichier. Réponse reçue :"))\n            self.log.EcritLog(page)\n\n        else :\n            # Mémorisation horodatage synchro\n            UTILS_Parametres.Parametres(mode="set", categorie="portail", nom="last_synchro", valeur=str(datetime.datetime.now()))\n\n        print("Temps upload_data = ", time.time() - t1)\n        self.Pulse_gauge(0)\n        time.sleep(0.5)\n''',
+              '''        if page not in ("True", b"True") :\n            # Affichage erreur\n            print("Erreur dans le traitement du fichier :", page)\n            self.log.EcritLog(_(u"[ERREUR] Erreur dans le traitement du fichier. Réponse reçue :"))\n            self.log.EcritLog(page)\n            self.Pulse_gauge(0)\n            return False\n\n        # Mémorisation horodatage synchro\n        UTILS_Parametres.Parametres(mode="set", categorie="portail", nom="last_synchro", valeur=str(datetime.datetime.now()))\n\n        print("Temps upload_data = ", time.time() - t1)\n        self.Pulse_gauge(0)\n        time.sleep(0.5)\n        return True\n''',
+          )
+
+          # #145 — un échec syncdown doit remonter False au lieu d'être transformé en liste vide réussie
+          replace_once(
+              '''        except Exception as err :\n            print(err)\n            self.log.EcritLog(_(u"Téléchargement des demandes impossible"))\n            liste_actions = []\n\n        # Sauvegarde des actions\n''',
+              '''        except Exception as err :\n            print(err)\n            self.log.EcritLog(_(u"Téléchargement des demandes impossible"))\n            return False\n\n        # Sauvegarde des actions\n''',
+          )
+
+          path.write_text(text, encoding="utf-8")
+
+      - name: Verify targeted invariants
+        shell: python
+        run: |
+          from pathlib import Path
+          text = Path("noethys/Utils/UTILS_Portail_synchro.py").read_text(encoding="utf-8")
+          assert "resultat_download = self.Download_data" in text
+          assert "resultat_upload = self.Upload_data" in text
+          assert "resultat = resultat_download is True and resultat_upload is True" in text
+          assert "Synchronisation incomplète" in text
+          assert "resultat_upload = self.UploadFichier" in text
+          assert "if resultat_upload == False" in text
+          assert 'if page not in ("True", b"True")' in text
+          assert "Téléchargement des demandes impossible" in text
+          assert text.count("return True") >= 1
+
+      - name: Compile changed file
+        shell: python
+        run: |
+          import py_compile
+          py_compile.compile("noethys/Utils/UTILS_Portail_synchro.py", doraise=True)
+
+      - name: Commit application fix and remove helper workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/_apply-connecthys-sync-result.yml
+          git add noethys/Utils/UTILS_Portail_synchro.py
+          git commit -m "Vanilla: fiabiliser le résultat de synchronisation Connecthys"
+          git push origin HEAD:fix/vanilla-connecthys-sync-result
