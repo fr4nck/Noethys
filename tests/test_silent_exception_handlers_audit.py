@@ -50,6 +50,17 @@ class SilentExceptionHandlersAuditTests(unittest.TestCase):
         self.assertEqual(report["findings"][0]["classification"], "silent_filesystem_mutation")
         self.assertEqual(report["findings"][0]["priority"], "high")
 
+    def test_string_replace_is_not_a_filesystem_mutation(self):
+        report = self.report_for('''
+            def f(label):
+                try:
+                    label = label.replace("{X}", "1")
+                except Exception:
+                    pass
+        ''')
+        self.assertNotEqual(report["findings"][0]["classification"], "silent_filesystem_mutation")
+        self.assertNotEqual(report["findings"][0]["priority"], "high")
+
     def test_silent_select_with_local_assignment_is_not_high_priority(self):
         report = self.report_for('''
             def f(DB):
