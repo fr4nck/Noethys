@@ -92,10 +92,10 @@ class CTRL_Categories(wx.CheckListBox):
 # --------------------------------------------------------------------------------------------------------
 
 class CTRL_Label_prestation(wx.Panel):
-    def __init__(self, parent, listeChoix=[]):
+    def __init__(self, parent, listeChoix=None):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
         self.parent = parent
-        self.listeChoix = listeChoix
+        self.listeChoix = list(listeChoix) if listeChoix is not None else []
         self.listeChoix.append(("autre:", _(u"Le label suivant")))
 
         choices = []
@@ -106,8 +106,8 @@ class CTRL_Label_prestation(wx.Panel):
         self.ctrl_autre = wx.TextCtrl(self, -1, "")
 
         grid_sizer_base = wx.FlexGridSizer(rows=1, cols=2, vgap=5, hgap=5)
-        grid_sizer_base.Add(self.ctrl_choix, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL | wx.EXPAND, 0)
-        grid_sizer_base.Add(self.ctrl_autre, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL | wx.EXPAND, 0)
+        grid_sizer_base.Add(self.ctrl_choix, 0, wx.ALL | wx.EXPAND, 0)
+        grid_sizer_base.Add(self.ctrl_autre, 0, wx.ALL | wx.EXPAND, 0)
         grid_sizer_base.AddGrowableCol(0)
         grid_sizer_base.AddGrowableCol(1)
         self.SetSizer(grid_sizer_base)
