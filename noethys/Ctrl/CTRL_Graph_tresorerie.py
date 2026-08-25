@@ -54,7 +54,7 @@ class CTRL_Affichage(wx.Choice):
             ("30_prochains_jours", _(u"30 prochains jours")),
             ("90_prochains_jours", _(u"90 prochains jours")),
             ("6_prochains_mois", _(u"6 prochains mois")),
-            ("12 prochains_mois", _(u"12 prochains mois")),
+            ("12_prochains_mois", _(u"12 prochains mois")),
             ("mois_actuel", _(u"Mois actuel")),
             ("annee_actuelle", _(u"Année actuelle")),
             ("personnalise", _(u"Personnalisé")),
@@ -208,7 +208,7 @@ class CTRL(wx.Panel):
         # Affichage par année
         if mode == "annee" :
             anneeMin = self.date_debut.year
-            anneeMax = self.date_max.year + 1
+            anneeMax = self.date_fin.year + 1
             ax.xaxis.set_major_locator(mdates.YearLocator())
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
             ax.xaxis.set_minor_locator(mdates.MonthLocator())

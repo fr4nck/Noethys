@@ -193,8 +193,10 @@ def Sauvegarde(listeFichiersLocaux=[], listeFichiersReseau=[], nom="", repertoir
         dlgprogress.Update(numEtape, _(u"Création du fichier dans le répertoire cible..."));numEtape += 1
         try :
             shutil.copy2(UTILS_Fichiers.GetRepTemp(fichier=nomFichierTemp), fichierDest)
-        except :
-            print("Le repertoire de destination de sauvegarde n'existe pas.")
+        except Exception as err:
+            print("Le repertoire de destination de sauvegarde n'existe pas : %s" % err)
+            dlgprogress.Destroy()
+            return False
 
     # Préparation du message
     message = UTILS_Envoi_email.Message(destinataires=listeEmails, sujet=_(u"Sauvegarde Noethys : %s") % nom,

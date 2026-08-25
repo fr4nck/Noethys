@@ -68,8 +68,8 @@ class ToolBar(wx.ToolBar):
         ID_OUTIL_VERTICAL = wx.Window.NewControlId()
         ID_OUTIL_RECULER = wx.Window.NewControlId()
         ID_OUTIL_AVANCER = wx.Window.NewControlId()
-        ID_OUTIL_MOINS = wx.Window.NewControlId()
-        ID_OUTIL_PLUS = wx.Window.NewControlId()
+        self.ID_OUTIL_MOINS = wx.Window.NewControlId()
+        self.ID_OUTIL_PLUS = wx.Window.NewControlId()
         ID_OUTIL_AUJOURDHUI = wx.Window.NewControlId()
         ID_OUTIL_CHERCHER = wx.Window.NewControlId()
         ID_OUTIL_APERCU = wx.Window.NewControlId()
@@ -86,9 +86,9 @@ class ToolBar(wx.ToolBar):
         self.AddLabelTool(ID_OUTIL_RECULER, _(u"Reculer"), wx.Bitmap(Chemins.GetStaticPath("Images/32x32/Precedent.png"), wx.BITMAP_TYPE_ANY), wx.NullBitmap, wx.ITEM_NORMAL, _(u"Reculer"), "")
         self.AddLabelTool(ID_OUTIL_AVANCER, _(u"Avancer"), wx.Bitmap(Chemins.GetStaticPath("Images/32x32/Suivant.png"), wx.BITMAP_TYPE_ANY), wx.NullBitmap, wx.ITEM_NORMAL, _(u"Avancer"), "")
         self.AddSeparator()
-        self.AddLabelTool(ID_OUTIL_MOINS, _(u"Moins"), wx.Bitmap(Chemins.GetStaticPath("Images/32x32/zoom_moins.png"), wx.BITMAP_TYPE_ANY), wx.NullBitmap, wx.ITEM_NORMAL, _(u"Afficher moins"), "")
-        self.EnableTool(ID_OUTIL_MOINS, False)
-        self.AddLabelTool(ID_OUTIL_PLUS, _(u"Plus"), wx.Bitmap(Chemins.GetStaticPath("Images/32x32/zoom_plus.png"), wx.BITMAP_TYPE_ANY), wx.NullBitmap, wx.ITEM_NORMAL, _(u"Afficher plus"), "")
+        self.AddLabelTool(self.ID_OUTIL_MOINS, _(u"Moins"), wx.Bitmap(Chemins.GetStaticPath("Images/32x32/zoom_moins.png"), wx.BITMAP_TYPE_ANY), wx.NullBitmap, wx.ITEM_NORMAL, _(u"Afficher moins"), "")
+        self.EnableTool(self.ID_OUTIL_MOINS, False)
+        self.AddLabelTool(self.ID_OUTIL_PLUS, _(u"Plus"), wx.Bitmap(Chemins.GetStaticPath("Images/32x32/zoom_plus.png"), wx.BITMAP_TYPE_ANY), wx.NullBitmap, wx.ITEM_NORMAL, _(u"Afficher plus"), "")
         self.AddSeparator()
         self.AddLabelTool(ID_OUTIL_AUJOURDHUI, _(u"Aujourd'hui"), wx.Bitmap(Chemins.GetStaticPath("Images/32x32/Jour.png"), wx.BITMAP_TYPE_ANY), wx.NullBitmap, wx.ITEM_NORMAL, _(u"Aujourd'hui"), "")
         self.AddLabelTool(ID_OUTIL_CHERCHER, _(u"Chercher"), wx.Bitmap(Chemins.GetStaticPath("Images/32x32/Calendrier_zoom.png"), wx.BITMAP_TYPE_ANY), wx.NullBitmap, wx.ITEM_NORMAL, _(u"Chercher une date"), "")
@@ -102,8 +102,8 @@ class ToolBar(wx.ToolBar):
         self.Bind(wx.EVT_TOOL, self.OnAffichageHorizontal, id=ID_OUTIL_HORIZONTAL)
         self.Bind(wx.EVT_TOOL, self.OnReculer, id=ID_OUTIL_RECULER)
         self.Bind(wx.EVT_TOOL, self.OnAvancer, id=ID_OUTIL_AVANCER)
-        self.Bind(wx.EVT_TOOL, self.OnMoins, id=ID_OUTIL_MOINS)
-        self.Bind(wx.EVT_TOOL, self.OnPlus, id=ID_OUTIL_PLUS)
+        self.Bind(wx.EVT_TOOL, self.OnMoins, id=self.ID_OUTIL_MOINS)
+        self.Bind(wx.EVT_TOOL, self.OnPlus, id=self.ID_OUTIL_PLUS)
         self.Bind(wx.EVT_TOOL, self.OnAujourdhui, id=ID_OUTIL_AUJOURDHUI)
         self.Bind(wx.EVT_TOOL, self.OnChercherDate, id=ID_OUTIL_CHERCHER)
         self.Bind(wx.EVT_TOOL, self.OnApercu, id=ID_OUTIL_APERCU)
@@ -141,26 +141,26 @@ class ToolBar(wx.ToolBar):
 
     def MAJAffichagePlusMoins(self):
         if self.parent.ctrl_planning.GetViewType() == wxScheduler.wxSCHEDULER_MONTHLY :
-            self.EnableTool(ID_OUTIL_PLUS, False)
+            self.EnableTool(self.ID_OUTIL_PLUS, False)
         else :
-            self.EnableTool(ID_OUTIL_PLUS, True)
+            self.EnableTool(self.ID_OUTIL_PLUS, True)
         if self.parent.ctrl_planning.GetViewType() == wxScheduler.wxSCHEDULER_MONTHLY or self.periodCount < 2 :
-            self.EnableTool(ID_OUTIL_MOINS, False)
+            self.EnableTool(self.ID_OUTIL_MOINS, False)
         else :
-            self.EnableTool(ID_OUTIL_MOINS, True)
+            self.EnableTool(self.ID_OUTIL_MOINS, True)
         
     def OnMoins(self, event):
         self.periodCount -= 1
         if self.periodCount == 1 :
-            self.EnableTool(ID_OUTIL_MOINS, False)
+            self.EnableTool(self.ID_OUTIL_MOINS, False)
         else :
-            self.EnableTool(ID_OUTIL_MOINS, True)
+            self.EnableTool(self.ID_OUTIL_MOINS, True)
         self.parent.ctrl_planning.SetPeriodCount(self.periodCount)
 
     def OnPlus(self, event):
         self.periodCount += 1
         if self.periodCount > 1 :
-            self.EnableTool(ID_OUTIL_MOINS, True)
+            self.EnableTool(self.ID_OUTIL_MOINS, True)
         self.parent.ctrl_planning.SetPeriodCount(self.periodCount)
 
     def OnAujourdhui(self, event):
@@ -168,10 +168,10 @@ class ToolBar(wx.ToolBar):
 
     def OnChercherDate(self, event):
         dlg = DLG_Recherche_date(self)
-        if dlg.ShowModal():
+        if dlg.ShowModal() == wx.ID_OK:
             newDate = dlg.GetDate()
+            self.parent.ctrl_planning.SetDate(newDate)
         dlg.Destroy()
-        self.parent.ctrl_planning.SetDate(newDate)
 
     def OnApercu(self, event):
         """ Aperçu avant impression """

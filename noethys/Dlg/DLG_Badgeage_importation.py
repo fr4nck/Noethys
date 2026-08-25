@@ -385,13 +385,13 @@ class Page_scanner(wx.Panel):
         # Création du menu Outils
         menuPop = UTILS_Adaptations.Menu()
 
-        ID_VIDER_MEMOIRE = wx.Window.NewControlId()
-        menuPop.AppendItem(wx.MenuItem(menuPop, ID_VIDER_MEMOIRE, _(u"Vider la mémoire"), _(u"Vider la mémoire du scanner")))
-        self.Bind(wx.EVT_MENU, self.OnOutil, id=ID_VIDER_MEMOIRE)
+        self.ID_VIDER_MEMOIRE = wx.Window.NewControlId()
+        menuPop.AppendItem(wx.MenuItem(menuPop, self.ID_VIDER_MEMOIRE, _(u"Vider la mémoire"), _(u"Vider la mémoire du scanner")))
+        self.Bind(wx.EVT_MENU, self.OnOutil, id=self.ID_VIDER_MEMOIRE)
 
-        ID_REGLER_HEURE = wx.Window.NewControlId()
-        menuPop.AppendItem(wx.MenuItem(menuPop, ID_REGLER_HEURE, _(u"Régler l'horloge du scanner"), _(u"Régler l'horloge du scanner")))
-        self.Bind(wx.EVT_MENU, self.OnOutil, id=ID_REGLER_HEURE)
+        self.ID_REGLER_HEURE = wx.Window.NewControlId()
+        menuPop.AppendItem(wx.MenuItem(menuPop, self.ID_REGLER_HEURE, _(u"Régler l'horloge du scanner"), _(u"Régler l'horloge du scanner")))
+        self.Bind(wx.EVT_MENU, self.OnOutil, id=self.ID_REGLER_HEURE)
         
         self.PopupMenu(menuPop)
         menuPop.Destroy()
@@ -404,10 +404,10 @@ class Page_scanner(wx.Panel):
         if scanner == False :
             return False
         
-        if ID == ID_VIDER_MEMOIRE :
+        if ID == self.ID_VIDER_MEMOIRE :
             self.ViderMemoire(scanner) 
             
-        if ID == ID_REGLER_HEURE :
+        if ID == self.ID_REGLER_HEURE :
             self.ReglerHeure(scanner)
         
         # Déconnecte scanner
