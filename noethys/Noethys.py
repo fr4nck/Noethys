@@ -29,7 +29,6 @@ import codecs
 # except:
 #     pass
 
-from time import sleep 
 
 from Utils import UTILS_Linux
 if "linux" in sys.platform :
@@ -2853,7 +2852,6 @@ class MainFrame(wx.Frame):
         dlg.Destroy()
         if installation == True :
             self.Quitter(videRepertoiresTemp=False, sauvegardeAuto=False)
-            sleep(2)
             self.Destroy()
 
     def On_reglements_regler_facture(self, event):
