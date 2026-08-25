@@ -27,23 +27,16 @@ jobs:
           text = path.read_text(encoding="utf-8")
 
           old_import = 'from six.moves.urllib.request import Request, urlopen\n'
-          new_import = old_import + 'from six.moves.urllib.parse import quote\n'
           if text.count(old_import) != 1:
               raise SystemExit(f"urllib request import count: {text.count(old_import)}")
-          text = text.replace(old_import, new_import, 1)
+          text = text.replace(old_import, old_import + 'from six.moves.urllib.parse import quote\n', 1)
 
-          old_helper = '''        def Ecrit_ligne(key="", valeur="", type_valeur=None):
-              if type_valeur == six.text_type :
-                  valeur = u'u"%s"' % valeur
-              elif type_valeur == str :
-                  valeur = u'"%s"' % valeur
-              elif type_valeur == None :
-                  valeur = valeur
-              else :
-                  valeur = str(valeur)
-              return u"     %s = %s\\n" % (key, valeur)
-          '''
-          old_helper = old_helper.replace('              ', '            ', 7)
+          start_marker = '        def Ecrit_ligne(key="", valeur="", type_valeur=None):\n'
+          end_marker = '        # Valeurs Application\n'
+          if text.count(start_marker) != 1 or text.count(end_marker) < 1:
+              raise SystemExit("Unable to locate Ecrit_ligne helper")
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
           new_helper = '''        def Ecrit_ligne(key="", valeur="", type_valeur=None):
               if type_valeur in (six.text_type, str):
                   valeur = repr(valeur)
@@ -61,29 +54,24 @@ jobs:
               if six.PY2:
                   valeur = valeur.encode("utf8")
               return quote(valeur, safe="")
-          '''
-          new_helper = new_helper.replace('              ', '            ', 10)
-          if text.count(old_helper) != 1:
-              raise SystemExit(f"Ecrit_ligne helper count: {text.count(old_helper)}")
-          text = text.replace(old_helper, new_helper, 1)
 
-          old_db = '''            db_serveur = self.dict_parametres["db_serveur"]
-              db_utilisateur = self.dict_parametres["db_utilisateur"]
-              db_mdp = self.dict_parametres["db_mdp"]
-              db_nom = self.dict_parametres["db_nom"]
-              liste_lignes.append(Ecrit_ligne("SQLALCHEMY_DATABASE_URI", "mysql://%s:%s@%s/%s?charset=utf8" % (db_utilisateur, db_mdp, db_serveur, db_nom), type_valeur=str))
           '''
-          old_db = old_db.replace('              ', '            ', 5)
-          new_db = '''            db_serveur = self.dict_parametres["db_serveur"]
-              db_utilisateur = Encode_uri_component(self.dict_parametres["db_utilisateur"])
-              db_mdp = Encode_uri_component(self.dict_parametres["db_mdp"])
-              db_nom = Encode_uri_component(self.dict_parametres["db_nom"])
-              liste_lignes.append(Ecrit_ligne("SQLALCHEMY_DATABASE_URI", "mysql://%s:%s@%s/%s?charset=utf8" % (db_utilisateur, db_mdp, db_serveur, db_nom), type_valeur=str))
-          '''
-          new_db = new_db.replace('              ', '            ', 5)
-          if text.count(old_db) != 1:
-              raise SystemExit(f"MySQL URI block count: {text.count(old_db)}")
-          text = text.replace(old_db, new_db, 1)
+          # YAML indentation strips six spaces from this block; normalize nested Python indentation explicitly.
+          new_helper = new_helper.replace('\n      ', '\n            ').replace('\n  def Encode_uri_component', '\n        def Encode_uri_component')
+          text = text[:start] + new_helper + text[end:]
+
+          replacements = {
+              '            db_utilisateur = self.dict_parametres["db_utilisateur"]\n':
+                  '            db_utilisateur = Encode_uri_component(self.dict_parametres["db_utilisateur"])\n',
+              '            db_mdp = self.dict_parametres["db_mdp"]\n':
+                  '            db_mdp = Encode_uri_component(self.dict_parametres["db_mdp"])\n',
+              '            db_nom = self.dict_parametres["db_nom"]\n':
+                  '            db_nom = Encode_uri_component(self.dict_parametres["db_nom"])\n',
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit(f"Expected one URI component line, got {text.count(old)}: {old!r}")
+              text = text.replace(old, new, 1)
 
           path.write_text(text, encoding="utf-8")
 
