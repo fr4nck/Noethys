@@ -28,9 +28,7 @@ BUSINESS_MUTATION_METHODS = {
     "ReqInsert", "ReqMAJ", "ReqDEL", "Commit",
     "Sauvegarde", "Enregistrer", "Supprimer", "Ajouter", "Modifier",
 }
-# Les déplacements/renommages persistants ne sont pas de simples nettoyages :
-# les masquer peut laisser une migration de données à moitié effectuée.
-FILESYSTEM_MUTATION_METHODS = {"rename", "replace", "move"}
+FILESYSTEM_MUTATION_CALLS = {"os.rename", "os.replace", "shutil.move"}
 SQL_WRITE_RE = re.compile(r"\b(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b", re.IGNORECASE)
 
 
@@ -55,6 +53,17 @@ def _is_optional_import(body):
     return all(isinstance(stmt, (ast.Import, ast.ImportFrom)) for stmt in body)
 
 
+def _qualified_name(node):
+    parts = []
+    current = node
+    while isinstance(current, ast.Attribute):
+        parts.append(current.attr)
+        current = current.value
+    if isinstance(current, ast.Name):
+        parts.append(current.id)
+    return ".".join(reversed(parts))
+
+
 def _called_methods(body):
     methods = []
     for stmt in body:
@@ -62,6 +71,17 @@ def _called_methods(body):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
                 methods.append(node.func.attr)
     return methods
+
+
+def _called_qualified_names(body):
+    names = []
+    for stmt in body:
+        for node in ast.walk(stmt):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                name = _qualified_name(node.func)
+                if name:
+                    names.append(name)
+    return names
 
 
 def _is_cleanup(body):
@@ -74,7 +94,12 @@ def _contains_business_mutation(body):
 
 
 def _contains_filesystem_mutation(body):
-    return any(method in FILESYSTEM_MUTATION_METHODS for method in _called_methods(body))
+    """Ne classe HIGH que les appels de fichiers explicitement qualifiés.
+
+    Un simple ``texte.replace(...)`` ou ``label.replace(...)`` ne doit jamais
+    être pris pour ``os.replace(...)``.
+    """
+    return any(name in FILESYSTEM_MUTATION_CALLS for name in _called_qualified_names(body))
 
 
 def _contains_silent_sql_write(body, source):
