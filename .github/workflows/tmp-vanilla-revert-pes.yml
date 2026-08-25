@@ -1,0 +1,36 @@
+name: Temporary Vanilla PES revert
+
+on:
+  push:
+    branches:
+      - fix/vanilla-runtime-undefined-batch2
+
+permissions:
+  contents: write
+
+jobs:
+  revert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/vanilla-runtime-undefined-batch2
+      - name: Retirer le correctif PES incomplet
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("noethys/Ol/OL_PES_pieces.py")
+          text = p.read_text(encoding="utf-8")
+          old = "        dlg = DLG_Saisie_pes_piece.Dialog(self, track=track)\n"
+          new = "        dlg = DLG_Saisie_prelevement.Dialog(self, track=track)      \n"
+          if text.count(old) != 1:
+              raise SystemExit("appel PES corrigé attendu une seule fois")
+          p.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+          git rm .github/workflows/tmp-vanilla-revert-pes.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "audit(vanilla): isoler la saisie manuelle PES"
+          git push origin HEAD:fix/vanilla-runtime-undefined-batch2
