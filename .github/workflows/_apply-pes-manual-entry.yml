@@ -65,23 +65,17 @@ jobs:
           ol = ol.replace(marker, '\n' + factory, 1)
 
           old_code_tiers = '        # Code tiers de la famille\n        self.code_tiers = u"FAM%06d" % self.IDfamille\n'
-          new_code_tiers = '''        # Code tiers de la famille
-              if self.IDfamille == None:
-                  self.code_tiers = ""
-              else:
-                  self.code_tiers = u"FAM%06d" % self.IDfamille
-          '''
+          new_code_tiers = (
+              '        # Code tiers de la famille\n'
+              '        if self.IDfamille == None:\n'
+              '            self.code_tiers = ""\n'
+              '        else:\n'
+              '            self.code_tiers = u"FAM%06d" % self.IDfamille\n'
+          )
           if ol.count(old_code_tiers) != 1:
               raise SystemExit(f"code_tiers block count: {ol.count(old_code_tiers)}")
           ol = ol.replace(old_code_tiers, new_code_tiers, 1)
 
-          method_marker = '''    def InitNomsTitulaires(self):
-              if self.IDfamille != None :
-                  self.titulaires = self.dictTitulaires[self.IDfamille]["titulairesSansCivilite"]
-              
-              def AnalysePiece(self):
-          '''
-          # Build the marker explicitly to preserve the historical blank-line indentation.
           method_marker = (
               '    def InitNomsTitulaires(self):\n'
               '        if self.IDfamille != None :\n'
@@ -89,43 +83,39 @@ jobs:
               '    \n'
               '    def AnalysePiece(self):\n'
           )
-          method_replacement = '''    def InitNomsTitulaires(self):
-              if self.IDfamille != None :
-                  self.titulaires = self.dictTitulaires[self.IDfamille]["titulairesSansCivilite"]
-
-              def SetFamille(self, IDfamille):
-                  """Affecte la famille d'un brouillon manuel et recharge ses données Hélios."""
-                  self.IDfamille = IDfamille
-                  self.InitNomsTitulaires()
-                  self.code_tiers = u"FAM%06d" % IDfamille
-
-                  dictAutresDonnees = GetDictAutresDonnees().get(IDfamille, {})
-                  self.idtiers_helios = dictAutresDonnees.get("idtiers_helios") or ""
-
-                  natidtiers_helios = dictAutresDonnees.get("natidtiers_helios")
-                  if natidtiers_helios in (9999, None):
-                      self.natidtiers_helios = ""
-                  else:
-                      self.natidtiers_helios = "0%d" % natidtiers_helios
-
-                  self.reftiers_helios = dictAutresDonnees.get("reftiers_helios") or ""
-
-                  cattiers_helios = dictAutresDonnees.get("cattiers_helios")
-                  if cattiers_helios == None:
-                      self.cattiers_helios = "01"
-                  else:
-                      self.cattiers_helios = "%02d" % cattiers_helios
-
-                  natjur_helios = dictAutresDonnees.get("natjur_helios")
-                  if natjur_helios == None:
-                      self.natjur_helios = "01"
-                  else:
-                      self.natjur_helios = "%02d" % natjur_helios
-
-                  self.code_compta = dictAutresDonnees.get("code_compta") or ""
-
-              def AnalysePiece(self):
-          '''
+          method_replacement = (
+              '    def InitNomsTitulaires(self):\n'
+              '        if self.IDfamille != None :\n'
+              '            self.titulaires = self.dictTitulaires[self.IDfamille]["titulairesSansCivilite"]\n'
+              '\n'
+              '    def SetFamille(self, IDfamille):\n'
+              '        """Affecte la famille d\'un brouillon manuel et recharge ses données Hélios."""\n'
+              '        self.IDfamille = IDfamille\n'
+              '        self.InitNomsTitulaires()\n'
+              '        self.code_tiers = u"FAM%06d" % IDfamille\n'
+              '\n'
+              '        dictAutresDonnees = GetDictAutresDonnees().get(IDfamille, {})\n'
+              '        self.idtiers_helios = dictAutresDonnees.get("idtiers_helios") or ""\n'
+              '        natidtiers_helios = dictAutresDonnees.get("natidtiers_helios")\n'
+              '        if natidtiers_helios in (9999, None):\n'
+              '            self.natidtiers_helios = ""\n'
+              '        else:\n'
+              '            self.natidtiers_helios = "0%d" % natidtiers_helios\n'
+              '        self.reftiers_helios = dictAutresDonnees.get("reftiers_helios") or ""\n'
+              '        cattiers_helios = dictAutresDonnees.get("cattiers_helios")\n'
+              '        if cattiers_helios == None:\n'
+              '            self.cattiers_helios = "01"\n'
+              '        else:\n'
+              '            self.cattiers_helios = "%02d" % cattiers_helios\n'
+              '        natjur_helios = dictAutresDonnees.get("natjur_helios")\n'
+              '        if natjur_helios == None:\n'
+              '            self.natjur_helios = "01"\n'
+              '        else:\n'
+              '            self.natjur_helios = "%02d" % natjur_helios\n'
+              '        self.code_compta = dictAutresDonnees.get("code_compta") or ""\n'
+              '\n'
+              '    def AnalysePiece(self):\n'
+          )
           if ol.count(method_marker) != 1:
               raise SystemExit(f"InitNomsTitulaires marker count: {ol.count(method_marker)}")
           ol = ol.replace(method_marker, method_replacement, 1)
@@ -136,18 +126,19 @@ jobs:
               raise SystemExit("Unable to locate Saisie_manuelle block")
           start = ol.index(start_marker)
           end = ol.index(end_marker, start)
-          new_manual = '''    def Saisie_manuelle(self, event=None):
-              """ Saisie manuelle """
-              dictTitulaires = UTILS_Titulaires.GetTitulaires()
-              track = Track(GetDonneesTrackManuel(self.IDlot), dictTitulaires, self.dictIndividus)
-              dlg = DLG_Saisie_pes_piece.Dialog(self, track=track)
-              if dlg.ShowModal() == wx.ID_OK:
-                  track = dlg.GetTrack()
-                  self.AddObject(track)
-                  self.MAJtotaux()
-              dlg.Destroy()
-
-          '''
+          new_manual = (
+              '    def Saisie_manuelle(self, event=None):\n'
+              '        """ Saisie manuelle """\n'
+              '        dictTitulaires = UTILS_Titulaires.GetTitulaires()\n'
+              '        track = Track(GetDonneesTrackManuel(self.IDlot), dictTitulaires, self.dictIndividus)\n'
+              '        dlg = DLG_Saisie_pes_piece.Dialog(self, track=track)\n'
+              '        if dlg.ShowModal() == wx.ID_OK:\n'
+              '            track = dlg.GetTrack()\n'
+              '            self.AddObject(track)\n'
+              '            self.MAJtotaux()\n'
+              '        dlg.Destroy()\n'
+              '\n'
+          )
           ol = ol[:start] + new_manual + ol[end:]
           ol_path.write_text(ol, encoding="utf-8")
 
@@ -160,12 +151,13 @@ jobs:
               raise SystemExit("Unable to locate OnChoixFamille block")
           start = dlg.index(start_marker)
           end = dlg.index(end_marker, start)
-          new_choice = '''    def OnChoixFamille(self, event):
-              IDfamille = self.ctrl_famille.GetIDfamille()
-              self.ctrl_titulaire_helios.MAJ(IDfamille)
-              self.ctrl_tiers_solidaire.MAJ(IDfamille)
-
-          '''
+          new_choice = (
+              '    def OnChoixFamille(self, event):\n'
+              '        IDfamille = self.ctrl_famille.GetIDfamille()\n'
+              '        self.ctrl_titulaire_helios.MAJ(IDfamille)\n'
+              '        self.ctrl_tiers_solidaire.MAJ(IDfamille)\n'
+              '\n'
+          )
           dlg = dlg[:start] + new_choice + dlg[end:]
 
           old_importation = (
@@ -215,16 +207,10 @@ jobs:
           ol_tree = ast.parse(ol_text)
           ast.parse(dlg_text)
 
-          factory_node = None
-          track_node = None
-          for node in ol_tree.body:
-              if isinstance(node, ast.FunctionDef) and node.name == "GetDonneesTrackManuel":
-                  factory_node = node
-              if isinstance(node, ast.ClassDef) and node.name == "Track":
-                  track_node = node
-          assert factory_node is not None and track_node is not None
-
+          factory_node = next(node for node in ol_tree.body if isinstance(node, ast.FunctionDef) and node.name == "GetDonneesTrackManuel")
+          track_node = next(node for node in ol_tree.body if isinstance(node, ast.ClassDef) and node.name == "Track")
           init_node = next(node for node in track_node.body if isinstance(node, ast.FunctionDef) and node.name == "__init__")
+
           required = set()
           for node in ast.walk(init_node):
               if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name) and node.value.id == "donnees":
@@ -236,19 +222,12 @@ jobs:
           namespace = {"_": lambda value: value, "GetDictAutresDonnees": lambda: {}}
           exec(compile(module, "pes_manual_contract", "exec"), namespace)
 
-          factory = namespace["GetDonneesTrackManuel"]
-          Track = namespace["Track"]
-          draft = factory(42)
-          missing = sorted(required - set(draft))
-          assert not missing, "Missing Track keys: %s" % missing
-
-          track = Track(draft, {}, {})
-          assert track.IDpiece is None
-          assert track.IDlot == 42
-          assert track.IDfamille is None
-          assert track.code_tiers == ""
-          assert track.type == "manuel"
-          assert track.etat == "ajout"
+          draft = namespace["GetDonneesTrackManuel"](42)
+          assert not (required - set(draft)), "Missing Track keys: %s" % sorted(required - set(draft))
+          track = namespace["Track"](draft, {}, {})
+          assert track.IDpiece is None and track.IDlot == 42
+          assert track.IDfamille is None and track.code_tiers == ""
+          assert track.type == "manuel" and track.etat == "ajout"
 
           track.dictTitulaires = {7: {"titulairesSansCivilite": "Famille Test"}}
           namespace["GetDictAutresDonnees"] = lambda: {7: {
@@ -257,15 +236,10 @@ jobs:
               "natjur_helios": 3, "code_compta": "411",
           }}
           track.SetFamille(7)
-          assert track.IDfamille == 7
           assert track.code_tiers == "FAM000007"
           assert track.titulaires == "Famille Test"
-          assert track.idtiers_helios == "ABC"
-          assert track.natidtiers_helios == "01"
-          assert track.reftiers_helios == "REF"
-          assert track.cattiers_helios == "02"
-          assert track.natjur_helios == "03"
-          assert track.code_compta == "411"
+          assert (track.idtiers_helios, track.natidtiers_helios, track.reftiers_helios) == ("ABC", "01", "REF")
+          assert (track.cattiers_helios, track.natjur_helios, track.code_compta) == ("02", "03", "411")
 
           assert "DLG_Saisie_prelevement.Dialog" not in ol_text
           assert "DLG_Saisie_pes_piece.Dialog(self, track=track)" in ol_text
