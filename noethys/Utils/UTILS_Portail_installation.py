@@ -54,14 +54,10 @@ def GetNbreFichiers(rep="") :
 def AffichetailleFichier(url):
     try :
         fichier = urlopen(url)
-        infoFichier = (fichier.info().getheaders('Content-Length'))
-        if len(infoFichier) > 0 :
-            tailleFichier = infoFichier[0]
-        else :
-            tailleFichier = 0
-    except IOError :
+        tailleFichier = fichier.headers.get('Content-Length', 0)
+    except Exception :
         tailleFichier = 0
-    return int(tailleFichier)
+    return int(tailleFichier or 0)
 
 def GetPourcentage(index, taille):
     return int(index*100/taille)
@@ -228,10 +224,14 @@ class Installer():
                             except Exception as err :
                                 print("CHMOD 755 sur %s impossible :" % self.dict_parametres["serveur_cgi_file"], err)
 
-                            if "mode=0755" not in ftp.sendcmd("MLST %s" % self.dict_parametres["serveur_cgi_file"]) :
-                                message = u"Attention, le fichier %s n'a pas les bonnes permissions." % self.dict_parametres["serveur_cgi_file"]
-                                self.parent.EcritLog(message)
-                                print(message)
+                            try :
+                                reponse_mlst = ftp.sendcmd("MLST %s" % self.dict_parametres["serveur_cgi_file"])
+                                if "mode=0755" not in reponse_mlst :
+                                    message = u"Attention, le fichier %s n'a pas les bonnes permissions." % self.dict_parametres["serveur_cgi_file"]
+                                    self.parent.EcritLog(message)
+                                    print(message)
+                            except Exception as err :
+                                print("Verification MLST sur %s impossible :" % self.dict_parametres["serveur_cgi_file"], err)
 
 
                     # Transfert SSH/SFTP
@@ -246,9 +246,9 @@ class Installer():
                                 print("CHMOD 0755 sur %s impossible :" % self.dict_parametres["serveur_cgi_file"], err)
 
                             # Vérifie les droits du fichier cgi (connecthys.cgi par défaut)
-                            mode = int(oct(stat.S_IMODE(ftp.stat(os.path.join(destpath, name)).st_mode)))
-                            if mode != 755 :
-                                message = u"Attention, le fichier %s n'a pas les bonnes permissions : %d au lieu de 0755." % (self.dict_parametres["serveur_cgi_file"], mode)
+                            mode = stat.S_IMODE(ftp.stat(os.path.join(destpath, name)).st_mode)
+                            if mode != 0o755 :
+                                message = u"Attention, le fichier %s n'a pas les bonnes permissions : %04o au lieu de 0755." % (self.dict_parametres["serveur_cgi_file"], mode)
                                 self.parent.EcritLog(message)
                                 print(message)
 
