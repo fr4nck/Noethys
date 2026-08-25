@@ -1,0 +1,73 @@
+name: Apply backup temporary cleanup fix
+
+on:
+  push:
+    branches:
+      - fix/vanilla-backup-temp-cleanup
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/vanilla-backup-temp-cleanup
+          fetch-depth: 0
+
+      - name: Guarantee cleanup of MySQL temporary directories
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("noethys/Utils/UTILS_Sauvegarde.py")
+          text = path.read_text(encoding="utf-8")
+
+          cleanup = "        # Supprime le répertoire temp\n        shutil.rmtree(repTemp)\n"
+
+          def wrap_after_mkdir(text, section_marker):
+              section = text.index(section_marker)
+              mkdir_line = "        os.mkdir(repTemp)\n"
+              start = text.index(mkdir_line, section) + len(mkdir_line)
+              end = text.index(cleanup, start)
+              body = text[start:end]
+              if not body.strip():
+                  raise SystemExit(f"Empty body for {section_marker}")
+              indented = "".join(("    " + line if line.strip() else line) for line in body.splitlines(True))
+              replacement = (
+                  "\n        try:\n"
+                  + indented.lstrip("\n")
+                  + "        finally:\n"
+                  + "            if os.path.isdir(repTemp):\n"
+                  + "                shutil.rmtree(repTemp)\n"
+              )
+              return text[:start] + replacement + text[end + len(cleanup):]
+
+          text = wrap_after_mkdir(text, 'repTemp = UTILS_Fichiers.GetRepTemp(fichier="savetemp")')
+          text = wrap_after_mkdir(text, 'repTemp = UTILS_Fichiers.GetRepTemp(fichier="restoretemp")')
+
+          path.write_text(text, encoding="utf-8")
+
+      - name: Verify invariants
+        shell: python
+        run: |
+          from pathlib import Path
+          text = Path("noethys/Utils/UTILS_Sauvegarde.py").read_text(encoding="utf-8")
+          assert text.count('repTemp = UTILS_Fichiers.GetRepTemp(fichier="savetemp")') == 1
+          assert text.count('repTemp = UTILS_Fichiers.GetRepTemp(fichier="restoretemp")') == 1
+          assert text.count("        finally:\n            if os.path.isdir(repTemp):\n                shutil.rmtree(repTemp)\n") == 2
+          assert text.count("        # Supprime le répertoire temp\n        shutil.rmtree(repTemp)\n") == 0
+          compile(text, "noethys/Utils/UTILS_Sauvegarde.py", "exec")
+
+      - name: Commit application fix and remove helper workflow
+        shell: bash
+        run: |
+          rm .github/workflows/_apply-backup-temp-cleanup.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Utils/UTILS_Sauvegarde.py .github/workflows/_apply-backup-temp-cleanup.yml
+          git commit -m "Vanilla: garantir le nettoyage des temporaires MySQL"
+          git push origin HEAD:fix/vanilla-backup-temp-cleanup
