@@ -27,13 +27,14 @@ Les références `upstream` ci-dessous pointent vers le `master` public de `Noet
 | 12 | Si la préparation/listen du serveur Nomadhys échoue, le code continue, peut lire `port` avant affectation, annoncer « serveur prêt » et lancer le reactor. | `Ctrl/CTRL_Serveur_nomade.py` — `StartServer` | `HISTORIQUE_IVAN` | blob `7324da32e8a517e0d54792d7efafcc402147660a` : l'`except` du bloc factory/listen ne retourne pas ; le code utilise ensuite `port` et `reactor.run()`. | #98, `test_nomadhys_aborts_before_ready_state_when_listen_setup_fails` | oui |
 | 13 | Si la requête des avatars échoue, `listeAvatars` n'est jamais définie puis est itérée immédiatement après. | `Utils/UTILS_Utilisateurs.py` — `GetListeUtilisateurs` | `HISTORIQUE_IVAN` | blob `4fd36e2d268f0f09cd12848e45183b94f0be0037` : affectation de `listeAvatars` seulement dans le `try`, `except: pass`, puis boucle `for ... in listeAvatars`. | #98, `test_avatar_query_failure_has_an_empty_fallback` | oui |
 | 14 | Si la lecture de l'organisateur échoue avant l'affectation, `origine` est utilisée ensuite sans être définie. | `Utils/UTILS_Stats_individus.py` — `GetDictVilles` | `HISTORIQUE_IVAN` | blob `0acf6ee04ddad668942f92c5e7aae0c33312cbde` : `origine` n'est définie que dans le `try`, `except: pass`, puis `key != origine` hors du bloc. | #98, `test_stats_distance_origin_is_always_defined` | oui |
-| 15 | La procédure A9061 masque silencieusement un échec d'`UPDATE documents ...` / `Commit()`, ce qui peut faire croire que la procédure s'est terminée correctement. | `Utils/UTILS_Procedures.py` — `A9061` | `HISTORIQUE_IVAN` | blob `f8eedb72fa263085ae6e04d042ee0dd797a8bfee` : mutation/commit dans `try` suivi de `except: pass`. | #98, audit `silent_business_mutation` + contrat zéro HIGH | oui |
+| 15 | La procédure A9061 masque silencieusement un échec d'`UPDATE documents ...` / `Commit()`, ce qui peut faire croire que la procédure s'est terminée correctement. | `Utils/UTILS_Procedures.py` — `A9061` | `HISTORIQUE_IVAN` | blob `f8eedb72fa263085ae6e04d042ee0dd797a8bfee` : mutation/commit dans `try` suivi de `except: pass`. | #98, audit `silent_business_mutation`, `test_procedure_a9061_hardening.py` + contrat zéro HIGH | oui |
+| 16 | Lors de la migration des anciennes bases locales, l'échec du renommage en `_archive.dat` est ignoré. La base source reste alors éligible à une nouvelle copie au démarrage suivant et peut réécraser la copie migrée. | `Utils/UTILS_Fichiers.py` — `DeplaceFichiers` | `HISTORIQUE_IVAN` | blob `efa66625c5dc1cc17ef32f8bb62c8c9494010dec` : `os.rename(...)` entouré d'un `except: pass` après la copie de la base. | #98, `os.replace(source, archive)`, audit `silent_filesystem_mutation`, `test_file_migration_hardening.py` | oui |
 
 ## Compteur provisoire vérifié
 
 Au stade de cette photographie :
 
-- `HISTORIQUE_IVAN` démontré : **14** ;
+- `HISTORIQUE_IVAN` démontré : **15** ;
 - `PORTAGE_PY3_WX` démontré : **1** ;
 - `FORK_REPENS` : à inventorier séparément à partir des PR/commits du fork ;
 - `INDETERMINE` : tout défaut non encore comparé à une source upstream reste dans cette catégorie par défaut.
