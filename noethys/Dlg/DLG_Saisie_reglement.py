@@ -1455,7 +1455,11 @@ class Dialog(wx.Dialog):
         WHERE IDcompte_payeur=%d
         """ % self.IDcompte_payeur
         DB.ExecuterReq(req)
-        IDfamille = DB.ResultatReq()[0][0]
+        listeDonnees = DB.ResultatReq()
+        if not listeDonnees:
+            DB.Close()
+            return False
+        IDfamille = listeDonnees[0][0]
 
         # Récupère des frais de gestion
         donneesFrais = self.hyperlien_frais.GetDonnees() 
