@@ -94,11 +94,12 @@ class Choix_donateur(wx.Choice):
             nomTitulaires = _(u"%s et %s") % (listeTitulaires[0][1], listeTitulaires[1][1])
         if nbreTitulaires > 2 :
             nomTitulaires = ""
-            for IDindividu, nomTitulaire in listeTitulaires[:-2] :
+            for IDindividu, nomTitulaire in listeTitulaires[:-1] :
                 nomTitulaires += u"%s, " % nomTitulaire
             nomTitulaires += listeTitulaires[-1][1]
         self.listeNoms.append(nomTitulaires)
-        self.dictDonnees[0] = IDindividu
+        if nbreTitulaires > 0:
+            self.dictDonnees[0] = listeTitulaires[-1][0]
         
         index = 1
         for IDindividu, nomTitulaire in listeTitulaires :
