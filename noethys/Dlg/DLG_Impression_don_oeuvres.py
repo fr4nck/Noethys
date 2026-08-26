@@ -713,7 +713,7 @@ class Impression():
         if dictDonnees["date_edition"] != u"" : 
             date_edition = _(u"Le %s") % dictDonnees["date_edition"]
         else:
-            dictDonnees["date_edition"] = u""
+            date_edition = u""
         
         txt110 = Paragraph(u"""
         <para align=right rightIndent=50>
