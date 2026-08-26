@@ -231,7 +231,7 @@ class CaseStandard(GridCellRenderer):
         return wx.Size(w, h)
 
     def Clone(self):
-        return RendererCase()
+        return CaseStandard(self.case)
     
     def AdapteTailleTexte(self, dc, texte, tailleMaxi):
         """ Raccourcit le texte de l'intitulé en fonction de la taille donnée """
@@ -317,7 +317,7 @@ class CaseMemo(GridCellRenderer):
         return wx.Size(w, h)
 
     def Clone(self):
-        return RendererCase()
+        return CaseMemo(self.case)
     
     def AdapteTailleTexte(self, dc, texte, tailleMaxi):
         """ Raccourcit le texte de l'intitulé en fonction de la taille donnée """
@@ -383,7 +383,7 @@ class CaseTransports(GridCellRenderer):
         return wx.Size(w, h)
 
     def Clone(self):
-        return RendererCase()
+        return CaseTransports(self.case)
 
     
 
@@ -422,7 +422,7 @@ class CaseActivite(GridCellRenderer):
         return wx.Size(w, h)
 
     def Clone(self):
-        return RendererCase()
+        return CaseActivite(self.case)
 
 
 class CaseMultihoraires(GridCellRenderer):
@@ -661,7 +661,7 @@ class CaseMultihoraires(GridCellRenderer):
         return wx.Size(w, h)
 
     def Clone(self):
-        return RendererCase()
+        return CaseMultihoraires(self.case)
 
     def GetCouleurBarre(self, conso=None):
         """ Obtient la couleur à appliquer à la case """        
@@ -867,7 +867,7 @@ class CaseEvenement(GridCellRenderer):
         return wx.Size(w, h)
 
     def Clone(self):
-        return RendererCase()
+        return CaseEvenement(self.case)
 
 
 

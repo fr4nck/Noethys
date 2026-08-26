@@ -517,7 +517,7 @@ class CaseOuvertureRenderer(GridCellRenderer):
         return wx.Size(w, h)
 
     def Clone(self):
-        return RendererCase()
+        return CaseOuvertureRenderer(self.case)
 
 
 
