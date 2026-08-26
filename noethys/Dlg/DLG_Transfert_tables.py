@@ -18,7 +18,6 @@ import os
 from Ctrl import CTRL_Bandeau
 import GestionDB
 import wx.lib.filebrowsebutton as filebrowse
-import time
 
 
 class Dialog(wx.Dialog):
@@ -135,7 +134,6 @@ class Dialog(wx.Dialog):
         DB = GestionDB.DB() 
         for nomTable in listeTables :
             DB.Exportation_vers_base_defaut(nomTable=nomTable, nomFichierdefault=nomFichier)
-            time.sleep(1)
         DB.Close() 
         
         # Confirmation
