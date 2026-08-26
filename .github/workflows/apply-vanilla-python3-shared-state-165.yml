@@ -1,0 +1,215 @@
+name: Apply Vanilla Python3/shared-state fixes 165
+
+on:
+  push:
+    branches:
+      - fix/vanilla-python3-shared-state
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+
+      - name: Appliquer les correctifs qualifiés
+        shell: python
+        run: |
+          from pathlib import Path
+
+          replacements = {
+              "noethys/Ol/OL_Etiquettes.py": [
+                  (
+                      'dictTemp["{FAMILLE_NOM}"] = individus.items()[0][1]["nom_complet_individu"]',
+                      'dictTemp["{FAMILLE_NOM}"] = next(iter(individus.values()))["nom_complet_individu"]',
+                  ),
+              ],
+              "noethys/Utils/UTILS_Images.py": [
+                  (
+                      'return tuple(int(value[i:i+lv/3], 16) for i in range(0, lv, lv/3))',
+                      'return tuple(int(value[i:i+lv//3], 16) for i in range(0, lv, lv//3))',
+                  ),
+              ],
+              "noethys/Utils/UTILS_Dates.py": [
+                  (
+                      '''    if texteHeure == None :\n        return 0\n    if type(texteHeure) == datetime.time :''',
+                      '''    if texteHeure == None :\n        return 0\n    heures = "0"\n    minutes = 0\n    if type(texteHeure) == datetime.time :''',
+                  ),
+                  (
+                      '''    if len(heureStr.split(":")) == 2 :\n        heures, minutes = heureStr.split(":")\n    if len(heureStr.split(":")) == 3 :\n        heures, minutes, secondes = heureStr.split(":")''',
+                      '''    elements = heureStr.split(":")\n    if len(elements) not in (2, 3):\n        return datetime.timedelta(hours=0, minutes=0)\n    heures, minutes = elements[:2]''',
+                  ),
+                  (
+                      '''    duree_reelle = SoustractionHeures(heure_fin, heure_debut)\n\n    if arrondi_type == None :\n        duree_arrondie = duree_reelle''',
+                      '''    duree_reelle = SoustractionHeures(heure_fin, heure_debut)\n    duree_arrondie = duree_reelle''',
+                  ),
+              ],
+              "noethys/Utils/UTILS_Divers.py": [
+                  (
+                      '''def DictionnaireImbrique(dictionnaire={}, cles=[], valeur=None):\n    """ Création de dictionnaires imbriqués """\n    if len(cles) == 0 :''',
+                      '''def DictionnaireImbrique(dictionnaire=None, cles=None, valeur=None):\n    """ Création de dictionnaires imbriqués """\n    if dictionnaire is None :\n        dictionnaire = {}\n    if cles is None :\n        cles = []\n    if len(cles) == 0 :''',
+                  ),
+              ],
+              "noethys/Ctrl/CTRL_ObjectListView.py": [
+                  (
+                      '''class PanelAvecFooter(wx.Panel):\n    def __init__(self, parent, listview=None, kwargs={}, dictColonnes={}, style=wx.SUNKEN_BORDER|wx.TAB_TRAVERSAL):\n        wx.Panel.__init__(self, parent, id=-1, style=style)\n        \n        # Contrôles''',
+                      '''class PanelAvecFooter(wx.Panel):\n    def __init__(self, parent, listview=None, kwargs=None, dictColonnes=None, style=wx.SUNKEN_BORDER|wx.TAB_TRAVERSAL):\n        wx.Panel.__init__(self, parent, id=-1, style=style)\n\n        if kwargs is None:\n            kwargs = {}\n        if dictColonnes is None:\n            dictColonnes = {}\n        \n        # Contrôles''',
+                  ),
+              ],
+              "noethys/Ctrl/CTRL_Etiquettes.py": [
+                  (
+                      '''    def GetItemsEnfants(self, liste=[], item=None, recursif=True):\n        itemTemp, cookie = self.GetFirstChild(item)''',
+                      '''    def GetItemsEnfants(self, liste=None, item=None, recursif=True):\n        if liste is None:\n            liste = []\n        itemTemp, cookie = self.GetFirstChild(item)''',
+                  ),
+              ],
+              "noethys/Ctrl/CTRL_Evenements.py": [
+                  (
+                      '''    def GetItemsEnfants(self, liste=[], item=None, recursif=True):\n        itemTemp, cookie = self.GetFirstChild(item)''',
+                      '''    def GetItemsEnfants(self, liste=None, item=None, recursif=True):\n        if liste is None:\n            liste = []\n        itemTemp, cookie = self.GetFirstChild(item)''',
+                  ),
+              ],
+              "noethys/Ctrl/CTRL_Portail_pages.py": [
+                  (
+                      '''    def GetItemsEnfants(self, liste=[], item=None, recursif=True):\n        itemTemp, cookie = self.GetFirstChild(item)''',
+                      '''    def GetItemsEnfants(self, liste=None, item=None, recursif=True):\n        if liste is None:\n            liste = []\n        itemTemp, cookie = self.GetFirstChild(item)''',
+                  ),
+              ],
+              "noethys/Dlg/DLG_Saisie_transport.py": [
+                  (
+                      '''def MelangeDictionnaires(d1={}, d2={}):\n    for key, value in d2.items() :''',
+                      '''def MelangeDictionnaires(d1=None, d2=None):\n    if d1 is None:\n        d1 = {}\n    if d2 is None:\n        d2 = {}\n    for key, value in d2.items() :''',
+                  ),
+              ],
+          }
+
+          for filename, pairs in replacements.items():
+              path = Path(filename)
+              text = path.read_text(encoding="utf-8")
+              for old, new in pairs:
+                  count = text.count(old)
+                  if count != 1:
+                      raise SystemExit(f"{filename}: motif attendu exactement 1 fois, trouvé {count}: {old[:80]!r}")
+                  text = text.replace(old, new, 1)
+              path.write_text(text, encoding="utf-8")
+
+      - name: Compiler les fichiers modifiés
+        shell: python
+        run: |
+          import py_compile
+
+          files = [
+              "noethys/Ol/OL_Etiquettes.py",
+              "noethys/Utils/UTILS_Images.py",
+              "noethys/Utils/UTILS_Dates.py",
+              "noethys/Utils/UTILS_Divers.py",
+              "noethys/Ctrl/CTRL_ObjectListView.py",
+              "noethys/Ctrl/CTRL_Etiquettes.py",
+              "noethys/Ctrl/CTRL_Evenements.py",
+              "noethys/Ctrl/CTRL_Portail_pages.py",
+              "noethys/Dlg/DLG_Saisie_transport.py",
+          ]
+          for path in files:
+              py_compile.compile(path, doraise=True)
+
+      - name: Vérifier les contrats ciblés
+        shell: python
+        run: |
+          import ast
+          import datetime
+          from pathlib import Path
+
+          def function_node(path, name):
+              tree = ast.parse(Path(path).read_text(encoding="utf-8"), filename=path)
+              matches = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == name]
+              if len(matches) != 1:
+                  raise AssertionError((path, name, len(matches)))
+              return matches[0]
+
+          def load_function(path, name, env=None):
+              fn = function_node(path, name)
+              module = ast.Module(body=[fn], type_ignores=[])
+              ast.fix_missing_locations(module)
+              ns = {} if env is None else dict(env)
+              exec(compile(module, path, "exec"), ns)
+              return ns[name]
+
+          # dict_items Python 3
+          etiquettes = Path("noethys/Ol/OL_Etiquettes.py").read_text(encoding="utf-8")
+          assert 'individus.items()[0]' not in etiquettes
+          assert 'next(iter(individus.values()))' in etiquettes
+
+          # Conversion couleur Python 3
+          hex_to_rgb = load_function("noethys/Utils/UTILS_Images.py", "hex_to_rgb")
+          assert hex_to_rgb("#336699") == (51, 102, 153)
+
+          # Durées
+          class Six:
+              text_type = str
+          heures_decimal = load_function("noethys/Utils/UTILS_Dates.py", "HeuresEnDecimal", {"datetime": datetime, "six": Six})
+          assert heures_decimal("07:00") == 700
+          assert heures_decimal(datetime.time(9, 15)) == 925
+          assert heures_decimal(object()) == 0
+
+          heure_delta = load_function("noethys/Utils/UTILS_Dates.py", "HeureStrEnDelta", {"datetime": datetime})
+          assert heure_delta("2h30") == datetime.timedelta(hours=2, minutes=30)
+          assert heure_delta("01:30:00:00") == datetime.timedelta(0)
+
+          arrondi = load_function(
+              "noethys/Utils/UTILS_Dates.py",
+              "CalculerArrondi",
+              {
+                  "SoustractionHeures": lambda fin, debut: datetime.timedelta(minutes=90),
+                  "ArrondirTime": lambda **kwargs: kwargs["heure"],
+                  "ArrondirDelta": lambda **kwargs: kwargs["duree"],
+              },
+          )
+          assert arrondi("type_inconnu", 5, datetime.time(8), datetime.time(9, 30)) == datetime.timedelta(minutes=90)
+
+          # Dictionnaire imbriqué : aucun état par défaut partagé
+          divers = load_function("noethys/Utils/UTILS_Divers.py", "DictionnaireImbrique")
+          a = divers(cles=["a"], valeur=1)
+          b = divers(cles=["b"], valeur=2)
+          assert a == {"a": 1} and b == {"b": 2} and a is not b
+
+          # Fusion de dictionnaires : destination implicite isolée
+          melange = load_function("noethys/Dlg/DLG_Saisie_transport.py", "MelangeDictionnaires")
+          a = melange(d2={"a": 1})
+          b = melange(d2={"b": 2})
+          assert a == {"a": 1} and b == {"b": 2} and a is not b
+
+          # Signatures mutables supprimées
+          for path in (
+              "noethys/Ctrl/CTRL_Etiquettes.py",
+              "noethys/Ctrl/CTRL_Evenements.py",
+              "noethys/Ctrl/CTRL_Portail_pages.py",
+          ):
+              fn = function_node(path, "GetItemsEnfants")
+              params = [a.arg for a in fn.args.args]
+              defaults = [None] * (len(params) - len(fn.args.defaults)) + list(fn.args.defaults)
+              default = dict(zip(params, defaults))["liste"]
+              assert isinstance(default, ast.Constant) and default.value is None
+
+          tree = ast.parse(Path("noethys/Ctrl/CTRL_ObjectListView.py").read_text(encoding="utf-8"))
+          cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "PanelAvecFooter")
+          init = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == "__init__")
+          params = [a.arg for a in init.args.args]
+          defaults = [None] * (len(params) - len(init.args.defaults)) + list(init.args.defaults)
+          by_name = dict(zip(params, defaults))
+          for name in ("kwargs", "dictColonnes"):
+              assert isinstance(by_name[name], ast.Constant) and by_name[name].value is None
+
+      - name: Committer le patch et retirer le workflow temporaire
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys
+          git commit -m "Vanilla: backporter les correctifs Python3 et états partagés (#165)"
+          git rm .github/workflows/apply-vanilla-python3-shared-state-165.yml
+          git commit --amend --no-edit
+          git push
