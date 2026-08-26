@@ -1,0 +1,61 @@
+name: Prepare Vanilla historical fixes
+
+on:
+  push:
+    branches:
+      - fix/vanilla-invoice-id-forwarding
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Apply minimal historical fixes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = [
+              (
+                  Path('noethys/Ctrl/CTRL_Numfacture.py'),
+                  '            self.GetGrandParent().ReglerFacture() \n',
+                  '            self.GetGrandParent().ReglerFacture(IDfacture) \n',
+              ),
+              (
+                  Path('noethys/Dlg/DLG_Synchronisation_donnees.py'),
+                  '                        if len(listeMemos) > 1 :\n',
+                  '                        if len(listeMemos) > 0 :\n',
+              ),
+          ]
+
+          for path, old, new in replacements:
+              text = path.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected exactly one occurrence, found {count}')
+              path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+
+      - name: Compile changed modules
+        run: |
+          python -m py_compile noethys/Ctrl/CTRL_Numfacture.py
+          python -m py_compile noethys/Dlg/DLG_Synchronisation_donnees.py
+
+      - name: Commit prepared patch and remove helper workflow
+        shell: bash
+        run: |
+          rm .github/workflows/prepare-vanilla-historical-fixes.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Ctrl/CTRL_Numfacture.py noethys/Dlg/DLG_Synchronisation_donnees.py .github/workflows/prepare-vanilla-historical-fixes.yml
+          git commit -m "fix(vanilla): backport invoice and memo fixes"
+          git push
