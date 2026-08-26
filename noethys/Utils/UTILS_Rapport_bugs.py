@@ -28,6 +28,7 @@ from Utils import UTILS_Fichiers
 
 URL_SUIVI_BUGS = "https://github.com/fr4nck/Noethys/issues"
 PARAM_DESTINATAIRE = "adresse_rapport_bugs"
+DESTINATAIRE_DEFAUT = "multimedia@pelemele.org"
 
 
 def _GetRepLogs():
@@ -200,7 +201,7 @@ class DLG_Rapport(wx.Dialog):
             destinataire = ""
         destinataire = destinataire.strip()
         if len(destinataire) == 0:
-            destinataire = UTILS_Config.GetParametre(PARAM_DESTINATAIRE, "") or ""
+            destinataire = UTILS_Config.GetParametre(PARAM_DESTINATAIRE, DESTINATAIRE_DEFAUT) or DESTINATAIRE_DEFAUT
         if len(destinataire) == 0 or "@" not in destinataire:
             dlg = wx.MessageDialog(self, _(u"Veuillez renseigner une adresse de réception valide pour le rapport d'erreur."), _(u"Envoi impossible"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
@@ -274,7 +275,7 @@ class DLG_Envoi(wx.Dialog):
         self.label_ligne_1 = wx.StaticText(self, wx.ID_ANY, _(u"Le rapport est prêt à être envoyé..."))
         self.label_ligne_2 = wx.StaticText(self, wx.ID_ANY, _(u"Choisissez l'adresse de réception, puis ajoutez si besoin un commentaire avant l'envoi."))
         self.label_destinataire = wx.StaticText(self, wx.ID_ANY, _(u"Adresse de réception :"))
-        self.ctrl_destinataire = wx.TextCtrl(self, wx.ID_ANY, UTILS_Config.GetParametre(PARAM_DESTINATAIRE, "") or "")
+        self.ctrl_destinataire = wx.TextCtrl(self, wx.ID_ANY, UTILS_Config.GetParametre(PARAM_DESTINATAIRE, DESTINATAIRE_DEFAUT) or DESTINATAIRE_DEFAUT)
         self.ctrl_commentaires = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
         self.check_journal = wx.CheckBox(self, -1, _(u"Joindre les journaux d'erreurs (Recommandé)"))
 
