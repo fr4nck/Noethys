@@ -14,8 +14,9 @@ import re
 import tempfile
 import unicodedata
 
-_CACHE_VERSION = "style-b-v1"
+_CACHE_VERSION = "style-b-v2"
 _SUPPORTED_SIZES = (16, 20, 24, 32)
+_DEFAULT_WX_COLOR = "#3D4E48"
 
 
 def _normaliser(texte):
@@ -121,7 +122,19 @@ def _render_svg(svg_path, png_path, taille):
     try:
         import wx
         import wx.svg
-        svg = wx.svg.SVGimage.CreateFromFile(svg_path)
+        with open(svg_path, "rb") as stream:
+            data = stream.read()
+        try:
+            texte = data.decode("utf-8").replace("currentColor", _DEFAULT_WX_COLOR)
+            data = texte.encode("utf-8")
+        except Exception:
+            pass
+
+        create_from_bytes = getattr(wx.svg.SVGimage, "CreateFromBytes", None)
+        if create_from_bytes is not None:
+            svg = create_from_bytes(data)
+        else:
+            svg = wx.svg.SVGimage.CreateFromFile(svg_path)
         bitmap = svg.ConvertToBitmap(width=taille, height=taille)
         image = bitmap.ConvertToImage()
         return bool(image.SaveFile(png_path, wx.BITMAP_TYPE_PNG))
