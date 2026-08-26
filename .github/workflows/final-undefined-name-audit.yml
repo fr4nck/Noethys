@@ -1,0 +1,45 @@
+name: Final Vanilla undefined-name audit
+
+on:
+  push:
+    branches:
+      - audit/vanilla-final-undefined-names
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install Ruff
+        run: python -m pip install --disable-pip-version-check ruff
+      - name: Report remaining non-vendor undefined names
+        shell: python
+        run: |
+          import json
+          import subprocess
+
+          cmd = ["ruff", "check", "noethys", "--select", "F821,F823", "--output-format", "json"]
+          proc = subprocess.run(cmd, text=True, capture_output=True)
+          data = json.loads(proc.stdout or "[]")
+
+          excluded = (
+              "noethys/ObjectListView/",
+              "noethys/Outils/mail/",
+          )
+          kept = [item for item in data if not item["filename"].replace("\\", "/").split("/Noethys/")[-1].startswith(excluded)]
+
+          print("TOTAL_F821_F823_ALL=", len(data))
+          print("TOTAL_NON_VENDOR=", len(kept))
+          print("--- NON_VENDOR_DIAGNOSTICS ---")
+          for item in kept:
+              filename = item["filename"].replace("\\", "/")
+              if "/Noethys/" in filename:
+                  filename = filename.split("/Noethys/", 1)[1]
+              loc = item["location"]
+              print(f"{filename}:{loc['row']}:{loc['column']}: {item['code']} {item['message']}")
+
+          # This is an audit, not a gate: historical/dead-code signals are expected.
+          raise SystemExit(0)
