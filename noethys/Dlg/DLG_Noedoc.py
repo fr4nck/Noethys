@@ -3796,6 +3796,7 @@ class Panel_canvas(wx.Panel):
         if self.mode == "edition":
 
             menu = UTILS_Adaptations.Menu()
+            ID_MENU_SUPPRIMER_POINT = wx.Window.NewControlId()
             self.point = objet
             # Supprimer la poignée
             item = wx.MenuItem(menu, ID_MENU_SUPPRIMER_POINT, _(u"Supprimer ce point"), _(u"Supprimer ce point"), wx.ITEM_NORMAL)
@@ -3827,6 +3828,7 @@ class Panel_canvas(wx.Panel):
             return
 
         menu = UTILS_Adaptations.Menu()
+        ID_MENU_AJOUTER_POINT = wx.Window.NewControlId()
         self.coords = objet.HitCoords
         # Supprimer la poignée
         item = wx.MenuItem(menu, ID_MENU_AJOUTER_POINT, _(u"Ajouter un point ici"), _(u"Ajouter un point ici"), wx.ITEM_NORMAL)

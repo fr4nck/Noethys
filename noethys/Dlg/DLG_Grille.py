@@ -500,6 +500,7 @@ class Dialog(wx.Dialog):
 
         ID_AFFICHAGE_PERSPECTIVE_DEFAUT = wx.Window.NewControlId()
         ID_PREMIERE_PERSPECTIVE = 500
+        self.ID_PREMIERE_PERSPECTIVE = ID_PREMIERE_PERSPECTIVE
         ID_AFFICHAGE_PERSPECTIVE_SAVE = wx.Window.NewControlId()
         ID_AFFICHAGE_PERSPECTIVE_SUPPR = wx.Window.NewControlId()
         ID_AFFICHAGE_PANNEAUX = 600
@@ -668,7 +669,7 @@ class Dialog(wx.Dialog):
         self.perspective_active = None
 
     def On_affichage_perspective_perso(self, event):
-        index = event.GetId() - ID_PREMIERE_PERSPECTIVE
+        index = event.GetId() - self.ID_PREMIERE_PERSPECTIVE
         self._mgr.LoadPerspective(self.perspectives[index]["perspective"])
         self.perspective_active = index
 
