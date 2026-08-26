@@ -32,6 +32,19 @@ jobs:
           python-version: '3.10'
           cache: pip
 
+      - name: Audit statique profond Vanilla
+        run: python scripts/audit_vanilla_deep.py
+
+      - name: Publier le rapport d'audit
+        uses: actions/upload-artifact@v7
+        with:
+          name: vanilla-deep-static-scan
+          path: |
+            audit_report.md
+            audit_report.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Préparer les dépendances historiques compatibles Python 3
         shell: pwsh
         run: |
