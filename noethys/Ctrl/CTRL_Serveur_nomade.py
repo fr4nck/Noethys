@@ -237,6 +237,7 @@ def StartServer(log=None):
         print(("Erreur lancement serveur Nomadhys :", err))
         log.EcritLog(_(u"Erreur dans le lancement du serveur Nomadhys [factory] :") )
         log.EcritLog(err)
+        return
 
     try :
         # IP locale

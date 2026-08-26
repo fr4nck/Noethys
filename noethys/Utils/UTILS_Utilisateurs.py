@@ -66,6 +66,7 @@ def GetListeUtilisateurs(nomFichier=""):
     listeUtilisateurs = []
     
     # chargement avatars
+    listeAvatars = []
     try :
         req = """SELECT IDutilisateur, image
         FROM utilisateurs;"""
