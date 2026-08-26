@@ -4399,20 +4399,21 @@ class MyApp(wx.App):
         theme = CUSTOMIZE.GetValeur("interface", "theme", "Vert")
 
         # AdvancedSplashScreen
+        splash = None
         if CUSTOMIZE.GetValeur("utilisateur", "pass", "") == "" :
             nom_fichier_splash = "Logo_splash.png"
             if six.PY3 and theme == "Vert":
                 nom_fichier_splash = "Logo_splash_2019.png"
             bmp = wx.Bitmap(Chemins.GetStaticPath("Images/Interface/%s/%s" % (theme, nom_fichier_splash)), wx.BITMAP_TYPE_PNG)
-            frame = AS.AdvancedSplash(None, bitmap=bmp, timeout=3000, agwStyle=AS.AS_TIMEOUT | AS.AS_CENTER_ON_SCREEN)
+            splash = AS.AdvancedSplash(None, bitmap=bmp, timeout=3000, agwStyle=AS.AS_CENTER_ON_SCREEN)
             anneeActuelle = str(datetime.date.today().year)
-            frame.SetText(u"Copyright © 2010-%s Ivan LUCAS" % anneeActuelle[2:])
-            frame.SetTextFont(wx.Font(8, wx.SWISS, wx.NORMAL, wx.NORMAL, False))
-            frame.SetTextPosition((425, 212))
+            splash.SetText(u"Copyright © 2010-%s Ivan LUCAS" % anneeActuelle[2:])
+            splash.SetTextFont(wx.Font(8, wx.SWISS, wx.NORMAL, wx.NORMAL, False))
+            splash.SetTextPosition((425, 212))
             couleur_texte = "WHITE" #UTILS_Interface.GetValeur("couleur_claire", wx.Colour(255, 255, 255))
-            frame.SetTextColour(couleur_texte)
-            frame.Refresh()
-            frame.Update()
+            splash.SetTextColour(couleur_texte)
+            splash.Refresh()
+            splash.Update()
             if 'phoenix' not in wx.PlatformInfo:
                 wx.Yield()
 
@@ -4420,6 +4421,9 @@ class MyApp(wx.App):
         frame = MainFrame(None)
         self.SetTopWindow(frame)
         frame.Initialisation()
+        if splash is not None:
+            splash.Hide()
+            splash.Destroy()
         frame.Show()
 
         # Affiche une annonce si c'est un premier démarrage ou après une mise à jour
