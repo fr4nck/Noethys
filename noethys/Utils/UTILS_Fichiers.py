@@ -117,8 +117,9 @@ def DeplaceFichiers():
     if os.path.isdir(Chemins.GetMainPath("Lang")) :
         for nomFichier in os.listdir(Chemins.GetMainPath("Lang")) :
             if nomFichier.endswith(".xlang") :
-                print(["deplacement fichier xlang :", fichier, " > ", GetRepLang(nomFichier)])
-                shutil.move(u"Lang/%s" % nomFichier, GetRepLang(nomFichier))
+                source = Chemins.GetMainPath(u"Lang/%s" % nomFichier)
+                print(["deplacement fichier xlang :", source, " > ", GetRepLang(nomFichier)])
+                shutil.move(source, GetRepLang(nomFichier))
 
     # Déplace les fichiers du répertoire Sync
     if os.path.isdir(Chemins.GetMainPath("Sync")) :
@@ -131,14 +132,14 @@ def DeplaceFichiers():
             if six.PY2:
                 nomFichier = nomFichier.decode("utf8")
             if nomFichier.endswith(".dat") and "_" in nomFichier and "EXEMPLE_" not in nomFichier and "_archive.dat" not in nomFichier :
-                # Déplace le fichier vers le répertoire des fichiers de données
-                print(["copie base de donnees :", nomFichier, " > ", GetRepData(nomFichier)])
-                shutil.copy(Chemins.GetMainPath(u"Data/%s" % nomFichier), GetRepData(nomFichier))
-                # Renomme le fichier de données en archive (par sécurité)
-                try :
-                    os.rename(Chemins.GetMainPath(u"Data/%s" % nomFichier), Chemins.GetMainPath(u"Data/%s" % nomFichier.replace(".dat", "_archive.dat")))
-                except :
-                    pass
+                source = Chemins.GetMainPath(u"Data/%s" % nomFichier)
+                destination = GetRepData(nomFichier)
+                archive = Chemins.GetMainPath(u"Data/%s" % nomFichier.replace(".dat", "_archive.dat"))
+                print(["copie base de donnees :", nomFichier, " > ", destination])
+                shutil.copy(source, destination)
+                # L'archive marque la migration comme terminée. Un échec ne doit
+                # pas être masqué, sinon la source sera recopiée au démarrage suivant.
+                os.replace(source, archive)
 
 def DeplaceExemples():
     """ Déplace les fichiers exemples vers le répertoire des fichiers de données """
