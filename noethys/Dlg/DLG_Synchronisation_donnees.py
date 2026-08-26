@@ -525,7 +525,7 @@ class Dialog_Traitement(wx.Dialog):
     def Fermer(self, forcer=False):
         # On vérifie si le thread n'a jamais été lancé avant :
         try:
-            TraitmentEnCours = self.traitement.isAlive()
+            TraitmentEnCours = self.traitement.is_alive()
         except AttributeError :
             TraitmentEnCours = False
             
