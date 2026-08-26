@@ -44,6 +44,7 @@ class CTRL(wx.StaticText):
         self.role_fond = role_fond
         self.wrap_actif = bool(wrap)
         self._reflow_pending = False
+        self._last_wrap_width = None
         self.AppliquerStyle()
         if self.wrap_actif:
             self.Bind(wx.EVT_SIZE, self.OnSize)
@@ -62,6 +63,7 @@ class CTRL(wx.StaticText):
         self.role = _role(role)
         self.AppliquerStyle()
         self.InvalidateBestSize()
+        self._last_wrap_width = None
         if self.wrap_actif:
             wx.CallAfter(self.Reflow)
 
@@ -72,6 +74,7 @@ class CTRL(wx.StaticText):
     def SetLabel(self, label):
         wx.StaticText.SetLabel(self, label or u"")
         self.InvalidateBestSize()
+        self._last_wrap_width = None
         if self.wrap_actif:
             wx.CallAfter(self.Reflow)
 
@@ -81,8 +84,11 @@ class CTRL(wx.StaticText):
             return
         try:
             largeur = self.GetClientSize().GetWidth()
-            if largeur > Style.px(80):
-                self.Wrap(max(Style.px(80), largeur))
+            largeur_min = Style.px(80)
+            if largeur <= largeur_min or largeur == self._last_wrap_width:
+                return
+            self._last_wrap_width = largeur
+            self.Wrap(largeur)
         except Exception:
             return
         try:

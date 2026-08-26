@@ -50,6 +50,15 @@ def test_ctrl_texte_expose_un_helper_pour_chaque_niveau():
     assert "Style.normaliser_role_typographie" in texte
 
 
+def test_reflow_ignore_une_largeur_deja_traitee():
+    texte = TEXTES.read_text(encoding="utf-8")
+
+    assert "self._last_wrap_width = None" in texte
+    assert "largeur == self._last_wrap_width" in texte
+    assert "self._last_wrap_width = largeur" in texte
+    assert "self.Wrap(largeur)" in texte
+
+
 def test_gabarits_utilisent_la_hierarchie_semantique():
     bandeau = BANDEAU.read_text(encoding="utf-8")
     fenetre = FENETRE.read_text(encoding="utf-8")
