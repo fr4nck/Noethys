@@ -1,0 +1,132 @@
+name: Apply Vanilla tarification shared-state fix 167
+
+on:
+  push:
+    branches:
+      - fix/vanilla-tarification-shared-state
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+
+      - name: Appliquer les correctifs ciblés
+        shell: python
+        run: |
+          from pathlib import Path
+
+          replacements = {
+              "noethys/Ctrl/CTRL_Tarification_generalites.py": [
+                  (
+                      '    def __init__(self, parent, listeChoix=[]):\n        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)\n        self.parent = parent\n        self.listeChoix = listeChoix',
+                      '    def __init__(self, parent, listeChoix=None):\n        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)\n        self.parent = parent\n        self.listeChoix = list(listeChoix) if listeChoix is not None else []',
+                  ),
+                  (
+                      'grid_sizer_base.Add(self.ctrl_choix, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL | wx.EXPAND, 0)',
+                      'grid_sizer_base.Add(self.ctrl_choix, 0, wx.ALL | wx.EXPAND, 0)',
+                  ),
+                  (
+                      'grid_sizer_base.Add(self.ctrl_autre, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL | wx.EXPAND, 0)',
+                      'grid_sizer_base.Add(self.ctrl_autre, 0, wx.ALL | wx.EXPAND, 0)',
+                  ),
+              ],
+              "noethys/Ctrl/CTRL_Tarification_type.py": [
+                  (
+                      '    def __init__(self, parent, listeChoix=[]):\n        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)\n        self.parent = parent\n        self.listeChoix = listeChoix',
+                      '    def __init__(self, parent, listeChoix=None):\n        wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)\n        self.parent = parent\n        self.listeChoix = list(listeChoix) if listeChoix is not None else []',
+                  ),
+                  (
+                      'grid_sizer_base.Add(self.ctrl_choix, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, 0)',
+                      'grid_sizer_base.Add(self.ctrl_choix, 0, wx.ALL|wx.EXPAND, 0)',
+                  ),
+              ],
+              "noethys/Utils/UTILS_Texte.py": [
+                  (
+                      'def ConvertStrToListe(texte=None, siVide=[], separateur=";", typeDonnee="entier"):\n    """ Convertit un texte "1;2;3;4" en [1, 2, 3, 4] """\n    if texte == None or texte == "" :\n        return siVide',
+                      'def ConvertStrToListe(texte=None, siVide=None, separateur=";", typeDonnee="entier"):\n    """ Convertit un texte "1;2;3;4" en [1, 2, 3, 4] """\n    if texte == None or texte == "" :\n        return list(siVide) if siVide is not None else []',
+                  ),
+              ],
+          }
+
+          for filename, pairs in replacements.items():
+              path = Path(filename)
+              text = path.read_text(encoding="utf-8")
+              for old, new in pairs:
+                  count = text.count(old)
+                  if count != 1:
+                      raise SystemExit(f"{filename}: motif attendu exactement 1 fois, trouvé {count}: {old[:100]!r}")
+                  text = text.replace(old, new, 1)
+              path.write_text(text, encoding="utf-8")
+
+      - name: Compiler et vérifier les contrats
+        shell: python
+        run: |
+          import ast
+          import py_compile
+          from pathlib import Path
+
+          files = [
+              "noethys/Ctrl/CTRL_Tarification_generalites.py",
+              "noethys/Ctrl/CTRL_Tarification_type.py",
+              "noethys/Utils/UTILS_Texte.py",
+          ]
+          for path in files:
+              py_compile.compile(path, doraise=True)
+
+          # ConvertStrToListe : repli neuf et copie du repli appelant.
+          path = "noethys/Utils/UTILS_Texte.py"
+          tree = ast.parse(Path(path).read_text(encoding="utf-8"), filename=path)
+          fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "ConvertStrToListe")
+          module = ast.Module(body=[fn], type_ignores=[])
+          ast.fix_missing_locations(module)
+          ns = {}
+          exec(compile(module, path, "exec"), ns)
+          convert = ns["ConvertStrToListe"]
+          a = convert(None)
+          b = convert("")
+          assert a == [] and b == [] and a is not b
+          fallback = [7]
+          result = convert(None, siVide=fallback)
+          assert result == [7] and result is not fallback
+          assert convert("1;2;3") == [1, 2, 3]
+
+          # Contrôles tarifaires : default None + copie locale.
+          for path, cls_name in (
+              ("noethys/Ctrl/CTRL_Tarification_generalites.py", "CTRL_Label_prestation"),
+              ("noethys/Ctrl/CTRL_Tarification_type.py", "CTRL_Date_facturation"),
+          ):
+              source = Path(path).read_text(encoding="utf-8")
+              tree = ast.parse(source, filename=path)
+              cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == cls_name)
+              init = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == "__init__")
+              params = [a.arg for a in init.args.args]
+              defaults = [None] * (len(params) - len(init.args.defaults)) + list(init.args.defaults)
+              default = dict(zip(params, defaults))["listeChoix"]
+              assert isinstance(default, ast.Constant) and default.value is None
+              assert 'self.listeChoix = list(listeChoix) if listeChoix is not None else []' in source
+
+          gen = Path("noethys/Ctrl/CTRL_Tarification_generalites.py").read_text(encoding="utf-8")
+          typ = Path("noethys/Ctrl/CTRL_Tarification_type.py").read_text(encoding="utf-8")
+          for line in gen.splitlines():
+              if 'grid_sizer_base.Add(self.ctrl_choix' in line or 'grid_sizer_base.Add(self.ctrl_autre' in line:
+                  assert 'wx.EXPAND' in line and 'wx.ALIGN_' not in line
+          line = next(l for l in typ.splitlines() if 'grid_sizer_base.Add(self.ctrl_choix' in l)
+          assert 'wx.EXPAND' in line and 'wx.ALIGN_' not in line
+
+      - name: Committer et retirer le workflow temporaire
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Ctrl/CTRL_Tarification_generalites.py noethys/Ctrl/CTRL_Tarification_type.py noethys/Utils/UTILS_Texte.py
+          git commit -m "Vanilla: isoler les paramètres partagés de tarification (#167)"
+          git rm .github/workflows/apply-vanilla-tarification-shared-state-167.yml
+          git commit --amend --no-edit
+          git push
