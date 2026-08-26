@@ -39,6 +39,26 @@ function Get-NoethysBootstrapPython {
     throw 'Python 3.10 est introuvable. Installer Python 3.10 pour Windows puis relancer DEV-Noethys.cmd.'
 }
 
+function Get-NoethysFileSha256 {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            $hash = $sha256.ComputeHash($stream)
+        }
+        finally {
+            $sha256.Dispose()
+        }
+    }
+    finally {
+        $stream.Dispose()
+    }
+
+    return ([System.BitConverter]::ToString($hash)).Replace('-', '')
+}
+
 if (-not (Test-Path $Python)) {
     Write-Host 'Premiere utilisation : creation du venv Python 3.10...'
     $bootstrap = Get-NoethysBootstrapPython
@@ -47,8 +67,8 @@ if (-not (Test-Path $Python)) {
     if ($LASTEXITCODE -ne 0) { throw 'Impossible de creer le venv Python 3.10.' }
 }
 
-$hash1 = (Get-FileHash $ReqBuild -Algorithm SHA256).Hash
-$hash2 = (Get-FileHash $ReqRuntime -Algorithm SHA256).Hash
+$hash1 = Get-NoethysFileSha256 $ReqBuild
+$hash2 = Get-NoethysFileSha256 $ReqRuntime
 $requirementsHash = "$hash1-$hash2"
 $currentHash = ''
 if (Test-Path $ReqMarker) {
