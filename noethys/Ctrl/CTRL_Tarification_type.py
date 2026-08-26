@@ -26,10 +26,10 @@ from Ctrl import CTRL_Tarification_calcul
 
 
 class CTRL_Date_facturation(wx.Panel):
-    def __init__(self, parent, listeChoix=[]):
+    def __init__(self, parent, listeChoix=None):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
         self.parent = parent
-        self.listeChoix = listeChoix
+        self.listeChoix = list(listeChoix) if listeChoix is not None else []
         self.listeChoix.append(("date:", _(u"La date suivante")))
         
         choices = []
@@ -40,7 +40,7 @@ class CTRL_Date_facturation(wx.Panel):
         self.ctrl_date = CTRL_Saisie_date.Date2(self)
 
         grid_sizer_base = wx.FlexGridSizer(rows=1, cols=3, vgap=5, hgap=5)
-        grid_sizer_base.Add(self.ctrl_choix, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, 0)
+        grid_sizer_base.Add(self.ctrl_choix, 0, wx.ALL|wx.EXPAND, 0)
         grid_sizer_base.Add(self.ctrl_date, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 0)
         grid_sizer_base.AddGrowableCol(0)
         self.SetSizer(grid_sizer_base)
