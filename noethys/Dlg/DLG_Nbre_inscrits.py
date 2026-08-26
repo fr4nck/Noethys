@@ -448,6 +448,7 @@ class Panel(wx.Panel):
         from Dlg import DLG_Parametres_nbre_inscrits
         dlg = DLG_Parametres_nbre_inscrits.Dialog(self)
         reponse = dlg.ShowModal()
+        dlg.Destroy()
         if reponse == wx.ID_OK :
             self.ctrl_inscriptions.MAJ(forcerActualisation=True) 
         
