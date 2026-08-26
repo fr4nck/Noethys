@@ -796,8 +796,9 @@ class Dialog(wx.Dialog):
 
             dlg = wx.SingleChoiceDialog(self, _(u"Sélectionnez la donnée qui vous intéresse :"), _(u"Sélection d'une donnée"), liste_labels, wx.CHOICEDLG_STYLE)
             if dlg.ShowModal() == wx.ID_OK:
+                selection = dlg.GetSelection()
                 dlg.Destroy()
-                donnees = liste_donnees[dlg.GetSelection()]
+                donnees = liste_donnees[selection]
                 if donnees[0] == "categories" :
                     IDcategorie = donnees[1]
                 if donnees[0] == "produits" :
