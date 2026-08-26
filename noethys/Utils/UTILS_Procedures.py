@@ -1561,6 +1561,7 @@ def A9062():
         u"Modification du type d'un champ"), "")
     reponse = dlg.ShowModal()
     parametres = dlg.GetValue()
+    dlg.Destroy()
     if reponse != wx.ID_OK:
         return
     try:

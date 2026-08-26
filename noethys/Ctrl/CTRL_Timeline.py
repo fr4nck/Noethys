@@ -1911,6 +1911,7 @@ def _display_error_message(message, parent=None):
     """Display an error message in a modal dialog box"""
     dial = wx.MessageDialog(parent, message, "Error", wx.OK | wx.ICON_ERROR)
     dial.ShowModal()
+    dial.Destroy()
 
 
 def _ask_question(question, parent=None):
