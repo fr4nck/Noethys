@@ -5,11 +5,13 @@ on:
     branches:
       - maintenance/vanilla
       - build/vanilla-windows-portable
+      - audit/vanilla-deep-scan-20260826
     paths:
       - '.github/workflows/vanilla-windows-package.yml'
       - 'packaging/vanilla-noethys.spec'
       - 'requirements.txt'
       - 'noethys/**'
+      - 'scripts/audit_vanilla_deep.py'
   pull_request:
     branches:
       - maintenance/vanilla
