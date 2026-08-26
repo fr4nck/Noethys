@@ -419,6 +419,10 @@ def GetStockDisponible(DB=None, IDproduit=None, date_debut=None, date_fin=None, 
     WHERE IDproduit=%d;""" % IDproduit
     DBT.ExecuterReq(req)
     listeDonnees = DBT.ResultatReq()
+    if not listeDonnees:
+        if DB == None:
+            DBT.Close()
+        return {}
     stock_initial = listeDonnees[0][1]
     if stock_initial == None :
         stock_initial = 1
