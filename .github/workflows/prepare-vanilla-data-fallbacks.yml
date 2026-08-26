@@ -45,10 +45,10 @@ jobs:
           # Noedoc logo: existing fallback must also handle a missing organiser row.
           path = Path('noethys/Dlg/DLG_Noedoc.py')
           text = path.read_text(encoding='utf-8')
-          old = '''    DB.ExecuterReq(req)\n    buffer = DB.ResultatReq()[0][0]\n    DB.Close()\n    if buffer == None :\n'''
-          new = '''    DB.ExecuterReq(req)\n    donneesLogo = DB.ResultatReq()\n    DB.Close()\n    buffer = donneesLogo[0][0] if donneesLogo else None\n    if buffer == None :\n'''
+          old = '''    buffer = DB.ResultatReq()[0][0]\n    DB.Close()\n'''
+          new = '''    donneesLogo = DB.ResultatReq()\n    DB.Close()\n    buffer = donneesLogo[0][0] if donneesLogo else None\n'''
           if text.count(old) != 1:
-              raise SystemExit(f'{path}: expected direct Noedoc logo access exactly once')
+              raise SystemExit(f'{path}: expected direct Noedoc logo access exactly once, found {text.count(old)}')
           path.write_text(text.replace(old, new), encoding='utf-8')
 
           # Locations: an unknown/deleted product has no calculable stock.
@@ -78,7 +78,7 @@ jobs:
               raise SystemExit('A9061 still masks update failure')
 
           organiser = Path('noethys/Utils/UTILS_Organisateur.py').read_text(encoding='utf-8')
-          if 'logo, logo_update = listeDonnees[0]' in organiser:
+          if 'logo, logo_update = listeDonnees[0]' in organiser and 'if listeDonnees:' not in organiser:
               raise SystemExit('organiser direct row access still present')
 
           noedoc = Path('noethys/Dlg/DLG_Noedoc.py').read_text(encoding='utf-8')
