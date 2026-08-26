@@ -157,7 +157,7 @@ class CTRL(wx.SearchCtrl):
         
         # Ouverture de la fiche famille
         if self.IDfamille != None :
-            self.GetGrandParent().ReglerFacture() 
+            self.GetGrandParent().ReglerFacture(IDfacture) 
         else:
             from Dlg import DLG_Famille
             dlg = DLG_Famille.Dialog(self, IDfamille=IDfamille, AfficherMessagesOuverture=False)

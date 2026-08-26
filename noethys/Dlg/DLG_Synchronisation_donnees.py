@@ -396,7 +396,7 @@ class Traitement(Thread):
                         req = """SELECT IDmemo, IDindividu, date, texte FROM memo_journee WHERE IDindividu=%d AND date='%s';""" % (track.IDindividu, track.date)
                         DB.ExecuterReq(req)
                         listeMemos = DB.ResultatReq()
-                        if len(listeMemos) > 1 :
+                        if len(listeMemos) > 0 :
                             IDmemo = listeMemos[0][0]
                         else :
                             IDmemo = None
