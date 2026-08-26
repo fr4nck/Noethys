@@ -1444,9 +1444,10 @@ class Traitement():
             dlg = DLG_Portail_reservations.Dialog(self, track=self.track)
             reponse_modal = dlg.ShowModal()
             reponse = dlg.GetReponse()
-            dlg.Destroy()
             if reponse_modal == wx.ID_OK :
                 self.Save_grille(dlg.ctrl_grille)
+            dlg.Destroy()
+            if reponse_modal == wx.ID_OK :
                 self.EcritLog(_(u"Enregistrement des consommations"))
                 if reponse == "" :
                     return {"etat" : False, "reponse" : reponse}

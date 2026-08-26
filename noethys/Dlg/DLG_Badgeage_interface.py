@@ -723,9 +723,10 @@ class CTRL_Interface(wx.Panel):
                 listeNomsTitulaires.append(self.infosIndividus.GetNomsTitulaires(IDfamille))
             dlg = DIALOGUES.DLG_Choix(self, message=_(u"Sur quel dossier faut-il facturer l'activité '%s' ?") % dictActivite["nom"], listeItems=listeNomsTitulaires, multiSelection=False)
             reponse = dlg.ShowModal()
+            selections = list(dlg.GetSelections()) if reponse == wx.ID_YES else []
             dlg.Destroy()
             if reponse == wx.ID_YES :
-                index = dlg.GetSelections()[0]
+                index = selections[0]
                 IDfamille, IDgroupe = listeIDfamille[index]
                 self.log.AjouterAction(individu=nomIndividu, IDindividu=IDindividu, action=_(u"Choix d'une famille à facturer sur l'activité '%s' : %s.") % (dictActivite["nom"], listeNomsTitulaires[index]), resultat=True)
             else :
@@ -782,9 +783,10 @@ class CTRL_Interface(wx.Panel):
             listeChoix = [_(u"J'arrive"), _(u"Je pars")]
             dlg = DIALOGUES.DLG_Choix(self, message=texte, listeItems=listeChoix, multiSelection=False)
             reponse = dlg.ShowModal()
+            selections = list(dlg.GetSelections()) if reponse == wx.ID_YES else []
             dlg.Destroy()
             if reponse == wx.ID_YES :
-                selection = dlg.GetSelections()[0]
+                selection = selections[0]
                 if selection == 0 :
                     # J'arrive
                     heureDebut = heure
@@ -958,10 +960,11 @@ class CTRL_Interface(wx.Panel):
             texte = self.RemplacementVariablesMessages(question, heure, IDindividu, dateTmp)
             dlg = DIALOGUES.DLG_Choix(self, message=texte, listeItems=listeLabelsUnites, multiSelection=True)
             reponse = dlg.ShowModal()
+            selections = list(dlg.GetSelections()) if reponse == wx.ID_YES else []
             dlg.Destroy()
             if reponse == wx.ID_YES :
                 listeUnitesChoisies = []
-                for index in dlg.GetSelections() :
+                for index in selections :
                     listeUnitesChoisies.append(listeUnitesOuvertes[index])
                 self.log.AjouterAction(individu=nomIndividu, IDindividu=IDindividu, action=nomAction, resultat=True)
             else :
