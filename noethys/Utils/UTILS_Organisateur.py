@@ -49,7 +49,11 @@ def GetDonnees(tailleLogo=(40, 40)) :
     DB.ExecuterReq(req)
     listeDonnees = DB.ResultatReq()
     DB.Close()
-    nom, rue, cp, ville, tel, fax, mail, site, num_agrement, num_siret, code_ape, logo, logo_update = listeDonnees[0]
+    if listeDonnees:
+        nom, rue, cp, ville, tel, fax, mail, site, num_agrement, num_siret, code_ape, logo, logo_update = listeDonnees[0]
+    else:
+        nom = rue = cp = ville = tel = fax = mail = site = num_agrement = num_siret = code_ape = u""
+        logo, logo_update = None, None
     if nom == None : nom = u""
     if rue == None : rue = u""
     if cp == None : cp = u""

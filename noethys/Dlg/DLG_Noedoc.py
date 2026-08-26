@@ -5491,8 +5491,9 @@ def GetLogo_organisateur():
     DB = GestionDB.DB()
     req = """SELECT logo FROM organisateur WHERE IDorganisateur=1;"""
     DB.ExecuterReq(req)
-    buffer = DB.ResultatReq()[0][0]
+    donneesLogo = DB.ResultatReq()
     DB.Close()
+    buffer = donneesLogo[0][0] if donneesLogo else None
     if buffer == None : 
         # Si aucun logo, renvoie une image vide
         return wx.Image(Chemins.GetStaticPath("Images/Special/Logo_nb.png"), wx.BITMAP_TYPE_ANY), False
