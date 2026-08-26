@@ -35,6 +35,7 @@ import locale
 
 import wx
 from Ctrl import CTRL_Bouton_image
+from Utils.UTILS_Traduction import _
 
 
 # To save computation power (used by `delta_to_microseconds`)
