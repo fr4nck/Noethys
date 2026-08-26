@@ -380,7 +380,9 @@ class CTRL(CT.CustomTreeCtrl):
         self.MAJ()
         self.SetID(IDetiquette)
     
-    def GetItemsEnfants(self, liste=[], item=None, recursif=True):
+    def GetItemsEnfants(self, liste=None, item=None, recursif=True):
+        if liste is None:
+            liste = []
         itemTemp, cookie = self.GetFirstChild(item)
         for index in range(0, self.GetChildrenCount(item, recursively=False)) :
             dictDataTemp = self.GetPyData(itemTemp)

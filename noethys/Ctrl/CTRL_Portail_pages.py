@@ -332,7 +332,9 @@ class CTRL(wx.TreeCtrl):
                 self.MemoriseDateModification()
             dlg.Destroy()
 
-    def GetItemsEnfants(self, liste=[], item=None, recursif=True):
+    def GetItemsEnfants(self, liste=None, item=None, recursif=True):
+        if liste is None:
+            liste = []
         itemTemp, cookie = self.GetFirstChild(item)
         for index in range(0, self.GetChildrenCount(item, recursively=False)) :
             if 'phoenix' in wx.PlatformInfo:
