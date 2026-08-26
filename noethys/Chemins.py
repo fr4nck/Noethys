@@ -60,6 +60,17 @@ def _GetIconeModerne(fichier, taille=None):
 
     taille_cible = _TailleIconeDemandee(normalise, taille=taille)
 
+    # Le pack PMSL Style B est prioritaire lorsqu'un rôle sémantique sûr et
+    # l'asset correspondant sont disponibles. En son absence, Noethys garde
+    # exactement sa chaîne d'overrides précédente.
+    try:
+        from Utils import UTILS_Icones_pmsl
+        resultat = UTILS_Icones_pmsl.GetLegacyOverridePath(normalise, taille=taille_cible)
+        if resultat:
+            return resultat
+    except Exception:
+        pass
+
     try:
         from Utils import UTILS_Icones_identites
         resultat = UTILS_Icones_identites.GetLegacyOverridePath(normalise, taille=taille_cible)
