@@ -62,25 +62,22 @@ def GetRepData(fichier=""):
 
 
 def GetRepTemp(fichier=""):
-    chemin = GetRepUtilisateur("Temp")
+    chemin = GetRepUtilisateur(os.path.join("Temp", str(os.getpid())))
+    if not os.path.isdir(chemin):
+        os.makedirs(chemin)
     return os.path.join(chemin, fichier)
-
 def GetRepUpdates(fichier=""):
     chemin = GetRepUtilisateur("Updates")
     return os.path.join(chemin, fichier)
-
 def GetRepLang(fichier=""):
     chemin = GetRepUtilisateur("Lang")
     return os.path.join(chemin, fichier)
-
 def GetRepSync(fichier=""):
     chemin = GetRepUtilisateur("Sync")
     return os.path.join(chemin, fichier)
-
 def GetRepExtensions(fichier=""):
     chemin = GetRepUtilisateur("Extensions")
     return os.path.join(chemin, fichier)
-
 def GetRepUtilisateur(fichier=""):
     """ Recherche le répertoire Utilisateur pour stockage des fichiers de config et provisoires """
     chemin = None
