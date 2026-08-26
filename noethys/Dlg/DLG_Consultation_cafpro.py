@@ -3,7 +3,7 @@
 #------------------------------------------------------------------------
 # Application :    Noethys, gestion multi-activités
 # Site internet :  www.noethys.com
-# Auteur:          Ivan LUCAS
+# Auteur:           Ivan LUCAS
 # Copyright:       (c) 2010-18 Ivan LUCAS
 # Licence:         Licence GNU GPL
 #------------------------------------------------------------------------
@@ -191,14 +191,14 @@ class CTRL_Drop(wx.StaticBitmap):
 
         # Texte
         if texte != None :
-            xTexte = largeurImage / 2.0 - largeurTexte / 2.0
-            yTexte = hauteurImage / 2.0 - hauteurTexte / 2.0 - 1
+            xTexte = largeurImage // 2 - largeurTexte // 2
+            yTexte = hauteurImage // 2 - hauteurTexte // 2 - 1
             dc.DrawLabel(texte, wx.Rect(xTexte, yTexte, largeurTexte, hauteurTexte), wx.ALIGN_CENTER | wx.ALIGN_CENTER_VERTICAL)
 
 
         if texte != None :
-            xTexte = largeurImage / 2.0 - largeurTexte / 2.0
-            yTexte = hauteurImage / 2.0 - hauteurTexte / 2.0 - 1
+            xTexte = largeurImage // 2 - largeurTexte // 2
+            yTexte = hauteurImage // 2 - hauteurTexte // 2 - 1
             dc.DrawLabel(texte, wx.Rect(xTexte, yTexte, largeurTexte, hauteurTexte), wx.ALIGN_CENTER | wx.ALIGN_CENTER_VERTICAL)
 
         mdc.SelectObject(wx.NullBitmap)
