@@ -1,0 +1,98 @@
+name: Prepare Vanilla dialog lifecycle fixes
+
+on:
+  push:
+    branches:
+      - fix/vanilla-dialog-lifecycle
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Apply qualified lifecycle fixes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # Badgeage: read selections before destroying three dialogs.
+          path = Path('noethys/Dlg/DLG_Badgeage_interface.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''            reponse = dlg.ShowModal()\n            dlg.Destroy()\n            if reponse == wx.ID_YES :\n'''
+          new = '''            reponse = dlg.ShowModal()\n            selections = list(dlg.GetSelections()) if reponse == wx.ID_YES else []\n            dlg.Destroy()\n            if reponse == wx.ID_YES :\n'''
+          if text.count(old) != 3:
+              raise SystemExit(f'{path}: expected 3 dialog lifecycle blocks, found {text.count(old)}')
+          text = text.replace(old, new)
+          if text.count('dlg.GetSelections()[0]') != 2:
+              raise SystemExit(f'{path}: expected 2 scalar selection reads')
+          text = text.replace('dlg.GetSelections()[0]', 'selections[0]')
+          if text.count('for index in dlg.GetSelections() :') != 1:
+              raise SystemExit(f'{path}: expected 1 multi-selection read')
+          text = text.replace('for index in dlg.GetSelections() :', 'for index in selections :')
+          path.write_text(text, encoding='utf-8')
+
+          # Location request: read SingleChoiceDialog selection before Destroy().
+          path = Path('noethys/Dlg/DLG_Saisie_location_demande.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''            if dlg.ShowModal() == wx.ID_OK:\n                dlg.Destroy()\n                donnees = liste_donnees[dlg.GetSelection()]\n'''
+          new = '''            if dlg.ShowModal() == wx.ID_OK:\n                selection = dlg.GetSelection()\n                dlg.Destroy()\n                donnees = liste_donnees[selection]\n'''
+          if text.count(old) != 1:
+              raise SystemExit(f'{path}: expected exact distance dialog block once')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+
+          # Portal manual reservations: save live grid before dialog destruction.
+          path = Path('noethys/Dlg/DLG_Saisie_portail_demande.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''            reponse_modal = dlg.ShowModal()\n            reponse = dlg.GetReponse()\n            dlg.Destroy()\n            if reponse_modal == wx.ID_OK :\n                self.Save_grille(dlg.ctrl_grille)\n                self.EcritLog(_(u"Enregistrement des consommations"))\n'''
+          new = '''            reponse_modal = dlg.ShowModal()\n            reponse = dlg.GetReponse()\n            if reponse_modal == wx.ID_OK :\n                self.Save_grille(dlg.ctrl_grille)\n            dlg.Destroy()\n            if reponse_modal == wx.ID_OK :\n                self.EcritLog(_(u"Enregistrement des consommations"))\n'''
+          if text.count(old) != 1:
+              raise SystemExit(f'{path}: expected exact portal reservation block once')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+
+      - name: Compile changed modules
+        run: |
+          python -m py_compile noethys/Dlg/DLG_Badgeage_interface.py
+          python -m py_compile noethys/Dlg/DLG_Saisie_location_demande.py
+          python -m py_compile noethys/Dlg/DLG_Saisie_portail_demande.py
+
+      - name: Verify no qualified use-after-destroy remains
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          badge = Path('noethys/Dlg/DLG_Badgeage_interface.py').read_text(encoding='utf-8')
+          if 'dlg.Destroy()\n            if reponse == wx.ID_YES :\n                index = dlg.GetSelections()[0]' in badge:
+              raise SystemExit('badgeage scalar use-after-destroy still present')
+          if 'dlg.Destroy()\n            if reponse == wx.ID_YES :\n                selection = dlg.GetSelections()[0]' in badge:
+              raise SystemExit('badgeage arrival/departure use-after-destroy still present')
+          if 'for index in dlg.GetSelections() :' in badge:
+              raise SystemExit('badgeage multi-selection use-after-destroy still present')
+
+          loc = Path('noethys/Dlg/DLG_Saisie_location_demande.py').read_text(encoding='utf-8')
+          if 'dlg.Destroy()\n                donnees = liste_donnees[dlg.GetSelection()]' in loc:
+              raise SystemExit('location use-after-destroy still present')
+
+          portal = Path('noethys/Dlg/DLG_Saisie_portail_demande.py').read_text(encoding='utf-8')
+          if 'dlg.Destroy()\n            if reponse_modal == wx.ID_OK :\n                self.Save_grille(dlg.ctrl_grille)' in portal:
+              raise SystemExit('portal grid use-after-destroy still present')
+          PY
+
+      - name: Commit prepared patch and remove helper workflow
+        shell: bash
+        run: |
+          rm .github/workflows/prepare-vanilla-dialog-lifecycle.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Dlg/DLG_Badgeage_interface.py noethys/Dlg/DLG_Saisie_location_demande.py noethys/Dlg/DLG_Saisie_portail_demande.py .github/workflows/prepare-vanilla-dialog-lifecycle.yml
+          git commit -m "fix(vanilla): read dialog data before destroy"
+          git push
