@@ -80,6 +80,8 @@ def HeuresEnDecimal(texteHeure="07:00"):
     """ Transforme une heure string ou datetime.time en entier de type 2075"""
     if texteHeure == None :
         return 0
+    heures = "0"
+    minutes = 0
     if type(texteHeure) == datetime.time :
         heures = str(texteHeure.hour)
         minutes = int(texteHeure.minute)
@@ -171,10 +173,10 @@ def HeureStrEnDelta(heureStr):
         heureStr = heureStr.replace("h", ":")
     if ":" not in heureStr :
         heureStr += u":"
-    if len(heureStr.split(":")) == 2 :
-        heures, minutes = heureStr.split(":")
-    if len(heureStr.split(":")) == 3 :
-        heures, minutes, secondes = heureStr.split(":")
+    elements = heureStr.split(":")
+    if len(elements) not in (2, 3):
+        return datetime.timedelta(hours=0, minutes=0)
+    heures, minutes = elements[:2]
     if heures == "" : heures = 0
     if minutes == "" : minutes = 0
     return datetime.timedelta(hours=int(heures), minutes=int(minutes))
@@ -240,9 +242,7 @@ def CalculerArrondi(arrondi_type="duree", arrondi_delta=15, heure_debut=None, he
     :return: datetime.time
     """
     duree_reelle = SoustractionHeures(heure_fin, heure_debut)
-
-    if arrondi_type == None :
-        duree_arrondie = duree_reelle
+    duree_arrondie = duree_reelle
 
     if arrondi_type == "tranche_horaire" :
         heure_debut_temp = ArrondirTime(heure=heure_debut, delta_minutes=arrondi_delta, sens="inf")

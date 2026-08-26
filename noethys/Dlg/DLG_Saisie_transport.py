@@ -25,7 +25,11 @@ from Ctrl import CTRL_Saisie_date
 import GestionDB
 
 
-def MelangeDictionnaires(d1={}, d2={}):
+def MelangeDictionnaires(d1=None, d2=None):
+    if d1 is None:
+        d1 = {}
+    if d2 is None:
+        d2 = {}
     for key, value in d2.items() :
         d1[key] = value
     return d1

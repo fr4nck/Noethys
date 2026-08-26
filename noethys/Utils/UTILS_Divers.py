@@ -10,8 +10,12 @@
 
 import copy
 
-def DictionnaireImbrique(dictionnaire={}, cles=[], valeur=None):
+def DictionnaireImbrique(dictionnaire=None, cles=None, valeur=None):
     """ Création de dictionnaires imbriqués """
+    if dictionnaire is None :
+        dictionnaire = {}
+    if cles is None :
+        cles = []
     if len(cles) == 0 :
         return dictionnaire
     
