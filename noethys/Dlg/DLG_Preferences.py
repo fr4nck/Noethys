@@ -926,6 +926,7 @@ class Dialog(wx.Dialog):
         self.ctrl_derniers_fichiers.Sauvegarde()
         self.ctrl_autodeconnect.Sauvegarde()
         self.ctrl_interface_mysql.Sauvegarde()
+        self.ctrl_comptes_internet.Sauvegarde()
         self.ctrl_email.Sauvegarde()
         
         # Fermeture de la fenêtre
