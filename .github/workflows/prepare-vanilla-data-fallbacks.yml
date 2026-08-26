@@ -1,0 +1,102 @@
+name: Prepare Vanilla data fallback fixes
+
+on:
+  push:
+    branches:
+      - fix/vanilla-data-fallbacks
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Apply minimal historical fixes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # A9061: do not turn an UPDATE/Commit failure into a false success.
+          path = Path('noethys/Utils/UTILS_Procedures.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''    # Ajoute l'horodatage dans chaque document\n    try:\n        DB = GestionDB.DB(suffixe="DOCUMENTS")\n        req = "UPDATE documents SET last_update='%s';" % datetime.datetime.now()\n        DB.ExecuterReq(req)\n        DB.Commit()\n        DB.Close()\n    except:\n        pass\n'''
+          new = '''    # Ajoute l'horodatage dans chaque document\n    DB = GestionDB.DB(suffixe="DOCUMENTS")\n    try:\n        req = "UPDATE documents SET last_update='%s';" % datetime.datetime.now()\n        DB.ExecuterReq(req)\n        DB.Commit()\n    finally:\n        DB.Close()\n'''
+          if text.count(old) != 1:
+              raise SystemExit(f'{path}: expected A9061 timestamp block exactly once')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+
+          # Organiser data: neutral fallback if the mandatory-looking row is absent.
+          path = Path('noethys/Utils/UTILS_Organisateur.py')
+          text = path.read_text(encoding='utf-8')
+          old = '    nom, rue, cp, ville, tel, fax, mail, site, num_agrement, num_siret, code_ape, logo, logo_update = listeDonnees[0]\n'
+          new = '''    if listeDonnees:\n        nom, rue, cp, ville, tel, fax, mail, site, num_agrement, num_siret, code_ape, logo, logo_update = listeDonnees[0]\n    else:\n        nom = rue = cp = ville = tel = fax = mail = site = num_agrement = num_siret = code_ape = u""\n        logo, logo_update = None, None\n'''
+          if text.count(old) != 1:
+              raise SystemExit(f'{path}: expected direct organiser row unpack exactly once')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+
+          # Noedoc logo: existing fallback must also handle a missing organiser row.
+          path = Path('noethys/Dlg/DLG_Noedoc.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''    DB.ExecuterReq(req)\n    buffer = DB.ResultatReq()[0][0]\n    DB.Close()\n    if buffer == None :\n'''
+          new = '''    DB.ExecuterReq(req)\n    donneesLogo = DB.ResultatReq()\n    DB.Close()\n    buffer = donneesLogo[0][0] if donneesLogo else None\n    if buffer == None :\n'''
+          if text.count(old) != 1:
+              raise SystemExit(f'{path}: expected direct Noedoc logo access exactly once')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+
+          # Locations: an unknown/deleted product has no calculable stock.
+          path = Path('noethys/Utils/UTILS_Locations.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''    listeDonnees = DBT.ResultatReq()\n    stock_initial = listeDonnees[0][1]\n'''
+          new = '''    listeDonnees = DBT.ResultatReq()\n    if not listeDonnees:\n        if DB == None:\n            DBT.Close()\n        return {}\n    stock_initial = listeDonnees[0][1]\n'''
+          if text.count(old) != 1:
+              raise SystemExit(f'{path}: expected direct product stock access exactly once')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+
+      - name: Compile changed modules
+        run: |
+          python -m py_compile noethys/Utils/UTILS_Procedures.py
+          python -m py_compile noethys/Utils/UTILS_Organisateur.py
+          python -m py_compile noethys/Dlg/DLG_Noedoc.py
+          python -m py_compile noethys/Utils/UTILS_Locations.py
+
+      - name: Verify targeted contracts
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          procedures = Path('noethys/Utils/UTILS_Procedures.py').read_text(encoding='utf-8')
+          if 'DB.Commit()\n        DB.Close()\n    except:\n        pass' in procedures:
+              raise SystemExit('A9061 still masks update failure')
+
+          organiser = Path('noethys/Utils/UTILS_Organisateur.py').read_text(encoding='utf-8')
+          if 'logo, logo_update = listeDonnees[0]' in organiser:
+              raise SystemExit('organiser direct row access still present')
+
+          noedoc = Path('noethys/Dlg/DLG_Noedoc.py').read_text(encoding='utf-8')
+          if 'buffer = DB.ResultatReq()[0][0]' in noedoc:
+              raise SystemExit('Noedoc direct organiser logo access still present')
+
+          locations = Path('noethys/Utils/UTILS_Locations.py').read_text(encoding='utf-8')
+          marker = 'listeDonnees = DBT.ResultatReq()\n    if not listeDonnees:'
+          if marker not in locations:
+              raise SystemExit('location missing-product guard absent')
+          PY
+
+      - name: Commit prepared patch and remove helper workflow
+        shell: bash
+        run: |
+          rm .github/workflows/prepare-vanilla-data-fallbacks.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Utils/UTILS_Procedures.py noethys/Utils/UTILS_Organisateur.py noethys/Dlg/DLG_Noedoc.py noethys/Utils/UTILS_Locations.py .github/workflows/prepare-vanilla-data-fallbacks.yml
+          git commit -m "fix(vanilla): harden historical data fallbacks"
+          git push
