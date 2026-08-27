@@ -12,6 +12,7 @@ import GestionDB
 from Utils.UTILS_Traduction import _
 from Utils import UTILS_Interventions
 from Utils import UTILS_Tiers_Schema
+from Utils import UTILS_Utilisateurs
 
 
 STATUTS_UI = (
@@ -282,9 +283,17 @@ class Dialog(wx.Dialog):
     def Ajouter(self, event):
         if not self.schema_ok:
             return
-        dlg = DialogSeance(self)
-        if dlg.ShowModal() == wx.ID_OK:
-            donnees = dlg.GetDonnees()
+        if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("parametrage_ecoles", "creer") == False:
+            return
+
+        donnees_initiales = None
+        while True:
+            dlg = DialogSeance(self, seance=donnees_initiales)
+            reponse = dlg.ShowModal()
+            donnees = dlg.GetDonnees() if reponse == wx.ID_OK else None
+            dlg.Destroy()
+            if reponse != wx.ID_OK:
+                return
             try:
                 IDintervention = self.service.CreerSeanceSportEcole(
                     self.ecole["IDstructure"],
@@ -295,27 +304,40 @@ class Dialog(wx.Dialog):
                     statut=donnees["statut"],
                     notes=donnees["notes"],
                 )
-                self.MAJ(selection=IDintervention)
             except Exception as err:
                 self._afficher_erreur(err)
-        dlg.Destroy()
+                donnees_initiales = donnees
+                continue
+            self.MAJ(selection=IDintervention)
+            return
 
     def Modifier(self, event):
+        if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("parametrage_ecoles", "modifier") == False:
+            return
         IDintervention = self._selection_obligatoire()
         if IDintervention is None:
             return
-        seance = self.dict_seances.get(IDintervention) or self.service.LireIntervention(IDintervention)
-        dlg = DialogSeance(self, seance=seance)
-        if dlg.ShowModal() == wx.ID_OK:
-            donnees = dlg.GetDonnees()
+        donnees_initiales = self.dict_seances.get(IDintervention) or self.service.LireIntervention(IDintervention)
+
+        while True:
+            dlg = DialogSeance(self, seance=donnees_initiales)
+            reponse = dlg.ShowModal()
+            donnees = dlg.GetDonnees() if reponse == wx.ID_OK else None
+            dlg.Destroy()
+            if reponse != wx.ID_OK:
+                return
             try:
                 self.service.ModifierSeanceSport(IDintervention, donnees)
-                self.MAJ(selection=IDintervention)
             except Exception as err:
                 self._afficher_erreur(err)
-        dlg.Destroy()
+                donnees_initiales = donnees
+                continue
+            self.MAJ(selection=IDintervention)
+            return
 
     def Archiver(self, event):
+        if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("parametrage_ecoles", "supprimer") == False:
+            return
         IDintervention = self._selection_obligatoire()
         if IDintervention is None:
             return
