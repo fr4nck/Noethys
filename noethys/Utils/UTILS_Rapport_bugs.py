@@ -25,7 +25,6 @@ import wx.lib.dialogs
 from Utils import UTILS_Config
 from Utils import UTILS_Customize
 from Utils import UTILS_Fichiers
-from Utils import UTILS_Parametres
 
 URL_SUIVI_BUGS = "https://github.com/fr4nck/Noethys/issues"
 CATEGORIE_PARAMETRES = "maintenance"
@@ -33,29 +32,122 @@ PARAM_DESTINATAIRE = "adresse_rapport_bugs"
 DESTINATAIRE_DEFAUT = "noethys@gmail.com"
 
 
-def GetDestinataireRapports():
-    """Retourne le destinataire partagé par la base, avec repli sur l'adresse historique de Noethys."""
+def _NettoieAdresse(adresse):
+    if adresse is None:
+        return u""
     try:
-        adresse = UTILS_Parametres.Parametres(mode="get", categorie=CATEGORIE_PARAMETRES, nom=PARAM_DESTINATAIRE, valeur=u"")
-        if adresse is not None:
-            adresse = adresse.strip()
-            if len(adresse) > 0:
-                return adresse
+        return adresse.strip()
     except Exception:
-        pass
+        return u""
+
+
+def _GetDestinataireLocal():
+    """Lit l'ancien réglage local sans jamais perturber le rapport de crash."""
+    try:
+        return _NettoieAdresse(UTILS_Config.GetParametre(PARAM_DESTINATAIRE, u""))
+    except Exception:
+        return u""
+
+
+def _LireDestinataireBase():
+    """Retourne (adresse, existe, accessible) depuis la base ouverte."""
+    DB = None
+    try:
+        DB = GestionDB.DB()
+        if getattr(DB, "echec", 0) == 1:
+            return u"", False, False
+        req = u'''SELECT parametre FROM parametres WHERE categorie="%s" AND nom="%s";''' % (CATEGORIE_PARAMETRES, PARAM_DESTINATAIRE)
+        DB.ExecuterReq(req)
+        listeDonnees = DB.ResultatReq()
+        if listeDonnees is None:
+            return u"", False, False
+        if len(listeDonnees) == 0:
+            return u"", False, True
+        return _NettoieAdresse(listeDonnees[0][0]), True, True
+    except Exception:
+        return u"", False, False
+    finally:
+        try:
+            if DB is not None:
+                DB.Close()
+        except Exception:
+            pass
+
+
+def GetDestinataireRapports():
+    """Retourne le destinataire partagé, en conservant un ancien réglage local existant."""
+    adresse, existe, accessible = _LireDestinataireBase()
+    if existe and len(adresse) > 0:
+        return adresse
+
+    # La version précédente mémorisait cette adresse dans Config.json. Tant que
+    # la base n'a pas encore reçu son réglage partagé, cette valeur est prioritaire
+    # sur l'adresse historique afin de ne jamais rerouter un rapport existant.
+    adresse_locale = _GetDestinataireLocal()
+    if len(adresse_locale) > 0:
+        if accessible and not existe:
+            SetDestinataireRapports(adresse_locale, silencieux=True)
+        return adresse_locale
+
     return DESTINATAIRE_DEFAUT
 
 
-def SetDestinataireRapports(adresse=u""):
-    """Mémorise le destinataire dans la base ouverte. Un échec ne doit jamais perturber le rapport de crash."""
+def _AlerteEchecDestinataire():
     try:
-        if adresse is None:
-            adresse = u""
-        adresse = adresse.strip()
-        UTILS_Parametres.Parametres(mode="set", categorie=CATEGORIE_PARAMETRES, nom=PARAM_DESTINATAIRE, valeur=adresse)
-        return True
+        dlg = wx.MessageDialog(None,
+            _(u"L'adresse de maintenance n'a pas pu être enregistrée dans la base ouverte. Le réglage précédent est conservé."),
+            _(u"Enregistrement impossible"), wx.OK | wx.ICON_EXCLAMATION)
+        dlg.ShowModal()
+        dlg.Destroy()
     except Exception:
-        return False
+        pass
+
+
+def SetDestinataireRapports(adresse=u"", silencieux=False):
+    """Mémorise puis relit le destinataire afin de ne jamais annoncer un faux succès."""
+    adresse = _NettoieAdresse(adresse)
+    DB = None
+    succes = False
+    try:
+        DB = GestionDB.DB()
+        if getattr(DB, "echec", 0) == 1:
+            raise RuntimeError("base indisponible")
+
+        req = u'''SELECT IDparametre FROM parametres WHERE categorie="%s" AND nom="%s";''' % (CATEGORIE_PARAMETRES, PARAM_DESTINATAIRE)
+        DB.ExecuterReq(req)
+        listeDonnees = DB.ResultatReq()
+        if listeDonnees is None:
+            raise RuntimeError("lecture parametre impossible")
+
+        if len(listeDonnees) == 0:
+            IDparametre = DB.ReqInsert("parametres", [
+                ("categorie", CATEGORIE_PARAMETRES),
+                ("nom", PARAM_DESTINATAIRE),
+                ("parametre", adresse),
+            ])
+            if IDparametre in (None, False):
+                raise RuntimeError("insertion parametre impossible")
+        else:
+            resultat = DB.ReqMAJ("parametres", [("parametre", adresse)], "IDparametre", listeDonnees[0][0])
+            if resultat is False:
+                raise RuntimeError("mise a jour parametre impossible")
+        succes = getattr(DB, "echec", 0) != 1
+    except Exception:
+        succes = False
+    finally:
+        try:
+            if DB is not None:
+                DB.Close()
+        except Exception:
+            pass
+
+    if succes:
+        adresse_lue, existe, accessible = _LireDestinataireBase()
+        succes = accessible and existe and adresse_lue == adresse
+
+    if not succes and not silencieux:
+        _AlerteEchecDestinataire()
+    return succes
 
 
 def _GetRepLogs():
@@ -369,7 +461,8 @@ class DLG_Envoi(wx.Dialog):
             dlg.ShowModal()
             dlg.Destroy()
             return
-        SetDestinataireRapports(destinataire_saisi)
+        # Le rapport de crash doit rester utilisable même si la base est momentanément indisponible.
+        SetDestinataireRapports(destinataire_saisi, silencieux=True)
         self.EndModal(wx.ID_OK)
 
     def OnBoutonAnnuler(self, event):
