@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Activation additive contrôlée du schéma Noe-062A.
+"""Activation additive contrôlée du schéma tiers Noe-062.
 
 Ce module ne s'exécute jamais au simple import. L'appelant choisit explicitement
 ``appliquer=True`` pour créer les tables manquantes. Une table déjà existante
@@ -16,6 +16,8 @@ from Data import DATA_Structures
 
 
 TABLES_062A = ("structures", "structures_contacts")
+TABLES_062B = ("interventions",)
+TABLES_062B_COMPLET = TABLES_062A + TABLES_062B
 
 
 def _descriptions_attendues(nom_table):
@@ -112,12 +114,12 @@ def _metadata_table(db, nom_table):
     return colonnes
 
 
-def InspecterSchema(db):
+def InspecterSchema(db, tables=TABLES_062A):
     """Retourne un rapport déterministe sans modifier la base."""
     rapport = {}
     is_network = bool(getattr(db, "isNetwork", False))
 
-    for nom_table in TABLES_062A:
+    for nom_table in tuple(tables):
         existe = bool(db.IsTableExists(nom_table))
         descriptions = _descriptions_attendues(nom_table)
         champs_attendus = tuple(champ[0] for champ in descriptions)
@@ -161,13 +163,14 @@ def InspecterSchema(db):
     return rapport
 
 
-def _resultat(rapport, appliquer, creees=()):
+def _resultat(rapport, appliquer, creees=(), tables=TABLES_062A):
+    tables = tuple(tables)
     incoherentes = tuple(
-        nom_table for nom_table in TABLES_062A
+        nom_table for nom_table in tables
         if rapport[nom_table]["existe"] and not rapport[nom_table]["conforme"]
     )
     absentes = tuple(
-        nom_table for nom_table in TABLES_062A
+        nom_table for nom_table in tables
         if not rapport[nom_table]["existe"]
     )
     return {
@@ -180,15 +183,11 @@ def _resultat(rapport, appliquer, creees=()):
     }
 
 
-def AssurerSchema(db, appliquer=False):
-    """Crée uniquement les tables 062A absentes, de manière idempotente.
-
-    Toute table existante incohérente bloque *avant la première écriture*. Une
-    activation qui échoue au préflight ne peut donc pas laisser seulement une
-    partie du référentiel créée.
-    """
-    avant = InspecterSchema(db)
-    preflight = _resultat(avant, appliquer=False)
+def _assurer_schema(db, tables, appliquer=False):
+    """Implémentation commune : préflight complet avant la première écriture."""
+    tables = tuple(tables)
+    avant = InspecterSchema(db, tables=tables)
+    preflight = _resultat(avant, appliquer=False, tables=tables)
 
     if preflight["tables_incoherentes"]:
         return {
@@ -202,11 +201,30 @@ def AssurerSchema(db, appliquer=False):
 
     creees = []
     if appliquer:
-        for nom_table in TABLES_062A:
+        for nom_table in tables:
             if not avant[nom_table]["existe"]:
                 db.CreationTable(nom_table, DATA_Structures.DB_STRUCTURES)
                 db.Commit()
                 creees.append(nom_table)
 
-    apres = InspecterSchema(db)
-    return _resultat(apres, appliquer=appliquer, creees=creees)
+    apres = InspecterSchema(db, tables=tables)
+    return _resultat(apres, appliquer=appliquer, creees=creees, tables=tables)
+
+
+def AssurerSchema(db, appliquer=False):
+    """Conserve le contrat 062A : structures + contacts uniquement."""
+    return _assurer_schema(db, TABLES_062A, appliquer=appliquer)
+
+
+def InspecterSchema062B(db):
+    """Inspecte le socle complet nécessaire aux séances école/sport."""
+    return InspecterSchema(db, tables=TABLES_062B_COMPLET)
+
+
+def AssurerSchema062B(db, appliquer=False):
+    """Active explicitement structures, contacts et interventions.
+
+    Aucun groupe ni convention n'est exigé pour saisir une première séance :
+    ces liens restent optionnels et pourront être enrichis ensuite.
+    """
+    return _assurer_schema(db, TABLES_062B_COMPLET, appliquer=appliquer)
