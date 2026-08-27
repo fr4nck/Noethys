@@ -15,17 +15,20 @@ Analyse les chaînes SQL Python contenant un ``GROUP BY`` et distingue :
             DISTINCT, sans constituer à lui seul une incompatibilité stricte.
 
 Les sous-requêtes sont analysées dans leur propre portée. L'analyse ne tente
-pas d'inférer les dépendances fonctionnelles propres à un moteur SQL (par
-exemple une colonne dépendant d'une clé primaire groupée), afin de rester
-pertinente pour les anciennes installations MySQL/MariaDB.
-
-Le script ne modifie aucun fichier ni aucune base.
+pas d'inférer les dépendances fonctionnelles propres à un moteur SQL. Le script
+ne modifie aucun fichier ni aucune base. La couverture des sources Python est
+bloquante : aucun fichier non lu/non parsé ne peut produire zéro candidat.
 """
 
 import argparse
 import ast
 from pathlib import Path
 import re
+
+try:
+    from scripts.audit_source_coverage import SourceAuditSession
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -58,7 +61,6 @@ def _is_ident_char(char):
 
 
 def _keyword_matches(sql, pos, keyword):
-    """Teste un mot-clé SQL à ``pos`` en tolérant les espaces multiples."""
     parts = keyword.split()
     cursor = pos
     for index, part in enumerate(parts):
@@ -79,7 +81,6 @@ def _keyword_matches(sql, pos, keyword):
 
 
 def _find_top_level_keyword(sql, keyword, start=0):
-    """Trouve un mot-clé hors parenthèses et hors chaînes SQL."""
     depth = 0
     quote = None
     pos = start
@@ -119,7 +120,6 @@ def _find_top_level_keyword(sql, keyword, start=0):
 
 
 def _split_top_level_csv(text):
-    """Découpe une liste SQL séparée par virgules hors parenthèses/quotes."""
     items = []
     current = []
     depth = 0
@@ -168,7 +168,6 @@ def _split_top_level_csv(text):
 
 
 def _parenthesized_selects(sql):
-    """Retourne les contenus parenthésés contenant SELECT + GROUP BY."""
     stack = []
     quote = None
     results = []
@@ -285,7 +284,6 @@ def _extract_select_and_group(sql):
 
 
 def _analyze_scope(sql):
-    """Analyse un SELECT/GROUP BY au niveau supérieur de ``sql``."""
     parsed = _extract_select_and_group(sql)
     if parsed is None:
         return None
@@ -332,7 +330,6 @@ def _analyze_scope(sql):
 
 
 def _collect_group_scopes(sql, seen=None):
-    """Analyse la portée principale et les sous-requêtes parenthésées."""
     if seen is None:
         seen = set()
     key = " ".join(sql.split())
@@ -410,17 +407,7 @@ def _string_value(node):
     return None
 
 
-def extract_sql_candidates(path):
-    try:
-        text = path.read_text(encoding="utf-8", errors="ignore")
-    except Exception:
-        return []
-
-    try:
-        tree = ast.parse(text, filename=str(path))
-    except SyntaxError:
-        return []
-
+def extract_sql_candidates_from_tree(path, tree):
     candidates = []
     seen = set()
     for node in ast.walk(tree):
@@ -441,6 +428,15 @@ def extract_sql_candidates(path):
     return candidates
 
 
+def extract_sql_candidates(path):
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    session.require_complete()
+    assert loaded is not None
+    _source, tree = loaded
+    return extract_sql_candidates_from_tree(path, tree)
+
+
 def iter_python_files(root):
     for path in root.rglob("*.py"):
         if "__pycache__" in path.parts or ".git" in path.parts:
@@ -448,12 +444,23 @@ def iter_python_files(root):
         yield path
 
 
-def scan(root):
+def _scan_with_session(root):
+    session = SourceAuditSession(iter_python_files(root))
     candidates = []
-    for path in iter_python_files(root):
-        candidates.extend(extract_sql_candidates(path))
+    for path in session.paths:
+        loaded = session.parse(path)
+        if loaded is None:
+            continue
+        _source, tree = loaded
+        candidates.extend(extract_sql_candidates_from_tree(path, tree))
     order = {"REVIEW": 0, "DEDUPE": 1, "SAFE": 2}
     candidates.sort(key=lambda item: (order[item.classification], str(item.path), item.line))
+    return candidates, session
+
+
+def scan(root):
+    candidates, session = _scan_with_session(root)
+    session.require_complete()
     return candidates
 
 
@@ -537,7 +544,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     root = Path(args.root).resolve()
-    candidates = scan(root)
+    candidates, session = _scan_with_session(root)
+    session.report(prefix="Couverture audit SQL strict")
+    session.require_complete()
     if args.format == "markdown":
         print_markdown(candidates, root, args.only)
     else:
