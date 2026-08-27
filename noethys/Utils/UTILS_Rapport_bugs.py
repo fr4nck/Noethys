@@ -75,17 +75,22 @@ def _LireDestinataireBase():
 
 
 def GetDestinataireRapports():
-    """Retourne le destinataire partagé, en conservant un ancien réglage local existant."""
+    """Retourne le destinataire partagé, avec migration unique de l'ancien réglage local."""
     adresse, existe, accessible = _LireDestinataireBase()
-    if existe and len(adresse) > 0:
-        return adresse
 
-    # La version précédente mémorisait cette adresse dans Config.json. Tant que
-    # la base n'a pas encore reçu son réglage partagé, cette valeur est prioritaire
-    # sur l'adresse historique afin de ne jamais rerouter un rapport existant.
+    # Dès qu'une ligne partagée existe, elle est autoritaire. Une valeur vide
+    # signifie explicitement « revenir au destinataire historique » et ne doit
+    # jamais ressusciter un ancien réglage local de Config.json.
+    if existe:
+        if len(adresse) > 0:
+            return adresse
+        return DESTINATAIRE_DEFAUT
+
+    # La version précédente mémorisait cette adresse dans Config.json. Elle ne
+    # sert qu'à amorcer la base tant que la ligne partagée n'existe pas encore.
     adresse_locale = _GetDestinataireLocal()
     if len(adresse_locale) > 0:
-        if accessible and not existe:
+        if accessible:
             SetDestinataireRapports(adresse_locale, silencieux=True)
         return adresse_locale
 
