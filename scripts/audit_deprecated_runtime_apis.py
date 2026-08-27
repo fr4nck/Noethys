@@ -5,6 +5,7 @@
 Le périmètre est volontairement limité aux motifs dont le remplacement est
 sémantiquement clair. L'objectif n'est pas de signaler toutes les dépréciations,
 mais les appels susceptibles de tomber immédiatement en AttributeError.
+La couverture des fichiers analysés est bloquante.
 """
 
 from __future__ import annotations
@@ -14,6 +15,10 @@ import json
 from collections import Counter
 from pathlib import Path
 
+try:
+    from scripts.audit_source_coverage import SourceAuditSession
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession
 
 ROOT = Path(__file__).resolve().parents[1] / "noethys"
 EXCLUDED_PARTS = {"ObjectListView", "Outils"}
@@ -48,12 +53,7 @@ def _qualified_name(node):
     return ".".join(reversed(parts))
 
 
-def scan_file(path, root=ROOT):
-    try:
-        source = path.read_text(encoding="utf-8", errors="replace")
-        tree = ast.parse(source, filename=str(path))
-    except (OSError, SyntaxError):
-        return []
+def scan_tree(source, tree, path, root=ROOT):
     lines = source.splitlines()
     rel = str(path.relative_to(root)).replace("\\", "/")
     findings = []
@@ -67,9 +67,6 @@ def scan_file(path, root=ROOT):
 
         kind, reason = ATTRIBUTE_RULES[attr]
         qualified = _qualified_name(node.func)
-        # clock/getargspec/formatargspec/base64 aliases ne sont dangereux que
-        # lorsqu'on peut identifier le module standard. Les méthodes isAlive/
-        # isSet sont suffisamment spécifiques pour être signalées partout.
         if attr == "clock" and not qualified.startswith("time."):
             continue
         if attr in {"getargspec", "formatargspec"} and not qualified.startswith("inspect."):
@@ -90,15 +87,30 @@ def scan_file(path, root=ROOT):
     return findings
 
 
+def scan_file(path, root=ROOT):
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    session.require_complete()
+    assert loaded is not None
+    source, tree = loaded
+    return scan_tree(source, tree, path, root)
+
+
 def build_report(root=ROOT):
+    session = SourceAuditSession(iter_python_files(root))
     findings = []
-    for path in iter_python_files(root):
-        findings.extend(scan_file(path, root))
+    for path in session.paths:
+        loaded = session.parse(path)
+        if loaded is None:
+            continue
+        source, tree = loaded
+        findings.extend(scan_tree(source, tree, path, root))
     findings.sort(key=lambda item: (item["file"], item["line"], item["kind"]))
     return {
         "count": len(findings),
         "kinds": dict(Counter(item["kind"] for item in findings)),
         "findings": findings,
+        "_coverage": session,
     }
 
 
@@ -111,9 +123,12 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     report = build_report()
+    session = report.pop("_coverage")
     print(f"DEPRECATED_RUNTIME_API={report['count']} — {report['kinds']}")
     for item in report["findings"]:
         print(f"- {item['file']}:{item['line']} {item['api']} — {item['reason']}")
+    session.report(prefix="Couverture audit API runtime dépréciées")
+    session.require_complete()
 
     if args.json:
         output = Path(args.json)
