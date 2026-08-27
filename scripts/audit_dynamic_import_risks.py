@@ -8,7 +8,8 @@ téléchargé) ou encapsulés dans des helpers génériques. Ils sont signalés 
 sont pas comptés comme risques PyInstaller non couverts.
 
 Les appels exec/eval historiques sont signalés séparément : ils constituent un
-sujet de dette technique/sécurité distinct.
+sujet de dette technique/sécurité distinct. La couverture des sources est
+bloquante : aucun fichier non lu ou non parsé n'est assimilé à zéro occurrence.
 """
 from __future__ import annotations
 
@@ -16,25 +17,22 @@ import argparse
 import ast
 from pathlib import Path
 
+try:
+    from scripts.audit_source_coverage import SourceAuditSession, iter_python_files
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession, iter_python_files
+
 ROOT = Path("noethys")
 SKIP_DIRS = {".git", "build", "dist", "__pycache__", "venv", ".venv"}
 
-# Chargements volontairement externes au bundle PyInstaller.
 RUNTIME_EXTERNAL = {
     "noethys/Dlg/DLG_Extensions.py",
     "noethys/Utils/UTILS_Portail_synchro.py",
 }
-
-# Helpers génériques : ils chargent dynamiquement pour le compte d'appelants.
-# Leurs propres import_module() ne constituent pas, à eux seuls, un module
-# manquant du bundle.
 DYNAMIC_HELPERS = {
     "noethys/Outils/mail/module_loading.py",
     "noethys/Utils/UTILS_Adaptations.py",
 }
-
-# Cette famille est importée statiquement dans CTRL_Assistants_liste.py
-# précisément pour être visible de la compilation Windows.
 STATICALLY_COVERED = {
     "noethys/Ol/OL_Activites.py",
 }
@@ -60,13 +58,7 @@ def is_literal_string(node: ast.AST | None) -> bool:
     return isinstance(node, ast.Constant) and isinstance(node.value, str)
 
 
-def scan(path: Path) -> tuple[list[tuple[int, str]], list[tuple[int, str]]]:
-    try:
-        source = path.read_text(encoding="utf-8", errors="replace")
-        tree = ast.parse(source, filename=str(path))
-    except (OSError, SyntaxError):
-        return [], []
-
+def scan_tree(tree: ast.AST) -> tuple[list[tuple[int, str]], list[tuple[int, str]]]:
     import_risks: list[tuple[int, str]] = []
     eval_uses: list[tuple[int, str]] = []
     for node in ast.walk(tree):
@@ -82,6 +74,15 @@ def scan(path: Path) -> tuple[list[tuple[int, str]], list[tuple[int, str]]]:
         elif name in {"exec", "eval"}:
             eval_uses.append((node.lineno, f"exécution dynamique via {name}()"))
     return sorted(set(import_risks)), sorted(set(eval_uses))
+
+
+def scan(path: Path) -> tuple[list[tuple[int, str]], list[tuple[int, str]]]:
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    session.require_complete()
+    assert loaded is not None
+    _source, tree = loaded
+    return scan_tree(tree)
 
 
 def classification(path: Path) -> str:
@@ -102,13 +103,16 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(args.root)
+    session = SourceAuditSession(iter_python_files(root, skip_dirs=SKIP_DIRS))
     import_total = 0
     qualified_total = 0
     eval_total = 0
-    for path in sorted(root.rglob("*.py")):
-        if any(part in SKIP_DIRS for part in path.parts):
+    for path in session.paths:
+        loaded = session.parse(path)
+        if loaded is None:
             continue
-        import_risks, eval_uses = scan(path)
+        _source, tree = loaded
+        import_risks, eval_uses = scan_tree(tree)
         category = classification(path)
         for lineno, message in import_risks:
             if category == "RISQUE-PYINSTALLER":
@@ -123,6 +127,8 @@ def main() -> int:
     print(f"\n{import_total} risque(s) PyInstaller non qualifié(s).")
     print(f"{qualified_total} import(s) dynamique(s) attendu(s)/qualifié(s).")
     print(f"{eval_total} usage(s) exec/eval historique(s), informatif(s).")
+    session.report(prefix="Couverture audit imports dynamiques")
+    session.require_complete()
 
     if args.max_import_risks is not None and import_total > args.max_import_risks:
         print(
