@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 """Inventorie les imports externes réellement utilisés par Noethys.
 
-Le script utilise uniquement la bibliothèque standard. Il compare les imports
-trouvés dans ``noethys/`` avec ``requirements.txt`` et signale les dépendances
-potentiellement absentes ou inutilisées. Le résultat est informatif.
-
-Les modules internes sont détectés récursivement afin de tenir compte des anciens
-imports "à plat" de Noethys (par exemple CellEditor, OLVEvent, wxSchedule...).
+Le résultat fonctionnel reste informatif. En revanche, la couverture des
+fichiers Python est bloquante : aucun fichier non lu ou non parsé ne peut être
+assimilé à une absence d'import.
 """
 from __future__ import annotations
 
@@ -16,13 +13,17 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+try:
+    from scripts.audit_source_coverage import SourceAuditSession, iter_python_files
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession, iter_python_files
+
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "noethys"
 REQUIREMENTS = ROOT / "requirements.txt"
 BUILD_REQUIREMENTS = ROOT / "requirements-build.txt"
 SKIP_DIRS = {".git", "build", "dist", "__pycache__", "venv", ".venv"}
 
-# Correspondance nom PyPI -> racine de module importée.
 DIST_TO_MODULE = {
     "pillow": "PIL",
     "python-dateutil": "dateutil",
@@ -41,17 +42,7 @@ DIST_TO_MODULE = {
 }
 
 
-def iter_python_files(root: Path):
-    for path in root.rglob("*.py"):
-        if not any(part in SKIP_DIRS for part in path.parts):
-            yield path
-
-
-def imported_roots(path: Path) -> set[str]:
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"), filename=str(path))
-    except (OSError, SyntaxError):
-        return set()
+def imported_roots(tree: ast.AST) -> set[str]:
     roots: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -66,7 +57,7 @@ def requirement_modules(path: Path) -> dict[str, str]:
     modules: dict[str, str] = {}
     if not path.exists():
         return modules
-    for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if not line or line.startswith("#") or line.startswith("-"):
             continue
@@ -76,10 +67,8 @@ def requirement_modules(path: Path) -> dict[str, str]:
     return modules
 
 
-def local_module_names() -> set[str]:
-    names: set[str] = set()
-    for path in iter_python_files(SOURCE):
-        names.add(path.stem)
+def local_module_names(paths: tuple[Path, ...]) -> set[str]:
+    names: set[str] = {path.stem for path in paths}
     for path in SOURCE.rglob("*"):
         if path.is_dir() and not any(part in SKIP_DIRS for part in path.parts):
             names.add(path.name)
@@ -87,16 +76,23 @@ def local_module_names() -> set[str]:
 
 
 def main() -> int:
+    paths = tuple(iter_python_files(SOURCE, skip_dirs=SKIP_DIRS))
+    session = SourceAuditSession(paths)
     counts: Counter[str] = Counter()
     locations: dict[str, set[str]] = defaultdict(set)
-    for path in iter_python_files(SOURCE):
-        roots = imported_roots(path)
+
+    for path in session.paths:
+        loaded = session.parse(path)
+        if loaded is None:
+            continue
+        _source, tree = loaded
+        roots = imported_roots(tree)
         counts.update(roots)
         relative = str(path.relative_to(ROOT))
         for name in roots:
             locations[name].add(relative)
 
-    local_modules = local_module_names()
+    local_modules = local_module_names(paths)
     stdlib = set(getattr(sys, "stdlib_module_names", ()))
 
     external = {
@@ -125,6 +121,9 @@ def main() -> int:
         print(f"- {name}: {files}")
 
     print(f"\nRésumé: {len(external)} module(s) externe(s), {len(missing)} sans déclaration évidente.")
+    if not session.report():
+        print("Audit incomplet : inventaire des dépendances non exhaustif.")
+        return 2
     return 0
 
 
