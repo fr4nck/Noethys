@@ -2,26 +2,28 @@
 # -*- coding: utf-8 -*-
 """Schéma cible pour les structures et relations métier de Noethys 1.3.5.x.
 
-Ce module est volontairement séparé de DATA_Tables.py tant que la migration
-n'est pas activée. Il permet de figer et tester le modèle sans modifier les
-bases existantes.
+Ce module reste volontairement séparé de ``DATA_Tables.py`` tant que la
+migration additive n'est pas activée sur les bases existantes. Il sert de
+contrat de données testable pour Noe-062.
 
 Principes :
 - aucun champ famille/individu existant n'est modifié ;
 - les identifiants administratifs restent optionnels ;
+- une structure possède un identifiant interne numérique et un UID stable
+  destiné aux échanges avec PMSL-Equipe / Dolibarr ;
 - une structure peut avoir plusieurs contacts, catégories et groupes libres ;
 - bénéficiaire et payeur sont dissociés ;
-- une prestation/MAD peut être reliée à une activité Noethys et à un
-  intervenant externe (notamment PMSL-Equipe) ;
 - les règles de facturation sont portées par la relation/prestation, pas par
   le type de structure.
 """
 
 DB_STRUCTURES = {
     "structures": [
-        ("IDstructure", "INTEGER PRIMARY KEY AUTOINCREMENT", u"ID de la structure"),
-        ("type_structure", "VARCHAR(50)", u"association, ecole, mairie, alsh, departement, institution, autre"),
+        ("IDstructure", "INTEGER PRIMARY KEY AUTOINCREMENT", u"ID local de la structure"),
+        ("uid", "VARCHAR(64)", u"Identifiant stable inter-applications"),
+        ("type_structure", "VARCHAR(50)", u"association, club_section, ecole, mairie_collectivite, alsh, departement_ase, financeur, autre"),
         ("nom", "VARCHAR(300)", u"Nom usuel de la structure"),
+        ("nom_court", "VARCHAR(150)", u"Nom court optionnel"),
         ("nom_officiel", "VARCHAR(300)", u"Dénomination officielle optionnelle"),
         ("IDstructure_parent", "INTEGER", u"Structure parente éventuelle"),
         ("rue", "VARCHAR(255)", u"Adresse"),
@@ -37,6 +39,7 @@ DB_STRUCTURES = {
         ("memo", "VARCHAR(2000)", u"Mémo"),
         ("actif", "INTEGER", u"Structure active 0/1"),
         ("date_creation", "DATE", u"Date de création de la fiche"),
+        ("date_modification", "DATE", u"Date de dernière modification"),
     ],
 
     "structures_contacts": [
@@ -130,3 +133,8 @@ DB_STRUCTURES = {
 def GetNomsTables():
     """Retourne les tables du module dans un ordre stable pour les tests/migrations."""
     return tuple(DB_STRUCTURES.keys())
+
+
+def GetChamps(nom_table):
+    """Retourne les noms de champs déclarés pour une table du module."""
+    return tuple(champ[0] for champ in DB_STRUCTURES[nom_table])
