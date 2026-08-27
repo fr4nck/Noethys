@@ -42,6 +42,24 @@ class SourceCoverageTests(unittest.TestCase):
             _source, tree = loaded
             self.assertEqual(len(audit_fragile_date_parsing.scan_tree(tree)), 1)
 
+    def test_ascii_mbcs_source_is_portably_read_and_parsed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "generated_win32com.py"
+            path.write_bytes(
+                b"# -*- coding: mbcs -*-\n"
+                b"library = 'Microsoft Speech Object Library'\n"
+                b"value = 5\n"
+            )
+
+            session = SourceAuditSession([path])
+            loaded = session.parse(path)
+
+            self.assertIsNotNone(loaded)
+            self.assertTrue(session.coverage.complete)
+            self.assertEqual(session.coverage.found, 1)
+            self.assertEqual(session.coverage.read, 1)
+            self.assertEqual(session.coverage.parsed, 1)
+
     def test_syntax_error_is_not_silently_counted_as_zero_findings(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "broken.py"
