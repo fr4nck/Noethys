@@ -2,14 +2,18 @@
 """Inventorie les frontières d'encodage réellement actionnables sous Python 3.
 
 L'audit se concentre sur les flux texte ouverts sans encodage explicite.
-Les encode()/decode() explicites, CSV/JSON et flux binaires ne sont pas des
-anomalies en soi et ne sont donc plus comptés comme défauts.
+Les occurrences restent informatives ; la couverture des sources est bloquante.
 """
 from __future__ import annotations
 
 import ast
 import sys
 from pathlib import Path
+
+try:
+    from scripts.audit_source_coverage import SourceAuditSession, iter_python_files
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession, iter_python_files
 
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "noethys")
 SKIP_DIRS = {".git", "build", "dist", "__pycache__", "venv", ".venv"}
@@ -53,13 +57,7 @@ def positional_or_keyword(node: ast.Call, position: int, keyword: str) -> ast.AS
     return None
 
 
-def scan(path: Path) -> list[tuple[int, str]]:
-    try:
-        source = path.read_text(encoding="utf-8", errors="replace")
-        tree = ast.parse(source, filename=str(path))
-    except (OSError, SyntaxError):
-        return []
-
+def scan_tree(tree: ast.AST) -> list[tuple[int, str]]:
     findings: list[tuple[int, str]] = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -84,19 +82,34 @@ def scan(path: Path) -> list[tuple[int, str]]:
     return sorted(set(findings))
 
 
+def scan(path: Path) -> list[tuple[int, str]]:
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    if loaded is None:
+        raise RuntimeError(session.coverage.failures[0].format())
+    _source, tree = loaded
+    return scan_tree(tree)
+
+
 def main() -> int:
+    session = SourceAuditSession(iter_python_files(ROOT, skip_dirs=SKIP_DIRS))
     total = 0
-    files = 0
-    for path in sorted(ROOT.rglob("*.py")):
-        if any(part in SKIP_DIRS for part in path.parts):
+    files_with_findings = 0
+    for path in session.paths:
+        loaded = session.parse(path)
+        if loaded is None:
             continue
-        findings = scan(path)
+        _source, tree = loaded
+        findings = scan_tree(tree)
         if findings:
-            files += 1
+            files_with_findings += 1
         for lineno, message in findings:
             total += 1
             print(f"{path}:{lineno}: {message}")
-    print(f"\n{total} frontière(s) texte/encodage actionnable(s) dans {files} fichier(s).")
+    print(f"\n{total} frontière(s) texte/encodage actionnable(s) dans {files_with_findings} fichier(s).")
+    if not session.report():
+        print("Audit incomplet : inventaire encodage non exhaustif.")
+        return 2
     return 0
 
 
