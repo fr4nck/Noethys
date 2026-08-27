@@ -95,6 +95,25 @@ DB_STRUCTURES = {
         ("memo", "VARCHAR(1000)", u"Mémo"),
     ],
 
+    "interventions": [
+        ("IDintervention", "INTEGER PRIMARY KEY AUTOINCREMENT", u"ID local de l'intervention"),
+        ("uid", "VARCHAR(64)", u"Identifiant stable inter-applications"),
+        ("IDstructure", "INTEGER", u"Structure bénéficiaire"),
+        ("IDgroupe_structure", "INTEGER", u"Classe / groupe optionnel"),
+        ("IDrelation_structure", "INTEGER", u"Relation / convention optionnelle"),
+        ("nature", "VARCHAR(50)", u"Nature : sport, animation, autre"),
+        ("date", "DATE", u"Date de l'intervention"),
+        ("heure_debut", "VARCHAR(5)", u"Heure de début HH:MM"),
+        ("heure_fin", "VARCHAR(5)", u"Heure de fin HH:MM"),
+        ("duree_minutes", "INTEGER", u"Durée calculée en minutes"),
+        ("libelle", "VARCHAR(300)", u"Libellé de la séance"),
+        ("statut", "VARCHAR(50)", u"planifiee, realisee, annulee"),
+        ("notes", "VARCHAR(2000)", u"Notes libres"),
+        ("actif", "INTEGER", u"Intervention active 0/1"),
+        ("date_creation", "DATE", u"Date de création"),
+        ("date_modification", "DATE", u"Date de dernière modification"),
+    ],
+
     "structures_relations": [
         ("IDrelation_structure", "INTEGER PRIMARY KEY AUTOINCREMENT", u"ID relation/prestation"),
         ("IDstructure", "INTEGER", u"Structure contractante ou bénéficiaire"),
