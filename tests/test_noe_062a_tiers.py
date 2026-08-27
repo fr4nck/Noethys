@@ -110,6 +110,22 @@ def test_creation_structure_utilise_uniquement_le_schema_canonique():
     assert commit is True
 
 
+def test_mise_a_jour_partielle_structure_ne_vide_pas_les_autres_champs():
+    data = TIERS.NormaliserStructure({"actif": 0}, date=datetime.date(2026, 8, 27), creation=False)
+    assert data == {"actif": 0, "date_modification": "2026-08-27"}
+
+    db = FakeDB()
+    gestion = TIERS.GestionnaireTiers(db)
+    assert gestion.ArchiverStructure(12, date=datetime.date(2026, 8, 27)) is True
+    table, paires, cle, ID, commit = db.maj[0]
+    assert table == "structures"
+    assert cle == "IDstructure"
+    assert ID == 12
+    assert ("actif", 0) in paires
+    assert not any(champ in ("nom", "mail", "rue", "siret") for champ, valeur in paires)
+    assert commit is True
+
+
 def test_contact_exige_structure_et_identite_minimale():
     try:
         TIERS.NormaliserContact({"nom": "Dupont"})
@@ -133,6 +149,21 @@ def test_contact_exige_structure_et_identite_minimale():
     assert contact["mail"] == "direction@example.org"
     assert contact["contact_principal"] == 1
     assert contact["actif"] == 1
+
+
+def test_mise_a_jour_partielle_contact_ne_vide_pas_identite():
+    data = TIERS.NormaliserContact({"mail": " new@example.org "}, creation=False)
+    assert data == {"mail": "new@example.org"}
+
+    db = FakeDB()
+    gestion = TIERS.GestionnaireTiers(db)
+    assert gestion.ArchiverContact(22) is True
+    table, paires, cle, ID, commit = db.maj[0]
+    assert table == "structures_contacts"
+    assert paires == [("actif", 0)]
+    assert cle == "IDcontact"
+    assert ID == 22
+    assert commit is True
 
 
 def test_crud_minimal_contacts():
