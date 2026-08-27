@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import importlib.util
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -95,3 +96,28 @@ def test_table_existante_incomplete_n_est_jamais_modifiee_silencieusement():
     assert "uid" in resultat["rapport"]["structures"]["champs_manquants"]
     assert db.creations == []
     assert db.commits == 0
+
+
+def test_contrat_062a_est_executable_par_sqlite():
+    connexion = sqlite3.connect(":memory:")
+    try:
+        curseur = connexion.cursor()
+        for nom_table in SCHEMA.TABLES_062A:
+            champs = ", ".join("%s %s" % (nom, type_champ) for nom, type_champ, info in DATA.DB_STRUCTURES[nom_table])
+            curseur.execute("CREATE TABLE %s (%s)" % (nom_table, champs))
+
+        curseur.execute(
+            "INSERT INTO structures (uid, type_structure, nom, actif) VALUES (?, ?, ?, ?)",
+            ("STR-test", "ecole", "Ecole de test", 1),
+        )
+        IDstructure = curseur.lastrowid
+        curseur.execute(
+            "INSERT INTO structures_contacts (IDstructure, nom, fonction, actif) VALUES (?, ?, ?, ?)",
+            (IDstructure, "Martin", "Direction", 1),
+        )
+        connexion.commit()
+
+        curseur.execute("SELECT uid, type_structure, nom FROM structures WHERE IDstructure=?", (IDstructure,))
+        assert curseur.fetchone() == ("STR-test", "ecole", "Ecole de test")
+    finally:
+        connexion.close()
