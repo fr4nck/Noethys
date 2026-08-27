@@ -96,7 +96,7 @@ def scan_file(path, root=ROOT):
     return scan_tree(source, tree, path, root)
 
 
-def build_report(root=ROOT):
+def _build_report_with_session(root=ROOT):
     session = SourceAuditSession(iter_python_files(root))
     findings = []
     for path in session.paths:
@@ -106,12 +106,18 @@ def build_report(root=ROOT):
         source, tree = loaded
         findings.extend(scan_tree(source, tree, path, root))
     findings.sort(key=lambda item: (item["file"], item["line"], item["kind"]))
-    return {
+    report = {
         "count": len(findings),
         "kinds": dict(Counter(item["kind"] for item in findings)),
         "findings": findings,
-        "_coverage": session,
     }
+    return report, session
+
+
+def build_report(root=ROOT):
+    report, session = _build_report_with_session(root)
+    session.require_complete()
+    return report
 
 
 def main(argv=None):
@@ -122,8 +128,7 @@ def main(argv=None):
     parser.add_argument("--fail-on-any", action="store_true")
     args = parser.parse_args(argv)
 
-    report = build_report()
-    session = report.pop("_coverage")
+    report, session = _build_report_with_session()
     print(f"DEPRECATED_RUNTIME_API={report['count']} — {report['kinds']}")
     for item in report["findings"]:
         print(f"- {item['file']}:{item['line']} {item['api']} — {item['reason']}")
