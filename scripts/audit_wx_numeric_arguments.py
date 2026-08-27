@@ -2,13 +2,19 @@
 """Repère les arguments numériques wxPython susceptibles de devenir flottants.
 
 Cible les appels de taille, position et dimensions contenant une division `/`
-non protégée par une conversion entière. Audit informatif uniquement.
+non protégée par une conversion entière. Les occurrences restent informatives,
+mais un fichier non analysé rend désormais l'audit invalide.
 """
 from __future__ import annotations
 
 import ast
 import sys
 from pathlib import Path
+
+try:
+    from scripts.audit_source_coverage import SourceAuditSession, iter_python_files
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession, iter_python_files
 
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "noethys")
 TARGETS = {
@@ -43,11 +49,7 @@ def contains_unprotected_division(node: ast.AST, protected: bool = False) -> boo
     return any(contains_unprotected_division(child, protected) for child in ast.iter_child_nodes(node))
 
 
-def scan(path: Path) -> list[tuple[int, str]]:
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"), filename=str(path))
-    except (OSError, SyntaxError):
-        return []
+def scan_tree(tree: ast.AST) -> list[tuple[int, str]]:
     findings = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call) or call_name(node) not in TARGETS:
@@ -62,13 +64,30 @@ def scan(path: Path) -> list[tuple[int, str]]:
     return sorted(set(findings))
 
 
+def scan(path: Path) -> list[tuple[int, str]]:
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    if loaded is None:
+        raise RuntimeError(session.coverage.failures[0].format())
+    _source, tree = loaded
+    return scan_tree(tree)
+
+
 def main() -> int:
+    session = SourceAuditSession(iter_python_files(ROOT))
     total = 0
-    for path in sorted(ROOT.rglob("*.py")):
-        for lineno, message in scan(path):
+    for path in session.paths:
+        loaded = session.parse(path)
+        if loaded is None:
+            continue
+        _source, tree = loaded
+        for lineno, message in scan_tree(tree):
             total += 1
             print(f"{path}:{lineno}: {message}")
     print(f"\n{total} argument(s) wxPython potentiellement flottant(s).")
+    if not session.report():
+        print("Audit incomplet : inventaire wx numérique non exhaustif.")
+        return 2
     return 0
 
 
