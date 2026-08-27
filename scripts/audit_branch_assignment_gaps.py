@@ -5,7 +5,7 @@
 Le contrôle est volontairement conservateur : il ne signale qu'une affectation
 présente dans une seule branche, sans définition antérieure visible, lorsque le
 premier usage ultérieur de ce nom est une lecture. Les résultats restent des
-candidats à qualifier humainement.
+candidats à qualifier humainement. La couverture des sources est bloquante.
 """
 
 from __future__ import annotations
@@ -16,6 +16,10 @@ import json
 from collections import Counter
 from pathlib import Path
 
+try:
+    from scripts.audit_source_coverage import SourceAuditSession
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession
 
 ROOT = Path(__file__).resolve().parents[1]
 NOETHYS = ROOT / "noethys"
@@ -106,11 +110,6 @@ def direct_definitions(statement):
 
 
 def direct_definitions_in_sequence(statements):
-    """Noms définis par des instructions inconditionnelles du bloc courant.
-
-    On ne descend volontairement pas dans les ``if``/boucles/``try`` imbriqués :
-    leur exécution ne garantit pas qu'un nom existe à la sortie du bloc.
-    """
     result = set()
     for statement in statements:
         result.update(direct_definitions(statement))
@@ -185,9 +184,6 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
             scan_sequence(statement.body, defined, relpath, function_name, findings)
             scan_sequence(statement.orelse, defined, relpath, function_name, findings)
 
-            # Si les deux branches affectent directement un nom, celui-ci est
-            # garanti pour les instructions suivantes. Sans cette propagation,
-            # un second ``if`` qui réaffecte ce nom était signalé à tort.
             if statement.orelse:
                 body_defined = direct_definitions_in_sequence(statement.body)
                 else_defined = direct_definitions_in_sequence(statement.orelse)
@@ -219,34 +215,32 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
             scan_sequence(statement.orelse, defined, relpath, function_name, findings)
             scan_sequence(statement.finalbody, defined, relpath, function_name, findings)
 
-            # Si chaque chemin d'exception quitte le bloc courant, continuer
-            # après le ``try`` implique que son corps (et son ``else`` éventuel)
-            # s'est terminé normalement. Leurs affectations directes sont donc
-            # disponibles pour les contrôles suivants.
             handlers_terminate = not statement.handlers or all(
                 block_terminates(handler.body) for handler in statement.handlers
             )
             if handlers_terminate:
                 defined.update(direct_definitions_in_sequence(statement.body))
                 defined.update(direct_definitions_in_sequence(statement.orelse))
-
-            # Un ``finally`` exécuté jusqu'au bout l'est sur tout chemin qui
-            # continue après le ``try``.
             defined.update(direct_definitions_in_sequence(statement.finalbody))
 
         defined.update(direct_definitions(statement))
 
 
-def scan_file(path, root=NOETHYS):
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"), filename=str(path))
-    except (OSError, SyntaxError):
-        return []
+def _scan_loaded(tree, path, root=NOETHYS):
     relpath = str(path.relative_to(root)).replace("\\", "/")
     findings = []
     for function in (node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))):
         scan_sequence(function.body, function_args(function), relpath, function.name, findings)
     return findings
+
+
+def scan_file(path, root=NOETHYS):
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    session.require_complete()
+    assert loaded is not None
+    _source, tree = loaded
+    return _scan_loaded(tree, path, root)
 
 
 def build_report(root=NOETHYS):
@@ -266,10 +260,22 @@ def build_report(root=NOETHYS):
     }
 
 
+def _coverage_session(root=NOETHYS):
+    session = SourceAuditSession(iter_python_files(root))
+    for path in session.paths:
+        session.parse(path)
+    return session
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", default="", metavar="FILE")
     args = parser.parse_args(argv)
+
+    coverage = _coverage_session()
+    coverage.report(prefix="Couverture audit affectations conditionnelles")
+    coverage.require_complete()
+
     report = build_report()
     print(f"BRANCH_ASSIGNMENT_GAPS={report['count']}")
     for item in report["findings"]:
