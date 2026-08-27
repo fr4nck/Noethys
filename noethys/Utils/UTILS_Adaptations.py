@@ -11,6 +11,7 @@
 import wx
 import sys
 import types
+import threading
 from importlib import import_module
 
 
@@ -20,16 +21,31 @@ from importlib import import_module
 if not hasattr(types, "StringTypes"):
     types.StringTypes = (str,)
 
+if not hasattr(threading.Thread, "isAlive") and hasattr(threading.Thread, "is_alive"):
+    threading.Thread.isAlive = threading.Thread.is_alive
+
 if 'phoenix' in wx.PlatformInfo:
-    try:
-        if not hasattr(wx.PrintPreview, "Ok") and hasattr(wx.PrintPreview, "IsOk"):
-            wx.PrintPreview.Ok = wx.PrintPreview.IsOk
-        if not hasattr(wx.PreviewFrame, "MakeModal"):
-            def _PreviewFrameMakeModal(self, modal=True):
-                return None
-            wx.PreviewFrame.MakeModal = _PreviewFrameMakeModal
-    except Exception:
-        pass
+    if not hasattr(wx.PrintPreview, "Ok") and hasattr(wx.PrintPreview, "IsOk"):
+        wx.PrintPreview.Ok = wx.PrintPreview.IsOk
+
+    if not hasattr(wx.PreviewFrame, "MakeModal"):
+        def _PreviewFrameMakeModal(self, modal=True):
+            return None
+        wx.PreviewFrame.MakeModal = _PreviewFrameMakeModal
+
+    # wxClassic acceptait dans plusieurs parcours historiques des dimensions
+    # calculées en flottants. Phoenix exige des entiers pour Scale/Rescale.
+    _ImageScale = wx.Image.Scale
+    _ImageRescale = wx.Image.Rescale
+
+    def _ImageScaleEntier(self, width, height, *args, **kwargs):
+        return _ImageScale(self, int(width), int(height), *args, **kwargs)
+
+    def _ImageRescaleEntier(self, width, height, *args, **kwargs):
+        return _ImageRescale(self, int(width), int(height), *args, **kwargs)
+
+    wx.Image.Scale = _ImageScaleEntier
+    wx.Image.Rescale = _ImageRescaleEntier
 
 
 def Import(nom_module=""):
