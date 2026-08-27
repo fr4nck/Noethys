@@ -53,13 +53,17 @@ def _type_attendu(type_decl, is_network):
     return type_decl
 
 
+def _chaine(valeur):
+    if isinstance(valeur, bytes):
+        return valeur.decode("ascii", "ignore")
+    return str(valeur)
+
+
 def _categorie_type(type_sql):
     """Normalise les variantes SQLite/MySQL en familles compatibles."""
     if type_sql is None:
         return ""
-    if isinstance(type_sql, bytes):
-        type_sql = type_sql.decode("ascii", "ignore")
-    valeur = str(type_sql).strip().lower()
+    valeur = _chaine(type_sql).strip().lower()
     base = valeur.split("(", 1)[0].strip()
     if "int" in base:
         return "integer"
@@ -83,6 +87,7 @@ def _metadata_table(db, nom_table):
         if db.ExecuterReq("PRAGMA table_info('%s');" % nom_table) != 1:
             return None
         for cid, nom, type_sql, notnull, valeur_defaut, pk in db.ResultatReq():
+            nom = _chaine(nom)
             colonnes[nom] = {
                 "type": type_sql,
                 "pk": bool(pk),
@@ -95,18 +100,14 @@ def _metadata_table(db, nom_table):
         if db.ExecuterReq("SHOW COLUMNS FROM %s;" % nom_table) != 1:
             return None
         for valeurs in db.ResultatReq():
-            nom = valeurs[0]
+            nom = _chaine(valeurs[0])
             type_sql = valeurs[1]
-            cle = valeurs[3] if len(valeurs) > 3 else ""
-            extra = valeurs[5] if len(valeurs) > 5 else ""
-            if isinstance(cle, bytes):
-                cle = cle.decode("ascii", "ignore")
-            if isinstance(extra, bytes):
-                extra = extra.decode("ascii", "ignore")
+            cle = _chaine(valeurs[3] if len(valeurs) > 3 else "")
+            extra = _chaine(valeurs[5] if len(valeurs) > 5 else "")
             colonnes[nom] = {
                 "type": type_sql,
-                "pk": str(cle).upper() == "PRI",
-                "auto": "auto_increment" in str(extra).lower(),
+                "pk": cle.upper() == "PRI",
+                "auto": "auto_increment" in extra.lower(),
             }
     return colonnes
 
