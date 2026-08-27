@@ -263,11 +263,9 @@ class Dialog(wx.Dialog):
             h = urlopen(url, timeout=5)
             html = h.read()
             h.close()
-        except Exception as err:
-            self.AfficheEtatValidite(texte=u"Vérification impossible. Vérifiez votre connexion internet !", image="attention")
+        except Exception:
+            self.AfficheEtatValidite(texte=_(u"Vérification impossible : service d'enregistrement indisponible."), image="attention")
             del dlgAttente
-            print("pb dans verification code enregistrement.")
-            traceback.print_exc(file=sys.stdout)
             return False
 
         if six.PY3:
