@@ -12,11 +12,49 @@
 import Chemins
 from Utils import UTILS_Adaptations
 from Utils.UTILS_Traduction import _
+from Utils import UTILS_Interventions
 import wx
+import GestionDB
 from Ctrl import CTRL_Bouton_image
 from Ctrl import CTRL_Bandeau
 from Ol import OL_Ecoles
 
+
+class ListViewEcoles(OL_Ecoles.ListView):
+    """Liste historique enrichie du garde d'intégrité Noe-062B."""
+
+    def Supprimer(self, event):
+        selection = self.Selection()
+        if len(selection) > 0:
+            IDecole = selection[0].IDecole
+            DB = GestionDB.DB()
+            try:
+                nbre_seances = UTILS_Interventions.CompterInterventionsEcoleHistorique(DB, IDecole)
+            except Exception as err:
+                dlg = wx.MessageDialog(
+                    self,
+                    _(u"Impossible de vérifier les séances rattachées à cette école.\nLa suppression est bloquée par sécurité.\n\n%s") % str(err),
+                    _(u"Avertissement"),
+                    wx.OK | wx.ICON_EXCLAMATION,
+                )
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
+            finally:
+                DB.Close()
+
+            if nbre_seances > 0:
+                dlg = wx.MessageDialog(
+                    self,
+                    _(u"Cette école possède déjà %d séance(s) de sport enregistrée(s).\nVous ne pouvez donc la supprimer : son historique doit rester rattaché à la même dénomination.") % nbre_seances,
+                    _(u"Avertissement"),
+                    wx.OK | wx.ICON_EXCLAMATION,
+                )
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
+
+        return OL_Ecoles.ListView.Supprimer(self, event)
 
 
 class Dialog(wx.Dialog):
@@ -28,7 +66,7 @@ class Dialog(wx.Dialog):
         titre = _(u"Gestion des écoles")
         self.SetTitle(titre)
         self.ctrl_bandeau = CTRL_Bandeau.Bandeau(self, titre=titre, texte=intro, hauteurHtml=30, nomImage="Images/32x32/Ecole.png")
-        self.ctrl_listview = OL_Ecoles.ListView(self, id=-1, style=wx.LC_REPORT|wx.SUNKEN_BORDER|wx.LC_SINGLE_SEL|wx.LC_HRULES|wx.LC_VRULES)
+        self.ctrl_listview = ListViewEcoles(self, id=-1, style=wx.LC_REPORT|wx.SUNKEN_BORDER|wx.LC_SINGLE_SEL|wx.LC_HRULES|wx.LC_VRULES)
         self.ctrl_listview.SetMinSize((50, 50))
         self.ctrl_listview.MAJ()
         self.ctrl_recherche = OL_Ecoles.CTRL_Outils(self, listview=self.ctrl_listview)
@@ -54,7 +92,7 @@ class Dialog(wx.Dialog):
     def __set_properties(self):
         self.bouton_ajouter.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour ajouter une école")))
         self.bouton_modifier.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour modifier l'école sélectionnée dans la liste")))
-        self.bouton_supprimer.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour supprimer l'école sélectionnée dans la iste")))
+        self.bouton_supprimer.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour supprimer l'école sélectionnée dans la liste")))
         self.bouton_seances_sport.SetToolTip(wx.ToolTip(_(u"Enregistrer les séances de sport de l'école sélectionnée")))
         self.bouton_aide.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour obtenir de l'aide")))
         self.bouton_fermer.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour fermer")))
