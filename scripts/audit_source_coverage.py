@@ -7,6 +7,9 @@ périmètre n'a pas été lu et parsé. Ce module fournit :
 
 - une lecture respectant l'encodage Python déclaré (PEP 263 / BOM) via
   :func:`tokenize.open` ;
+- un traitement portable et traçable du vieux cookie ``mbcs`` lorsque le
+  contenu est strictement ASCII, donc identique sous toutes les pages de codes
+  ANSI Windows ;
 - un comptage explicite ``trouvés == lus == parsés`` ;
 - la conservation de chaque erreur de lecture ou de syntaxe ;
 - un code de sortie non nul dès qu'un fichier échappe à l'analyse.
@@ -18,12 +21,14 @@ from __future__ import annotations
 
 import argparse
 import ast
+import re
 import tokenize
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
 SKIP_DIRS = {".git", ".venv", "venv", "__pycache__", "build", "dist"}
+_ENCODING_COOKIE = re.compile(br"^[ \t\f]*#.*?coding[:=][ \t]*([-\w.]+)")
 
 
 @dataclass(frozen=True)
@@ -37,19 +42,31 @@ class SourceFailure:
         return f"{self.path}: {self.stage}: {self.error_type}: {self.message}"
 
 
+@dataclass(frozen=True)
+class SourceDecodeNote:
+    path: Path
+    declared_encoding: str
+    effective_encoding: str
+    message: str
+
+    def format(self) -> str:
+        return (
+            f"{self.path}: encodage {self.declared_encoding} -> "
+            f"{self.effective_encoding}: {self.message}"
+        )
+
+
 @dataclass
 class SourceCoverage:
     found: int = 0
     read: int = 0
     parsed: int = 0
     failures: list[SourceFailure] = field(default_factory=list)
+    decode_notes: list[SourceDecodeNote] = field(default_factory=list)
 
     @property
     def complete(self) -> bool:
-        return (
-            not self.failures
-            and self.found == self.read == self.parsed
-        )
+        return not self.failures and self.found == self.read == self.parsed
 
     def summary(self) -> str:
         status = "OK" if self.complete else "ECHEC"
@@ -57,6 +74,54 @@ class SourceCoverage:
             f"Couverture sources: trouvés={self.found}, lus={self.read}, "
             f"parsés={self.parsed} — {status}"
         )
+
+
+def _declared_encoding(raw: bytes) -> str | None:
+    """Retourne le cookie PEP 263 sans demander au runtime de connaître le codec."""
+    lines = raw.splitlines(keepends=True)[:2]
+    for line in lines:
+        match = _ENCODING_COOKIE.match(line)
+        if match:
+            return match.group(1).decode("ascii").lower()
+    return None
+
+
+def _read_python_source(path: Path) -> tuple[str, SourceDecodeNote | None]:
+    """Lit une source Python sans masquer les erreurs d'encodage.
+
+    ``mbcs`` est un alias Windows dépendant de la page de codes active et n'est
+    pas disponible sur les runners POSIX. Pour un fichier ``mbcs`` composé
+    uniquement d'octets ASCII, le décodage ASCII est rigoureusement équivalent
+    quelle que soit la page ANSI Windows : ce cas est donc portable. Dès qu'un
+    octet non-ASCII apparaît, on refuse de deviner une page de codes.
+    """
+    try:
+        with tokenize.open(path) as stream:
+            return stream.read(), None
+    except SyntaxError as exc:
+        if "unknown encoding" not in str(exc).lower():
+            raise
+
+        raw = path.read_bytes()
+        declared = _declared_encoding(raw)
+        if declared != "mbcs":
+            raise
+
+        try:
+            source = raw.decode("ascii")
+        except UnicodeDecodeError as ascii_exc:
+            raise SyntaxError(
+                f"encodage mbcs non portable avec octets non-ASCII dans {path}; "
+                "normaliser le cookie/code page ou analyser ce fichier sous Windows"
+            ) from ascii_exc
+
+        note = SourceDecodeNote(
+            path=path,
+            declared_encoding="mbcs",
+            effective_encoding="ascii",
+            message="contenu ASCII, sous-ensemble invariant de toutes les pages ANSI Windows",
+        )
+        return source, note
 
 
 class SourceAuditSession:
@@ -69,8 +134,7 @@ class SourceAuditSession:
     def parse(self, path: Path) -> tuple[str, ast.AST] | None:
         path = Path(path)
         try:
-            with tokenize.open(path) as stream:
-                source = stream.read()
+            source, decode_note = _read_python_source(path)
         except (OSError, UnicodeDecodeError, SyntaxError) as exc:
             self.coverage.failures.append(
                 SourceFailure(path, "lecture", type(exc).__name__, str(exc))
@@ -78,6 +142,8 @@ class SourceAuditSession:
             return None
 
         self.coverage.read += 1
+        if decode_note is not None:
+            self.coverage.decode_notes.append(decode_note)
 
         try:
             tree = ast.parse(source, filename=str(path))
@@ -97,6 +163,8 @@ class SourceAuditSession:
         if prefix:
             print(prefix)
         print(self.coverage.summary())
+        for note in self.coverage.decode_notes:
+            print(f"NOTE ENCODAGE: {note.format()}")
         for failure in self.coverage.failures:
             print(f"ERREUR AUDIT: {failure.format()}")
         return self.coverage.complete
