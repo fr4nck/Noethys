@@ -32,6 +32,8 @@ class SQLiteDB(object):
         self.cursor = self.connexion.cursor()
         self.creations = []
         self.commits = 0
+        self.fail_insert_table = None
+        self.fail_update_table = None
 
     def Close(self):
         self.connexion.close()
@@ -66,6 +68,8 @@ class SQLiteDB(object):
         self.commits += 1
 
     def ReqInsert(self, nom_table, liste_donnees, commit=True):
+        if self.fail_insert_table == nom_table:
+            return None
         noms = [nom for nom, valeur in liste_donnees]
         valeurs = [valeur for nom, valeur in liste_donnees]
         marqueurs = ", ".join("?" for nom in noms)
@@ -78,6 +82,8 @@ class SQLiteDB(object):
         return self.cursor.lastrowid
 
     def ReqMAJ(self, nom_table, liste_donnees, nom_champ_id, ID, IDestChaine=False, commit=True):
+        if self.fail_update_table == nom_table:
+            return False
         clauses = ["%s=?" % nom for nom, valeur in liste_donnees]
         valeurs = [valeur for nom, valeur in liste_donnees]
         valeurs.append(ID)
@@ -176,6 +182,42 @@ class Noe062BInterventionsTests(unittest.TestCase):
         finally:
             db.Close()
 
+    def test_date_videe_est_refusee_au_lieu_de_devenir_aujourdhui(self):
+        db = _db_pret()
+        try:
+            service = INTERVENTIONS.GestionnaireInterventions(db)
+            ecole = service.SynchroniserEcoleHistorique(1)
+            with self.assertRaises(ValueError):
+                service.CreerSeanceSportEcole(ecole["IDstructure"], "", "09:00", "10:00")
+            self.assertEqual(service.ListerSeancesSportEcole(ecole["IDstructure"]), [])
+        finally:
+            db.Close()
+
+    def test_echec_insert_est_remonte_comme_erreur_metier(self):
+        db = _db_pret()
+        try:
+            service = INTERVENTIONS.GestionnaireInterventions(db)
+            ecole = service.SynchroniserEcoleHistorique(1)
+            db.fail_insert_table = "interventions"
+            with self.assertRaises(RuntimeError):
+                service.CreerSeanceSportEcole(ecole["IDstructure"], "04/09/2026", "09:00", "10:00")
+        finally:
+            db.Close()
+
+    def test_echec_update_est_remonte_comme_erreur_metier(self):
+        db = _db_pret()
+        try:
+            service = INTERVENTIONS.GestionnaireInterventions(db)
+            ecole = service.SynchroniserEcoleHistorique(1)
+            IDseance = service.CreerSeanceSportEcole(ecole["IDstructure"], "04/09/2026", "09:00", "10:00")
+            db.fail_update_table = "interventions"
+            with self.assertRaises(RuntimeError):
+                service.ModifierSeanceSport(IDseance, {"notes": "nouvelle note"})
+            with self.assertRaises(RuntimeError):
+                service.ArchiverSeanceSport(IDseance)
+        finally:
+            db.Close()
+
     def test_modification_partielle_et_archivage_ne_detruisent_pas_la_seance(self):
         db = _db_pret()
         try:
@@ -215,6 +257,29 @@ class Noe062BInterventionsTests(unittest.TestCase):
             self.assertEqual([item["date"] for item in seances], ["2026-10-07"])
         finally:
             db.Close()
+
+    def test_ecole_avec_seance_est_detectee_par_le_garde_de_suppression(self):
+        db = _db_pret()
+        try:
+            self.assertEqual(INTERVENTIONS.CompterInterventionsEcoleHistorique(db, 1), 0)
+            service = INTERVENTIONS.GestionnaireInterventions(db)
+            ecole = service.SynchroniserEcoleHistorique(1)
+            service.CreerSeanceSportEcole(ecole["IDstructure"], "04/09/2026", "09:00", "10:00")
+            self.assertEqual(INTERVENTIONS.CompterInterventionsEcoleHistorique(db, 1), 1)
+        finally:
+            db.Close()
+
+    def test_interface_verifie_les_droits_sur_chaque_mutation(self):
+        source = (ROOT / "noethys" / "Dlg" / "DLG_Seances_sport_ecoles.py").read_text(encoding="utf-8")
+        self.assertIn('VerificationDroitsUtilisateurActuel("parametrage_ecoles", "creer")', source)
+        self.assertIn('VerificationDroitsUtilisateurActuel("parametrage_ecoles", "modifier")', source)
+        self.assertIn('VerificationDroitsUtilisateurActuel("parametrage_ecoles", "supprimer")', source)
+
+    def test_gestion_ecoles_bloque_la_suppression_si_des_seances_existent(self):
+        source = (ROOT / "noethys" / "Dlg" / "DLG_Ecoles.py").read_text(encoding="utf-8")
+        self.assertIn("class ListViewEcoles(OL_Ecoles.ListView)", source)
+        self.assertIn("CompterInterventionsEcoleHistorique", source)
+        self.assertIn("historique doit rester rattaché", source)
 
 
 if __name__ == "__main__":
