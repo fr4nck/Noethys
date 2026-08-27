@@ -10,7 +10,26 @@
 
 import wx
 import sys
+import types
 from importlib import import_module
+
+
+# Compatibilité des API retirées sous Python 3 / wxPython Phoenix.
+# Ces alias conservent le comportement attendu par le code historique sans
+# modifier les parcours wxClassic/Python 2.
+if not hasattr(types, "StringTypes"):
+    types.StringTypes = (str,)
+
+if 'phoenix' in wx.PlatformInfo:
+    try:
+        if not hasattr(wx.PrintPreview, "Ok") and hasattr(wx.PrintPreview, "IsOk"):
+            wx.PrintPreview.Ok = wx.PrintPreview.IsOk
+        if not hasattr(wx.PreviewFrame, "MakeModal"):
+            def _PreviewFrameMakeModal(self, modal=True):
+                return None
+            wx.PreviewFrame.MakeModal = _PreviewFrameMakeModal
+    except Exception:
+        pass
 
 
 def Import(nom_module=""):
