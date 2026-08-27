@@ -24,6 +24,7 @@ from Utils import UTILS_Interface
 from Utils import UTILS_Fichiers
 from Utils import UTILS_Parametres
 from Utils import UTILS_Json
+from Utils import UTILS_Rapport_bugs
 
 
 
@@ -465,8 +466,11 @@ class Rapport_bugs(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, id=-1, style=wx.TAB_TRAVERSAL)
 
-        self.staticbox_staticbox = wx.StaticBox(self, -1, _(u"Rapports de bugs"))
+        self.staticbox_staticbox = wx.StaticBox(self, -1, _(u"Maintenance et rapports de bugs"))
         self.check = wx.CheckBox(self, -1, _(u"Affichage du rapport de bugs lorsqu'une erreur est rencontrée"))
+        self.label_destinataire = wx.StaticText(self, -1, _(u"Adresse de réception :"))
+        self.ctrl_destinataire = wx.TextCtrl(self, -1, u"")
+        self.label_destinataire_aide = wx.StaticText(self, -1, _(u"Laisser vide pour utiliser l'adresse historique noethys@gmail.com."))
 
         self.__set_properties()
         self.__do_layout()
@@ -475,24 +479,46 @@ class Rapport_bugs(wx.Panel):
 
     def __set_properties(self):
         self.check.SetToolTip(wx.ToolTip(_(u"Affichage du rapport de bugs lorsqu'une erreur est rencontrée")))
+        self.ctrl_destinataire.SetToolTip(wx.ToolTip(_(u"Adresse de maintenance partagée par tous les utilisateurs de la base ouverte.")))
+        self.label_destinataire_aide.SetFont(wx.Font(7, wx.SWISS, wx.NORMAL, wx.NORMAL))
 
     def __do_layout(self):
         staticbox = wx.StaticBoxSizer(self.staticbox_staticbox, wx.VERTICAL)
-        grid_sizer_base = wx.FlexGridSizer(rows=2, cols=5, vgap=10, hgap=10)
+        grid_sizer_base = wx.FlexGridSizer(rows=2, cols=2, vgap=5, hgap=10)
         grid_sizer_base.Add(self.check, 0, wx.ALIGN_CENTER_VERTICAL, 0)
+        grid_sizer_base.Add((0, 0), 0, 0, 0)
+        grid_sizer_base.Add(self.label_destinataire, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 0)
+        grid_sizer_base.Add(self.ctrl_destinataire, 1, wx.EXPAND, 0)
+        grid_sizer_base.AddGrowableCol(1)
         staticbox.Add(grid_sizer_base, 1, wx.ALL|wx.EXPAND, 5)
+        staticbox.Add(self.label_destinataire_aide, 0, wx.LEFT|wx.RIGHT|wx.BOTTOM, 5)
         self.SetSizer(staticbox)
         staticbox.Fit(self)
     
     def Importation(self):
         valeur = UTILS_Config.GetParametre("rapports_bugs", True)
         self.check.SetValue(valeur)
+        try:
+            destinataire = UTILS_Parametres.Parametres(mode="get", categorie=UTILS_Rapport_bugs.CATEGORIE_PARAMETRES, nom=UTILS_Rapport_bugs.PARAM_DESTINATAIRE, valeur=u"")
+            if destinataire is None:
+                destinataire = u""
+        except Exception:
+            destinataire = u""
+        self.ctrl_destinataire.SetValue(destinataire)
     
     def Validation(self):
+        destinataire = self.ctrl_destinataire.GetValue().strip()
+        if len(destinataire) > 0 and "@" not in destinataire:
+            dlg = wx.MessageDialog(self, _(u"Veuillez saisir une adresse de réception valide ou laisser le champ vide pour utiliser noethys@gmail.com."), _(u"Adresse invalide"), wx.OK | wx.ICON_EXCLAMATION)
+            dlg.ShowModal()
+            dlg.Destroy()
+            self.ctrl_destinataire.SetFocus()
+            return False
         return True
     
     def Sauvegarde(self):
         UTILS_Config.SetParametre("rapports_bugs", self.check.GetValue())
+        UTILS_Rapport_bugs.SetDestinataireRapports(self.ctrl_destinataire.GetValue())
 
 # ---------------------------------------------------------------------------------------------------------------------------
 
@@ -940,5 +966,4 @@ if __name__ == u"__main__":
     app.SetTopWindow(dialog_1)
     dialog_1.ShowModal()
     app.MainLoop()
-
 
