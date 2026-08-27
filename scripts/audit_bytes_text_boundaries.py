@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """Repère les mélanges bytes/str susceptibles de casser Noethys sous Python 3.
 
-Audit informatif uniquement. Il cible surtout les valeurs encodées envoyées à
-wxPython, les chemins encodés et les écritures texte/binaire incohérentes.
+Audit informatif sur les occurrences, mais bloquant sur sa couverture. Il cible
+surtout les valeurs encodées envoyées à wxPython, les chemins encodés et les
+écritures texte/binaire incohérentes.
 """
 from __future__ import annotations
 
 import ast
 import sys
 from pathlib import Path
+
+try:
+    from scripts.audit_source_coverage import SourceAuditSession, iter_python_files
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession, iter_python_files
 
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "noethys")
 WX_TEXT_METHODS = {
@@ -79,13 +85,7 @@ def is_write_to_known_bytesio(node: ast.Call, known: set[str]) -> bool:
     )
 
 
-def scan(path: Path) -> list[tuple[int, str]]:
-    try:
-        source = path.read_text(encoding="utf-8", errors="replace")
-        tree = ast.parse(source, filename=str(path))
-    except SyntaxError:
-        return []
-
+def scan_tree(tree: ast.AST) -> list[tuple[int, str]]:
     known_bytesio = bytesio_names(tree)
     findings: set[tuple[int, str]] = set()
     for node in ast.walk(tree):
@@ -108,13 +108,30 @@ def scan(path: Path) -> list[tuple[int, str]]:
     return sorted(findings)
 
 
+def scan(path: Path) -> list[tuple[int, str]]:
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    if loaded is None:
+        raise RuntimeError(session.coverage.failures[0].format())
+    _source, tree = loaded
+    return scan_tree(tree)
+
+
 def main() -> int:
+    session = SourceAuditSession(iter_python_files(ROOT))
     total = 0
-    for path in sorted(ROOT.rglob("*.py")):
-        for lineno, message in scan(path):
+    for path in session.paths:
+        loaded = session.parse(path)
+        if loaded is None:
+            continue
+        _source, tree = loaded
+        for lineno, message in scan_tree(tree):
             total += 1
             print(f"{path}:{lineno}: {message}")
     print(f"\n{total} frontière(s) bytes/texte à examiner.")
+    if not session.report():
+        print("Audit incomplet : inventaire bytes/texte non exhaustif.")
+        return 2
     return 0
 
 
