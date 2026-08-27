@@ -6,6 +6,20 @@ Noethys devient la source métier unique pour les tiers, les prestations, la fac
 PMSL-Équipe reste la source RH/planning des intervenants.
 Dolibarr Oxygène reçoit les données comptables validées et ne devient pas une seconde logique de facturation parallèle.
 
+## Priorité de mise en œuvre — rentrée 2026
+
+La création du référentiel des **tiers et contacts** est prioritaire avant la refonte graphique complète et avant la migration du moteur de base de données.
+
+Ordre retenu :
+1. référentiel des tiers et contacts (Noe-062A) ;
+2. rôles, groupes libres et sections ;
+3. relations contractuelles ;
+4. conventions / avenants ;
+5. programmation et occurrences ;
+6. facturation, reporting et synchronisations.
+
+L'interface du premier lot reste volontairement simple et s'appuie sur le socle UI actuel. La refonte graphique générale ne doit pas bloquer la livraison métier.
+
 ## Chaîne métier
 
 Demande du partenaire
