@@ -259,6 +259,8 @@ class Panel(wx.Panel):
             DB.ExecuterReq(req)
             listeDonnees = DB.ResultatReq()
             DB.Close()
+            if len(listeDonnees) == 0:
+                return
             self.IDcompte_payeur = listeDonnees[0][0]
             self.ctrl_listview.SetIDcompte_payeur(self.IDcompte_payeur)
         # MAJ des contrôles
