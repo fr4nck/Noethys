@@ -2,13 +2,20 @@
 """Repère les conversions de dates fragiles héritées de Python 2.
 
 Cible les conversions directes en entier de tranches fixes et les constructions
-manuelles de dates à partir de ces tranches. Audit informatif uniquement.
+manuelles de dates à partir de ces tranches. Les occurrences restent
+informatives, mais la couverture des fichiers est désormais bloquante : aucun
+fichier illisible ou non parsable ne peut être assimilé à zéro occurrence.
 """
 from __future__ import annotations
 
 import ast
 import sys
 from pathlib import Path
+
+try:
+    from scripts.audit_source_coverage import SourceAuditSession, iter_python_files
+except ModuleNotFoundError:  # exécution directe depuis scripts/
+    from audit_source_coverage import SourceAuditSession, iter_python_files
 
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "noethys")
 DATE_HINTS = (
@@ -62,11 +69,7 @@ def call_name(node: ast.Call) -> str:
     return ""
 
 
-def scan(path: Path) -> list[tuple[int, str]]:
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"), filename=str(path))
-    except (OSError, SyntaxError):
-        return []
+def scan_tree(tree: ast.AST) -> list[tuple[int, str]]:
     findings = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -80,13 +83,35 @@ def scan(path: Path) -> list[tuple[int, str]]:
     return sorted(set(findings))
 
 
+def scan(path: Path) -> list[tuple[int, str]]:
+    """Analyse un fichier isolé et échoue explicitement si sa couverture est incomplète."""
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    if loaded is None:
+        failure = session.coverage.failures[0]
+        raise RuntimeError(failure.format())
+    _source, tree = loaded
+    return scan_tree(tree)
+
+
 def main() -> int:
+    paths = tuple(iter_python_files(ROOT))
+    session = SourceAuditSession(paths)
     total = 0
-    for path in sorted(ROOT.rglob("*.py")):
-        for lineno, message in scan(path):
+
+    for path in session.paths:
+        loaded = session.parse(path)
+        if loaded is None:
+            continue
+        _source, tree = loaded
+        for lineno, message in scan_tree(tree):
             total += 1
             print(f"{path}:{lineno}: {message}")
+
     print(f"\n{total} occurrence(s) de parsing de date fragile détectée(s).")
+    if not session.report():
+        print("Audit incomplet : le nombre d'occurrences ci-dessus ne peut pas être considéré comme exhaustif.")
+        return 2
     return 0
 
 
