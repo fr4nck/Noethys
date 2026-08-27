@@ -1,10 +1,14 @@
-# Architecture cible — Tiers, prestations, planning, facturation
+# Architecture cible — Tiers, programmes, séances, planning, conventions et facturation
 
 ## Principe directeur
 
-Noethys devient la source métier unique pour les tiers, les prestations, la facturation et les encaissements.
-PMSL-Équipe reste la source RH/planning des intervenants.
-Dolibarr Oxygène reçoit les données comptables validées et ne devient pas une seconde logique de facturation parallèle.
+Noethys devient la source métier de référence pour les tiers, activités/programmes, relations contractuelles, séances, lieux, facturation et encaissements.
+
+Teamworks reste la source RH : salariés, contrats, temps de travail, compétences, disponibilités et contrôles CCNS.
+
+PMSL-Équipe reste le cockpit opérationnel de planification et de validation terrain : affectations, planning des éducateurs, remplacements et validation du réalisé.
+
+Dolibarr / Oxygène reçoit les données comptables validées et ne devient pas une seconde logique de facturation parallèle.
 
 ## Priorité de mise en œuvre — rentrée 2026
 
@@ -20,55 +24,170 @@ Ordre retenu :
 
 L'interface du premier lot reste volontairement simple et s'appuie sur le socle UI actuel. La refonte graphique générale ne doit pas bloquer la livraison métier.
 
+## Modèle métier canonique
+
+Le modèle de référence est :
+
+`structure / personne morale → contacts → section / classe / cycle / service / groupe libre → programme ou activité contractuelle → séances prévues → séance réellement effectuée`
+
+La séance réelle conserve notamment :
+
+- le lieu réellement utilisé ;
+- l'éducateur réellement présent ;
+- les horaires et la durée réels ;
+- son statut et sa validation.
+
+Le modèle est générique. Les libellés d'interface varient selon le contexte sans créer des moteurs séparés : section sportive, classe, cycle scolaire, service, groupe, programme annuel, cycle EPS, mise à disposition, etc.
+
+## Structures et tiers
+
+Le modèle doit accepter sans identifiant administratif obligatoire :
+
+- associations ;
+- clubs / sections ;
+- écoles ;
+- mairies / collectivités ;
+- hôpitaux, EHPAD et autres établissements de santé ;
+- ALSH gérés par une mairie ou par une association ;
+- Département / ASE ;
+- autres partenaires et financeurs.
+
+RNA, SIREN, SIRET, APE/NAF restent facultatifs.
+
+Une structure peut cumuler plusieurs rôles selon la relation : organisateur, gestionnaire, bénéficiaire, payeur, financeur/subventionneur, partenaire, donneur d'ordre, propriétaire ou gestionnaire d'un lieu, structure d'accueil.
+
+Une structure comptable ne doit pas être dupliquée parce qu'elle exerce plusieurs rôles.
+
+## Contacts
+
+Les contacts appartiennent à une structure et peuvent avoir plusieurs rôles :
+
+- président / bureau ;
+- direction ;
+- enseignant / référent pédagogique ;
+- APEL ou association de parents d'élèves ;
+- responsable de section ;
+- trésorerie / facturation ;
+- planning ;
+- convention ;
+- administratif ;
+- technique / accès ;
+- urgence ;
+- autre.
+
+Le contact qui commande ou suit la prestation n'est pas nécessairement celui qui gère le lieu physique.
+
+## Groupes libres, sections, classes et cycles
+
+Le niveau situé sous la structure est volontairement libre afin de ne pas figer une hiérarchie annuelle.
+
+Exemples :
+
+- école : Cycle 1, Cycle 2, Cycle 3, PS, MS, GS, CP, CE1, CE2, CM1, CM2, `Classe Mme Dupont` ;
+- association : section tennis, section football, gymnastique adultes ;
+- hôpital / EHPAD : service, unité, groupe ;
+- collectivité : service, équipement ou groupe.
+
+Une section ou un groupe peut être renommé, activé ou archivé sans casser l'historique. Une nouvelle sous-structure n'est créée que lorsqu'il existe une vraie différence d'activité ou d'organisation.
+
+## Programme / activité contractuelle
+
+Le programme représente la prestation organisée sur une période.
+
+Exemples :
+
+- `EPS Cycle 2 — athlétisme — septembre/octobre 2026` ;
+- `Section gymnastique adultes — saison 2026-2027 — 34 séances` ;
+- `Sport-santé EHPAD — 2026-2027`.
+
+Il peut porter :
+
+- saison / période ;
+- pratique ou discipline ;
+- groupe / section ;
+- nombre de séances prévu ;
+- jours et horaires habituels ;
+- tarif et mode de facturation ;
+- relation contractuelle / convention ;
+- lieu habituel ;
+- éducateur habituel ou référent lorsque l'affectation est connue.
+
+Le nombre de 34 séances est un cas PMSL fréquent, pas une règle codée en dur.
+
+## Prestations, activités et inscriptions Noethys
+
+Le moteur historique des activités, inscriptions, consommations, prestations et tarifs est conservé autant que possible.
+
+L'objectif n'est pas de créer un moteur `sport` séparé mais d'utiliser le caractère flexible de Noethys pour faire cohabiter :
+
+- familles et ALSH ;
+- écoles ;
+- associations et sections ;
+- collectivités ;
+- établissements de santé ;
+- autres partenaires.
+
+Les différences sont portées par le tiers, la relation contractuelle, le groupe/section, le programme, les vues métier et le vocabulaire d'interface.
+
+Le vocabulaire peut donc dépendre du contexte :
+
+- familles : inscriptions, consommations, réservations ;
+- écoles / associations / institutions : programmes, interventions, séances, prestations.
+
+Aucune duplication de logique de facturation ne doit être introduite.
+
+## Éducateurs et séances
+
+L'éducateur sportif est le dernier maillon opérationnel de la chaîne et non un attribut permanent de l'école ou de la structure.
+
+### Écoles
+
+`établissement → contacts → classe/cycle/groupe → pratique ou cycle sportif → séances → éducateur de la séance`
+
+### Associations / institutions
+
+`personne morale → contacts → section/service → programme annuel → séances → éducateur de la séance`
+
+Un programme peut avoir un éducateur habituel afin de préremplir les occurrences. Chaque séance conserve néanmoins son propre éducateur réellement affecté.
+
+Cette distinction permet de gérer les remplacements sans réécrire le programme ou la convention. Le workflow automatisé de remplacement peut être développé plus tard, mais le modèle doit l'autoriser dès maintenant.
+
+## Lieux
+
+Un **lieu** est une donnée métier autonome, distincte de l'adresse administrative ou de facturation d'une structure.
+
+Il peut porter :
+
+- nom ;
+- rue, complément, code postal, ville ;
+- coordonnées géographiques lorsque disponibles ;
+- type : gymnase, terrain, école, salle, piscine, siège, autre ;
+- informations d'accès et notes pratiques ;
+- structure propriétaire / gestionnaire ;
+- contacts référents : technique, réservation, accès/clés, urgence, administratif.
+
+La structure cliente peut être différente de celle qui gère le lieu. Une association peut par exemple commander une prestation organisée dans un gymnase municipal dont le référent technique appartient à la mairie.
+
+Le programme peut définir un lieu habituel. Chaque séance conserve cependant le lieu réellement utilisé pour préserver l'historique et alimenter les calculs de déplacement.
+
 ## Chaîne métier
 
 Demande du partenaire
 → arbitrage / validation
+→ programme ou cycle
 → programmation des créneaux
+→ génération des occurrences
 → affectation de l'intervenant
-→ génération des interventions prévisionnelles
 → convention + annexe
 → réalisation / annulation / remplacement
 → validation du réalisé
 → facturation
 → encaissement
-→ synchronisation comptable vers Dolibarr Oxygène.
-
-## Structures et tiers
-
-Le modèle doit accepter sans identifiant administratif obligatoire :
-- associations ;
-- clubs / sections ;
-- écoles ;
-- mairies / collectivités ;
-- ALSH gérés par une mairie ou par une association ;
-- Département / ASE ;
-- autres partenaires et financeurs.
-
-RNA, SIREN, SIRET, APE/NAF restent facultatifs et peuvent être saisis manuellement ou proposés par une recherche publique assistée.
-
-Une structure peut cumuler plusieurs rôles selon la relation : organisateur, gestionnaire, bénéficiaire, payeur, financeur/subventionneur, partenaire, donneur d'ordre, structure d'accueil.
-
-## Contacts
-
-Les contacts appartiennent à une structure et peuvent avoir plusieurs rôles : président, trésorier, direction, APEL, responsable de section, planning, facturation, convention, administratif, urgence, etc.
-
-## Groupes libres
-
-Les écoles, associations et autres structures utilisent un libellé libre « section / classe / groupe » afin de ne pas figer une hiérarchie annuelle.
-
-## Prestations et consommations
-
-Le moteur historique des consommations et prestations de Noethys est conservé autant que possible.
-Le vocabulaire d'interface dépend du contexte :
-- familles : consommations / réservations ;
-- clubs, écoles, collectivités : interventions / séances / prestations.
-
-Une intervention porte au minimum : date, créneau, structure bénéficiaire, activité, intervenant prévu, intervenant réalisé, état, durée prévue, durée réalisée, durée validée, tarif et statut de facturation.
+→ synchronisation comptable.
 
 ## Demande annuelle et renouvellement
 
-Une fiche « Demande / programmation annuelle » enregistre : structure, saison, contacts, renouvellement ou nouveaux créneaux, groupe libre, jours/horaires, période souhaitée, observations et statut de traitement.
+Une fiche `Demande / programmation annuelle` enregistre : structure, saison, contacts, renouvellement ou nouveaux créneaux, groupe libre, jours/horaires, période souhaitée, observations et statut de traitement.
 
 Le renouvellement d'une saison doit permettre de recopier la programmation précédente puis de marquer chaque ligne : inchangée, modifiée, supprimée ou ajoutée.
 
@@ -80,99 +199,140 @@ Chaîne cible :
 
 **vœux de l'école → validation/arbitrage → cycles EPS → programmation réelle → affectation RH → séances réalisées → heures validées → facturation → rapport d'activité.**
 
-Le document opérationnel construit aujourd'hui après les vœux (par exemple un planning EPS annuel par école) doit devenir une **vue/export de la programmation acceptée**, pas une seconde source de saisie.
+Le document opérationnel construit aujourd'hui après les vœux doit devenir une **vue/export de la programmation acceptée**, pas une seconde source de saisie.
 
 Pour une programmation EPS, le modèle doit pouvoir porter au minimum :
 
 - établissement ;
+- contacts utiles : direction, enseignant, APEL, administratif ;
 - année scolaire / saison ;
-- période ou cycle ;
+- classe, niveau, cycle ou groupe libre ;
+- période ou cycle sportif ;
 - activité / discipline ;
-- classe, niveau ou groupe libre ;
 - jour ;
 - heure de début et heure de fin ;
-- lieu ;
+- lieu habituel ;
 - nombre de séances prévu ;
-- dates/occurrences calculées ;
+- dates / occurrences calculées ;
 - volume d'heures prévisionnel ;
-- tarif applicable et éventuelle adhésion/relation contractuelle ;
+- tarif applicable et relation contractuelle ;
 - budget prévisionnel ;
 - statut de validation.
 
-Noethys porte la demande, les cycles, les occurrences, les règles contractuelles et les montants. PMSL-Équipe porte l'affectation de l'éducateur, les contraintes RH, remplacements et le réalisé RH. Les deux systèmes doivent échanger par identifiants stables, sans double saisie ni couplage direct de bases.
+L'éducateur réel appartient à la séance. Une affectation habituelle peut préremplir les occurrences.
 
-La programmation doit pouvoir :
+## PMSL-Équipe
 
-- vérifier les dates et périodes scolaires ;
-- calculer automatiquement les heures ;
-- détecter les incohérences de créneaux ;
-- soumettre les besoins à l'écran d'impact planning ;
-- produire un export lisible pour l'école et le coordinateur ;
-- réutiliser ensuite exactement les mêmes données pour convention, facturation et rapport annuel.
+Noethys fournit :
+
+- identifiant stable de séance ;
+- structure ;
+- groupe / section ;
+- programme / activité ;
+- période et créneau ;
+- lieu prévu ;
+- besoin métier ;
+- éventuel éducateur habituel ;
+- relation contractuelle.
+
+PMSL-Équipe rapproche ces besoins des ressources et contraintes RH issues de Teamworks.
+
+L'éducateur doit pouvoir y consulter son planning puis valider les séances réellement effectuées.
+
+La validation peut faire remonter vers Noethys :
+
+- réalisée / annulée ;
+- éducateur réellement présent ;
+- horaires et durée réels ;
+- lieu réellement utilisé ;
+- commentaire utile.
+
+Les échanges utilisent des identifiants stables, au minimum pour :
+
+- la séance ;
+- l'éducateur ;
+- le lieu.
+
+Un remplacement dans PMSL-Équipe modifie l'éducateur réel de la séance sans recréer celle-ci.
+
+Avant validation d'une programmation, un écran `Impact planning` doit pouvoir signaler les indisponibilités, conflits, temps de trajet et surcharges.
+
+## Déplacements et frais kilométriques
+
+Les kilomètres ne sont pas une constante attachée à une activité.
+
+Ils doivent pouvoir être calculés depuis les lieux réellement validés et, lorsque nécessaire, depuis l'enchaînement réel des déplacements d'une journée.
+
+Deux sections d'une même association peuvent donc produire des distances différentes si elles utilisent des équipements distincts.
+
+Le réalisé validé dans PMSL-Équipe peut alimenter les données RH et frais utiles à Teamworks, sans déplacer la responsabilité de la paie vers Noethys.
+
+## Convention et annexe
+
+La convention n'est pas une seconde source de données : elle est générée depuis la relation contractuelle et la programmation déjà saisies.
+
+Elle peut reprendre :
+
+- structure et représentant ;
+- contacts ;
+- section / groupe ;
+- pratique ;
+- période ;
+- volume de séances ;
+- horaires ;
+- lieux ;
+- éducateur prévu lorsque contractuellement pertinent ;
+- tarif ;
+- modalités de facturation ;
+- clauses standard et annexes.
+
+L'annexe détaille les interventions prévisionnelles date par date.
+
+Une modification contractuelle peut produire un avenant sans écraser la convention initiale.
+
+Les mêmes données canoniques doivent produire : convention, annexe, planning, facturation, statistiques, rapport annuel, exports et synchronisations. Les tableurs Excel et documents Word parallèles ne sont pas des sources de vérité.
 
 ## Formulaire web futur de demande annuelle
 
 Le formulaire papier de demande de créneaux doit pouvoir être remplacé par un formulaire web public ou semi-public sécurisé par un lien ou jeton propre à la structure.
 
 Objectifs :
+
 - préremplir la structure et ses contacts connus ;
 - présenter les créneaux de la saison précédente ;
 - permettre, ligne par ligne : inchangé, modifier, supprimer ou ajouter ;
-- permettre la correction des coordonnées et des contacts de planning/facturation ;
+- permettre la correction des coordonnées et contacts ;
 - enregistrer directement la demande dans Noethys sans ressaisie ;
 - historiser les demandes par saison ;
-- soumettre la programmation à l'écran « Impact planning » de PMSL-Équipe avant validation ;
-- produire ensuite convention et annexe prévisionnelle depuis la programmation acceptée.
+- soumettre la programmation à PMSL-Équipe avant validation ;
+- produire ensuite convention et annexe depuis la programmation acceptée.
 
-Ce formulaire peut constituer un premier module web dédié avant l'existence d'un portail structures complet.
+## Reporting et statistiques
 
-## Convention et annexe
+Parce que tiers, programmes, lieux et réalisé utilisent les mêmes données canoniques, Noethys doit pouvoir produire notamment :
 
-La convention et la facturation ne sont pas saisies séparément : elles sont produites depuis la même relation contractuelle et la même programmation.
+- séances prévues, réalisées et annulées ;
+- heures prévues et réalisées ;
+- activité par structure, section, pratique, lieu, éducateur et période ;
+- volumes facturables ;
+- conventions et montants ;
+- rapports annuels ;
+- indicateurs partenaires et financeurs.
 
-La convention reprend le modèle documentaire existant sans en modifier arbitrairement la structure.
-L'annexe détaille les interventions prévisionnelles date par date, comme l'édition actuelle des réservations.
-Un changement en cours de saison peut produire un avenant sans écraser la convention initiale.
-
-## PMSL-Équipe
-
-Chaque créneau / relation contractuelle possède un identifiant stable partagé avec PMSL-Équipe.
-
-Noethys fournit :
-- structure ;
-- activité ;
-- période ;
-- créneau ;
-- besoin métier ;
-- tarif et relation contractuelle.
-
-PMSL-Équipe fournit :
-- intervenant affecté ;
-- disponibilités ;
-- conflits ;
-- temps de travail ;
-- trajets ;
-- absences ;
-- remplacements ;
-- validation RH du réalisé.
-
-Une affectation validée doit répercuter automatiquement le planning éducateur sans seconde saisie.
-Un remplacement dans PMSL-Équipe doit mettre à jour l'intervenant réalisé sans recréer la séance.
-
-Avant validation d'une programmation, un écran « Impact planning » doit pouvoir signaler les indisponibilités, conflits, temps de trajet et surcharges.
+Aucune statistique de référence ne doit dépendre d'une ressaisie dans un fichier externe.
 
 ## Historique de résidence et financements communaux
 
 Les participations communales liées à la fréquentation des ALSH sont calculées depuis les enfants et consommations déjà présents dans Noethys, sans double saisie.
 
-La résidence doit être historisée avec date de début et date de fin.
-La commune attribuée à une présence est celle de l'enfant à la date de cette présence.
+La résidence doit être historisée avec date de début et date de fin. La commune attribuée à une présence est celle de l'enfant à la date de cette présence.
 
 Les états financiers validés sont figés afin qu'une correction ultérieure d'adresse ne modifie pas silencieusement une demande déjà envoyée.
 
 ## Facturation et encaissements
 
 Noethys est la source unique de vérité pour :
+
 - prestations ;
 - factures ;
 - avoirs ;
@@ -182,13 +342,18 @@ Noethys est la source unique de vérité pour :
 
 Les modalités de facturation appartiennent à la relation contractuelle, pas au type de structure : mensuelle, trimestrielle, après validation du réalisé, manuelle, etc.
 
-## Dolibarr Oxygène
+## Dolibarr / Oxygène
 
 Le connecteur utilise les identifiants stables Noethys pour synchroniser de manière idempotente les tiers, factures, règlements et données comptables utiles.
+
 Une même mairie ou association reste un seul tiers comptable même si elle cumule plusieurs rôles ou activités.
 
 ## Compatibilité
 
 Cette architecture doit être introduite de manière additive.
+
 Les familles, individus, consommations, prestations, tarifs et bases existantes restent exploitables.
+
 Aucune migration destructive ou remplacement massif des tables historiques n'est autorisé sans nécessité démontrée et procédure de migration testée.
+
+Référence transverse : `PMSL-Arch/docs/ADR/ADR-007-modele-tiers-programmes-seances-lieux.md`.
