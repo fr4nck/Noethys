@@ -5,6 +5,7 @@ on:
     paths:
       - 'noethys/Utils/UTILS_Fichiers.py'
       - 'noethys/Utils/UTILS_Rapport_bugs.py'
+      - 'tests/test_vanilla_crash_recipient.py'
       - 'packaging/vanilla-installer.iss'
       - 'packaging/vanilla-noethys.spec'
       - '.github/workflows/vanilla-r2.yml'
@@ -47,6 +48,9 @@ jobs:
 
       - name: Compiler les sources
         run: python -m compileall -q noethys
+
+      - name: Tester la migration du destinataire de crashreports
+        run: python -m unittest tests.test_vanilla_crash_recipient
 
       - name: Vérifier wxPython sous Windows
         shell: pwsh
