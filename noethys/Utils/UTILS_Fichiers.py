@@ -3,7 +3,7 @@
 #------------------------------------------------------------------------
 # Application :    Noethys, gestion multi-activités
 # Site internet :  www.noethys.com
-# Auteur:           Ivan LUCAS
+# Auteur:          Ivan LUCAS
 # Copyright:       (c) 2010-16 Ivan LUCAS
 # Licence:         Licence GNU GPL
 #------------------------------------------------------------------------
@@ -99,16 +99,58 @@ def GetRepUtilisateur(fichier=""):
     # Ajoute le dirname si besoin
     return os.path.join(chemin, fichier)
 
+
+def _MigreFichierLocal(source, destination):
+    """Migre un fichier historique sans jamais écraser le fichier utilisateur actif."""
+    if not os.path.isfile(source):
+        return False
+
+    source_absolue = os.path.abspath(source)
+    destination_absolue = os.path.abspath(destination)
+    if source_absolue == destination_absolue:
+        return False
+
+    if os.path.exists(destination):
+        print(["migration ignoree, destination deja presente :", source, " > ", destination])
+        return False
+
+    print(["deplacement fichier config :", source, " > ", destination])
+    shutil.move(source, destination)
+    return True
+
+
 def DeplaceFichiers():
     """ Vérifie si des fichiers du répertoire Data ou du répertoire Utilisateur sont à déplacer vers le répertoire Utilisateur>AppData>Roaming """
 
-    # Déplace les fichiers de config et le journal
-    for nom in ("journal.log", "Config.json", "Customize.ini") :
-        for rep in ("", Chemins.GetMainPath("Data"), os.path.join(os.path.expanduser("~"), "noethys")) :
-            fichier = os.path.join(rep, nom)
-            if os.path.isfile(fichier) :
-                print(["deplacement fichier config :", fichier, " > ", GetRepUtilisateur(nom)])
-                shutil.move(fichier, GetRepUtilisateur(nom))
+    # Les sources historiques doivent être ancrées sur Noethys. L'ancien rep=""
+    # dépendait du répertoire courant du processus et pouvait déplacer un fichier
+    # sans rapport avec Noethys lorsqu'un raccourci ou un installateur changeait le CWD.
+    repertoires_historiques = (
+        Chemins.GetMainPath(""),
+        Chemins.GetMainPath("Data"),
+        os.path.join(os.path.expanduser("~"), "noethys"),
+    )
+
+    # Journal et personnalisation peuvent être migrés indépendamment.
+    for nom in ("journal.log", "Customize.ini"):
+        destination = GetRepUtilisateur(nom)
+        for rep in repertoires_historiques:
+            source = os.path.join(rep, nom)
+            if _MigreFichierLocal(source, destination):
+                break
+
+    # Config.json est autoritaire dès qu'il existe dans le profil utilisateur.
+    # Son .bak n'est migré que si la configuration correspondante vient elle-même
+    # d'être migrée, afin de ne jamais associer un vieux backup à une config active.
+    destination_config = GetRepUtilisateur("Config.json")
+    destination_backup = GetRepUtilisateur("Config.json.bak")
+    if not os.path.exists(destination_config):
+        for rep in repertoires_historiques:
+            source_config = os.path.join(rep, "Config.json")
+            if _MigreFichierLocal(source_config, destination_config):
+                source_backup = os.path.join(rep, "Config.json.bak")
+                _MigreFichierLocal(source_backup, destination_backup)
+                break
 
     # Déplace les fichiers xlang
     if os.path.isdir(Chemins.GetMainPath("Lang")) :
