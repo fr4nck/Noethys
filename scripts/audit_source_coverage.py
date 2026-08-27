@@ -31,6 +31,10 @@ SKIP_DIRS = {".git", ".venv", "venv", "__pycache__", "build", "dist"}
 _ENCODING_COOKIE = re.compile(br"^[ \t\f]*#.*?coding[:=][ \t]*([-\w.]+)")
 
 
+class AuditCoverageError(RuntimeError):
+    """Signale qu'un audit n'a pas réellement couvert tout son périmètre."""
+
+
 @dataclass(frozen=True)
 class SourceFailure:
     path: Path
@@ -159,14 +163,20 @@ class SourceAuditSession:
         self.coverage.parsed += 1
         return source, tree
 
+    def diagnostics(self) -> str:
+        lines = [self.coverage.summary()]
+        lines.extend(f"NOTE ENCODAGE: {note.format()}" for note in self.coverage.decode_notes)
+        lines.extend(f"ERREUR AUDIT: {failure.format()}" for failure in self.coverage.failures)
+        return "\n".join(lines)
+
+    def require_complete(self) -> None:
+        if not self.coverage.complete:
+            raise AuditCoverageError(self.diagnostics())
+
     def report(self, *, prefix: str = "") -> bool:
         if prefix:
             print(prefix)
-        print(self.coverage.summary())
-        for note in self.coverage.decode_notes:
-            print(f"NOTE ENCODAGE: {note.format()}")
-        for failure in self.coverage.failures:
-            print(f"ERREUR AUDIT: {failure.format()}")
+        print(self.diagnostics())
         return self.coverage.complete
 
 
