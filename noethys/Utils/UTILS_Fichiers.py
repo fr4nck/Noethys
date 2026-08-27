@@ -107,23 +107,54 @@ def GetRepUtilisateur(fichier=""):
         os.mkdir(chemin)
     return os.path.join(chemin, fichier)
 
+
+def _MigreFichierLocal(source, destination):
+    """Migre un fichier historique sans jamais écraser le fichier utilisateur actif."""
+    if not os.path.isfile(source):
+        return False
+
+    source_absolue = os.path.abspath(source)
+    destination_absolue = os.path.abspath(destination)
+    if source_absolue == destination_absolue:
+        return False
+
+    # Une configuration déjà présente dans le profil utilisateur est
+    # autoritaire. Une mise à jour ne doit jamais la remplacer par une copie
+    # ancienne trouvée près de l'exécutable ou dans un ancien répertoire Data.
+    if os.path.exists(destination):
+        print(["migration ignoree, destination deja presente :", source, " > ", destination])
+        return False
+
+    print(["deplacement fichier config :", source, " > ", destination])
+    shutil.move(source, destination)
+    return True
+
+
 def DeplaceFichiers():
     """ Vérifie si des fichiers du répertoire Data ou du répertoire Utilisateur sont à déplacer vers le répertoire Utilisateur>AppData>Roaming """
 
-    # Déplace les fichiers de config et le journal
-    for nom in ("journal.log", "Config.json", "Customize.ini") :
-        for rep in ("", Chemins.GetMainPath("Data"), os.path.join(os.path.expanduser("~"), "noethys")) :
-            fichier = os.path.join(rep, nom)
-            if os.path.isfile(fichier) :
-                print(["deplacement fichier config :", fichier, " > ", GetRepUtilisateur(nom)])
-                shutil.move(fichier, GetRepUtilisateur(nom))
+    # Déplace les fichiers de config et le journal. L'ancien code utilisait
+    # rep="", donc le répertoire courant du processus : un raccourci Windows ou
+    # un installateur pouvait alors faire migrer un Config.json sans rapport
+    # avec Noethys. Les sources historiques sont désormais toutes explicites et
+    # ancrées sur le répertoire de l'application.
+    repertoires_historiques = (
+        Chemins.GetMainPath(""),
+        Chemins.GetMainPath("Data"),
+        os.path.join(os.path.expanduser("~"), "noethys"),
+    )
+    for nom in ("journal.log", "Config.json", "Config.json.bak", "Customize.ini") :
+        destination = GetRepUtilisateur(nom)
+        for rep in repertoires_historiques :
+            source = os.path.join(rep, nom)
+            _MigreFichierLocal(source, destination)
 
     # Déplace les fichiers xlang
     if os.path.isdir(Chemins.GetMainPath("Lang")) :
         for nomFichier in os.listdir(Chemins.GetMainPath("Lang")) :
             if nomFichier.endswith(".xlang") :
                 source = Chemins.GetMainPath(u"Lang/%s" % nomFichier)
-                print(["deplacement fichier xlang :", source, " > ", GetRepLang(nomFichier)])
+                print(["deplacement fichier config :", source, " > ", GetRepLang(nomFichier)])
                 shutil.move(source, GetRepLang(nomFichier))
 
     # Déplace les fichiers du répertoire Sync
