@@ -43,6 +43,7 @@ from Utils import UTILS_Customize
 from Utils import UTILS_Internet
 import FonctionsPerso
 import GestionDB
+from sqlalchemy.pool import NullPool
 
 from Utils.UTILS_Decimal import FloatToDecimal as FloatToDecimal
 from Dlg.DLG_Portail_config import VALEURS_DEFAUT as VALEURS_DEFAUT_CONFIG
@@ -428,7 +429,7 @@ class Synchro():
 
         # Initialisation de la base de données
         nomFichierDB = UTILS_Fichiers.GetRepTemp(fichier="import_%d.db" % secret)
-        engine = models.create_engine("sqlite:///%s" % nomFichierDB, echo=False)
+        engine = models.create_engine("sqlite:///%s" % nomFichierDB, echo=False, poolclass=NullPool)
 
         # Création des tables
         models.Base.metadata.drop_all(engine)
@@ -1400,7 +1401,11 @@ class Synchro():
         # Commit
         self.log.EcritLog(_(u"Enregistrement des données à exporter..."))
         self.Pulse_gauge()
-        session.commit()
+        try:
+            session.commit()
+        finally:
+            session.close()
+            engine.dispose()
 
         # Compression du fichier
         self.log.EcritLog(_(u"Compression du fichier d'export..."))
