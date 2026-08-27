@@ -1,0 +1,58 @@
+name: Apply Vanilla portail temp DB cleanup
+
+on:
+  push:
+    branches:
+      - fix/vanilla-portail-tempdb-cleanup
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/vanilla-portail-tempdb-cleanup
+          fetch-depth: 0
+
+      - name: Apply focused resource cleanup
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('noethys/Utils/UTILS_Portail_synchro.py')
+          src = path.read_text(encoding='utf-8-sig')
+
+          old_import = 'import GestionDB\n\nfrom Utils.UTILS_Decimal import FloatToDecimal as FloatToDecimal'
+          new_import = 'import GestionDB\nfrom sqlalchemy.pool import NullPool\n\nfrom Utils.UTILS_Decimal import FloatToDecimal as FloatToDecimal'
+          assert src.count(old_import) == 1, 'unexpected GestionDB import context'
+          src = src.replace(old_import, new_import, 1)
+
+          old_engine = '        engine = models.create_engine("sqlite:///%s" % nomFichierDB, echo=False)'
+          new_engine = '        engine = models.create_engine("sqlite:///%s" % nomFichierDB, echo=False, poolclass=NullPool)'
+          assert src.count(old_engine) == 1, 'unexpected temporary engine creation context'
+          src = src.replace(old_engine, new_engine, 1)
+
+          old_commit = '        session.commit()\n\n        # Compression du fichier'
+          new_commit = '        try:\n            session.commit()\n        finally:\n            session.close()\n            engine.dispose()\n\n        # Compression du fichier'
+          assert src.count(old_commit) == 1, 'unexpected session commit context'
+          src = src.replace(old_commit, new_commit, 1)
+
+          path.write_text(src, encoding='utf-8')
+          PY
+
+          python -m py_compile noethys/Utils/UTILS_Portail_synchro.py
+          git diff --check
+
+      - name: Commit focused patch and remove helper workflow
+        shell: bash
+        run: |
+          rm .github/workflows/_apply_portail_tempdb_cleanup.yml
+          git config user.name "fr4nck"
+          git config user.email "f.bellardie@gmail.com"
+          git add noethys/Utils/UTILS_Portail_synchro.py .github/workflows/_apply_portail_tempdb_cleanup.yml
+          git commit -m "Vanilla — libérer la base temporaire Connecthys"
+          git push origin HEAD:fix/vanilla-portail-tempdb-cleanup
