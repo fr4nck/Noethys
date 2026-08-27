@@ -46,12 +46,19 @@ def _texte(valeur):
 
 
 def _date_iso(valeur=None):
-    valeur = valeur or datetime.date.today()
+    # ``None`` signifie « valeur interne omise » et conserve le repli historique
+    # sur aujourd'hui. En revanche une chaîne vide issue d'un formulaire est une
+    # donnée invalide : ne jamais transformer silencieusement une date effacée en
+    # date du jour.
+    if valeur is None:
+        valeur = datetime.date.today()
     if isinstance(valeur, datetime.datetime):
         valeur = valeur.date()
     if isinstance(valeur, datetime.date):
         return valeur.isoformat()
     texte = _texte(valeur)
+    if not texte:
+        raise ValueError("La date de la séance est obligatoire")
     for format_date in ("%Y-%m-%d", "%d/%m/%Y"):
         try:
             return datetime.datetime.strptime(texte, format_date).date().isoformat()
@@ -80,6 +87,31 @@ def CalculerDureeMinutes(heure_debut, heure_fin):
 
 def GenererUIDIntervention():
     return "INT-%s" % uuid.uuid4().hex
+
+
+def UIDStructureEcoleHistorique(IDecole):
+    return "ECOLE-NOETHYS-%d" % int(IDecole)
+
+
+def CompterInterventionsEcoleHistorique(db, IDecole):
+    """Retourne le nombre d'interventions liées à une école historique.
+
+    La fonction est compatible avec une base antérieure à Noe-062B : si les
+    tables additives n'existent pas encore, elle renvoie simplement zéro.
+    """
+    if not db.IsTableExists("structures") or not db.IsTableExists("interventions"):
+        return 0
+    uid = UIDStructureEcoleHistorique(IDecole).replace("'", "''")
+    req = """SELECT COUNT(i.IDintervention)
+    FROM interventions i
+    INNER JOIN structures s ON s.IDstructure=i.IDstructure
+    WHERE s.uid='%s';""" % uid
+    if db.ExecuterReq(req) != 1:
+        raise RuntimeError("Impossible de vérifier les séances rattachées à cette école")
+    lignes = db.ResultatReq()
+    if not lignes:
+        return 0
+    return int(lignes[0][0] or 0)
 
 
 def _liste_pairs(donnees):
@@ -118,7 +150,7 @@ class GestionnaireInterventions(object):
             raise ValueError("École historique introuvable")
 
         IDecole, nom, rue, cp, ville, tel, mail = lignes[0]
-        uid = "ECOLE-NOETHYS-%d" % int(IDecole)
+        uid = UIDStructureEcoleHistorique(IDecole)
         donnees = {
             "type_structure": "ecole",
             "nom": _texte(nom),
@@ -176,7 +208,10 @@ class GestionnaireInterventions(object):
             "date_creation": aujourd_hui,
             "date_modification": aujourd_hui,
         }
-        return self.db.ReqInsert("interventions", _liste_pairs(valeurs))
+        IDintervention = self.db.ReqInsert("interventions", _liste_pairs(valeurs))
+        if IDintervention is None:
+            raise RuntimeError("L'enregistrement de la séance a échoué")
+        return IDintervention
 
     def LireIntervention(self, IDintervention):
         req = "SELECT IDintervention, %s FROM interventions WHERE IDintervention=%d;" % (
@@ -228,12 +263,15 @@ class GestionnaireInterventions(object):
             valeurs["duree_minutes"] = CalculerDureeMinutes(debut, fin)
 
         valeurs["date_modification"] = datetime.date.today().isoformat()
-        return self.db.ReqMAJ(
+        resultat = self.db.ReqMAJ(
             "interventions",
             _liste_pairs(valeurs),
             "IDintervention",
             int(IDintervention),
         )
+        if resultat is False:
+            raise RuntimeError("La modification de la séance a échoué")
+        return resultat
 
     def ArchiverSeanceSport(self, IDintervention):
         return self.ModifierSeanceSport(IDintervention, {"actif": 0})
