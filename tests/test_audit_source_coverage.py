@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from scripts import audit_fragile_date_parsing
-from scripts.audit_source_coverage import SourceAuditSession
+from scripts.audit_source_coverage import SourceAuditSession, iter_python_files
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,6 +71,18 @@ class SourceCoverageTests(unittest.TestCase):
             self.assertEqual(session.coverage.read, 0)
             self.assertEqual(session.coverage.parsed, 0)
             self.assertEqual(session.coverage.failures[0].stage, "lecture")
+
+    def test_noethys_tree_is_fully_readable_and_parseable(self):
+        paths = tuple(iter_python_files(ROOT / "noethys"))
+        session = SourceAuditSession(paths)
+        for path in session.paths:
+            session.parse(path)
+
+        failures = "\n".join(failure.format() for failure in session.coverage.failures)
+        self.assertTrue(
+            session.coverage.complete,
+            session.coverage.summary() + ("\n" + failures if failures else ""),
+        )
 
     def test_compatibility_inventory_audits_use_the_shared_coverage_contract(self):
         scripts = ROOT / "scripts"
