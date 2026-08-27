@@ -6,7 +6,8 @@ Objectif : repérer les contrôles qui confondent encore leur parent visuel wx
 avec un contrôleur métier, les callbacks exécutés trop tôt pendant ``__init__``
 et les accès directs à un objet wx local après son ``Destroy()``. L'audit reste
 informatif pour les familles historiques larges, mais distingue des signaux
-structurels précis avant de rendre une catégorie bloquante.
+structurels précis avant de rendre une catégorie bloquante. La couverture des
+fichiers UI first-party analysés est bloquante.
 """
 
 from __future__ import annotations
@@ -17,13 +18,16 @@ import json
 from collections import Counter
 from pathlib import Path
 
+try:
+    from scripts.audit_source_coverage import SourceAuditSession
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession
+
 ROOT = Path(__file__).resolve().parents[1]
 NOETHYS = ROOT / "noethys"
 UI_LAYERS = {"Ctrl", "Dlg", "Ol"}
 EXCLUS = {"ObjectListView", "Outils", "__pycache__"}
 
-# Méthodes purement visuelles usuelles : leur appel via le parent wx n'implique
-# pas, à lui seul, un couplage métier.
 WX_PARENT_METHODS = {
     "Bind", "Centre", "Center", "Close", "Destroy", "Disable", "Enable",
     "Fit", "Freeze", "GetBackgroundColour", "GetClientSize", "GetFont",
@@ -73,11 +77,6 @@ def _line(lines: list[str], lineno: int) -> str:
 
 
 def _looks_like_wx_constructor(init: ast.FunctionDef) -> bool:
-    """Ne retient que les constructeurs qui initialisent explicitement wx.*.
-
-    ``super().__init__`` seul n'est pas une preuve : l'ancienne heuristique
-    classait aussi des objets de données ``Track`` comme contrôles wxPython.
-    """
     for node in ast.walk(init):
         if not isinstance(node, ast.Call):
             continue
@@ -185,8 +184,6 @@ def _scan_parent_coupling(path: Path, tree: ast.AST, lines: list[str]) -> list[d
                             "snippet": _line(lines, node.lineno),
                         })
 
-                # ``self.GetGrandParent().controle_metier`` est le même type de
-                # dépendance fragile qu'un ``self.parent.parent`` explicite.
                 if isinstance(node.value, ast.Call):
                     call_chain = _call_name(node.value)
                     if call_chain == ["self", "GetGrandParent"] and node.attr not in WX_PARENT_METHODS:
@@ -225,7 +222,6 @@ def _scan_constructor_order(path: Path, tree: ast.AST, lines: list[str]) -> list
             if not chain:
                 continue
 
-            # Le premier marqueur de layout clôt la phase à inspecter.
             if chain[:1] == ["self"] and chain[-1] in LAYOUT_MARKERS:
                 layout_seen = True
                 continue
@@ -241,8 +237,6 @@ def _scan_constructor_order(path: Path, tree: ast.AST, lines: list[str]) -> list
                     "snippet": _line(lines, call.lineno),
                 })
 
-                # Signal fort : la méthode appelée lit réellement un attribut
-                # de ``self`` qui n'est créé que plus tard dans le constructeur.
                 if len(chain) == 2:
                     callback = _method(cls, chain[-1])
                     if callback is not None:
@@ -277,7 +271,6 @@ def _scan_constructor_order(path: Path, tree: ast.AST, lines: list[str]) -> list
 
 
 def _target_key(node: ast.AST) -> str | None:
-    """Retourne une cible locale simple suivie par l'audit de destruction."""
     if isinstance(node, ast.Name):
         return node.id
     if (
@@ -290,13 +283,6 @@ def _target_key(node: ast.AST) -> str | None:
 
 
 def _runtime_nodes(node: ast.AST):
-    """Parcourt seulement l'expression exécutée par l'instruction courante.
-
-    Les sous-blocs ``if``/``try``/``for`` sont analysés séparément par
-    ``_scan_destroy_block``. Ne pas y descendre ici évite qu'une réutilisation
-    légitime du nom ``dlg`` dans une branche soit attribuée au ``Destroy()`` du
-    bloc extérieur.
-    """
     for child in ast.iter_child_nodes(node):
         if isinstance(child, ast.stmt) or isinstance(child, ast.Lambda):
             continue
@@ -329,7 +315,6 @@ def _assigned_targets(statement: ast.stmt) -> set[str]:
 
 
 def _direct_destroy_target(statement: ast.stmt) -> str | None:
-    """Reconnaît uniquement ``objet.Destroy()`` exécuté sans condition."""
     if not isinstance(statement, ast.Expr) or not isinstance(statement.value, ast.Call):
         return None
     call = statement.value
@@ -339,7 +324,6 @@ def _direct_destroy_target(statement: ast.stmt) -> str | None:
 
 
 def _nested_statement_blocks(statement: ast.stmt):
-    """Renvoie les blocs exécutables internes, chacun analysé indépendamment."""
     for attr in ("body", "orelse", "finalbody"):
         block = getattr(statement, attr, None)
         if isinstance(block, list) and block:
@@ -366,15 +350,9 @@ def _scan_destroy_block(
 ) -> list[dict]:
     findings: list[dict] = []
     rel = str(path.relative_to(ROOT)).replace("\\", "/")
-    # Une branche exécutée après un Destroy() du bloc parent hérite de cet état.
-    # Elle travaille sur une copie : un Destroy conditionnel interne ne doit pas
-    # contaminer le bloc parent une fois la branche terminée.
     destroyed: dict[str, int] = dict(inherited_destroyed or {})
 
     for statement in statements:
-        # Un usage dans une instruction ultérieure au Destroy est risqué. On
-        # inspecte avant de considérer les réaffectations de cette instruction,
-        # afin de ne pas masquer ``dlg = transformer(dlg)``.
         for target in sorted(_loaded_targets(statement).intersection(destroyed)):
             findings.append({
                 "kind": "use_after_destroy",
@@ -387,8 +365,6 @@ def _scan_destroy_block(
                 "snippet": _line(lines, statement.lineno),
             })
 
-        # Les branches héritent uniquement des objets déjà détruits avant leur
-        # entrée. Leurs propres destructions/réaffectations restent locales.
         for block in _nested_statement_blocks(statement):
             findings.extend(
                 _scan_destroy_block(
@@ -408,8 +384,6 @@ def _scan_destroy_block(
         if target:
             destroyed[target] = statement.lineno
 
-        # Rien situé après un terminal direct du bloc n'est atteignable depuis
-        # ce chemin ; inutile de propager l'état de destruction.
         if isinstance(statement, TERMINAL_STATEMENTS):
             break
 
@@ -417,7 +391,6 @@ def _scan_destroy_block(
 
 
 def _scan_use_after_destroy(path: Path, tree: ast.AST, lines: list[str]) -> list[dict]:
-    """Détecte le motif Phoenix ``Destroy()`` puis réutilisation du même objet."""
     findings: list[dict] = []
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -446,21 +419,26 @@ def _dedupe(findings: list[dict]) -> list[dict]:
     return result
 
 
-def scan() -> list[dict]:
+def _scan_with_session():
+    paths = [path for path in sorted(NOETHYS.rglob("*.py")) if _ui_file(path)]
+    session = SourceAuditSession(paths)
     findings: list[dict] = []
-    for path in sorted(NOETHYS.rglob("*.py")):
-        if not _ui_file(path):
+    for path in session.paths:
+        loaded = session.parse(path)
+        if loaded is None:
             continue
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-            tree = ast.parse(text, filename=str(path))
-        except (OSError, SyntaxError):
-            continue
+        text, tree = loaded
         lines = text.splitlines()
         findings.extend(_scan_parent_coupling(path, tree, lines))
         findings.extend(_scan_constructor_order(path, tree, lines))
         findings.extend(_scan_use_after_destroy(path, tree, lines))
-    return _dedupe(findings)
+    return _dedupe(findings), session
+
+
+def scan() -> list[dict]:
+    findings, session = _scan_with_session()
+    session.require_complete()
+    return findings
 
 
 def main() -> int:
@@ -469,7 +447,9 @@ def main() -> int:
     parser.add_argument("--fail-on", action="append", default=[])
     args = parser.parse_args()
 
-    findings = scan()
+    findings, session = _scan_with_session()
+    session.report(prefix="Couverture audit cycle de vie wxPython")
+    session.require_complete()
     counts = Counter(item["kind"] for item in findings)
     kinds = {
         "visual_parent_business_coupling",
