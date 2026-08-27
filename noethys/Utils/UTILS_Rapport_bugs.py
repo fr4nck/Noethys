@@ -25,10 +25,37 @@ import wx.lib.dialogs
 from Utils import UTILS_Config
 from Utils import UTILS_Customize
 from Utils import UTILS_Fichiers
+from Utils import UTILS_Parametres
 
 URL_SUIVI_BUGS = "https://github.com/fr4nck/Noethys/issues"
+CATEGORIE_PARAMETRES = "maintenance"
 PARAM_DESTINATAIRE = "adresse_rapport_bugs"
-DESTINATAIRE_DEFAUT = "multimedia@pelemele.org"
+DESTINATAIRE_DEFAUT = "noethys@gmail.com"
+
+
+def GetDestinataireRapports():
+    """Retourne le destinataire partagé par la base, avec repli sur l'adresse historique de Noethys."""
+    try:
+        adresse = UTILS_Parametres.Parametres(mode="get", categorie=CATEGORIE_PARAMETRES, nom=PARAM_DESTINATAIRE, valeur=u"")
+        if adresse is not None:
+            adresse = adresse.strip()
+            if len(adresse) > 0:
+                return adresse
+    except Exception:
+        pass
+    return DESTINATAIRE_DEFAUT
+
+
+def SetDestinataireRapports(adresse=u""):
+    """Mémorise le destinataire dans la base ouverte. Un échec ne doit jamais perturber le rapport de crash."""
+    try:
+        if adresse is None:
+            adresse = u""
+        adresse = adresse.strip()
+        UTILS_Parametres.Parametres(mode="set", categorie=CATEGORIE_PARAMETRES, nom=PARAM_DESTINATAIRE, valeur=adresse)
+        return True
+    except Exception:
+        return False
 
 
 def _GetRepLogs():
@@ -201,7 +228,7 @@ class DLG_Rapport(wx.Dialog):
             destinataire = ""
         destinataire = destinataire.strip()
         if len(destinataire) == 0:
-            destinataire = UTILS_Config.GetParametre(PARAM_DESTINATAIRE, DESTINATAIRE_DEFAUT) or DESTINATAIRE_DEFAUT
+            destinataire = GetDestinataireRapports()
         if len(destinataire) == 0 or "@" not in destinataire:
             dlg = wx.MessageDialog(self, _(u"Veuillez renseigner une adresse de réception valide pour le rapport d'erreur."), _(u"Envoi impossible"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
@@ -275,7 +302,7 @@ class DLG_Envoi(wx.Dialog):
         self.label_ligne_1 = wx.StaticText(self, wx.ID_ANY, _(u"Le rapport est prêt à être envoyé..."))
         self.label_ligne_2 = wx.StaticText(self, wx.ID_ANY, _(u"Choisissez l'adresse de réception, puis ajoutez si besoin un commentaire avant l'envoi."))
         self.label_destinataire = wx.StaticText(self, wx.ID_ANY, _(u"Adresse de réception :"))
-        self.ctrl_destinataire = wx.TextCtrl(self, wx.ID_ANY, UTILS_Config.GetParametre(PARAM_DESTINATAIRE, DESTINATAIRE_DEFAUT) or DESTINATAIRE_DEFAUT)
+        self.ctrl_destinataire = wx.TextCtrl(self, wx.ID_ANY, GetDestinataireRapports())
         self.ctrl_commentaires = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
         self.check_journal = wx.CheckBox(self, -1, _(u"Joindre les journaux d'erreurs (Recommandé)"))
 
@@ -293,7 +320,7 @@ class DLG_Envoi(wx.Dialog):
     def __set_properties(self):
         self.SetTitle(_(u"Envoyer le rapport d'erreur"))
         self.label_ligne_1.SetFont(wx.Font(9, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
-        self.ctrl_destinataire.SetToolTip(wx.ToolTip(_(u"Adresse Email qui recevra les futurs crashreports. Elle sera mémorisée sur ce poste.")))
+        self.ctrl_destinataire.SetToolTip(wx.ToolTip(_(u"Adresse Email de maintenance partagée par tous les utilisateurs de la base ouverte. Laissez vide pour utiliser noethys@gmail.com.")))
         self.ctrl_commentaires.SetToolTip(wx.ToolTip(_(u"Vous pouvez saisir des commentaires ici")))
         self.check_journal.SetToolTip(wx.ToolTip(_(u"Pour faciliter la résolution du bug, joignez les journaux locaux")))
         self.SetMinSize((600, 400))
@@ -328,19 +355,21 @@ class DLG_Envoi(wx.Dialog):
         commentaires = self.ctrl_commentaires.GetValue()
         if len(commentaires) == 0:
             commentaires = _(u"Aucun")
-        message = _(u"Destinataire : %s\n\nRapport : \n\n%s\nCommentaires : \n\n%s") % (self.GetDestinataire(), self.texteRapport, commentaires)
+        destinataire = self.GetDestinataire() or DESTINATAIRE_DEFAUT
+        message = _(u"Destinataire : %s\n\nRapport : \n\n%s\nCommentaires : \n\n%s") % (destinataire, self.texteRapport, commentaires)
         dlg = wx.lib.dialogs.ScrolledMessageDialog(self, message, _(u"Visualisation du contenu du message"))
         dlg.ShowModal()
         dlg.Destroy()
 
     def OnBoutonEnvoyer(self, event):
-        destinataire = self.GetDestinataire()
-        if len(destinataire) == 0 or "@" not in destinataire:
+        destinataire_saisi = self.GetDestinataire()
+        destinataire = destinataire_saisi or DESTINATAIRE_DEFAUT
+        if "@" not in destinataire:
             dlg = wx.MessageDialog(self, _(u"Veuillez saisir une adresse de réception valide."), _(u"Adresse invalide"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
             return
-        UTILS_Config.SetParametre(PARAM_DESTINATAIRE, destinataire)
+        SetDestinataireRapports(destinataire_saisi)
         self.EndModal(wx.ID_OK)
 
     def OnBoutonAnnuler(self, event):
