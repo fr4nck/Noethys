@@ -1,0 +1,48 @@
+name: Temporary PR218 except-target fix
+
+on:
+  push:
+    branches:
+      - audit/branch-assignment-flow-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: audit/branch-assignment-flow-hardening
+          fetch-depth: 0
+
+      - name: Fix exception target flow
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('scripts/audit_branch_assignment_gaps.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''            handler_states = [guaranteed_definitions(handler.body, defined) for handler in statement.handlers]\n            handler_terminations = [block_terminates(handler.body) for handler in statement.handlers]\n'''
+          new = '''            handler_states = []\n            for handler in statement.handlers:\n                state = guaranteed_definitions(handler.body, defined)\n                # Python efface automatiquement la cible de ``except ... as name``\n                # à la sortie du handler (PEP 3110), même si elle masquait une\n                # liaison locale préexistante ou a été réaffectée dans le corps.\n                if handler.name:\n                    state.discard(handler.name)\n                handler_states.append(state)\n            handler_terminations = [block_terminates(handler.body) for handler in statement.handlers]\n'''
+          if old not in text:
+              raise SystemExit('Bloc handler_states attendu introuvable')
+          text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Compile scanner
+        run: python -m py_compile scripts/audit_branch_assignment_gaps.py
+
+      - name: Commit patch and remove temporary workflow
+        shell: bash
+        run: |
+          rm .github/workflows/tmp-pr218-except-target-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/audit_branch_assignment_gaps.py .github/workflows/tmp-pr218-except-target-fix.yml
+          git commit -m "Audit: oublier les cibles except après le handler"
+          git push origin HEAD:audit/branch-assignment-flow-hardening
