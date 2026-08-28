@@ -123,7 +123,7 @@ def assigned_names(statements):
 
     class Stores(ast.NodeVisitor):
         def visit_Name(self, node):
-            if isinstance(node.ctx, ast.Store):
+            if isinstance(node.ctx, (ast.Store, ast.Del)):
                 names.add(node.id)
 
         def _visit_comp(self, node, value_nodes):
@@ -191,6 +191,31 @@ def deleted_names(statement):
         result.update(target_deleted_names(target))
     return result
 
+
+def deleted_names_in_sequence(statements):
+    names = set()
+
+    class Deletes(ast.NodeVisitor):
+        def visit_Name(self, node):
+            if isinstance(node.ctx, ast.Del):
+                names.add(node.id)
+
+        def visit_FunctionDef(self, node):
+            return
+
+        def visit_AsyncFunctionDef(self, node):
+            return
+
+        def visit_Lambda(self, node):
+            return
+
+        def visit_ClassDef(self, node):
+            return
+
+    visitor = Deletes()
+    for statement in statements:
+        visitor.visit(statement)
+    return names
 
 def direct_definitions(statement):
     if isinstance(statement, ast.Assign):
@@ -284,7 +309,9 @@ def _with_continuing_definitions(statement, predefined):
     if statement.items:
         first = statement.items[0]
         if isinstance(first.optional_vars, ast.Name):
-            defined.add(first.optional_vars.id)
+            name = first.optional_vars.id
+            if name not in deleted_names_in_sequence(statement.body):
+                defined.add(name)
     return defined
 
 
@@ -320,6 +347,8 @@ def guaranteed_definitions(statements, predefined):
                     defined = body_defined & else_defined
                 else:
                     return defined
+            elif not body_terminates:
+                defined = body_defined & defined
 
         elif isinstance(statement, ast.Try):
             body_defined = guaranteed_definitions(statement.body, defined)
@@ -375,7 +404,7 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
             whole_if_terminates = block_terminates([statement])
 
             for name in sorted(assigned_here):
-                if name in defined or name in guaranteed_after_if or whole_if_terminates:
+                if name in guaranteed_after_if or whole_if_terminates:
                     continue
 
                 in_body = name in body_assigned
