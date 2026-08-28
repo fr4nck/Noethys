@@ -41,6 +41,7 @@ class UtilsDatesBranchAssignmentContractTests(unittest.TestCase):
         self.assertEqual(datetime.time(0, 0), convertir("07:30:00:00"))
         self.assertEqual(datetime.time(0, 0), convertir("xx:30"))
         self.assertEqual(datetime.time(0, 0), convertir("25:00"))
+        self.assertEqual(datetime.time(0, 0), convertir("99999999999999999999:00"))
 
     def test_arrondir_time_preserves_existing_rounding_and_unknown_direction(self):
         arrondir = extract_function("ArrondirTime")
