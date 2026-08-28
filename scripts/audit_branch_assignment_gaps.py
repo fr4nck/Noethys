@@ -4,8 +4,9 @@
 
 Le contrôle est volontairement conservateur : il ne signale qu'une affectation
 présente dans une seule branche, sans définition antérieure visible, lorsque le
-premier usage ultérieur de ce nom est une lecture. Les résultats restent des
-candidats à qualifier humainement. La couverture des sources est bloquante.
+premier usage ultérieur de ce nom est une lecture ou une suppression. Les
+résultats restent des candidats à qualifier humainement. La couverture des
+sources est bloquante.
 
 La propagation des définitions suit les chemins qui peuvent réellement
 continuer après un branchement. Une chaîne exhaustive ``if/elif/else`` qui
@@ -13,7 +14,7 @@ définit un nom dans toutes ses branches rend donc ce nom disponible ensuite,
 y compris lorsque les ``elif`` sont représentés par des ``If`` imbriqués dans
 ``orelse`` par l'AST Python. Les cibles de compréhension restent dans leur
 portée Python 3 et ne sont jamais prises pour des affectations locales de la
-fonction englobante.
+fonction englobante. Un ``del`` retire explicitement le nom de l'état garanti.
 """
 
 from __future__ import annotations
@@ -43,13 +44,7 @@ def iter_python_files(root=NOETHYS):
 
 
 def _visit_comprehension_runtime_order(visitor, node, value_nodes):
-    """Visite une compréhension dans l'ordre de liaison utile à l'audit.
-
-    Le premier iterable est évalué avant la liaison de sa cible. Chaque cible
-    suivante est ensuite liée avant ses filtres, les générateurs suivants et
-    l'expression produite. Cet ordre évite de prendre une cible de compréhension
-    pour une variable locale lue avant affectation dans la fonction englobante.
-    """
+    """Visite une compréhension dans l'ordre de liaison utile à l'audit."""
     for generator in node.generators:
         visitor.visit(generator.iter)
         visitor.visit(generator.target)
@@ -66,7 +61,12 @@ class NameEvents(ast.NodeVisitor):
 
     def visit_Name(self, node):
         if node.id == self.name:
-            mode = "load" if isinstance(node.ctx, ast.Load) else "store"
+            if isinstance(node.ctx, ast.Load):
+                mode = "load"
+            elif isinstance(node.ctx, ast.Del):
+                mode = "delete"
+            else:
+                mode = "store"
             self.events.append((node.lineno, mode))
 
     def visit_ListComp(self, node):
@@ -99,7 +99,7 @@ def assigned_names(statements):
 
     class Stores(ast.NodeVisitor):
         def visit_Name(self, node):
-            if isinstance(node.ctx, (ast.Store, ast.Del)):
+            if isinstance(node.ctx, ast.Store):
                 names.add(node.id)
 
         def _visit_comp(self, node, value_nodes):
@@ -149,6 +149,23 @@ def target_names(target):
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
             names.add(node.id)
     return names
+
+
+def target_deleted_names(target):
+    names = set()
+    for node in ast.walk(target):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Del):
+            names.add(node.id)
+    return names
+
+
+def deleted_names(statement):
+    if not isinstance(statement, ast.Delete):
+        return set()
+    result = set()
+    for target in statement.targets:
+        result.update(target_deleted_names(target))
+    return result
 
 
 def direct_definitions(statement):
@@ -210,19 +227,20 @@ def function_args(function):
 def guaranteed_definitions(statements, predefined):
     """Retourne les noms définis sur tous les chemins qui atteignent la suite.
 
-    Cette fonction est volontairement prudente. Les boucles ne propagent pas
-    leurs affectations car leur corps peut ne jamais s'exécuter. Pour un ``if``
-    exhaustif, l'intersection des définitions des branches est en revanche
-    garantie. Lorsqu'une branche termine le flot, seule la branche qui continue
-    contribue aux définitions disponibles après le ``if``.
-
-    Un ``with`` générique peut supprimer une exception levée dans son corps.
-    Les affectations du corps ne sont donc pas garanties après sa sortie ; seul
-    l'éventuel ``as cible`` est forcément lié sur un chemin qui continue.
+    Les boucles ne propagent pas leurs affectations car leur corps peut ne jamais
+    s'exécuter. Pour un ``if`` exhaustif, l'intersection des définitions des
+    branches est garantie. Lorsqu'une branche termine le flot, seule la branche
+    qui continue contribue. Un ``with`` générique ne propage pas les
+    affectations de son corps, puisqu'un context manager peut supprimer une
+    exception ; seule l'éventuelle cible ``as`` est garantie. Un ``del`` retire
+    immédiatement sa cible de l'ensemble défini.
     """
     defined = set(predefined)
     for statement in statements:
-        if isinstance(statement, ast.If):
+        if isinstance(statement, ast.Delete):
+            defined.difference_update(deleted_names(statement))
+
+        elif isinstance(statement, ast.If):
             body_defined = guaranteed_definitions(statement.body, defined)
             body_terminates = block_terminates(statement.body)
 
@@ -300,7 +318,7 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
                 if unassigned_path_terminates:
                     continue
                 event = first_event(following, name)
-                if event and event[1] == "load":
+                if event and event[1] in {"load", "delete"}:
                     findings.append({
                         "kind": "branch_assignment_gap",
                         "priority": "high",
@@ -356,6 +374,7 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
 
             defined = guaranteed_definitions([statement], defined)
 
+        defined.difference_update(deleted_names(statement))
         defined.update(direct_definitions(statement))
 
 
