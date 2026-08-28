@@ -207,6 +207,31 @@ class BranchAssignmentGapTests(unittest.TestCase):
         ''')
         self.assertFalse(any(item["name"] == "handle" for item in report["findings"]))
 
+    def test_delete_removes_definition_before_later_branch(self):
+        report = self.report_for('''
+            def f(flag, other):
+                if flag:
+                    value = 1
+                    del value
+                else:
+                    value = 2
+                if other:
+                    value = 3
+                return value
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "value"]
+        self.assertEqual(len(findings), 1)
+
+    def test_delete_on_unassigned_path_is_detected_as_first_event(self):
+        report = self.report_for('''
+            def f(flag):
+                if flag:
+                    value = 1
+                del value
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "value"]
+        self.assertEqual(len(findings), 1)
+
     def test_repository_inventory_is_exported(self):
         report = audit.build_report()
         output = Path("tmp/branch-assignment-audit.json")
