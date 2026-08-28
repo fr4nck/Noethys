@@ -352,7 +352,15 @@ def guaranteed_definitions(statements, predefined):
 
         elif isinstance(statement, ast.Try):
             body_defined = guaranteed_definitions(statement.body, defined)
-            handler_states = [guaranteed_definitions(handler.body, defined) for handler in statement.handlers]
+            handler_states = []
+            for handler in statement.handlers:
+                state = guaranteed_definitions(handler.body, defined)
+                # Python efface automatiquement la cible de ``except ... as name``
+                # à la sortie du handler (PEP 3110), même si elle masquait une
+                # liaison locale préexistante ou a été réaffectée dans le corps.
+                if handler.name:
+                    state.discard(handler.name)
+                handler_states.append(state)
             handler_terminations = [block_terminates(handler.body) for handler in statement.handlers]
 
             continuing_states = []
