@@ -34,10 +34,15 @@ class Dialog(wx.Dialog):
         # Image
         if icone :
             if not isinstance(icone, wx.Bitmap) :
-                if icone == wx.ICON_ERROR : artid = wx.ART_ERROR
-                if icone == wx.ICON_EXCLAMATION : artid = wx.ART_WARNING
-                if icone == wx.ICON_QUESTION : artid = wx.ART_QUESTION
-                if icone == wx.ICON_INFORMATION : artid = wx.ART_INFORMATION
+                dict_artid = {
+                    wx.ICON_ERROR : wx.ART_ERROR,
+                    wx.ICON_EXCLAMATION : wx.ART_WARNING,
+                    wx.ICON_QUESTION : wx.ART_QUESTION,
+                    wx.ICON_INFORMATION : wx.ART_INFORMATION,
+                }
+                if icone not in dict_artid :
+                    raise ValueError("icone de message inconnue : %r" % (icone,))
+                artid = dict_artid[icone]
                 icone = wx.ArtProvider.GetBitmap(artid, wx.ART_MESSAGE_BOX, self.taille_icone)
             image = wx.StaticBitmap(self, -1, icone)
         else:
