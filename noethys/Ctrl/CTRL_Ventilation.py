@@ -29,6 +29,21 @@ else :
 
 from Utils.UTILS_Decimal import FloatToDecimal as FloatToDecimal
 
+
+def FloatToDecimalFini(montant):
+    """Convertit un montant historique en Decimal fini, ou retourne None."""
+    try:
+        if isinstance(montant, decimal.Decimal):
+            if not montant.is_finite():
+                return None
+        valeur = FloatToDecimal(montant)
+        if not valeur.is_finite():
+            return None
+        return valeur
+    except (decimal.DecimalException, TypeError, ValueError, OverflowError):
+        return None
+
+
 from Utils import UTILS_Config
 SYMBOLE = UTILS_Config.GetParametre("monnaie_symbole", u"€")
 
@@ -671,6 +686,10 @@ class CTRL_Ventilation(gridlib.Grid):
         self.dictRegroupements = {}
         listeKeys = []
         nbreLignes = 0
+        regroupements_valides = ("individu", "facture", "date", "periode")
+        if self.KeyRegroupement not in regroupements_valides:
+            raise ValueError("Regroupement inconnu : %s" % self.KeyRegroupement)
+
         for ligne_prestation in self.listeLignesPrestations :
             if self.KeyRegroupement == "individu" : 
                 key = ligne_prestation.IDindividu
@@ -678,13 +697,13 @@ class CTRL_Ventilation(gridlib.Grid):
                     label = _(u"Prestations diverses")
                 else:
                     label = ligne_prestation.nomCompletIndividu
-            if self.KeyRegroupement == "facture" : 
+            elif self.KeyRegroupement == "facture" : 
                 key = ligne_prestation.IDfacture
                 label = ligne_prestation.label_facture
-            if self.KeyRegroupement == "date" : 
+            elif self.KeyRegroupement == "date" : 
                 key = ligne_prestation.date
                 label = ligne_prestation.date_complete
-            if self.KeyRegroupement == "periode" : 
+            else:
                 key = ligne_prestation.periode
                 label = ligne_prestation.periode_complete
 
@@ -739,6 +758,8 @@ class CTRL_Ventilation(gridlib.Grid):
         self.MAJbarreInfos() 
         
     def SetRegroupement(self, key):
+        if key not in ("individu", "facture", "date", "periode"):
+            raise ValueError("Regroupement inconnu : %s" % key)
         self.KeyRegroupement = key
         self.MAJ() 
 
@@ -901,10 +922,16 @@ class CTRL(wx.Panel):
         grid_sizer_base.Fit(self)
     
     def OnRadioRegroupement(self, event):
-        if self.radio_periode.GetValue() == True : key = "periode"
-        if self.radio_facture.GetValue() == True : key = "facture"
-        if self.radio_individu.GetValue() == True : key = "individu"
-        if self.radio_date.GetValue() == True : key = "date"
+        if self.radio_periode.GetValue() == True :
+            key = "periode"
+        elif self.radio_facture.GetValue() == True :
+            key = "facture"
+        elif self.radio_individu.GetValue() == True :
+            key = "individu"
+        elif self.radio_date.GetValue() == True :
+            key = "date"
+        else:
+            return
         self.ctrl_ventilation.SetRegroupement(key)
     
     def MAJ(self):
@@ -943,9 +970,29 @@ class CTRL(wx.Panel):
             self.ctrl_info.SetLabel(_(u"Vous avez saisi un montant non valide !"))
             return
         
-        creditAVentiler = FloatToDecimal(self.montant_reglement) - FloatToDecimal(self.total_ventilation)
-        
-        totalRestePrestationsAVentiler = FloatToDecimal(self.ctrl_ventilation.GetTotalRestePrestationsAVentiler())
+        montant_reglement = FloatToDecimalFini(self.montant_reglement)
+        total_ventilation = FloatToDecimalFini(self.total_ventilation)
+        if montant_reglement is None or total_ventilation is None:
+            self.validation = "erreur"
+            self.ctrl_image.SetBitmap(self.imgErreur)
+            self.ctrl_info.SetLabel(_(u"Vous avez saisi un montant non valide !"))
+            return
+
+        try:
+            creditAVentiler = montant_reglement - total_ventilation
+            totalRestePrestations = self.ctrl_ventilation.GetTotalRestePrestationsAVentiler()
+        except (decimal.DecimalException, TypeError, ValueError, OverflowError):
+            self.validation = "erreur"
+            self.ctrl_image.SetBitmap(self.imgErreur)
+            self.ctrl_info.SetLabel(_(u"Vous avez saisi un montant non valide !"))
+            return
+
+        totalRestePrestationsAVentiler = FloatToDecimalFini(totalRestePrestations)
+        if totalRestePrestationsAVentiler is None:
+            self.validation = "erreur"
+            self.ctrl_image.SetBitmap(self.imgErreur)
+            self.ctrl_info.SetLabel(_(u"Vous avez saisi un montant non valide !"))
+            return
         if creditAVentiler > totalRestePrestationsAVentiler :
             creditAVentiler = totalRestePrestationsAVentiler
         
@@ -956,8 +1003,8 @@ class CTRL(wx.Panel):
         elif creditAVentiler > FloatToDecimal(0.0) :
             self.validation = "addition"
             label = _(u"Vous devez encore ventiler %.2f %s !") % (creditAVentiler, SYMBOLE)
-        elif creditAVentiler < FloatToDecimal(0.0) :
-            if self.montant_reglement >= FloatToDecimal(0.0):
+        else:
+            if montant_reglement >= FloatToDecimal(0.0):
                 self.validation = "trop"
                 label = _(u"Vous avez ventilé %.2f %s en trop !") % (-creditAVentiler, SYMBOLE)
             else:
@@ -975,11 +1022,34 @@ class CTRL(wx.Panel):
         self.ColoreLabelVentilationAuto() 
         
     def Validation(self):
-        creditAVentiler = FloatToDecimal(self.montant_reglement) - FloatToDecimal(self.total_ventilation)
+        def AfficherErreurVentilation():
+            dlg = wx.MessageDialog(self, _(u"La ventilation n'est pas valide. Veuillez la vérifier..."), _(u"Erreur de saisie"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
         if self.validation == "ok" :
             return True
+        if self.validation == "erreur" :
+            return AfficherErreurVentilation()
+
+        montant_reglement = FloatToDecimalFini(self.montant_reglement)
+        total_ventilation = FloatToDecimalFini(self.total_ventilation)
+        if montant_reglement is None or total_ventilation is None:
+            return AfficherErreurVentilation()
+        try:
+            creditAVentiler = montant_reglement - total_ventilation
+        except (decimal.DecimalException, TypeError, ValueError, OverflowError):
+            return AfficherErreurVentilation()
+
         if self.validation == "addition" :
-            totalRestePrestationsAVentiler = FloatToDecimal(self.ctrl_ventilation.GetTotalRestePrestationsAVentiler())
+            try:
+                totalRestePrestations = self.ctrl_ventilation.GetTotalRestePrestationsAVentiler()
+            except (decimal.DecimalException, TypeError, ValueError, OverflowError):
+                return AfficherErreurVentilation()
+            totalRestePrestationsAVentiler = FloatToDecimalFini(totalRestePrestations)
+            if totalRestePrestationsAVentiler is None:
+                return AfficherErreurVentilation()
             if creditAVentiler > totalRestePrestationsAVentiler :
                 creditAVentiler = totalRestePrestationsAVentiler
             if creditAVentiler > FloatToDecimal(0.0) :
@@ -990,11 +1060,6 @@ class CTRL(wx.Panel):
                     return False
         if self.validation == "trop" :
             dlg = wx.MessageDialog(self, _(u"Vous avez ventilé %.2f %s en trop !") % (-creditAVentiler, SYMBOLE), _(u"Erreur de saisie"), wx.OK | wx.ICON_ERROR)
-            dlg.ShowModal()
-            dlg.Destroy()
-            return False
-        if self.validation == "erreur" :
-            dlg = wx.MessageDialog(self, _(u"La ventilation n'est pas valide. Veuillez la vérifier..."), _(u"Erreur de saisie"), wx.OK | wx.ICON_ERROR)
             dlg.ShowModal()
             dlg.Destroy()
             return False
