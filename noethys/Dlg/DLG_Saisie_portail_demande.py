@@ -29,6 +29,46 @@ from Utils import UTILS_Config
 from Utils import UTILS_Parametres
 SYMBOLE = UTILS_Config.GetParametre("monnaie_symbole", u"€")
 
+
+def ParseVentilationPaiement(ventilation):
+    """Décode la ventilation Connecthys d'un paiement en ligne.
+
+    Le format historique est une liste séparée par des virgules : ``F<ID>#<montant>``
+    pour une facture et ``P<ID>#<montant>`` pour une période. Une entrée inconnue
+    ou incomplète est rejetée explicitement afin de ne jamais réutiliser le type
+    de l'élément précédent. Les segments vides périphériques sont tolérés pour
+    rester compatibles avec une éventuelle virgule finale historique.
+    """
+    dict_paiements = {"facture": {}, "periode": {}}
+    if ventilation is None or (u"%s" % ventilation).strip() == "":
+        raise ValueError(u"ventilation vide")
+
+    types = {"F": "facture", "P": "periode"}
+    nbre_elements = 0
+    for valeur in (u"%s" % ventilation).split(","):
+        valeur = valeur.strip()
+        if not valeur:
+            continue
+        type_impaye = types.get(valeur[0])
+        if type_impaye is None:
+            raise ValueError(u"type de ventilation inconnu : %s" % valeur[0])
+
+        morceaux = valeur[1:].split("#")
+        if len(morceaux) != 2 or not morceaux[0] or not morceaux[1]:
+            raise ValueError(u"entrée de ventilation invalide : %s" % valeur)
+        try:
+            ID = int(morceaux[0])
+            montant = float(morceaux[1])
+        except (TypeError, ValueError):
+            raise ValueError(u"entrée de ventilation invalide : %s" % valeur)
+
+        dict_paiements[type_impaye][ID] = montant
+        nbre_elements += 1
+
+    if nbre_elements == 0:
+        raise ValueError(u"ventilation vide")
+    return dict_paiements
+
 if 'phoenix' in wx.PlatformInfo:
     from wx.adv import DatePickerCtrl, DP_DROPDOWN, EVT_DATE_CHANGED
 else :
@@ -865,12 +905,11 @@ class Dialog(wx.Dialog):
         # Affiche la ventilation du paiement en ligne
         if self.track.categorie == "reglements" and self.track.action == "paiement_en_ligne":
             # Analyse de la ventilation
-            dict_paiements = {"facture": {}, "periode": {}}
-            for texte in self.track.ventilation.split(","):
-                if texte[0] == "F": type_impaye = "facture"
-                if texte[0] == "P": type_impaye = "periode"
-                ID, montant = texte[1:].split("#")
-                dict_paiements[type_impaye][int(ID)] = float(montant)
+            try:
+                dict_paiements = ParseVentilationPaiement(self.track.ventilation)
+            except ValueError:
+                self.ctrl_informations.SetTexte(_(u"Ventilation du paiement en ligne invalide."))
+                return
 
             DB = GestionDB.DB()
 
@@ -1224,12 +1263,11 @@ class Traitement():
         ventilation = self.track.ventilation
 
         # Analyse de la ventilation
-        dict_paiements = {"facture": {}, "periode": {}}
-        for texte in ventilation.split(","):
-            if texte[0] == "F": type_impaye = "facture"
-            if texte[0] == "P": type_impaye = "periode"
-            ID, montant = texte[1:].split("#")
-            dict_paiements[type_impaye][int(ID)] = float(montant)
+        try:
+            dict_paiements = ParseVentilationPaiement(ventilation)
+        except ValueError as err:
+            self.EcritLog(_(u"[ERREUR] Ventilation du paiement en ligne invalide : %s") % err)
+            return False
 
         DB = GestionDB.DB()
 
@@ -1746,6 +1784,7 @@ class Traitement():
                             self.EcritLog(texte, log_jumeau)
                             resultat = ctrl_grille.SaisieConso(IDunite=IDunite, date=date, mode=mode)
                         else :
+                            texte = _(u"Saisie de l'unité ID%d du %s en mode %s") % (IDunite, UTILS_Dates.DateDDEnFr(date), mode_label)
                             resultat = _(u"L'unité ID%d est inconnue. Vérifiez le paramétrage des unités de réservation." % IDunite)
 
                         if resultat != True :
