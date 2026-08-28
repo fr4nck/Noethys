@@ -3,8 +3,10 @@
 """Rassemble les inventaires statiques à relire avant de figer une RC.
 
 Ce script ne modifie ni le code ni les bases. Il regroupe en une commande les
-inventaires SQL strict, cycle de vie wxPython, anciens outils de listes et les
-signatures de défauts transverses apprises dans Teamworks.
+inventaires SQL strict, cycle de vie wxPython, anciens outils de listes, les
+signatures de défauts transverses apprises dans Teamworks et les affectations
+conditionnelles potentiellement non définies après qualification de leurs
+gardes.
 
 Avant tout inventaire, il impose le contrat global de couverture des sources :
 tout ``noethys/**/*.py`` doit être trouvé, lu selon son encodage Python et
@@ -31,6 +33,7 @@ from scripts import audit_source_coverage  # noqa: E402
 from scripts import audit_sql_strict  # noqa: E402
 from scripts import audit_teamworks_signatures  # noqa: E402
 from scripts import audit_wx_lifecycle  # noqa: E402
+from scripts import qualify_branch_assignment_gaps  # noqa: E402
 
 DEFAULT_ROOT = ROOT / "noethys"
 DEFAULT_OUTPUT = ROOT / "tmp" / "pre-rc-audits"
@@ -120,6 +123,8 @@ def collect(root: Path = DEFAULT_ROOT) -> dict:
     teamworks_report = audit_teamworks_signatures.build_report(root)
     teamworks_coverage = dict(teamworks_report["coverage"])
 
+    branch_report = qualify_branch_assignment_gaps.build_report(root)
+
     return {
         "summary": {
             "source_coverage": {
@@ -149,12 +154,18 @@ def collect(root: Path = DEFAULT_ROOT) -> dict:
                 "priorities": dict(teamworks_report["priorities"]),
                 "coverage": teamworks_coverage,
             },
+            "branch_assignment_gaps": {
+                "total": branch_report["count"],
+                "priorities": dict(branch_report["priorities"]),
+                "classifications": dict(branch_report["classifications"]),
+            },
         },
         "sql_review": sql_review,
         "wx_findings": wx_findings,
         "legacy_findings": legacy_findings,
         "legacy_screens": legacy_screens,
         "teamworks_findings": list(teamworks_report["findings"]),
+        "branch_assignment_findings": list(branch_report["findings"]),
     }
 
 
@@ -190,6 +201,13 @@ def write_reports(data: dict, output_dir: Path) -> None:
             "findings": data["teamworks_findings"],
         },
     )
+    _write_json(
+        output_dir / "branch-assignment-qualified-audit.json",
+        {
+            "summary": data["summary"]["branch_assignment_gaps"],
+            "findings": data["branch_assignment_findings"],
+        },
+    )
 
 
 def print_summary(data: dict, output_dir: Path) -> None:
@@ -200,6 +218,7 @@ def print_summary(data: dict, output_dir: Path) -> None:
     legacy = summary["legacy_list_tools"]
     teamworks = summary["teamworks_signatures"]
     teamworks_coverage = teamworks["coverage"]
+    branch = summary["branch_assignment_gaps"]
 
     print("Inventaires statiques pré-RC")
     print("===========================")
@@ -230,6 +249,14 @@ def print_summary(data: dict, output_dir: Path) -> None:
             "OK" if teamworks_coverage["complete"] else "ECHEC",
         )
     )
+    print(
+        "Affectations: %d candidat(s) — high=%d, low=%d"
+        % (
+            branch["total"],
+            branch["priorities"].get("high", 0),
+            branch["priorities"].get("low", 0),
+        )
+    )
     print("Rapports    : %s" % output_dir)
     print("")
     print("Ces nombres sont des inventaires. Corriger uniquement après revue du risque concret.")
@@ -244,7 +271,7 @@ def run(root: Path = DEFAULT_ROOT, output_dir: Path = DEFAULT_OUTPUT) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Regroupe les inventaires SQL/wx/listes/signatures Teamworks à relire avant une RC"
+        description="Regroupe les inventaires SQL/wx/listes/signatures Teamworks/affectations à relire avant une RC"
     )
     parser.add_argument("--root", type=Path, default=DEFAULT_ROOT)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)

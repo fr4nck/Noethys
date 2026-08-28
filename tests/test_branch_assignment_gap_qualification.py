@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import json
+import tempfile
+import textwrap
+import unittest
+from pathlib import Path
+
+from scripts import audit_branch_assignment_gaps as base
+from scripts import qualify_branch_assignment_gaps as audit
+
+
+class BranchAssignmentQualificationTests(unittest.TestCase):
+    def report_for(self, source):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "sample.py").write_text(textwrap.dedent(source), encoding="utf-8")
+            return audit.build_report(root)
+
+    def assert_all_review_high(self, report):
+        self.assertGreater(report["count"], 0)
+        self.assertEqual(report["priorities"], {"high": report["count"]})
+        self.assertEqual(report["classifications"], {"review": report["count"]})
+        self.assertTrue(all(item["priority"] == "high" for item in report["findings"]))
+        self.assertTrue(all(item["classification"] == "review" for item in report["findings"]))
+
+    def test_repeated_identity_guard_is_not_automatically_downgraded(self):
+        report = self.report_for('''
+            def f(flag):
+                if flag is True:
+                    value = 1
+                if flag is True:
+                    return value
+        ''')
+        self.assert_all_review_high(report)
+
+    def test_dynamic_guard_is_not_automatically_downgraded(self):
+        report = self.report_for('''
+            def f(obj):
+                if obj.ready:
+                    value = 1
+                if obj.ready:
+                    return value
+        ''')
+        self.assert_all_review_high(report)
+
+    def test_loop_back_edge_is_not_automatically_downgraded(self):
+        report = self.report_for('''
+            def f(flag, condition):
+                if flag is True:
+                    value = 1
+                while condition:
+                    if flag is True:
+                        return value
+                    flag = True
+        ''')
+        self.assert_all_review_high(report)
+
+    def test_delete_after_branch_remains_visible(self):
+        report = self.report_for('''
+            def f(flag):
+                if flag:
+                    value = 1
+                del value
+        ''')
+        self.assert_all_review_high(report)
+        self.assertEqual(report["findings"][0]["name"], "value")
+
+    def test_qualification_preserves_every_raw_candidate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "sample.py").write_text(textwrap.dedent('''
+                def f(first, second):
+                    if first:
+                        left = 1
+                    print(left)
+                    if second:
+                        right = 2
+                    return right
+            '''), encoding="utf-8")
+            raw = base.build_report(root)
+            report = audit.build_report(root)
+
+        raw_keys = {
+            (item["file"], item["function"], item["if_line"], item["line"], item["name"])
+            for item in raw["findings"]
+        }
+        qualified_keys = {
+            (item["file"], item["function"], item["if_line"], item["line"], item["name"])
+            for item in report["findings"]
+        }
+        self.assertEqual(qualified_keys, raw_keys)
+        self.assertEqual(report["count"], raw["count"])
+        self.assert_all_review_high(report)
+
+    def test_repository_qualification_is_exported_without_hidden_candidates(self):
+        raw = base.build_report()
+        report = audit.build_report()
+        output = Path("tmp/branch-assignment-qualified-audit.json")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(
+            f"BRANCH_ASSIGNMENT_QUALIFIED={report['count']} "
+            f"{report['priorities']} {report['classifications']}"
+        )
+        self.assertEqual(report["count"], raw["count"])
+        if report["count"]:
+            self.assert_all_review_high(report)
+        self.assertIn("findings", report)
+
+
+if __name__ == "__main__":
+    unittest.main()

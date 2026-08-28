@@ -39,6 +39,27 @@ class BranchAssignmentGapTests(unittest.TestCase):
         ''')
         self.assertEqual(report["count"], 0)
 
+    def test_unvalued_annotation_does_not_define_local(self):
+        report = self.report_for('''
+            def f(flag):
+                value: int
+                if flag:
+                    value = 1
+                return value
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "value"]
+        self.assertEqual(len(findings), 1)
+
+    def test_valued_annotation_defines_local(self):
+        report = self.report_for('''
+            def f(flag):
+                value: int = 0
+                if flag:
+                    value = 1
+                return value
+        ''')
+        self.assertFalse(any(item["name"] == "value" for item in report["findings"]))
+
     def test_terminating_unassigned_branch_is_safe(self):
         report = self.report_for('''
             def f(flag):
@@ -46,6 +67,19 @@ class BranchAssignmentGapTests(unittest.TestCase):
                     return None
                 else:
                     value = 1
+                return value
+        ''')
+        self.assertEqual(report["count"], 0)
+
+    def test_terminating_branch_propagates_continuing_definition(self):
+        report = self.report_for('''
+            def f(flag, other):
+                if flag:
+                    return None
+                else:
+                    value = 1
+                if other:
+                    value = 2
                 return value
         ''')
         self.assertEqual(report["count"], 0)
@@ -73,6 +107,51 @@ class BranchAssignmentGapTests(unittest.TestCase):
         ''')
         self.assertEqual(report["count"], 0)
 
+    def test_partial_assignment_in_both_branches_is_detected(self):
+        report = self.report_for('''
+            def f(flag, left_ready, right_ready):
+                if flag:
+                    if left_ready:
+                        value = 1
+                else:
+                    if right_ready:
+                        value = 2
+                return value
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "value"]
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0]["detail"], "partial_branches")
+
+    def test_partial_assignment_on_continuing_branch_is_detected_when_other_branch_terminates(self):
+        report = self.report_for('''
+            def f(flag, ready):
+                if flag:
+                    if ready:
+                        value = 1
+                else:
+                    return None
+                return value
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "value"]
+        self.assertEqual(len(findings), 1)
+
+    def test_exhaustive_if_elif_else_is_propagated(self):
+        report = self.report_for('''
+            def f(mode, other):
+                if mode == "a":
+                    value = 1
+                elif mode == "b":
+                    value = 2
+                elif mode == "c":
+                    value = 3
+                else:
+                    value = 4
+                if other:
+                    value = 5
+                return value
+        ''')
+        self.assertEqual(report["count"], 0)
+
     def test_nested_conditional_assignment_is_not_treated_as_guaranteed(self):
         report = self.report_for('''
             def f(flag, nested, other):
@@ -85,9 +164,35 @@ class BranchAssignmentGapTests(unittest.TestCase):
                     value = 3
                 return value
         ''')
-        # Le premier if reste trop complexe pour être qualifié ici, mais il ne
-        # doit surtout pas faire considérer ``value`` comme garanti ensuite.
         self.assertTrue(any(item["name"] == "value" for item in report["findings"]))
+
+    def test_comprehension_target_does_not_bind_enclosing_function(self):
+        report = self.report_for('''
+            def f(flag, rows):
+                if flag:
+                    left = [tuple(value) for value in rows]
+                return [tuple(value) for value in rows]
+        ''')
+        self.assertFalse(any(item["name"] == "value" for item in report["findings"]))
+
+    def test_comprehension_outer_iterable_read_remains_visible(self):
+        report = self.report_for('''
+            def f(flag):
+                if flag:
+                    rows = [1]
+                return [value for value in rows]
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "rows"]
+        self.assertEqual(len(findings), 1)
+
+    def test_previous_comprehension_target_is_local_in_next_generator(self):
+        report = self.report_for('''
+            def f(flag, rows):
+                if flag:
+                    marker = [(left, right) for left in rows for right in left]
+                return [(left, right) for left in rows for right in left]
+        ''')
+        self.assertFalse(any(item["name"] in {"left", "right"} for item in report["findings"]))
 
     def test_try_assignment_with_terminating_handler_is_propagated(self):
         report = self.report_for('''
@@ -127,6 +232,89 @@ class BranchAssignmentGapTests(unittest.TestCase):
                 return value
         ''')
         self.assertEqual(report["count"], 0)
+
+    def test_with_body_assignment_is_not_guaranteed_after_suppression(self):
+        report = self.report_for('''
+            def f(flag):
+                with suppress(Exception):
+                    value = operation()
+                if flag:
+                    value = 2
+                return value
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "value"]
+        self.assertEqual(len(findings), 1)
+
+    def test_with_as_target_is_guaranteed_on_continuing_path(self):
+        report = self.report_for('''
+            def f(flag):
+                with manager() as handle:
+                    operation()
+                if flag:
+                    handle = replacement()
+                return handle
+        ''')
+        self.assertFalse(any(item["name"] == "handle" for item in report["findings"]))
+
+    def test_later_with_target_is_not_guaranteed_after_outer_suppression(self):
+        report = self.report_for('''
+            def f(flag):
+                with outer() as first, inner() as value:
+                    operation()
+                if flag:
+                    value = replacement()
+                return value
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "value"]
+        self.assertEqual(len(findings), 1)
+
+    def test_first_with_target_remains_guaranteed_with_multiple_managers(self):
+        report = self.report_for('''
+            def f(flag):
+                with outer() as first, inner() as value:
+                    operation()
+                if flag:
+                    first = replacement()
+                return first
+        ''')
+        self.assertFalse(any(item["name"] == "first" for item in report["findings"]))
+
+    def test_destructured_first_with_target_is_not_guaranteed_after_suppressed_unpack_error(self):
+        report = self.report_for('''
+            def f(flag):
+                with suppressing_manager() as (left, right):
+                    operation()
+                if flag:
+                    right = replacement()
+                return right
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "right"]
+        self.assertEqual(len(findings), 1)
+
+    def test_delete_removes_definition_before_later_branch(self):
+        report = self.report_for('''
+            def f(flag, other):
+                if flag:
+                    value = 1
+                    del value
+                else:
+                    value = 2
+                if other:
+                    value = 3
+                return value
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "value"]
+        self.assertEqual(len(findings), 1)
+
+    def test_delete_on_unassigned_path_is_detected_as_first_event(self):
+        report = self.report_for('''
+            def f(flag):
+                if flag:
+                    value = 1
+                del value
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "value"]
+        self.assertEqual(len(findings), 1)
 
     def test_repository_inventory_is_exported(self):
         report = audit.build_report()
