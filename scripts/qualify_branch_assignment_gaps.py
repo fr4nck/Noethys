@@ -10,7 +10,8 @@ Cette seconde étape ne baisse volontairement aucune priorité par heuristique.
 Une occurrence ne peut sortir de ``high/review`` que via une qualification
 explicite, étroite et documentée dans ``EXPLICIT_SAFE``. La clé ne contient pas
 de numéro de ligne afin de résister aux déplacements de code, mais elle doit
-correspondre à exactement un candidat brut ; une entrée absente ou ambiguë est
+correspondre à exactement un candidat brut et à l’empreinte AST complète de
+la fonction qui porte son invariant ; une entrée absente, modifiée ou ambiguë est
 signalée et couverte par les tests du dépôt.
 """
 
@@ -36,16 +37,16 @@ ROOT = base.NOETHYS
 # chaque entrée doit être justifiée par un invariant de contrôle de flot précis
 # et rester unique dans l'inventaire brut.
 EXPLICIT_SAFE = {
-    ('Dlg/DLG_Saisie_portail_demande.py', 'MAJ_informations', 'dict_periodes', 'body_only', '0343a39678fbf0f9bf748fec2787518bfd7b996f259d2e928f4066c1880bb363'): (
+    ('Dlg/DLG_Saisie_portail_demande.py', 'MAJ_informations', 'dict_periodes', 'body_only', '70da503afe9758502db83bb2c3554f5eca9d4c5cf1259d0a526530e14aa85125'): (
         "la lecture n'est atteinte qu'en itérant des paiements de type période ; ce même ensemble non vide initialise dict_periodes juste avant"
     ),
-    ('Dlg/DLG_Saisie_portail_demande.py', 'MAJ_informations', 'dict_factures', 'body_only', '661e61d415ec7daa109e89d5e9c5eca87e624e3b09fa3f1eae7f51ee5bb27372'): (
+    ('Dlg/DLG_Saisie_portail_demande.py', 'MAJ_informations', 'dict_factures', 'body_only', 'c62fc4c3a65bec7133ae368a55b9f9f7a41384c3694ee9238ea8341d55c5a528'): (
         "la lecture n'est atteinte qu'en itérant des paiements de type facture ; ce même ensemble non vide initialise dict_factures juste avant"
     ),
-    ('Dlg/DLG_Saisie_portail_demande.py', 'Traitement_recus', 'reponse', 'body_only', '7bf64ac505cc641391cd756a60032158c26c9b976868e45a9c95574c2c33b321'): (
+    ('Dlg/DLG_Saisie_portail_demande.py', 'Traitement_recus', 'reponse', 'body_only', 'b86a279771200d94bb532db67d41aa2d53d8292a3a7a1be721966d1cbfc35eab'): (
         "les chemins continuants sont couverts par methode_envoi != 'email' ou methode_envoi == 'email' ; chacun définit reponse avant le retour"
     ),
-    ('Dlg/DLG_Saisie_portail_demande.py', 'Traitement_factures', 'reponse', 'body_only', '84ef787a336bf91244a97181fa077d299621266533e4532f3e7fe73694d90398'): (
+    ('Dlg/DLG_Saisie_portail_demande.py', 'Traitement_factures', 'reponse', 'body_only', '408b1606ca3a437fcaa3d8e5e8808677c6676533387ce045283acd90787b57ed'): (
         "les chemins continuants sont couverts par methode_envoi != 'email' ou methode_envoi == 'email' ; chacun définit reponse avant le retour"
     ),
 }
@@ -53,10 +54,10 @@ EXPLICIT_SAFE = {
 def _candidate_fingerprint(root, item):
     """Empreinte la structure AST qui justifie une qualification explicite.
 
-    Les numéros de ligne servent uniquement à retrouver les nœuds signalés par
-    le scanner. Ils ne participent pas à l'empreinte : un déplacement de code
-    reste donc stable, tandis qu'une modification du branchement ou de la
-    lecture rend automatiquement l'entrée de registre obsolète.
+    Les numéros de ligne servent uniquement à retrouver la fonction signalée par
+    le scanner. Ils ne participent pas à l'empreinte. En revanche, toute évolution
+    AST de cette fonction invalide la qualification, y compris un garde ou une
+    boucle environnante dont dépend l'invariant humain.
     """
     path = Path(root) / item["file"]
     try:
@@ -98,12 +99,16 @@ def _candidate_fingerprint(root, item):
             continue
 
         event_node = min(candidates, key=lambda entry: (entry[0], entry[1]))[2]
+        # Une qualification humaine peut dépendre d'un garde ou d'une boucle
+        # située avant/après le ``if`` directement signalé. On empreinte donc la
+        # fonction entière plutôt qu'un voisinage local : toute évolution du flot
+        # qui établit l'invariant rend l'entrée explicite obsolète et la remet en
+        # ``high/review`` jusqu'à nouvelle validation humaine.
         payload = "|".join((
             item["function"],
             item["name"],
             item["detail"],
-            ast.dump(if_node, include_attributes=False),
-            ast.dump(event_node, include_attributes=False),
+            ast.dump(function, include_attributes=False),
         ))
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
     return None

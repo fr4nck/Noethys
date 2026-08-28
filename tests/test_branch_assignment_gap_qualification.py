@@ -136,6 +136,29 @@ class BranchAssignmentQualificationTests(unittest.TestCase):
         self.assertEqual(candidate["classification"], "review")
         self.assertEqual(candidate["priority"], "high")
 
+    def test_explicit_safe_fingerprint_covers_surrounding_control_flow(self):
+        source = (base.NOETHYS / "Dlg" / "DLG_Saisie_portail_demande.py").read_text(encoding="utf-8")
+        marker = "    def Traitement_recus(self):"
+        prefix, suffix = source.split(marker, 1)
+        original = 'if self.dict_parametres["methode_envoi"] != "email" :'
+        changed = 'if self.dict_parametres["methode_envoi"] == "courrier" :'
+        self.assertIn(original, suffix)
+        suffix = suffix.replace(original, changed, 1)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "Dlg" / "DLG_Saisie_portail_demande.py"
+            target.parent.mkdir(parents=True)
+            target.write_text(prefix + marker + suffix, encoding="utf-8")
+            report = audit.build_report(root)
+
+        candidate = next(
+            item for item in report["findings"]
+            if item["function"] == "Traitement_recus" and item["name"] == "reponse"
+        )
+        self.assertEqual(candidate["classification"], "review")
+        self.assertEqual(candidate["priority"], "high")
+
     def test_repository_qualification_is_exported_without_hidden_candidates(self):
         raw = base.build_report()
         report = audit.build_report()
