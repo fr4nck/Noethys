@@ -1,0 +1,70 @@
+name: Temporary lot inscriptions mode fix
+
+on:
+  push:
+    branches:
+      - fix/lot-inscriptions-mode-contract
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/lot-inscriptions-mode-contract
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.10"
+      - name: Patch mode contract
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("noethys/Dlg/DLG_Saisie_lot_inscriptions.py")
+          source = path.read_text(encoding="utf-8")
+          old = '''        self.listeID = []
+        DB = GestionDB.DB()
+        if IDactivite == None :
+            IDactivite = 0
+        if self.mode == "activites" : req = """SELECT IDactivite, nom FROM activites ORDER BY date_fin DESC;"""
+        if self.mode == "groupes" : req = """SELECT IDgroupe, nom FROM groupes WHERE IDactivite=%d ORDER BY ordre;""" % IDactivite
+        if self.mode == "categories" : req = """SELECT IDcategorie_tarif, nom FROM categories_tarifs WHERE IDactivite=%d ORDER BY nom;""" % IDactivite
+        DB.ExecuterReq(req)
+'''
+          new = '''        self.listeID = []
+        if IDactivite == None :
+            IDactivite = 0
+        if self.mode == "activites" :
+            req = """SELECT IDactivite, nom FROM activites ORDER BY date_fin DESC;"""
+        elif self.mode == "groupes" :
+            req = """SELECT IDgroupe, nom FROM groupes WHERE IDactivite=%d ORDER BY ordre;""" % IDactivite
+        elif self.mode == "categories" :
+            req = """SELECT IDcategorie_tarif, nom FROM categories_tarifs WHERE IDactivite=%d ORDER BY nom;""" % IDactivite
+        else :
+            raise ValueError("Mode de sélection inconnu : %s" % self.mode)
+        DB = GestionDB.DB()
+        DB.ExecuterReq(req)
+'''
+          if source.count(old) != 1:
+              raise SystemExit("bloc MAJ attendu introuvable ou ambigu")
+          path.write_text(source.replace(old, new, 1), encoding="utf-8")
+          PY
+      - name: Validate targeted regressions
+        shell: bash
+        run: |
+          python -m py_compile noethys/Dlg/DLG_Saisie_lot_inscriptions.py tests/test_lot_inscriptions_mode_contract.py
+          python -m unittest discover -s tests -p 'test_lot_inscriptions_mode_contract.py' -v
+      - name: Commit patch and remove temporary workflow
+        shell: bash
+        run: |
+          rm .github/workflows/tmp-lot-inscriptions-mode-fix.yml
+          git config user.name "fr4nck"
+          git config user.email "f.bellardie@gmail.com"
+          git add noethys/Dlg/DLG_Saisie_lot_inscriptions.py tests/test_lot_inscriptions_mode_contract.py .github/workflows/tmp-lot-inscriptions-mode-fix.yml
+          git commit -m "Fix: valider le mode du lot d’inscriptions"
+          git push origin HEAD:fix/lot-inscriptions-mode-contract
