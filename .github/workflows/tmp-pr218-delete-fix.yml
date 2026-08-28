@@ -24,87 +24,72 @@ jobs:
           p = Path('scripts/audit_branch_assignment_gaps.py')
           s = p.read_text(encoding='utf-8')
 
-          s = s.replace('''        def visit_Name(self, node):
-              if isinstance(node.ctx, ast.Store):
-                  names.add(node.id)
-          ''', '''        def visit_Name(self, node):
-              if isinstance(node.ctx, (ast.Store, ast.Del)):
-                  names.add(node.id)
-          ''', 1)
+          a = s.index('def assigned_names(statements):')
+          b = s.index('\ndef target_names(target):', a)
+          chunk = s[a:b]
+          old = 'if isinstance(node.ctx, ast.Store):'
+          if old not in chunk:
+              raise SystemExit('assigned_names store check not found')
+          chunk = chunk.replace(old, 'if isinstance(node.ctx, (ast.Store, ast.Del)):', 1)
+          s = s[:a] + chunk + s[b:]
 
-          marker = '''def direct_definitions(statement):
-          '''
-          helper = '''def deleted_names_in_sequence(statements):
-              names = set()
-
-              class Deletes(ast.NodeVisitor):
-                  def visit_Name(self, node):
-                      if isinstance(node.ctx, ast.Del):
-                          names.add(node.id)
-
-                  def visit_FunctionDef(self, node):
-                      return
-
-                  def visit_AsyncFunctionDef(self, node):
-                      return
-
-                  def visit_Lambda(self, node):
-                      return
-
-                  def visit_ClassDef(self, node):
-                      return
-
-              visitor = Deletes()
-              for statement in statements:
-                  visitor.visit(statement)
-              return names
-
-
-          '''
-          if helper.strip() not in s:
+          marker = 'def direct_definitions(statement):'
+          helper_lines = [
+              'def deleted_names_in_sequence(statements):',
+              '    names = set()',
+              '',
+              '    class Deletes(ast.NodeVisitor):',
+              '        def visit_Name(self, node):',
+              '            if isinstance(node.ctx, ast.Del):',
+              '                names.add(node.id)',
+              '',
+              '        def visit_FunctionDef(self, node):',
+              '            return',
+              '',
+              '        def visit_AsyncFunctionDef(self, node):',
+              '            return',
+              '',
+              '        def visit_Lambda(self, node):',
+              '            return',
+              '',
+              '        def visit_ClassDef(self, node):',
+              '            return',
+              '',
+              '    visitor = Deletes()',
+              '    for statement in statements:',
+              '        visitor.visit(statement)',
+              '    return names',
+              '',
+              '',
+          ]
+          helper = '\n'.join(helper_lines)
+          if 'def deleted_names_in_sequence(statements):' not in s:
               s = s.replace(marker, helper + marker, 1)
 
-          s = s.replace('''        if isinstance(first.optional_vars, ast.Name):
-              defined.add(first.optional_vars.id)
-          ''', '''        if isinstance(first.optional_vars, ast.Name):
-              name = first.optional_vars.id
-              if name not in deleted_names_in_sequence(statement.body):
-                  defined.add(name)
-          ''', 1)
+          w = s.index('def _with_continuing_definitions(statement, predefined):')
+          g = s.index('\ndef guaranteed_definitions(statements, predefined):', w)
+          wchunk = s[w:g]
+          oldw = '        if isinstance(first.optional_vars, ast.Name):\n            defined.add(first.optional_vars.id)'
+          neww = '        if isinstance(first.optional_vars, ast.Name):\n            name = first.optional_vars.id\n            if name not in deleted_names_in_sequence(statement.body):\n                defined.add(name)'
+          if oldw not in wchunk:
+              raise SystemExit('with target block not found')
+          wchunk = wchunk.replace(oldw, neww, 1)
+          s = s[:w] + wchunk + s[g:]
 
-          old_if = '''            if statement.orelse:
-                  else_defined = guaranteed_definitions(statement.orelse, defined)
-                  else_terminates = block_terminates(statement.orelse)
-                  if body_terminates and not else_terminates:
-                      defined = else_defined
-                  elif else_terminates and not body_terminates:
-                      defined = body_defined
-                  elif not body_terminates and not else_terminates:
-                      defined = body_defined & else_defined
-                  else:
-                      return defined
-          '''
-          new_if = '''            if statement.orelse:
-                  else_defined = guaranteed_definitions(statement.orelse, defined)
-                  else_terminates = block_terminates(statement.orelse)
-                  if body_terminates and not else_terminates:
-                      defined = else_defined
-                  elif else_terminates and not body_terminates:
-                      defined = body_defined
-                  elif not body_terminates and not else_terminates:
-                      defined = body_defined & else_defined
-                  else:
-                      return defined
-              elif not body_terminates:
-                  defined = body_defined & defined
-          '''
-          if old_if not in s:
-              raise SystemExit('if merge block not found')
-          s = s.replace(old_if, new_if, 1)
+          start = s.index('def guaranteed_definitions(statements, predefined):')
+          stop = s.index('\ndef scan_sequence(statements, predefined, relpath, function_name, findings):', start)
+          gchunk = s[start:stop]
+          needle = '                else:\n                    return defined\n\n        elif isinstance(statement, ast.Try):'
+          replacement = '                else:\n                    return defined\n            elif not body_terminates:\n                defined = body_defined & defined\n\n        elif isinstance(statement, ast.Try):'
+          if needle not in gchunk:
+              raise SystemExit('implicit else merge point not found')
+          gchunk = gchunk.replace(needle, replacement, 1)
+          s = s[:start] + gchunk + s[stop:]
 
-          s = s.replace('''                if name in defined or name in guaranteed_after_if or whole_if_terminates:
-          ''', '''                if name in guaranteed_after_if or whole_if_terminates:
-          ''', 1)
+          oldskip = '                if name in defined or name in guaranteed_after_if or whole_if_terminates:'
+          if oldskip not in s:
+              raise SystemExit('candidate skip guard not found')
+          s = s.replace(oldskip, '                if name in guaranteed_after_if or whole_if_terminates:', 1)
 
           p.write_text(s, encoding='utf-8')
           PY
