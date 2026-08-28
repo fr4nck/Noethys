@@ -224,6 +224,31 @@ def function_args(function):
     return result
 
 
+def _with_body_definitions(statement, predefined):
+    """Définitions disponibles une fois tous les ``__enter__`` réussis."""
+    defined = set(predefined)
+    for item in statement.items:
+        if item.optional_vars is not None:
+            defined.update(target_names(item.optional_vars))
+    return defined
+
+
+def _with_continuing_definitions(statement, predefined):
+    """Définitions garanties sur tous les chemins qui sortent du ``with``.
+
+    ``with A() as a, B() as b`` équivaut à deux ``with`` imbriqués. Si l'entrée
+    de ``B`` échoue et que ``A.__exit__`` supprime l'exception, l'exécution peut
+    reprendre après le ``with`` avec ``a`` défini mais ``b`` absent. Seule la
+    cible du premier manager est donc garantie pour un ``with`` multiple.
+    """
+    defined = set(predefined)
+    if statement.items:
+        first = statement.items[0]
+        if first.optional_vars is not None:
+            defined.update(target_names(first.optional_vars))
+    return defined
+
+
 def guaranteed_definitions(statements, predefined):
     """Retourne les noms définis sur tous les chemins qui atteignent la suite.
 
@@ -232,8 +257,9 @@ def guaranteed_definitions(statements, predefined):
     branches est garantie. Lorsqu'une branche termine le flot, seule la branche
     qui continue contribue. Un ``with`` générique ne propage pas les
     affectations de son corps, puisqu'un context manager peut supprimer une
-    exception ; seule l'éventuelle cible ``as`` est garantie. Un ``del`` retire
-    immédiatement sa cible de l'ensemble défini.
+    exception ; pour plusieurs managers, seule la cible ``as`` du premier est
+    garantie après sortie. Un ``del`` retire immédiatement sa cible de
+    l'ensemble défini.
     """
     defined = set(predefined)
     for statement in statements:
@@ -281,11 +307,7 @@ def guaranteed_definitions(statements, predefined):
                 defined = guaranteed_definitions(statement.finalbody, defined)
 
         elif isinstance(statement, (ast.With, ast.AsyncWith)):
-            with_defined = set(defined)
-            for item in statement.items:
-                if item.optional_vars is not None:
-                    with_defined.update(target_names(item.optional_vars))
-            defined = with_defined
+            defined = _with_continuing_definitions(statement, defined)
 
         elif isinstance(statement, (ast.For, ast.AsyncFor, ast.While)):
             pass
@@ -355,12 +377,9 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
             scan_sequence(statement.orelse, defined, relpath, function_name, findings)
 
         elif isinstance(statement, (ast.With, ast.AsyncWith)):
-            with_defined = set(defined)
-            for item in statement.items:
-                if item.optional_vars is not None:
-                    with_defined.update(target_names(item.optional_vars))
-            scan_sequence(statement.body, with_defined, relpath, function_name, findings)
-            defined = with_defined
+            body_defined = _with_body_definitions(statement, defined)
+            scan_sequence(statement.body, body_defined, relpath, function_name, findings)
+            defined = _with_continuing_definitions(statement, defined)
 
         elif isinstance(statement, ast.Try):
             scan_sequence(statement.body, defined, relpath, function_name, findings)
