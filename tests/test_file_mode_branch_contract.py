@@ -10,9 +10,10 @@ from scripts import audit_branch_assignment_gaps
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SOURCE_ROOT = ROOT / "noethys"
 TARGETS = (
-    ROOT / "noethys" / "Dlg" / "DLG_Importation_fichier.py",
-    ROOT / "noethys" / "Dlg" / "DLG_Ouvrir_fichier.py",
+    SOURCE_ROOT / "Dlg" / "DLG_Importation_fichier.py",
+    SOURCE_ROOT / "Dlg" / "DLG_Ouvrir_fichier.py",
 )
 
 
@@ -102,8 +103,7 @@ class FileModeBranchContractTests(unittest.TestCase):
 
     def test_targeted_branch_assignment_gaps_are_gone(self):
         for path in TARGETS:
-            rel = path.relative_to(ROOT / "noethys").as_posix()
-            findings = audit_branch_assignment_gaps.scan_file(path, rel)
+            findings = audit_branch_assignment_gaps.scan_file(path, SOURCE_ROOT)
             targeted = [
                 finding for finding in findings
                 if finding.get("function") == "GetNomFichier" and finding.get("name") == "nomFichier"
