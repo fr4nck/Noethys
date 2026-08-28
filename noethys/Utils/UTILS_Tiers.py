@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Couche métier minimale pour le référentiel des tiers (Noe-062A).
+"""Couche métier minimale pour le référentiel des tiers (Noe-062A/062B).
 
 Le module ne dépend pas de wxPython et accepte une instance de ``GestionDB.DB``
 (ou un double de test) injectée par l'appelant. Il ne crée aucune table : le
@@ -73,6 +73,11 @@ CHAMPS_CONTACT = (
     "contact_principal",
     "actif",
     "memo",
+)
+
+CHAMPS_ROLE_CONTACT = (
+    "IDcontact",
+    "role",
 )
 
 CHAMPS_TEXTE_STRUCTURE = (
@@ -200,6 +205,29 @@ def NormaliserContact(donnees, creation=True):
     return resultat
 
 
+def NormaliserRoleContact(donnees):
+    """Valide une association contact/rôle.
+
+    Les rôles sont volontairement bornés à un vocabulaire métier stable. Une
+    fonction libre (par exemple « adjoint enfance ») reste portée par la fiche
+    contact ; le rôle indique l'usage opérationnel du contact dans Noethys.
+    """
+    donnees = dict(donnees or {})
+    if not donnees.get("IDcontact"):
+        raise ValueError("IDcontact est obligatoire pour un rôle")
+
+    role = _texte(donnees.get("role"))
+    if not role:
+        raise ValueError("Le rôle est obligatoire")
+    if role not in ROLES_CONTACT:
+        raise ValueError("Rôle de contact inconnu: %s" % role)
+
+    return {
+        "IDcontact": int(donnees["IDcontact"]),
+        "role": role,
+    }
+
+
 def _liste_pairs(donnees, ordre):
     return [(champ, donnees.get(champ)) for champ in ordre if champ in donnees]
 
@@ -275,3 +303,41 @@ class GestionnaireTiers(object):
             return []
         champs = ("IDcontact",) + CHAMPS_CONTACT
         return [dict(zip(champs, ligne)) for ligne in self.db.ResultatReq()]
+
+    def AjouterRoleContact(self, IDcontact, role):
+        """Ajoute un rôle métier à un contact de façon idempotente."""
+        valeurs = NormaliserRoleContact({"IDcontact": IDcontact, "role": role})
+        req = (
+            "SELECT IDrole_contact FROM structures_roles_contacts "
+            "WHERE IDcontact=%d AND role='%s';"
+        ) % (valeurs["IDcontact"], valeurs["role"])
+        if self.db.ExecuterReq(req) == 1:
+            lignes = self.db.ResultatReq()
+            if lignes:
+                return lignes[0][0]
+        return self.db.ReqInsert(
+            "structures_roles_contacts",
+            _liste_pairs(valeurs, CHAMPS_ROLE_CONTACT),
+        )
+
+    def ListerRolesContact(self, IDcontact):
+        if not IDcontact:
+            raise ValueError("IDcontact obligatoire")
+        req = (
+            "SELECT IDrole_contact, IDcontact, role FROM structures_roles_contacts "
+            "WHERE IDcontact=%d ORDER BY role;"
+        ) % int(IDcontact)
+        if self.db.ExecuterReq(req) != 1:
+            return []
+        champs = ("IDrole_contact",) + CHAMPS_ROLE_CONTACT
+        return [dict(zip(champs, ligne)) for ligne in self.db.ResultatReq()]
+
+    def SupprimerRoleContact(self, IDrole_contact):
+        """Supprime uniquement le lien de rôle, jamais la fiche contact."""
+        if not IDrole_contact:
+            raise ValueError("IDrole_contact obligatoire")
+        return self.db.ReqDEL(
+            "structures_roles_contacts",
+            "IDrole_contact",
+            int(IDrole_contact),
+        )
