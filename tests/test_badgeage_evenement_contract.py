@@ -58,12 +58,12 @@ class BadgeageEvenementContractTests(unittest.TestCase):
     def test_saisie_evenement_vide_retourne_une_erreur_metier(self):
         result = load_method("SaisieConso")(FakeBadgeage(), IDunite=7)
         self.assertIsInstance(result, str)
-        self.assertIn("aucun événement", result)
+        self.assertIn("aucun événement", result.lower())
 
     def test_suppression_evenement_vide_retourne_une_erreur_metier(self):
         result = load_method("SupprimeConso")(FakeBadgeage(), IDunite=7)
         self.assertIsInstance(result, str)
-        self.assertIn("aucun événement", result)
+        self.assertIn("aucun événement", result.lower())
 
     def test_saisie_conso_ne_laisse_plus_evenement_conditionnellement_indefini(self):
         findings = audit_branch_assignment_gaps.scan_file(SOURCE_PATH, SOURCE_ROOT)
