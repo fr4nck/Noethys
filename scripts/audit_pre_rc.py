@@ -3,12 +3,15 @@
 """Rassemble les inventaires statiques à relire avant de figer une RC.
 
 Ce script ne modifie ni le code ni les bases. Il regroupe en une commande les
-inventaires SQL strict, cycle de vie wxPython et anciens outils de listes afin
-d'éviter trois procédures parallèles et des chiffres recopiés à la main.
+inventaires SQL strict, cycle de vie wxPython, anciens outils de listes et les
+signatures de défauts transverses apprises dans Teamworks.
 
 Avant tout inventaire, il impose le contrat global de couverture des sources :
 tout ``noethys/**/*.py`` doit être trouvé, lu selon son encodage Python et
-parsable. Les occurrences restent ensuite des diagnostics à qualifier.
+parsable. Les occurrences restent ensuite des diagnostics à qualifier. Les
+signatures Teamworks conservent en plus leur propre mesure de couverture sur
+leur périmètre applicatif afin qu'un zéro ne puisse jamais masquer un fichier
+non analysé.
 """
 
 from __future__ import annotations
@@ -26,6 +29,7 @@ if str(ROOT) not in sys.path:
 from scripts import audit_legacy_list_tools  # noqa: E402
 from scripts import audit_source_coverage  # noqa: E402
 from scripts import audit_sql_strict  # noqa: E402
+from scripts import audit_teamworks_signatures  # noqa: E402
 from scripts import audit_wx_lifecycle  # noqa: E402
 
 DEFAULT_ROOT = ROOT / "noethys"
@@ -113,6 +117,9 @@ def collect(root: Path = DEFAULT_ROOT) -> dict:
     legacy_counts = audit_legacy_list_tools.summarize(legacy_findings)
     legacy_screens = audit_legacy_list_tools.screens(legacy_findings)
 
+    teamworks_report = audit_teamworks_signatures.build_report(root)
+    teamworks_coverage = dict(teamworks_report["coverage"])
+
     return {
         "summary": {
             "source_coverage": {
@@ -136,11 +143,18 @@ def collect(root: Path = DEFAULT_ROOT) -> dict:
                 "screens": len(legacy_screens),
                 "counts": legacy_counts,
             },
+            "teamworks_signatures": {
+                "total": teamworks_report["count"],
+                "kinds": dict(teamworks_report["kinds"]),
+                "priorities": dict(teamworks_report["priorities"]),
+                "coverage": teamworks_coverage,
+            },
         },
         "sql_review": sql_review,
         "wx_findings": wx_findings,
         "legacy_findings": legacy_findings,
         "legacy_screens": legacy_screens,
+        "teamworks_findings": list(teamworks_report["findings"]),
     }
 
 
@@ -169,6 +183,13 @@ def write_reports(data: dict, output_dir: Path) -> None:
             "findings": data["legacy_findings"],
         },
     )
+    _write_json(
+        output_dir / "teamworks-signatures-audit.json",
+        {
+            "summary": data["summary"]["teamworks_signatures"],
+            "findings": data["teamworks_findings"],
+        },
+    )
 
 
 def print_summary(data: dict, output_dir: Path) -> None:
@@ -177,6 +198,8 @@ def print_summary(data: dict, output_dir: Path) -> None:
     sql = summary["sql"]
     wx = summary["wx_lifecycle"]
     legacy = summary["legacy_list_tools"]
+    teamworks = summary["teamworks_signatures"]
+    teamworks_coverage = teamworks["coverage"]
 
     print("Inventaires statiques pré-RC")
     print("===========================")
@@ -197,6 +220,16 @@ def print_summary(data: dict, output_dir: Path) -> None:
         "Listes      : %d écran(s) métier encore raccordé(s) aux outils historiques"
         % legacy["screens"]
     )
+    print(
+        "Teamworks   : %d signature(s) — couverture %d/%d/%d — %s"
+        % (
+            teamworks["total"],
+            teamworks_coverage["found"],
+            teamworks_coverage["read"],
+            teamworks_coverage["parsed"],
+            "OK" if teamworks_coverage["complete"] else "ECHEC",
+        )
+    )
     print("Rapports    : %s" % output_dir)
     print("")
     print("Ces nombres sont des inventaires. Corriger uniquement après revue du risque concret.")
@@ -211,13 +244,15 @@ def run(root: Path = DEFAULT_ROOT, output_dir: Path = DEFAULT_OUTPUT) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Regroupe les inventaires SQL/wx/listes à relire avant une RC"
+        description="Regroupe les inventaires SQL/wx/listes/signatures Teamworks à relire avant une RC"
     )
     parser.add_argument("--root", type=Path, default=DEFAULT_ROOT)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
 
-    run(args.root, args.output_dir)
+    data = run(args.root, args.output_dir)
+    if not data["summary"]["teamworks_signatures"]["coverage"]["complete"]:
+        return 2
     return 0
 
 
