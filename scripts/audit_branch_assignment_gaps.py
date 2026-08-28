@@ -86,9 +86,12 @@ class NameEvents(ast.NodeVisitor):
         if node.id != self.name:
             return
         if isinstance(node.ctx, ast.Load):
-            self.events.append((node.lineno, "load"))
+            mode = "load"
         elif isinstance(node.ctx, ast.Del):
-            self.events.append((node.lineno, "delete"))
+            mode = "delete"
+        else:
+            mode = "store"
+        self.events.append((node.lineno, mode))
 
     def visit_ListComp(self, node):
         _visit_comprehension_runtime_order(self, node, (node.elt,))
@@ -231,24 +234,19 @@ def block_terminates(statements):
 
 
 def first_event(statements, name):
-    """Premier usage risqué avant qu'une définition soit garantie.
+    """Retourne le premier événement de la portée englobante.
 
-    Un simple store textuellement antérieur ne suffit pas : une affectation dans
-    un ``if``, une boucle ou une compréhension peut ne jamais s'exécuter. On ne
-    considère donc le risque écarté qu'après une instruction qui garantit le
-    nom sur tous ses chemins continuants. Les lectures/suppressions restent
-    volontairement conservatrices : mieux vaut un candidat à qualifier qu'un
-    faux négatif.
+    Les cibles de compréhension sont filtrées par ``NameEvents`` : elles
+    ne doivent jamais masquer une lecture ultérieure de la variable locale
+    de la fonction. Les stores ordinaires restent en revanche des bornes
+    valides, comme dans le contrat historique de cet audit.
     """
+    visitor = NameEvents(name)
     for statement in statements:
-        visitor = NameEvents(name)
         visitor.visit(statement)
-        if visitor.events:
-            return min(enumerate(visitor.events), key=lambda item: (item[1][0], item[0]))[1]
-        if name in guaranteed_definitions([statement], set()):
-            return (getattr(statement, "lineno", 0), "store")
-    return None
-
+    if not visitor.events:
+        return None
+    return min(enumerate(visitor.events), key=lambda item: (item[1][0], item[0]))[1]
 
 def function_args(function):
     result = {arg.arg for arg in function.args.posonlyargs}
