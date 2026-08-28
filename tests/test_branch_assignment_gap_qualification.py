@@ -95,6 +95,46 @@ class BranchAssignmentQualificationTests(unittest.TestCase):
         self.assertEqual(finding["classification"], "correlated_guard")
         self.assertEqual(finding["priority"], "low")
 
+    def test_exact_negated_guard_else_qualifies_body_assignment(self):
+        report = self.report_for('''
+            def f(flag):
+                if flag:
+                    value = 1
+                if not flag:
+                    return None
+                else:
+                    return value
+        ''')
+        finding = next(item for item in report["findings"] if item["name"] == "value")
+        self.assertEqual(finding["classification"], "correlated_guard")
+        self.assertEqual(finding["priority"], "low")
+
+    def test_conjunctive_negated_guard_else_stays_high_priority(self):
+        report = self.report_for('''
+            def f(flag, ready):
+                if flag:
+                    value = 1
+                if not flag and ready:
+                    return None
+                else:
+                    return value
+        ''')
+        finding = next(item for item in report["findings"] if item["name"] == "value")
+        self.assertEqual(finding["classification"], "review")
+        self.assertEqual(finding["priority"], "high")
+
+    def test_repeated_call_guard_stays_high_priority(self):
+        report = self.report_for('''
+            def f():
+                if check():
+                    value = 1
+                if check():
+                    return value
+        ''')
+        finding = next(item for item in report["findings"] if item["name"] == "value")
+        self.assertEqual(finding["classification"], "review")
+        self.assertEqual(finding["priority"], "high")
+
     def test_same_outer_guard_does_not_hide_nested_one_sided_assignment(self):
         report = self.report_for('''
             def f(outer, inner):
