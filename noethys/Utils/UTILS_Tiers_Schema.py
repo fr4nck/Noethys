@@ -18,6 +18,7 @@ from Data import DATA_Structures
 TABLES_062A = ("structures", "structures_contacts")
 TABLES_062B = ("interventions",)
 TABLES_062B_COMPLET = TABLES_062A + TABLES_062B
+TABLES_062B_ROLES_CONTACTS = TABLES_062A + ("structures_roles_contacts",)
 
 
 def _descriptions_attendues(nom_table):
@@ -228,3 +229,18 @@ def AssurerSchema062B(db, appliquer=False):
     ces liens restent optionnels et pourront être enrichis ensuite.
     """
     return _assurer_schema(db, TABLES_062B_COMPLET, appliquer=appliquer)
+
+
+def InspecterSchema062BRolesContacts(db):
+    """Inspecte le lot autonome des rôles métier de contacts."""
+    return InspecterSchema(db, tables=TABLES_062B_ROLES_CONTACTS)
+
+
+def AssurerSchema062BRolesContacts(db, appliquer=False):
+    """Active explicitement les rôles de contacts sans toucher aux autres lots.
+
+    Cette activation reste indépendante des interventions et des groupes afin
+    qu'un déploiement puisse enrichir les contacts d'une structure sans créer
+    d'autres tables métier.
+    """
+    return _assurer_schema(db, TABLES_062B_ROLES_CONTACTS, appliquer=appliquer)
