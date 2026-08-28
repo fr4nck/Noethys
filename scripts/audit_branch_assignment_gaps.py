@@ -215,6 +215,10 @@ def guaranteed_definitions(statements, predefined):
     exhaustif, l'intersection des définitions des branches est en revanche
     garantie. Lorsqu'une branche termine le flot, seule la branche qui continue
     contribue aux définitions disponibles après le ``if``.
+
+    Un ``with`` générique peut supprimer une exception levée dans son corps.
+    Les affectations du corps ne sont donc pas garanties après sa sortie ; seul
+    l'éventuel ``as cible`` est forcément lié sur un chemin qui continue.
     """
     defined = set(predefined)
     for statement in statements:
@@ -263,7 +267,7 @@ def guaranteed_definitions(statements, predefined):
             for item in statement.items:
                 if item.optional_vars is not None:
                     with_defined.update(target_names(item.optional_vars))
-            defined = guaranteed_definitions(statement.body, with_defined)
+            defined = with_defined
 
         elif isinstance(statement, (ast.For, ast.AsyncFor, ast.While)):
             pass
@@ -338,7 +342,7 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
                 if item.optional_vars is not None:
                     with_defined.update(target_names(item.optional_vars))
             scan_sequence(statement.body, with_defined, relpath, function_name, findings)
-            defined = guaranteed_definitions(statement.body, with_defined)
+            defined = with_defined
 
         elif isinstance(statement, ast.Try):
             scan_sequence(statement.body, defined, relpath, function_name, findings)
