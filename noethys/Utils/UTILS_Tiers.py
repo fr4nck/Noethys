@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Couche métier minimale pour le référentiel des tiers (Noe-062A).
+"""Couche métier minimale pour le référentiel des tiers (Noe-062A/062B).
 
 Le module ne dépend pas de wxPython et accepte une instance de ``GestionDB.DB``
 (ou un double de test) injectée par l'appelant. Il ne crée aucune table : le
@@ -75,6 +75,13 @@ CHAMPS_CONTACT = (
     "memo",
 )
 
+CHAMPS_GROUPE = (
+    "IDstructure",
+    "nom",
+    "actif",
+    "memo",
+)
+
 CHAMPS_TEXTE_STRUCTURE = (
     "nom", "nom_court", "nom_officiel", "rue", "cp", "ville", "tel",
     "mail", "site_web", "rna", "siren", "siret", "ape", "memo",
@@ -82,6 +89,10 @@ CHAMPS_TEXTE_STRUCTURE = (
 
 CHAMPS_TEXTE_CONTACT = (
     "nom", "prenom", "fonction", "tel", "mobile", "mail", "memo",
+)
+
+CHAMPS_TEXTE_GROUPE = (
+    "nom", "memo",
 )
 
 
@@ -200,6 +211,52 @@ def NormaliserContact(donnees, creation=True):
     return resultat
 
 
+def NormaliserGroupe(donnees, creation=True):
+    """Valide un groupe libre rattaché à une structure.
+
+    Le libellé reste volontairement non typé : il peut représenter une section
+    sportive, une classe, un service, un cycle ou tout autre groupe utile sans
+    imposer une hiérarchie métier rigide.
+    """
+    donnees = dict(donnees or {})
+
+    if creation and not donnees.get("IDstructure"):
+        raise ValueError("IDstructure est obligatoire pour un groupe")
+    if "IDstructure" in donnees and not donnees.get("IDstructure"):
+        raise ValueError("IDstructure ne peut pas être vide")
+
+    if creation:
+        nom = _texte(donnees.get("nom"))
+        if not nom:
+            raise ValueError("Le nom du groupe est obligatoire")
+    else:
+        nom = None
+        if "nom" in donnees:
+            nom = _texte(donnees.get("nom"))
+            if not nom:
+                raise ValueError("Le nom du groupe ne peut pas être vide")
+        if not donnees:
+            raise ValueError("Aucune donnée à modifier")
+
+    resultat = {}
+    for champ in CHAMPS_GROUPE:
+        if champ in donnees:
+            resultat[champ] = donnees[champ]
+
+    if creation or "nom" in donnees:
+        resultat["nom"] = nom
+
+    for champ in CHAMPS_TEXTE_GROUPE:
+        if champ == "nom":
+            continue
+        if creation or champ in donnees:
+            resultat[champ] = _texte(donnees.get(champ))
+
+    if creation or "actif" in donnees:
+        resultat["actif"] = 1 if donnees.get("actif", 1) not in (0, False, "0") else 0
+    return resultat
+
+
 def _liste_pairs(donnees, ordre):
     return [(champ, donnees.get(champ)) for champ in ordre if champ in donnees]
 
@@ -274,4 +331,44 @@ class GestionnaireTiers(object):
         if self.db.ExecuterReq(req) != 1:
             return []
         champs = ("IDcontact",) + CHAMPS_CONTACT
+        return [dict(zip(champs, ligne)) for ligne in self.db.ResultatReq()]
+
+    def CreerGroupe(self, donnees):
+        valeurs = NormaliserGroupe(donnees, creation=True)
+        return self.db.ReqInsert("structures_groupes", _liste_pairs(valeurs, CHAMPS_GROUPE))
+
+    def ModifierGroupe(self, IDgroupe_structure, donnees):
+        if not IDgroupe_structure:
+            raise ValueError("IDgroupe_structure obligatoire")
+        valeurs = NormaliserGroupe(donnees, creation=False)
+        return self.db.ReqMAJ(
+            "structures_groupes",
+            _liste_pairs(valeurs, CHAMPS_GROUPE),
+            "IDgroupe_structure",
+            int(IDgroupe_structure),
+        )
+
+    def ArchiverGroupe(self, IDgroupe_structure):
+        return self.ModifierGroupe(IDgroupe_structure, {"actif": 0})
+
+    def LireGroupe(self, IDgroupe_structure):
+        req = "SELECT IDgroupe_structure, %s FROM structures_groupes WHERE IDgroupe_structure=%d;" % (
+            ", ".join(CHAMPS_GROUPE), int(IDgroupe_structure))
+        if self.db.ExecuterReq(req) != 1:
+            return None
+        lignes = self.db.ResultatReq()
+        if not lignes:
+            return None
+        champs = ("IDgroupe_structure",) + CHAMPS_GROUPE
+        return dict(zip(champs, lignes[0]))
+
+    def ListerGroupes(self, IDstructure, actifs_seulement=True):
+        if not IDstructure:
+            raise ValueError("IDstructure obligatoire")
+        condition_actif = " AND actif=1" if actifs_seulement else ""
+        req = "SELECT IDgroupe_structure, %s FROM structures_groupes WHERE IDstructure=%d%s ORDER BY nom;" % (
+            ", ".join(CHAMPS_GROUPE), int(IDstructure), condition_actif)
+        if self.db.ExecuterReq(req) != 1:
+            return []
+        champs = ("IDgroupe_structure",) + CHAMPS_GROUPE
         return [dict(zip(champs, ligne)) for ligne in self.db.ResultatReq()]
