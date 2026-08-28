@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 """Détecte les variables locales potentiellement non définies après un ``if``.
 
-Le contrôle est volontairement conservateur : il ne signale qu'une affectation
-présente dans une seule branche, sans définition antérieure visible, lorsque le
-premier usage ultérieur de ce nom est une lecture ou une suppression. Les
-résultats restent des candidats à qualifier humainement. La couverture des
+Le contrôle est volontairement conservateur : il signale une variable affectée
+dans un branchement sans être garantie sur tous les chemins qui atteignent la
+suite, lorsque son premier usage ultérieur est une lecture ou une suppression.
+Les résultats restent des candidats à qualifier humainement. La couverture des
 sources est bloquante.
 
 La propagation des définitions suit les chemins qui peuvent réellement
@@ -175,8 +175,13 @@ def direct_definitions(statement):
             result.update(target_names(target))
         return result
     if isinstance(statement, ast.AnnAssign):
+        # ``x: Type`` n'assigne aucune valeur à ``x`` au runtime. Seule une
+        # annotation accompagnée d'une valeur crée réellement la liaison.
+        if statement.value is None:
+            return set()
         return target_names(statement.target)
     if isinstance(statement, ast.AugAssign):
+        # Si l'AugAssign atteint sa suite sans exception, sa cible est liée.
         return target_names(statement.target)
     if isinstance(statement, (ast.Import, ast.ImportFrom)):
         result = set()
@@ -239,13 +244,17 @@ def _with_continuing_definitions(statement, predefined):
     ``with A() as a, B() as b`` équivaut à deux ``with`` imbriqués. Si l'entrée
     de ``B`` échoue et que ``A.__exit__`` supprime l'exception, l'exécution peut
     reprendre après le ``with`` avec ``a`` défini mais ``b`` absent. Seule la
-    cible du premier manager est donc garantie pour un ``with`` multiple.
+    cible simple du premier manager est donc garantie pour un ``with`` multiple.
+
+    Une cible déstructurée n'est pas propagée non plus : son unpacking peut
+    échouer après ``__enter__`` puis être supprimé par ``__exit__``, laissant
+    certaines liaisons absentes ou partielles.
     """
     defined = set(predefined)
     if statement.items:
         first = statement.items[0]
-        if first.optional_vars is not None:
-            defined.update(target_names(first.optional_vars))
+        if isinstance(first.optional_vars, ast.Name):
+            defined.add(first.optional_vars.id)
     return defined
 
 
@@ -257,8 +266,8 @@ def guaranteed_definitions(statements, predefined):
     branches est garantie. Lorsqu'une branche termine le flot, seule la branche
     qui continue contribue. Un ``with`` générique ne propage pas les
     affectations de son corps, puisqu'un context manager peut supprimer une
-    exception ; pour plusieurs managers, seule la cible ``as`` du premier est
-    garantie après sortie. Un ``del`` retire immédiatement sa cible de
+    exception ; pour plusieurs managers, seule la cible simple ``as`` du premier
+    est garantie après sortie. Un ``del`` retire immédiatement sa cible de
     l'ensemble défini.
     """
     defined = set(predefined)
@@ -324,21 +333,30 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
         if isinstance(statement, ast.If):
             body_assigned = assigned_names(statement.body)
             else_assigned = assigned_names(statement.orelse)
-            only_body = body_assigned - else_assigned
-            only_else = else_assigned - body_assigned
+            assigned_here = body_assigned | else_assigned
             following = statements[index + 1 :]
 
-            for name in sorted(only_body | only_else):
-                if name in defined:
+            # Ne pas raisonner seulement sur ``body - else`` : le même nom peut
+            # apparaître dans les deux branches tout en restant non garanti dans
+            # chacune (affectations imbriquées conditionnelles). La preuve utile
+            # est l'état réellement garanti après le ``if`` sur tous les chemins
+            # qui continuent.
+            guaranteed_after_if = guaranteed_definitions([statement], defined)
+            whole_if_terminates = block_terminates([statement])
+
+            for name in sorted(assigned_here):
+                if name in defined or name in guaranteed_after_if or whole_if_terminates:
                     continue
-                if name in only_body:
-                    unassigned_path_terminates = block_terminates(statement.orelse) if statement.orelse else False
-                    branch = "body_only"
+
+                in_body = name in body_assigned
+                in_else = name in else_assigned
+                if in_body and in_else:
+                    detail = "partial_branches"
+                elif in_body:
+                    detail = "body_only"
                 else:
-                    unassigned_path_terminates = block_terminates(statement.body)
-                    branch = "else_only"
-                if unassigned_path_terminates:
-                    continue
+                    detail = "else_only"
+
                 event = first_event(following, name)
                 if event and event[1] in {"load", "delete"}:
                     findings.append({
@@ -349,7 +367,7 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
                         "if_line": statement.lineno,
                         "line": event[0],
                         "name": name,
-                        "detail": branch,
+                        "detail": detail,
                     })
 
             scan_sequence(statement.body, defined, relpath, function_name, findings)
