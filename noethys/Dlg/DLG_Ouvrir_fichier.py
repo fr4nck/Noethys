@@ -368,7 +368,7 @@ class MyDialog(wx.Dialog):
             #nomFichier = nomFichier.decode("utf8")
     
         # Version RESEAU
-        if modeLocal == False :
+        else :
             dictCodes = self.GetCodesReseau() 
             port = dictCodes["port"]
             hote = dictCodes["hote"]
