@@ -22,38 +22,7 @@ jobs:
       - name: Patch mode contract
         shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path("noethys/Dlg/DLG_Saisie_lot_inscriptions.py")
-          source = path.read_text(encoding="utf-8")
-          old = '''        self.listeID = []
-        DB = GestionDB.DB()
-        if IDactivite == None :
-            IDactivite = 0
-        if self.mode == "activites" : req = """SELECT IDactivite, nom FROM activites ORDER BY date_fin DESC;"""
-        if self.mode == "groupes" : req = """SELECT IDgroupe, nom FROM groupes WHERE IDactivite=%d ORDER BY ordre;""" % IDactivite
-        if self.mode == "categories" : req = """SELECT IDcategorie_tarif, nom FROM categories_tarifs WHERE IDactivite=%d ORDER BY nom;""" % IDactivite
-        DB.ExecuterReq(req)
-'''
-          new = '''        self.listeID = []
-        if IDactivite == None :
-            IDactivite = 0
-        if self.mode == "activites" :
-            req = """SELECT IDactivite, nom FROM activites ORDER BY date_fin DESC;"""
-        elif self.mode == "groupes" :
-            req = """SELECT IDgroupe, nom FROM groupes WHERE IDactivite=%d ORDER BY ordre;""" % IDactivite
-        elif self.mode == "categories" :
-            req = """SELECT IDcategorie_tarif, nom FROM categories_tarifs WHERE IDactivite=%d ORDER BY nom;""" % IDactivite
-        else :
-            raise ValueError("Mode de sélection inconnu : %s" % self.mode)
-        DB = GestionDB.DB()
-        DB.ExecuterReq(req)
-'''
-          if source.count(old) != 1:
-              raise SystemExit("bloc MAJ attendu introuvable ou ambigu")
-          path.write_text(source.replace(old, new, 1), encoding="utf-8")
-          PY
+          python -c "from pathlib import Path; p=Path('noethys/Dlg/DLG_Saisie_lot_inscriptions.py'); s=p.read_text(encoding='utf-8'); old='        self.listeID = []\n        DB = GestionDB.DB()\n        if IDactivite == None :\n            IDactivite = 0\n        if self.mode == \"activites\" : req = \"\"\"SELECT IDactivite, nom FROM activites ORDER BY date_fin DESC;\"\"\"\n        if self.mode == \"groupes\" : req = \"\"\"SELECT IDgroupe, nom FROM groupes WHERE IDactivite=%d ORDER BY ordre;\"\"\" % IDactivite\n        if self.mode == \"categories\" : req = \"\"\"SELECT IDcategorie_tarif, nom FROM categories_tarifs WHERE IDactivite=%d ORDER BY nom;\"\"\" % IDactivite\n        DB.ExecuterReq(req)\n'; new='        self.listeID = []\n        if IDactivite == None :\n            IDactivite = 0\n        if self.mode == \"activites\" :\n            req = \"\"\"SELECT IDactivite, nom FROM activites ORDER BY date_fin DESC;\"\"\"\n        elif self.mode == \"groupes\" :\n            req = \"\"\"SELECT IDgroupe, nom FROM groupes WHERE IDactivite=%d ORDER BY ordre;\"\"\" % IDactivite\n        elif self.mode == \"categories\" :\n            req = \"\"\"SELECT IDcategorie_tarif, nom FROM categories_tarifs WHERE IDactivite=%d ORDER BY nom;\"\"\" % IDactivite\n        else :\n            raise ValueError(\"Mode de sélection inconnu : %s\" % self.mode)\n        DB = GestionDB.DB()\n        DB.ExecuterReq(req)\n'; assert s.count(old)==1; p.write_text(s.replace(old,new,1),encoding='utf-8')"
       - name: Validate targeted regressions
         shell: bash
         run: |
