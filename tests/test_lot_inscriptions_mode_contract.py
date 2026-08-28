@@ -94,7 +94,7 @@ class LotInscriptionsModeContractTests(unittest.TestCase):
     def test_unknown_mode_fails_before_opening_database(self):
         factory = DBFactory()
         choice = FakeChoice("inconnu")
-        with self.assertRaisesRegex(ValueError, "mode"):
+        with self.assertRaisesRegex(ValueError, "Mode"):
             load_maj(factory)(choice, IDactivite=12)
         self.assertEqual(factory.instances, [])
 
