@@ -11,7 +11,9 @@ La propagation des définitions suit les chemins qui peuvent réellement
 continuer après un branchement. Une chaîne exhaustive ``if/elif/else`` qui
 définit un nom dans toutes ses branches rend donc ce nom disponible ensuite,
 y compris lorsque les ``elif`` sont représentés par des ``If`` imbriqués dans
-``orelse`` par l'AST Python.
+``orelse`` par l'AST Python. Les cibles de compréhension restent dans leur
+portée Python 3 et ne sont jamais prises pour des affectations locales de la
+fonction englobante.
 """
 
 from __future__ import annotations
@@ -40,6 +42,23 @@ def iter_python_files(root=NOETHYS):
         yield path
 
 
+def _visit_comprehension_runtime_order(visitor, node, value_nodes):
+    """Visite une compréhension dans l'ordre de liaison utile à l'audit.
+
+    Le premier iterable est évalué avant la liaison de sa cible. Chaque cible
+    suivante est ensuite liée avant ses filtres, les générateurs suivants et
+    l'expression produite. Cet ordre évite de prendre une cible de compréhension
+    pour une variable locale lue avant affectation dans la fonction englobante.
+    """
+    for generator in node.generators:
+        visitor.visit(generator.iter)
+        visitor.visit(generator.target)
+        for condition in generator.ifs:
+            visitor.visit(condition)
+    for value_node in value_nodes:
+        visitor.visit(value_node)
+
+
 class NameEvents(ast.NodeVisitor):
     def __init__(self, name):
         self.name = name
@@ -49,6 +68,18 @@ class NameEvents(ast.NodeVisitor):
         if node.id == self.name:
             mode = "load" if isinstance(node.ctx, ast.Load) else "store"
             self.events.append((node.lineno, mode))
+
+    def visit_ListComp(self, node):
+        _visit_comprehension_runtime_order(self, node, (node.elt,))
+
+    def visit_SetComp(self, node):
+        _visit_comprehension_runtime_order(self, node, (node.elt,))
+
+    def visit_GeneratorExp(self, node):
+        _visit_comprehension_runtime_order(self, node, (node.elt,))
+
+    def visit_DictComp(self, node):
+        _visit_comprehension_runtime_order(self, node, (node.key, node.value))
 
     def visit_FunctionDef(self, node):
         return
@@ -70,6 +101,29 @@ def assigned_names(statements):
         def visit_Name(self, node):
             if isinstance(node.ctx, (ast.Store, ast.Del)):
                 names.add(node.id)
+
+        def _visit_comp(self, node, value_nodes):
+            # Une cible ``for x in ...`` d'une compréhension ne définit pas
+            # ``x`` dans la fonction englobante sous Python 3. On visite les
+            # expressions mais jamais les cibles de générateur.
+            for generator in node.generators:
+                self.visit(generator.iter)
+                for condition in generator.ifs:
+                    self.visit(condition)
+            for value_node in value_nodes:
+                self.visit(value_node)
+
+        def visit_ListComp(self, node):
+            self._visit_comp(node, (node.elt,))
+
+        def visit_SetComp(self, node):
+            self._visit_comp(node, (node.elt,))
+
+        def visit_GeneratorExp(self, node):
+            self._visit_comp(node, (node.elt,))
+
+        def visit_DictComp(self, node):
+            self._visit_comp(node, (node.key, node.value))
 
         def visit_FunctionDef(self, node):
             return
@@ -139,7 +193,7 @@ def first_event(statements, name):
         visitor.visit(statement)
     if not visitor.events:
         return None
-    return min(visitor.events, key=lambda item: item[0])
+    return min(enumerate(visitor.events), key=lambda item: (item[1][0], item[0]))[1]
 
 
 def function_args(function):
@@ -178,7 +232,6 @@ def guaranteed_definitions(statements, predefined):
                 elif not body_terminates and not else_terminates:
                     defined = body_defined & else_defined
                 else:
-                    # Aucun chemin ne poursuit normalement après ce branchement.
                     return defined
 
         elif isinstance(statement, ast.Try):
@@ -213,7 +266,6 @@ def guaranteed_definitions(statements, predefined):
             defined = guaranteed_definitions(statement.body, with_defined)
 
         elif isinstance(statement, (ast.For, ast.AsyncFor, ast.While)):
-            # Le corps d'une boucle peut ne pas être parcouru. Ne rien propager.
             pass
 
         else:
@@ -270,8 +322,6 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
                     defined = body_defined
                 elif not body_terminates and not else_terminates:
                     defined = body_defined & else_defined
-            # Sans ``else``, le corps peut ne pas s'exécuter : aucune nouvelle
-            # définition n'est garantie après le branchement.
 
         elif isinstance(statement, (ast.For, ast.AsyncFor)):
             loop_defined = defined | target_names(statement.target)
