@@ -183,11 +183,13 @@ def HeureStrEnDelta(heureStr):
 
 def HeureStrEnTime(heureStr):
     if heureStr == None or heureStr == "" : return datetime.time(0, 0)
-    if len(heureStr.split(":")) == 2 : heures, minutes = heureStr.split(":")
-    if len(heureStr.split(":")) == 3 : heures, minutes, secondes = heureStr.split(":")
+    elements = heureStr.split(":")
+    if len(elements) not in (2, 3):
+        return datetime.time(0, 0)
+    heures, minutes = elements[:2]
     try :
         return datetime.time(int(heures), int(minutes))
-    except Exception:
+    except (TypeError, ValueError):
         return datetime.time(0, 0)
 
 def DatetimeTimeEnStr(heure, separateur="h"):
@@ -213,24 +215,22 @@ def HorodatageEnDatetime(horodatage, separation=None):
 def ArrondirTime(heure=datetime.time(hour=10, minute=25), delta_minutes=15, sens="inf"):
     """ sens = 'sup' ou 'inf' """
     dt = datetime.datetime(year=2015, month=1, day=1, hour=heure.hour, minute=heure.minute)
+    resultat = dt
     if dt.minute % delta_minutes :
         if sens == "sup" :
             resultat = dt + datetime.timedelta(minutes = delta_minutes - dt.minute % delta_minutes)
-        if sens == "inf" :
+        elif sens == "inf" :
             resultat = dt - datetime.timedelta(minutes = dt.minute % delta_minutes)
-    else:
-        resultat = dt
     return datetime.time(hour=resultat.hour, minute=resultat.minute)
 
 def ArrondirDelta(duree=datetime.timedelta(hours=1, minutes=25), delta_minutes=15, sens="sup"):
     duree_minutes = duree.seconds // 60
+    resultat = duree
     if duree_minutes % delta_minutes :
         if sens == "sup" :
             resultat = duree + datetime.timedelta(minutes = delta_minutes - duree_minutes % delta_minutes)
-        if sens == "inf" :
+        elif sens == "inf" :
             resultat = duree - datetime.timedelta(minutes = duree_minutes % delta_minutes)
-    else :
-        resultat = duree
     return resultat
 
 def CalculerArrondi(arrondi_type="duree", arrondi_delta=15, heure_debut=None, heure_fin=None):
