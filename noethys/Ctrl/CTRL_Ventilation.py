@@ -29,6 +29,21 @@ else :
 
 from Utils.UTILS_Decimal import FloatToDecimal as FloatToDecimal
 
+
+def FloatToDecimalFini(montant):
+    """Convertit un montant historique en Decimal fini, ou retourne None."""
+    try:
+        if isinstance(montant, decimal.Decimal):
+            if not montant.is_finite():
+                return None
+        valeur = FloatToDecimal(montant)
+        if not valeur.is_finite():
+            return None
+        return valeur
+    except (decimal.DecimalException, TypeError, ValueError, OverflowError):
+        return None
+
+
 from Utils import UTILS_Config
 SYMBOLE = UTILS_Config.GetParametre("monnaie_symbole", u"€")
 
@@ -955,10 +970,25 @@ class CTRL(wx.Panel):
             self.ctrl_info.SetLabel(_(u"Vous avez saisi un montant non valide !"))
             return
         
-        creditAVentiler = FloatToDecimal(self.montant_reglement) - FloatToDecimal(self.total_ventilation)
-        
-        totalRestePrestationsAVentiler = FloatToDecimal(self.ctrl_ventilation.GetTotalRestePrestationsAVentiler())
-        if not creditAVentiler.is_finite() or not totalRestePrestationsAVentiler.is_finite():
+        montant_reglement = FloatToDecimalFini(self.montant_reglement)
+        total_ventilation = FloatToDecimalFini(self.total_ventilation)
+        if montant_reglement is None or total_ventilation is None:
+            self.validation = "erreur"
+            self.ctrl_image.SetBitmap(self.imgErreur)
+            self.ctrl_info.SetLabel(_(u"Vous avez saisi un montant non valide !"))
+            return
+
+        try:
+            creditAVentiler = montant_reglement - total_ventilation
+            totalRestePrestations = self.ctrl_ventilation.GetTotalRestePrestationsAVentiler()
+        except (decimal.DecimalException, TypeError, ValueError, OverflowError):
+            self.validation = "erreur"
+            self.ctrl_image.SetBitmap(self.imgErreur)
+            self.ctrl_info.SetLabel(_(u"Vous avez saisi un montant non valide !"))
+            return
+
+        totalRestePrestationsAVentiler = FloatToDecimalFini(totalRestePrestations)
+        if totalRestePrestationsAVentiler is None:
             self.validation = "erreur"
             self.ctrl_image.SetBitmap(self.imgErreur)
             self.ctrl_info.SetLabel(_(u"Vous avez saisi un montant non valide !"))
@@ -974,7 +1004,7 @@ class CTRL(wx.Panel):
             self.validation = "addition"
             label = _(u"Vous devez encore ventiler %.2f %s !") % (creditAVentiler, SYMBOLE)
         else:
-            if self.montant_reglement >= FloatToDecimal(0.0):
+            if montant_reglement >= FloatToDecimal(0.0):
                 self.validation = "trop"
                 label = _(u"Vous avez ventilé %.2f %s en trop !") % (-creditAVentiler, SYMBOLE)
             else:
