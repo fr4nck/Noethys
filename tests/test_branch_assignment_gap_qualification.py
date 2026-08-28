@@ -94,6 +94,72 @@ class BranchAssignmentQualificationTests(unittest.TestCase):
         self.assertEqual(report["count"], raw["count"])
         self.assert_all_review_high(report)
 
+    def test_explicit_safe_registry_is_exact_and_unambiguous_on_repository(self):
+        report = audit.build_report()
+        registry = report["explicit_safe_registry"]
+        self.assertEqual(registry["configured"], len(audit.EXPLICIT_SAFE))
+        self.assertEqual(registry["matched"], len(audit.EXPLICIT_SAFE))
+        self.assertEqual(registry["unmatched"], [])
+        self.assertEqual(registry["ambiguous"], [])
+
+        safe_keys = {
+            audit.qualification_key(item)
+            for item in report["findings"]
+            if item["classification"] == "explicit_safe"
+        }
+        self.assertEqual(safe_keys, set(audit.EXPLICIT_SAFE))
+        self.assertTrue(
+            all(
+                item["priority"] == "low"
+                for item in report["findings"]
+                if item["classification"] == "explicit_safe"
+            )
+        )
+
+    def test_stale_explicit_safe_structure_is_not_downgraded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "Dlg" / "DLG_Saisie_portail_demande.py"
+            target.parent.mkdir(parents=True)
+            target.write_text(textwrap.dedent("""
+                def MAJ_informations(flag):
+                    if flag:
+                        dict_periodes = {}
+                    return dict_periodes
+            """), encoding="utf-8")
+            report = audit.build_report(root)
+
+        candidate = next(
+            item for item in report["findings"]
+            if item["function"] == "MAJ_informations" and item["name"] == "dict_periodes"
+        )
+        self.assertEqual(candidate["classification"], "review")
+        self.assertEqual(candidate["priority"], "high")
+
+    def test_explicit_safe_fingerprint_covers_surrounding_control_flow(self):
+        source = (base.NOETHYS / "Dlg" / "DLG_Saisie_portail_demande.py").read_text(encoding="utf-8")
+        marker = "    def Traitement_recus(self):"
+        prefix, suffix = source.split(marker, 1)
+        original = 'if self.dict_parametres["methode_envoi"] != "email" :'
+        changed = 'if self.dict_parametres["methode_envoi"] == "courrier" :'
+        self.assertIn(original, suffix)
+        suffix = suffix.replace(original, changed, 1)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "Dlg" / "DLG_Saisie_portail_demande.py"
+            target.parent.mkdir(parents=True)
+            target.write_text(prefix + marker + suffix, encoding="utf-8")
+            report = audit.build_report(root)
+
+        candidate = next(
+            item for item in report["findings"]
+            if item["function"] == "Traitement_recus" and item["name"] == "reponse"
+        )
+        self.assertEqual(candidate["classification"], "review")
+        self.assertEqual(candidate["priority"], "high")
+        self.assertGreater(len(report["explicit_safe_registry"]["unmatched"]), 0)
+
     def test_repository_qualification_is_exported_without_hidden_candidates(self):
         raw = base.build_report()
         report = audit.build_report()
@@ -105,8 +171,13 @@ class BranchAssignmentQualificationTests(unittest.TestCase):
             f"{report['priorities']} {report['classifications']}"
         )
         self.assertEqual(report["count"], raw["count"])
-        if report["count"]:
-            self.assert_all_review_high(report)
+        self.assertEqual(report["explicit_safe_registry"]["unmatched"], [])
+        self.assertEqual(report["explicit_safe_registry"]["ambiguous"], [])
+        self.assertEqual(report["priorities"].get("low", 0), len(audit.EXPLICIT_SAFE))
+        self.assertEqual(
+            report["priorities"].get("high", 0),
+            report["count"] - len(audit.EXPLICIT_SAFE),
+        )
         self.assertIn("findings", report)
 
 

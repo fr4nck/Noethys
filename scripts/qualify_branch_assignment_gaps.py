@@ -6,22 +6,22 @@ Le scanner de base réduit déjà les faux positifs qui peuvent être prouvés p
 contrôle de flot : branches exhaustives, chemins terminants, ``try/finally``,
 ``with`` et portées de compréhension Python 3.
 
-Cette seconde étape ne baisse volontairement plus la priorité d'aucun candidat
-sur la seule base d'une garde répétée. Prouver qu'une garde est stable exige de
-raisonner sur les protocoles Python dynamiques, les alias, les fermetures, les
-mutations indirectes et les back-edges de boucle. Un heuristique incomplet peut
-transformer un vrai ``UnboundLocalError`` en faux négatif ; ce coût est jugé
-supérieur à celui d'une revue humaine supplémentaire.
-
-Le contrat est donc simple : tout candidat résiduel reste ``high/review`` jusqu'à
-qualification humaine ou preuve spécifique couverte par un test dédié dans le
-scanner de base.
+Cette seconde étape ne baisse volontairement aucune priorité par heuristique.
+Une occurrence ne peut sortir de ``high/review`` que via une qualification
+explicite, étroite et documentée dans ``EXPLICIT_SAFE``. La clé ne contient pas
+de numéro de ligne afin de résister aux déplacements de code, mais elle doit
+correspondre à exactement un candidat brut et à l’empreinte AST complète de
+la fonction qui porte son invariant ; une entrée absente, modifiée ou ambiguë est
+signalée et couverte par les tests du dépôt.
 """
 
 from __future__ import annotations
 
 import argparse
+import ast
+import hashlib
 import json
+import tokenize
 from collections import Counter
 from pathlib import Path
 
@@ -33,24 +33,135 @@ except ModuleNotFoundError:
 ROOT = base.NOETHYS
 
 
+# Qualifications humaines explicites. Elles ne constituent pas une heuristique :
+# chaque entrée doit être justifiée par un invariant de contrôle de flot précis
+# et rester unique dans l'inventaire brut.
+EXPLICIT_SAFE = {
+    ('Dlg/DLG_Saisie_portail_demande.py', 'MAJ_informations', 'dict_periodes', 'body_only', '4779e9182f1002ee9ab536bdb9303391e030d4d4c723a43ff3b9c4ed973090f9'): (
+        "la lecture n'est atteinte qu'en itérant des paiements de type période ; ce même ensemble non vide initialise dict_periodes juste avant"
+    ),
+    ('Dlg/DLG_Saisie_portail_demande.py', 'MAJ_informations', 'dict_factures', 'body_only', '914b011143627234ee14abea5738586b025fa49093f2b5f01cf45ace88ab46fc'): (
+        "la lecture n'est atteinte qu'en itérant des paiements de type facture ; ce même ensemble non vide initialise dict_factures juste avant"
+    ),
+    ('Dlg/DLG_Saisie_portail_demande.py', 'Traitement_recus', 'reponse', 'body_only', '1a357b505a94693ac30e93cca69189fae6a478a1adc9b1139b6e46a5f2ba2ab0'): (
+        "les chemins continuants sont couverts par methode_envoi != 'email' ou methode_envoi == 'email' ; chacun définit reponse avant le retour"
+    ),
+    ('Dlg/DLG_Saisie_portail_demande.py', 'Traitement_factures', 'reponse', 'body_only', '4d35390aa5af82e149c8e869939032d3ffefaf86b1598f61f7a3d743bdc983e0'): (
+        "les chemins continuants sont couverts par methode_envoi != 'email' ou methode_envoi == 'email' ; chacun définit reponse avant le retour"
+    ),
+}
+
+def _candidate_fingerprint(root, item):
+    """Empreinte la structure AST qui justifie une qualification explicite.
+
+    Les numéros de ligne servent uniquement à retrouver la fonction signalée par
+    le scanner. Ils ne participent pas à l'empreinte. En revanche, toute évolution
+    AST de cette fonction invalide la qualification, y compris un garde ou une
+    boucle environnante dont dépend l'invariant humain.
+    """
+    path = Path(root) / item["file"]
+    try:
+        with tokenize.open(path) as stream:
+            tree = ast.parse(stream.read(), filename=str(path))
+    except (OSError, SyntaxError, UnicodeError):
+        return None
+
+    functions = [
+        node for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name == item["function"]
+    ]
+    for function in functions:
+        if_node = next((
+            node for node in ast.walk(function)
+            if isinstance(node, ast.If)
+            and getattr(node, "lineno", None) == item["if_line"]
+        ), None)
+        if if_node is None:
+            continue
+
+        candidates = []
+        for node in ast.walk(function):
+            if not isinstance(node, ast.stmt):
+                continue
+            found = any(
+                isinstance(child, ast.Name)
+                and child.id == item["name"]
+                and getattr(child, "lineno", None) == item["line"]
+                and isinstance(child.ctx, (ast.Load, ast.Del))
+                for child in ast.walk(node)
+            )
+            if found:
+                start = getattr(node, "lineno", item["line"])
+                end = getattr(node, "end_lineno", start)
+                candidates.append((end - start, len(list(ast.walk(node))), node))
+        if not candidates:
+            continue
+
+        event_node = min(candidates, key=lambda entry: (entry[0], entry[1]))[2]
+        # Une qualification humaine peut dépendre d'un garde ou d'une boucle
+        # située avant/après le ``if`` directement signalé. On empreinte donc la
+        # fonction entière plutôt qu'un voisinage local : toute évolution du flot
+        # qui établit l'invariant rend l'entrée explicite obsolète et la remet en
+        # ``high/review`` jusqu'à nouvelle validation humaine.
+        payload = "|".join((
+            item["function"],
+            item["name"],
+            item["detail"],
+            ast.dump(function, include_attributes=False),
+        ))
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return None
+
+
+def qualification_key(item, root=ROOT):
+    return (
+        item["file"],
+        item["function"],
+        item["name"],
+        item["detail"],
+        _candidate_fingerprint(root, item),
+    )
+
+
 def build_report(root=ROOT):
     raw = base.build_report(root)
+    key_counts = Counter(qualification_key(item, root) for item in raw["findings"])
+    matched = set()
     findings = []
+
     for item in raw["findings"]:
         result = dict(item)
-        result["classification"] = "review"
-        result["priority"] = "high"
-        result["reason"] = (
-            "candidat conservé : aucune corrélation de garde n'est utilisée "
-            "pour masquer automatiquement un risque de variable locale absente"
-        )
+        key = qualification_key(item, root)
+        reason = EXPLICIT_SAFE.get(key)
+        if reason is not None and key_counts[key] == 1:
+            result["classification"] = "explicit_safe"
+            result["priority"] = "low"
+            result["reason"] = reason
+            matched.add(key)
+        else:
+            result["classification"] = "review"
+            result["priority"] = "high"
+            result["reason"] = (
+                "candidat conservé : aucune heuristique ne masque automatiquement "
+                "un risque de variable locale absente"
+            )
         findings.append(result)
+
+    unmatched = sorted(key for key in EXPLICIT_SAFE if key_counts[key] == 0)
+    ambiguous = sorted(key for key in EXPLICIT_SAFE if key_counts[key] > 1)
 
     findings.sort(key=lambda item: (item["file"], item["line"], item["name"]))
     return {
         "count": len(findings),
         "priorities": dict(Counter(item["priority"] for item in findings)),
         "classifications": dict(Counter(item["classification"] for item in findings)),
+        "explicit_safe_registry": {
+            "configured": len(EXPLICIT_SAFE),
+            "matched": len(matched),
+            "unmatched": [list(key) for key in unmatched],
+            "ambiguous": [list(key) for key in ambiguous],
+        },
         "findings": findings,
     }
 
@@ -63,13 +174,21 @@ def main(argv=None):
     report = build_report()
     print(f"BRANCH_ASSIGNMENT_QUALIFIED={report['count']} {report['priorities']} {report['classifications']}")
     for item in report["findings"]:
-        print(f"- REVIEW {item['file']}:{item['line']} {item['function']} — {item['name']} ({item['detail']})")
+        label = "SAFE" if item["classification"] == "explicit_safe" else "REVIEW"
+        print(f"- {label} {item['file']}:{item['line']} {item['function']} — {item['name']} ({item['detail']})")
+
+    registry = report["explicit_safe_registry"]
+    if registry["unmatched"] or registry["ambiguous"]:
+        print(
+            "QUALIFICATION_REGISTRY_ERROR="
+            f"unmatched={len(registry['unmatched'])} ambiguous={len(registry['ambiguous'])}"
+        )
 
     if args.json:
         output = Path(args.json)
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-    return 0
+    return 2 if registry["unmatched"] or registry["ambiguous"] else 0
 
 
 if __name__ == "__main__":
