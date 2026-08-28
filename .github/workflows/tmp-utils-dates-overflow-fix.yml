@@ -1,0 +1,45 @@
+name: Temporary UTILS_Dates overflow fix
+
+on:
+  push:
+    branches:
+      - fix/utils-dates-branch-gaps
+    paths:
+      - .github/workflows/tmp-utils-dates-overflow-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/utils-dates-branch-gaps
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Preserve overflow fallback
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('noethys/Utils/UTILS_Dates.py')
+          text = path.read_text(encoding='utf-8')
+          old = '    except (TypeError, ValueError):\n        return datetime.time(0, 0)\n'
+          new = '    except (TypeError, ValueError, OverflowError):\n        return datetime.time(0, 0)\n'
+          if text.count(old) != 1:
+              raise SystemExit('Clause attendue absente ou ambiguë')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+      - name: Validate
+        run: |
+          python -m py_compile noethys/Utils/UTILS_Dates.py
+          python -m unittest tests.test_utils_dates_branch_assignment_contract -v
+      - name: Commit patch and remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/tmp-utils-dates-overflow-fix.yml
+          git add noethys/Utils/UTILS_Dates.py
+          git commit -m 'Fix: préserver le repli sur débordement horaire'
+          git push origin HEAD:fix/utils-dates-branch-gaps
