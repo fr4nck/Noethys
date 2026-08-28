@@ -120,6 +120,14 @@ def _target_dependencies(target):
     return keys
 
 
+def _expression_dependencies(expression):
+    keys = set()
+    for node in ast.walk(expression):
+        if isinstance(node, (ast.Name, ast.Attribute, ast.Subscript)):
+            keys.add(_expr_key(node))
+    return keys
+
+
 def _node_mutates_dependencies(node, dependencies):
     targets = []
     if isinstance(node, ast.Assign):
@@ -137,9 +145,18 @@ def _node_mutates_dependencies(node, dependencies):
         if dependencies & _target_dependencies(target):
             return True
 
-    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-        if _expr_key(node.func.value) in dependencies:
-            return True
+    if isinstance(node, ast.Call):
+        # Une méthode appelée directement sur la dépendance peut évidemment la
+        # muter. Plus généralement, dès qu'une dépendance s'échappe comme
+        # argument d'un helper, sa pureté n'est pas démontrable statiquement :
+        # la corrélation de garde doit rester en revue plutôt que d'être abaissée.
+        if isinstance(node.func, ast.Attribute):
+            if _expr_key(node.func.value) in dependencies:
+                return True
+        call_values = list(node.args) + [keyword.value for keyword in node.keywords]
+        for value in call_values:
+            if dependencies & _expression_dependencies(value):
+                return True
     return False
 
 
@@ -158,7 +175,8 @@ def _guard_is_stable_between(tree, original, later, branch):
     vraie la garde suivante et provoquer précisément l'``UnboundLocalError``
     que l'audit cherche à conserver. On inspecte donc cette branche en entier,
     puis les instructions exécutables entre la fin du premier ``if`` et le test
-    corrélé. Les mutations directes du conteneur/attribut testé sont incluses.
+    corrélé. Les mutations directes du conteneur/attribut testé sont incluses,
+    ainsi que leur passage à un appel dont la pureté n'est pas prouvée.
     """
     dependencies = _guard_dependencies(original.test)
     unassigned_branch = original.orelse if branch == "body_only" else original.body
