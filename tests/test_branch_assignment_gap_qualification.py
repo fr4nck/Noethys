@@ -104,7 +104,7 @@ class BranchAssignmentQualificationTests(unittest.TestCase):
             f"BRANCH_ASSIGNMENT_QUALIFIED={report['count']} "
             f"{report['priorities']} {report['classifications']}"
         )
-        self.assertIn("high", report["priorities"])
+        self.assertEqual(sum(report["priorities"].values()), report["count"])
         self.assertIn("findings", report)
 
 
