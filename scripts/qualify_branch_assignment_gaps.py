@@ -13,9 +13,14 @@ Ce module ne supprime aucune occurrence. Il requalifie seulement les candidats
 dont la garde corrélée est démontrable dans l'AST, dont la branche concernée
 garantit réellement la définition et dont les dépendances visibles de la garde
 ne sont pas modifiées sur le chemin sans affectation ni entre les deux tests.
-Les gardes à effets de bord ou réévaluables par appel restent ``high``. Les
-autres cas non prouvés restent eux aussi ``high`` et doivent être revus
-humainement.
+
+La notion de garde répétable est volontairement stricte : seules les identités
+(``is`` / ``is not``) entre noms et singletons constants, éventuellement
+combinées par ``and``/``or``/``not``, sont considérées sans comportement Python
+dynamique. Les lectures d'attribut, sous-scripts, comparaisons riches, appels et
+truthiness d'objets restent ``high``. De même, aucune corrélation n'est abaissée
+si l'un des deux tests se trouve dans une boucle : les back-edges rendent
+l'ordre linéaire des lignes insuffisant pour prouver la stabilité.
 """
 
 from __future__ import annotations
@@ -41,13 +46,7 @@ def _same_expr(left, right):
 
 
 def _expr_key(node):
-    """Clé structurelle indépendante du contexte Load/Store de l'AST.
-
-    Une dépendance lue dans une garde et la même expression utilisée comme
-    cible d'affectation doivent comparer égales. ``ast.dump`` brut conserve
-    pourtant ``ctx=Load()`` ou ``ctx=Store()``, ce qui masquait précisément les
-    réaffectations que cette qualification doit détecter.
-    """
+    """Clé structurelle indépendante du contexte Load/Store de l'AST."""
     if isinstance(node, ast.Name):
         return ("name", node.id)
     if isinstance(node, ast.Attribute):
@@ -65,21 +64,40 @@ def _negated(expr):
     return ast.UnaryOp(op=ast.Not(), operand=expr)
 
 
+def _stable_identity_operand(node):
+    if isinstance(node, ast.Name):
+        return True
+    if isinstance(node, ast.Constant) and node.value in (None, True, False):
+        return True
+    return False
+
+
 def _guard_is_repeatable(test):
-    """Exclut les gardes dont deux évaluations identiques peuvent diverger."""
-    unstable_nodes = (ast.Call, ast.NamedExpr, ast.Await, ast.Yield, ast.YieldFrom)
-    return not any(isinstance(node, unstable_nodes) for node in ast.walk(test))
+    """Vrai uniquement pour une garde sans évaluation Python dynamique.
+
+    Même ``obj.ready``, ``state[key]``, ``left == right`` ou un simple
+    ``if obj`` peuvent invoquer respectivement descriptor/property,
+    ``__getitem__``, comparaison riche ou ``__bool__``. On ne peut donc pas
+    prouver qu'une seconde évaluation donnera le même résultat à partir du seul
+    AST. L'identité entre noms/singletons ne déclenche pas ces protocoles.
+    """
+    if isinstance(test, ast.Compare) and len(test.ops) == 1 and len(test.comparators) == 1:
+        return (
+            isinstance(test.ops[0], (ast.Is, ast.IsNot))
+            and _stable_identity_operand(test.left)
+            and _stable_identity_operand(test.comparators[0])
+        )
+    if isinstance(test, ast.BoolOp) and isinstance(test.op, (ast.And, ast.Or)):
+        return all(_guard_is_repeatable(value) for value in test.values)
+    if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
+        return _guard_is_repeatable(test.operand)
+    if isinstance(test, ast.Constant) and isinstance(test.value, bool):
+        return True
+    return False
 
 
 def _test_implies(candidate, required):
-    """Vrai si ``candidate`` contient explicitement ``required`` comme garde.
-
-    On reste volontairement conservateur : égalité structurelle ou conjonction
-    ``required and ...`` seulement. Aucun raisonnement algébrique n'est tenté.
-    Cette implication n'est utilisée que lorsque la lecture se trouve dans le
-    corps du ``if`` ; l'``else`` exige une relation exacte, car la négation d'une
-    conjonction n'implique pas la négation de chacun de ses termes.
-    """
+    """Vrai si ``candidate`` contient explicitement ``required`` comme garde."""
     if _same_expr(candidate, required):
         return True
     if isinstance(candidate, ast.BoolOp) and isinstance(candidate.op, ast.And):
@@ -146,10 +164,6 @@ def _node_mutates_dependencies(node, dependencies):
             return True
 
     if isinstance(node, ast.Call):
-        # Une méthode appelée directement sur la dépendance peut évidemment la
-        # muter. Plus généralement, dès qu'une dépendance s'échappe comme
-        # argument d'un helper, sa pureté n'est pas démontrable statiquement :
-        # la corrélation de garde doit rester en revue plutôt que d'être abaissée.
         if isinstance(node.func, ast.Attribute):
             if _expr_key(node.func.value) in dependencies:
                 return True
@@ -168,16 +182,32 @@ def _statements_mutate_dependencies(statements, dependencies):
     return False
 
 
-def _guard_is_stable_between(tree, original, later, branch):
-    """Refuse une corrélation si le chemin non affecté peut modifier la garde.
+def _parent_map(tree):
+    parents = {}
+    for parent in ast.walk(tree):
+        for child in ast.iter_child_nodes(parent):
+            parents[child] = parent
+    return parents
 
-    Une mutation dans la branche où la variable n'est *pas* créée peut rendre
-    vraie la garde suivante et provoquer précisément l'``UnboundLocalError``
-    que l'audit cherche à conserver. On inspecte donc cette branche en entier,
-    puis les instructions exécutables entre la fin du premier ``if`` et le test
-    corrélé. Les mutations directes du conteneur/attribut testé sont incluses,
-    ainsi que leur passage à un appel dont la pureté n'est pas prouvée.
-    """
+
+def _inside_repeating_construct(tree, node):
+    parents = _parent_map(tree)
+    current = node
+    while current in parents:
+        current = parents[current]
+        if isinstance(current, (ast.For, ast.AsyncFor, ast.While)):
+            return True
+    return False
+
+
+def _guard_is_stable_between(tree, original, later, branch):
+    """Refuse une corrélation si la stabilité n'est pas prouvée."""
+    # Une mutation située textuellement après le second test peut s'exécuter
+    # avant sa prochaine évaluation via un back-edge de boucle. Plutôt que de
+    # reconstruire un CFG complet, on garde ces cas en revue.
+    if _inside_repeating_construct(tree, original) or _inside_repeating_construct(tree, later):
+        return False
+
     dependencies = _guard_dependencies(original.test)
     unassigned_branch = original.orelse if branch == "body_only" else original.body
     if _statements_mutate_dependencies(unassigned_branch, dependencies):
@@ -213,10 +243,6 @@ def _load_is_protected_by_correlated_guard(tree, finding):
     name = finding["name"]
     branch = finding["detail"]
 
-    # ``assigned_names`` voit volontairement les affectations imbriquées pour
-    # maximiser le rappel. Une garde extérieure identique ne suffit donc pas :
-    # il faut d'abord prouver que la branche prise définit réellement le nom sur
-    # tous ses chemins qui continuent.
     if not _branch_guarantees_name(original, branch, name):
         return False
 
@@ -225,9 +251,8 @@ def _load_is_protected_by_correlated_guard(tree, finding):
     for node in ast.walk(tree):
         if not isinstance(node, ast.If) or node is original or node.lineno < original.lineno:
             continue
-
-        # Si la première lecture est dans la condition elle-même, la garde ne
-        # peut évidemment pas protéger une variable qui n'existe peut-être pas.
+        if not _guard_is_repeatable(node.test):
+            continue
         if node.lineno == line and _name_loaded(node.test, name):
             continue
 
@@ -239,17 +264,11 @@ def _load_is_protected_by_correlated_guard(tree, finding):
             continue
 
         if branch == "body_only":
-            # Corps : H implique G est suffisant. Else : il faut que H soit
-            # exactement ``not G`` ; ``not G and X`` ne suffit pas car son else
-            # contient aussi le chemin ``not G and not X``.
             if in_body and _test_implies(node.test, original.test):
                 return True
             if in_else and _same_expr(node.test, negated_original):
                 return True
         elif branch == "else_only":
-            # La définition vient de ``not G``. Le corps accepte une condition
-            # plus restrictive qui implique ``not G`` ; l'else n'est sûr ici
-            # que pour le test exact ``G``.
             if in_body and _test_implies(node.test, negated_original):
                 return True
             if in_else and _same_expr(node.test, original.test):
@@ -281,11 +300,11 @@ def build_report(root=ROOT):
             if _load_is_protected_by_correlated_guard(tree, item):
                 result["classification"] = "correlated_guard"
                 result["priority"] = "low"
-                result["reason"] = "la branche garantit la définition, la garde est répétable et stable, et la première lecture est dominée par une condition sûre"
+                result["reason"] = "la branche garantit la définition et deux gardes à identité pure sont stables hors boucle"
             else:
                 result["classification"] = "review"
                 result["priority"] = "high"
-                result["reason"] = "définition de branche, répétabilité, stabilité ou implication de garde insuffisamment démontrable"
+                result["reason"] = "définition, répétabilité sans protocole dynamique, stabilité hors boucle ou implication de garde non démontrable"
             qualified.append(result)
 
     qualified.sort(key=lambda item: (item["file"], item["line"], item["name"]))
