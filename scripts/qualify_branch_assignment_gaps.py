@@ -37,16 +37,16 @@ ROOT = base.NOETHYS
 # chaque entrée doit être justifiée par un invariant de contrôle de flot précis
 # et rester unique dans l'inventaire brut.
 EXPLICIT_SAFE = {
-    ('Dlg/DLG_Saisie_portail_demande.py', 'MAJ_informations', 'dict_periodes', 'body_only', '70da503afe9758502db83bb2c3554f5eca9d4c5cf1259d0a526530e14aa85125'): (
+    ('Dlg/DLG_Saisie_portail_demande.py', 'MAJ_informations', 'dict_periodes', 'body_only', '4779e9182f1002ee9ab536bdb9303391e030d4d4c723a43ff3b9c4ed973090f9'): (
         "la lecture n'est atteinte qu'en itérant des paiements de type période ; ce même ensemble non vide initialise dict_periodes juste avant"
     ),
-    ('Dlg/DLG_Saisie_portail_demande.py', 'MAJ_informations', 'dict_factures', 'body_only', 'c62fc4c3a65bec7133ae368a55b9f9f7a41384c3694ee9238ea8341d55c5a528'): (
+    ('Dlg/DLG_Saisie_portail_demande.py', 'MAJ_informations', 'dict_factures', 'body_only', '914b011143627234ee14abea5738586b025fa49093f2b5f01cf45ace88ab46fc'): (
         "la lecture n'est atteinte qu'en itérant des paiements de type facture ; ce même ensemble non vide initialise dict_factures juste avant"
     ),
-    ('Dlg/DLG_Saisie_portail_demande.py', 'Traitement_recus', 'reponse', 'body_only', 'b86a279771200d94bb532db67d41aa2d53d8292a3a7a1be721966d1cbfc35eab'): (
+    ('Dlg/DLG_Saisie_portail_demande.py', 'Traitement_recus', 'reponse', 'body_only', '1a357b505a94693ac30e93cca69189fae6a478a1adc9b1139b6e46a5f2ba2ab0'): (
         "les chemins continuants sont couverts par methode_envoi != 'email' ou methode_envoi == 'email' ; chacun définit reponse avant le retour"
     ),
-    ('Dlg/DLG_Saisie_portail_demande.py', 'Traitement_factures', 'reponse', 'body_only', '408b1606ca3a437fcaa3d8e5e8808677c6676533387ce045283acd90787b57ed'): (
+    ('Dlg/DLG_Saisie_portail_demande.py', 'Traitement_factures', 'reponse', 'body_only', '4d35390aa5af82e149c8e869939032d3ffefaf86b1598f61f7a3d743bdc983e0'): (
         "les chemins continuants sont couverts par methode_envoi != 'email' ou methode_envoi == 'email' ; chacun définit reponse avant le retour"
     ),
 }
