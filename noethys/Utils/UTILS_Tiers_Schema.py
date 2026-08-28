@@ -19,6 +19,12 @@ TABLES_062A = ("structures", "structures_contacts")
 TABLES_062B = ("interventions",)
 TABLES_062B_COMPLET = TABLES_062A + TABLES_062B
 
+# Les groupes libres (section, classe, service, cycle...) sont activés par un
+# contrat distinct afin de ne pas modifier rétroactivement le comportement
+# d'AssurerSchema062B(), déjà utilisé pour les premières interventions.
+TABLES_062B_GROUPES = ("structures_groupes",)
+TABLES_062B_GROUPES_COMPLET = TABLES_062A + TABLES_062B_GROUPES
+
 
 def _descriptions_attendues(nom_table):
     return tuple(DATA_Structures.DB_STRUCTURES[nom_table])
@@ -228,3 +234,18 @@ def AssurerSchema062B(db, appliquer=False):
     ces liens restent optionnels et pourront être enrichis ensuite.
     """
     return _assurer_schema(db, TABLES_062B_COMPLET, appliquer=appliquer)
+
+
+def InspecterSchema062BGroupes(db):
+    """Inspecte structures, contacts et groupes libres sans écrire en base."""
+    return InspecterSchema(db, tables=TABLES_062B_GROUPES_COMPLET)
+
+
+def AssurerSchema062BGroupes(db, appliquer=False):
+    """Active explicitement les groupes libres des tiers.
+
+    Cette activation reste indépendante du contrat historique 062B des
+    interventions afin qu'une mise à jour ne crée aucune table supplémentaire
+    de manière implicite.
+    """
+    return _assurer_schema(db, TABLES_062B_GROUPES_COMPLET, appliquer=appliquer)
