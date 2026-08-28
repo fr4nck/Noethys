@@ -50,6 +50,19 @@ class BranchAssignmentGapTests(unittest.TestCase):
         ''')
         self.assertEqual(report["count"], 0)
 
+    def test_terminating_branch_propagates_continuing_definition(self):
+        report = self.report_for('''
+            def f(flag, other):
+                if flag:
+                    return None
+                else:
+                    value = 1
+                if other:
+                    value = 2
+                return value
+        ''')
+        self.assertEqual(report["count"], 0)
+
     def test_loop_target_is_already_defined_inside_loop(self):
         report = self.report_for('''
             def f(rows):
@@ -73,6 +86,23 @@ class BranchAssignmentGapTests(unittest.TestCase):
         ''')
         self.assertEqual(report["count"], 0)
 
+    def test_exhaustive_if_elif_else_is_propagated(self):
+        report = self.report_for('''
+            def f(mode, other):
+                if mode == "a":
+                    value = 1
+                elif mode == "b":
+                    value = 2
+                elif mode == "c":
+                    value = 3
+                else:
+                    value = 4
+                if other:
+                    value = 5
+                return value
+        ''')
+        self.assertEqual(report["count"], 0)
+
     def test_nested_conditional_assignment_is_not_treated_as_guaranteed(self):
         report = self.report_for('''
             def f(flag, nested, other):
@@ -85,8 +115,6 @@ class BranchAssignmentGapTests(unittest.TestCase):
                     value = 3
                 return value
         ''')
-        # Le premier if reste trop complexe pour être qualifié ici, mais il ne
-        # doit surtout pas faire considérer ``value`` comme garanti ensuite.
         self.assertTrue(any(item["name"] == "value" for item in report["findings"]))
 
     def test_try_assignment_with_terminating_handler_is_propagated(self):
