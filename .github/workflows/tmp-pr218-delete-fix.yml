@@ -1,0 +1,122 @@
+name: Temporary PR218 deletion-flow fix
+
+on:
+  push:
+    branches:
+      - audit/branch-assignment-flow-hardening
+    paths:
+      - .github/workflows/tmp-pr218-delete-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: audit/branch-assignment-flow-hardening
+      - name: Fix deletion flow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/audit_branch_assignment_gaps.py')
+          s = p.read_text(encoding='utf-8')
+
+          s = s.replace('''        def visit_Name(self, node):
+              if isinstance(node.ctx, ast.Store):
+                  names.add(node.id)
+          ''', '''        def visit_Name(self, node):
+              if isinstance(node.ctx, (ast.Store, ast.Del)):
+                  names.add(node.id)
+          ''', 1)
+
+          marker = '''def direct_definitions(statement):
+          '''
+          helper = '''def deleted_names_in_sequence(statements):
+              names = set()
+
+              class Deletes(ast.NodeVisitor):
+                  def visit_Name(self, node):
+                      if isinstance(node.ctx, ast.Del):
+                          names.add(node.id)
+
+                  def visit_FunctionDef(self, node):
+                      return
+
+                  def visit_AsyncFunctionDef(self, node):
+                      return
+
+                  def visit_Lambda(self, node):
+                      return
+
+                  def visit_ClassDef(self, node):
+                      return
+
+              visitor = Deletes()
+              for statement in statements:
+                  visitor.visit(statement)
+              return names
+
+
+          '''
+          if helper.strip() not in s:
+              s = s.replace(marker, helper + marker, 1)
+
+          s = s.replace('''        if isinstance(first.optional_vars, ast.Name):
+              defined.add(first.optional_vars.id)
+          ''', '''        if isinstance(first.optional_vars, ast.Name):
+              name = first.optional_vars.id
+              if name not in deleted_names_in_sequence(statement.body):
+                  defined.add(name)
+          ''', 1)
+
+          old_if = '''            if statement.orelse:
+                  else_defined = guaranteed_definitions(statement.orelse, defined)
+                  else_terminates = block_terminates(statement.orelse)
+                  if body_terminates and not else_terminates:
+                      defined = else_defined
+                  elif else_terminates and not body_terminates:
+                      defined = body_defined
+                  elif not body_terminates and not else_terminates:
+                      defined = body_defined & else_defined
+                  else:
+                      return defined
+          '''
+          new_if = '''            if statement.orelse:
+                  else_defined = guaranteed_definitions(statement.orelse, defined)
+                  else_terminates = block_terminates(statement.orelse)
+                  if body_terminates and not else_terminates:
+                      defined = else_defined
+                  elif else_terminates and not body_terminates:
+                      defined = body_defined
+                  elif not body_terminates and not else_terminates:
+                      defined = body_defined & else_defined
+                  else:
+                      return defined
+              elif not body_terminates:
+                  defined = body_defined & defined
+          '''
+          if old_if not in s:
+              raise SystemExit('if merge block not found')
+          s = s.replace(old_if, new_if, 1)
+
+          s = s.replace('''                if name in defined or name in guaranteed_after_if or whole_if_terminates:
+          ''', '''                if name in guaranteed_after_if or whole_if_terminates:
+          ''', 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Compile and targeted tests
+        run: |
+          python -m py_compile scripts/audit_branch_assignment_gaps.py
+          python -m unittest tests.test_branch_assignment_gaps_audit tests.test_branch_assignment_comprehension_scope -v
+      - name: Commit patch and remove temporary workflow
+        run: |
+          rm .github/workflows/tmp-pr218-delete-fix.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add scripts/audit_branch_assignment_gaps.py .github/workflows/tmp-pr218-delete-fix.yml
+          git commit -m "Audit: model conditional deletions conservatively"
+          git push origin HEAD:audit/branch-assignment-flow-hardening
