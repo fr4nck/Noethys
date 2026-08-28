@@ -207,6 +207,29 @@ class BranchAssignmentGapTests(unittest.TestCase):
         ''')
         self.assertFalse(any(item["name"] == "handle" for item in report["findings"]))
 
+    def test_later_with_target_is_not_guaranteed_after_outer_suppression(self):
+        report = self.report_for('''
+            def f(flag):
+                with outer() as first, inner() as value:
+                    operation()
+                if flag:
+                    value = replacement()
+                return value
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "value"]
+        self.assertEqual(len(findings), 1)
+
+    def test_first_with_target_remains_guaranteed_with_multiple_managers(self):
+        report = self.report_for('''
+            def f(flag):
+                with outer() as first, inner() as value:
+                    operation()
+                if flag:
+                    first = replacement()
+                return first
+        ''')
+        self.assertFalse(any(item["name"] == "first" for item in report["findings"]))
+
     def test_delete_removes_definition_before_later_branch(self):
         report = self.report_for('''
             def f(flag, other):
