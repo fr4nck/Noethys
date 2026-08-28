@@ -2,14 +2,11 @@
 # -*- coding: utf-8 -*-
 """Inventorie la dette UI wxPython à éliminer pendant la refonte Repens.
 
-L'audit ne modifie rien et n'échoue pas par défaut. Il sert de liste de travail
-exhaustive : tailles figées, toolbars dimensionnées localement, dépendances
-visuelles qui contournent la façade Repens, boutons bitmap historiques et
-combinaisons de flags connues pour produire des layouts bloqués.
-
-Les mécanismes qui masquent les assertions de cohérence des sizers constituent
-en revanche une erreur structurelle : ils sont détectés séparément afin que la
-CI puisse les interdire explicitement.
+L'audit ne modifie rien et n'échoue pas par défaut sur les occurrences. Il sert
+de liste de travail exhaustive : tailles figées, toolbars dimensionnées
+localement, dépendances visuelles qui contournent la façade Repens, boutons
+bitmap historiques et combinaisons de flags connues pour produire des layouts
+bloqués. La couverture des sources first-party est en revanche bloquante.
 
 La section « couverture Repens » fournit un indicateur reproductible. Il ne
 prétend pas mesurer la modernisation fonctionnelle de Noethys : il mesure la
@@ -26,6 +23,11 @@ import re
 from collections import Counter
 from pathlib import Path
 
+try:
+    from scripts.audit_source_coverage import SourceAuditSession
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession
+
 ROOT = Path(__file__).resolve().parents[1]
 NOETHYS = ROOT / "noethys"
 EXCLUS = {"ObjectListView", "Outils", "__pycache__"}
@@ -35,15 +37,10 @@ PATTERNS = {
     "toolbar_bitmap_fixed": re.compile(r"SetToolBitmapSize\s*\(\s*(?:wx\.Size\s*\()?\s*\(?\s*(?:16|20|24|32|40|48)\s*,"),
     "aui_pane_fixed_size": re.compile(r"\.(?:MinSize|BestSize)\s*\(\s*\(\s*-?\d+\s*,\s*-?\d+"),
     "window_fixed_min_size": re.compile(r"\.SetMinSize\s*\(\s*\(\s*-?\d+\s*,\s*-?\d+"),
-    # wx.EXPAND rend les flags d'alignement de l'axe concerné incohérents ou
-    # inutiles. L'audit reste informatif car l'axe dépend du sizer parent.
     "align_expand_conflict": re.compile(
         r"(?:wx\.EXPAND[^#\n]*wx\.ALIGN_(?:LEFT|RIGHT|TOP|BOTTOM|CENTER|CENTRE|CENTER_HORIZONTAL|CENTRE_HORIZONTAL|CENTER_VERTICAL|CENTRE_VERTICAL)"
         r"|wx\.ALIGN_(?:LEFT|RIGHT|TOP|BOTTOM|CENTER|CENTRE|CENTER_HORIZONTAL|CENTRE_HORIZONTAL|CENTER_VERTICAL|CENTRE_VERTICAL)[^#\n]*wx\.EXPAND)"
     ),
-    # Ne jamais faire taire wxWidgets pour rendre une CI verte. Ces deux formes
-    # couvrent la variable d'environnement officielle et l'API de désactivation
-    # des consistency checks lorsqu'elle est exposée par le binding.
     "sizer_assertion_suppression": re.compile(
         r"WXSUPPRESS_SIZER_FLAGS_CHECK|DisableConsistencyChecks\s*\("
     ),
@@ -72,10 +69,6 @@ def _first_party(path: Path) -> bool:
 def _ui_layer(path: Path) -> bool:
     rel = path.relative_to(NOETHYS)
     return bool(rel.parts) and rel.parts[0] in UI_LAYERS
-
-
-def _read_lines(path: Path) -> list[str]:
-    return path.read_text(encoding="utf-8", errors="replace").splitlines()
 
 
 def _repens_coverage(files: list[tuple[Path, list[str]]]) -> dict:
@@ -113,17 +106,18 @@ def _repens_coverage(files: list[tuple[Path, list[str]]]) -> dict:
     }
 
 
-def scan() -> tuple[list[dict], dict]:
+def _scan_with_session():
+    paths = [path for path in sorted(NOETHYS.rglob("*.py")) if _first_party(path)]
+    session = SourceAuditSession(paths)
     findings = []
     files = []
 
-    for path in sorted(NOETHYS.rglob("*.py")):
-        if not _first_party(path):
+    for path in session.paths:
+        loaded = session.parse(path)
+        if loaded is None:
             continue
-        try:
-            lines = _read_lines(path)
-        except OSError:
-            continue
+        source, _tree = loaded
+        lines = source.splitlines()
         files.append((path, lines))
         rel = str(path.relative_to(ROOT)).replace("\\", "/")
 
@@ -151,7 +145,13 @@ def scan() -> tuple[list[dict], dict]:
                         "snippet": code.strip()[:180],
                     })
 
-    return findings, _repens_coverage(files)
+    return findings, _repens_coverage(files), session
+
+
+def scan() -> tuple[list[dict], dict]:
+    findings, repens, session = _scan_with_session()
+    session.require_complete()
+    return findings, repens
 
 
 def main() -> int:
@@ -172,7 +172,9 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    findings, repens = scan()
+    findings, repens, session = _scan_with_session()
+    session.report(prefix="Couverture audit dette UI/layout")
+    session.require_complete()
     counts = Counter(item["kind"] for item in findings)
     all_kinds = set(PATTERNS) | {"legacy_style_dependency"}
 

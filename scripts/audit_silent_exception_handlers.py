@@ -5,6 +5,7 @@
 Le remplacement des anciens ``except:`` nus empêche désormais d'avaler les
 BaseException. Cet audit cherche ensuite les erreurs encore réellement
 masquées, sans classer comme critique chaque simple affectation ou repli UI.
+La couverture des sources est bloquante.
 """
 
 from __future__ import annotations
@@ -16,6 +17,10 @@ import re
 from collections import Counter
 from pathlib import Path
 
+try:
+    from scripts.audit_source_coverage import SourceAuditSession
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession
 
 ROOT = Path(__file__).resolve().parents[1]
 NOETHYS = ROOT / "noethys"
@@ -94,11 +99,6 @@ def _contains_business_mutation(body):
 
 
 def _contains_filesystem_mutation(body):
-    """Ne classe HIGH que les appels de fichiers explicitement qualifiés.
-
-    Un simple ``texte.replace(...)`` ou ``label.replace(...)`` ne doit jamais
-    être pris pour ``os.replace(...)``.
-    """
     return any(name in FILESYSTEM_MUTATION_CALLS for name in _called_qualified_names(body))
 
 
@@ -128,12 +128,7 @@ def _snippet(lines, start, end):
     return "\n".join(f"{i:05d}: {lines[i - 1]}" for i in range(start, end + 1))
 
 
-def scan_file(path, root=NOETHYS):
-    try:
-        source = path.read_text(encoding="utf-8", errors="replace")
-        tree = ast.parse(source, filename=str(path))
-    except (OSError, SyntaxError):
-        return []
+def _scan_loaded(source, tree, path, root=NOETHYS):
     lines = source.splitlines()
     relpath = str(path.relative_to(root)).replace("\\", "/")
     findings = []
@@ -178,6 +173,15 @@ def scan_file(path, root=NOETHYS):
     return findings
 
 
+def scan_file(path, root=NOETHYS):
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    session.require_complete()
+    assert loaded is not None
+    source, tree = loaded
+    return _scan_loaded(source, tree, path, root)
+
+
 def scan(root=NOETHYS):
     findings = []
     for path in iter_python_files(root):
@@ -196,11 +200,22 @@ def build_report(root=NOETHYS):
     }
 
 
+def _coverage_session(root=NOETHYS):
+    session = SourceAuditSession(iter_python_files(root))
+    for path in session.paths:
+        session.parse(path)
+    return session
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", default="", metavar="FILE")
     parser.add_argument("--fail-on-high", action="store_true")
     args = parser.parse_args(argv)
+
+    coverage = _coverage_session()
+    coverage.report(prefix="Couverture audit handlers silencieux")
+    coverage.require_complete()
 
     report = build_report()
     print(f"SILENT_EXCEPTION={report['count']} — {report['classifications']}")

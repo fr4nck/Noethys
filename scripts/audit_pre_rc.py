@@ -6,9 +6,9 @@ Ce script ne modifie ni le code ni les bases. Il regroupe en une commande les
 inventaires SQL strict, cycle de vie wxPython et anciens outils de listes afin
 d'éviter trois procédures parallèles et des chiffres recopiés à la main.
 
-Les résultats restent des diagnostics : une occurrence n'est pas un bug par
-elle-même. Les catégories wxPython structurelles à risque sont simplement
-signalées explicitement dans le résumé pour faciliter la revue pré-RC.
+Avant tout inventaire, il impose le contrat global de couverture des sources :
+tout ``noethys/**/*.py`` doit être trouvé, lu selon son encodage Python et
+parsable. Les occurrences restent ensuite des diagnostics à qualifier.
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts import audit_legacy_list_tools  # noqa: E402
+from scripts import audit_source_coverage  # noqa: E402
 from scripts import audit_sql_strict  # noqa: E402
 from scripts import audit_wx_lifecycle  # noqa: E402
 
@@ -44,7 +45,6 @@ def _relative(path: Path, root: Path) -> str:
 
 
 def _display_path(path: Path) -> str:
-    """Privilégie un chemin relatif au dépôt dans les rapports partageables."""
     return _relative(path, ROOT)
 
 
@@ -77,8 +77,20 @@ def _write_json(path: Path, payload) -> None:
     )
 
 
+def _require_source_coverage(root: Path):
+    session = audit_source_coverage.SourceAuditSession(
+        audit_source_coverage.iter_python_files(root)
+    )
+    for path in session.paths:
+        session.parse(path)
+    session.report(prefix="Couverture globale des sources pré-RC")
+    session.require_complete()
+    return session.coverage
+
+
 def collect(root: Path = DEFAULT_ROOT) -> dict:
     root = root.resolve()
+    coverage = _require_source_coverage(root)
 
     sql_candidates = audit_sql_strict.scan(root)
     sql_counts = Counter(item.classification for item in sql_candidates)
@@ -103,6 +115,12 @@ def collect(root: Path = DEFAULT_ROOT) -> dict:
 
     return {
         "summary": {
+            "source_coverage": {
+                "found": coverage.found,
+                "read": coverage.read,
+                "parsed": coverage.parsed,
+                "complete": coverage.complete,
+            },
             "sql": {
                 "total": len(sql_candidates),
                 "REVIEW": sql_counts.get("REVIEW", 0),
@@ -155,12 +173,18 @@ def write_reports(data: dict, output_dir: Path) -> None:
 
 def print_summary(data: dict, output_dir: Path) -> None:
     summary = data["summary"]
+    coverage = summary["source_coverage"]
     sql = summary["sql"]
     wx = summary["wx_lifecycle"]
     legacy = summary["legacy_list_tools"]
 
     print("Inventaires statiques pré-RC")
     print("===========================")
+    print(
+        "Sources     : {found} trouvés = {read} lus = {parsed} parsés".format(
+            **coverage
+        )
+    )
     print(
         "SQL strict : {total} candidats — REVIEW={REVIEW}, DEDUPE={DEDUPE}, SAFE={SAFE}".format(
             **sql

@@ -5,7 +5,7 @@
 Le but n'est pas de réécrire automatiquement l'interface : un nom issu de
 wxPython Classic n'est un problème que s'il n'est plus fourni par le runtime
 Phoenix réellement utilisé. L'audit distingue donc inventaire statique et
-compatibilité runtime.
+compatibilité runtime. La couverture des sources statiques est bloquante.
 
 Usage :
     python scripts/audit_wxphoenix_compat.py
@@ -21,12 +21,15 @@ import json
 from collections import Counter
 from pathlib import Path
 
+try:
+    from scripts.audit_source_coverage import SourceAuditSession
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession
+
 ROOT = Path(__file__).resolve().parents[1]
 NOETHYS = ROOT / "noethys"
 THIRD_PARTY_DIRS = {"ObjectListView", "Outils"}
 
-# Un match n'implique pas un bug. ``hooked`` indique qu'un repli existe dans
-# packaging/runtime_wx_compat.py ou dans la couche d'adaptation Noethys.
 PATTERNS = {
     "wx.EmptyBitmap": {"kind": "legacy_alias", "hooked": True, "modern": "wx.Bitmap", "runtime": "wx.EmptyBitmap"},
     "wx.EmptyIcon": {"kind": "legacy_alias", "hooked": True, "modern": "wx.Icon", "runtime": "wx.EmptyIcon"},
@@ -45,20 +48,12 @@ PATTERNS = {
     "wx.InitAllImageHandlers": {"kind": "obsolete_noop", "hooked": False, "modern": "remove / no-op with Phoenix", "runtime": "wx.InitAllImageHandlers"},
     "from wx import gizmos": {"kind": "legacy_import", "hooked": False, "modern": "qualify replacement", "runtime": "module:wx.gizmos"},
     "import wx.gizmos": {"kind": "legacy_import", "hooked": False, "modern": "qualify replacement", "runtime": "module:wx.gizmos"},
-
-    # Interaction : les listes ObjectListView ont désormais un repli central
-    # sous Phoenix/Windows. On garde l'inventaire des écrans qui consomment
-    # l'événement d'activation pour surveiller la couverture du correctif.
     "EVT_LIST_ITEM_ACTIVATED": {
         "kind": "list_activation",
         "hooked": True,
         "modern": "activation native + repli central UTILS_Adaptations",
         "runtime": "wx.EVT_LIST_ITEM_ACTIVATED",
     },
-
-    # Un double-clic brut attaché à la fenêtre interne d'une wx.Grid est un
-    # motif fragile sous Phoenix : préférer EVT_GRID_CELL_LEFT_DCLICK et les
-    # coordonnées ligne/colonne portées par GridEvent.
     "GetGridWindow().Bind(wx.EVT_LEFT_DCLICK": {
         "kind": "raw_grid_double_click",
         "hooked": False,
@@ -73,16 +68,11 @@ def scope_for(path: Path) -> str:
     return "third_party" if rel.parts and rel.parts[0] in THIRD_PARTY_DIRS else "first_party"
 
 
-def scan_file(path: Path) -> list[dict]:
+def scan_text(path: Path, text: str) -> list[dict]:
     findings = []
-    try:
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-    except OSError:
-        return findings
-
     rel = str(path.relative_to(ROOT)).replace("\\", "/")
     scope = scope_for(path)
-    for lineno, raw in enumerate(lines, 1):
+    for lineno, raw in enumerate(text.splitlines(), 1):
         code = raw.split("#", 1)[0]
         if not code.strip():
             continue
@@ -99,12 +89,31 @@ def scan_file(path: Path) -> list[dict]:
     return findings
 
 
-def static_audit() -> list[dict]:
+def scan_file(path: Path) -> list[dict]:
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    session.require_complete()
+    assert loaded is not None
+    text, _tree = loaded
+    return scan_text(path, text)
+
+
+def _static_audit_with_session():
+    paths = [path for path in sorted(NOETHYS.rglob("*.py")) if "__pycache__" not in path.parts]
+    session = SourceAuditSession(paths)
     findings = []
-    for path in sorted(NOETHYS.rglob("*.py")):
-        if "__pycache__" in path.parts:
+    for path in session.paths:
+        loaded = session.parse(path)
+        if loaded is None:
             continue
-        findings.extend(scan_file(path))
+        text, _tree = loaded
+        findings.extend(scan_text(path, text))
+    return findings, session
+
+
+def static_audit() -> list[dict]:
+    findings, session = _static_audit_with_session()
+    session.require_complete()
     return findings
 
 
@@ -192,7 +201,9 @@ def main() -> int:
     parser.add_argument("--json", type=Path, help="écrit le rapport JSON")
     args = parser.parse_args()
 
-    findings = static_audit()
+    findings, session = _static_audit_with_session()
+    session.report(prefix="Couverture audit wxPython Phoenix")
+    session.require_complete()
     runtime = runtime_audit(findings) if args.runtime else None
     payload = {"findings": findings, "runtime": runtime}
 

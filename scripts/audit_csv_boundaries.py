@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
-"""Audit des usages CSV potentiellement fragiles sous Python 3/Windows."""
+"""Audit des usages CSV potentiellement fragiles sous Python 3/Windows.
+
+Les occurrences restent informatives. La couverture des sources, elle, est
+bloquante : un fichier illisible ou non parsable invalide l'inventaire.
+"""
 from __future__ import annotations
 
 import ast
 import sys
 from pathlib import Path
+
+try:
+    from scripts.audit_source_coverage import SourceAuditSession, iter_python_files
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession, iter_python_files
 
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "noethys")
 SKIP_DIRS = {".git", ".venv", "__pycache__", "build", "dist", "venv"}
@@ -44,13 +53,7 @@ def is_csv_path(node: ast.AST | None) -> bool:
     return isinstance(value, str) and value.lower().endswith(".csv")
 
 
-def scan(path: Path) -> list[tuple[int, str]]:
-    try:
-        source = path.read_text(encoding="utf-8")
-        tree = ast.parse(source, filename=str(path))
-    except (OSError, SyntaxError, UnicodeDecodeError):
-        return []
-
+def scan_tree(tree: ast.AST) -> list[tuple[int, str]]:
     findings: list[tuple[int, str]] = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -74,15 +77,30 @@ def scan(path: Path) -> list[tuple[int, str]]:
     return sorted(set(findings))
 
 
+def scan(path: Path) -> list[tuple[int, str]]:
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    if loaded is None:
+        raise RuntimeError(session.coverage.failures[0].format())
+    _source, tree = loaded
+    return scan_tree(tree)
+
+
 def main() -> int:
+    session = SourceAuditSession(iter_python_files(ROOT, skip_dirs=SKIP_DIRS))
     total = 0
-    for path in sorted(ROOT.rglob("*.py")):
-        if any(part in SKIP_DIRS for part in path.parts):
+    for path in session.paths:
+        loaded = session.parse(path)
+        if loaded is None:
             continue
-        for lineno, message in scan(path):
+        _source, tree = loaded
+        for lineno, message in scan_tree(tree):
             total += 1
             print(f"{path}:{lineno}: {message}")
     print(f"\n{total} frontière(s) CSV à examiner.")
+    if not session.report():
+        print("Audit incomplet : inventaire CSV non exhaustif.")
+        return 2
     return 0
 
 

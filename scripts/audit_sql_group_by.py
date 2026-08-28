@@ -4,8 +4,8 @@
 
 Cet audit est volontairement conservateur : il ne modifie rien et ne prétend pas
 valider la sémantique SQL. Il sert de liste de travail reproductible pour la
-modernisation de Noethys, en particulier lors du maintien de la compatibilité
-avec les anciennes bases MySQL/MariaDB.
+modernisation de Noethys. Les occurrences restent informatives ; la couverture
+des sources Python est bloquante.
 """
 
 from __future__ import annotations
@@ -14,17 +14,16 @@ import argparse
 import re
 from pathlib import Path
 
+try:
+    from scripts.audit_source_coverage import SourceAuditSession, iter_python_files
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession, iter_python_files
+
 SQL_BLOCK_RE = re.compile(r'([ruRU]{0,2})?(["\']{3})(.*?)(?:\2)', re.DOTALL)
 GROUP_BY_RE = re.compile(r'\bGROUP\s+BY\b', re.IGNORECASE)
 SELECT_RE = re.compile(r'\bSELECT\b(.*?)\bFROM\b', re.IGNORECASE | re.DOTALL)
 AGGREGATE_RE = re.compile(r'\b(?:SUM|COUNT|AVG|MIN|MAX|GROUP_CONCAT)\s*\(', re.IGNORECASE)
-
-
-def iter_python_files(root: Path):
-    for path in root.rglob('*.py'):
-        if any(part in {'.git', '.venv', 'venv', '__pycache__'} for part in path.parts):
-            continue
-        yield path
+SKIP_DIRS = {'.git', '.venv', 'venv', '__pycache__'}
 
 
 def line_number(text: str, offset: int) -> int:
@@ -39,12 +38,7 @@ def classify(sql: str) -> str:
     return 'group-by-without-visible-aggregate'
 
 
-def scan_file(path: Path):
-    try:
-        text = path.read_text(encoding='utf-8')
-    except UnicodeDecodeError:
-        text = path.read_text(encoding='utf-8', errors='replace')
-
+def scan_text(text: str):
     findings = []
     for block in SQL_BLOCK_RE.finditer(text):
         sql = block.group(3)
@@ -52,6 +46,15 @@ def scan_file(path: Path):
             continue
         findings.append((line_number(text, block.start()), classify(sql), sql))
     return findings
+
+
+def scan_file(path: Path):
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    session.require_complete()
+    assert loaded is not None
+    text, _tree = loaded
+    return scan_text(text)
 
 
 def compact_sql(sql: str, limit: int = 220) -> str:
@@ -66,11 +69,16 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(args.root)
+    session = SourceAuditSession(iter_python_files(root, skip_dirs=SKIP_DIRS))
     total = 0
     suspicious = 0
 
-    for path in iter_python_files(root):
-        for lineno, category, sql in scan_file(path):
+    for path in session.paths:
+        loaded = session.parse(path)
+        if loaded is None:
+            continue
+        text, _tree = loaded
+        for lineno, category, sql in scan_text(text):
             total += 1
             if category == 'group-by-without-visible-aggregate':
                 suspicious += 1
@@ -79,6 +87,8 @@ def main() -> int:
     print(f'\nGROUP BY trouvés: {total}')
     print(f'Sans agrégat visible dans SELECT: {suspicious}')
     print('Note: chaque résultat doit être revu manuellement avant modification.')
+    session.report(prefix='Couverture audit SQL GROUP BY')
+    session.require_complete()
 
     if args.fail_on_findings and total:
         return 1

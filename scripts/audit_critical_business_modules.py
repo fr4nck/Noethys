@@ -3,12 +3,18 @@
 
 Le contrôle ne charge ni wxPython ni aucune base : il analyse l'AST et résout
 les imports locaux uniquement à partir des chemins présents dans le dépôt.
+La couverture des modules sélectionnés est bloquante.
 """
 from __future__ import annotations
 
 import ast
 import sys
 from pathlib import Path
+
+try:
+    from scripts.audit_source_coverage import SourceAuditSession
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession
 
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else "noethys").resolve()
 KEYWORDS = (
@@ -34,9 +40,7 @@ def local_module_exists(name: str) -> bool:
     )
 
 
-def imported_modules(path: Path) -> set[str]:
-    source = path.read_text(encoding="utf-8")
-    tree = ast.parse(source, filename=str(path))
+def imported_modules_from_tree(tree: ast.AST) -> set[str]:
     result: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -44,6 +48,15 @@ def imported_modules(path: Path) -> set[str]:
         elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
             result.add(node.module)
     return result
+
+
+def imported_modules(path: Path) -> set[str]:
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    session.require_complete()
+    assert loaded is not None
+    _source, tree = loaded
+    return imported_modules_from_tree(tree)
 
 
 def main() -> int:
@@ -56,23 +69,27 @@ def main() -> int:
         print("Aucun module métier critique détecté.")
         return 1
 
+    session = SourceAuditSession(targets)
     failures: list[str] = []
     checked_imports = 0
-    for path in targets:
-        try:
-            imports = imported_modules(path)
-        except (OSError, SyntaxError, UnicodeDecodeError) as err:
-            failures.append(f"{path}: analyse impossible: {err}")
+    for path in session.paths:
+        loaded = session.parse(path)
+        if loaded is None:
             continue
-        for name in sorted(imports):
+        _source, tree = loaded
+        for name in sorted(imported_modules_from_tree(tree)):
             if not name.startswith(LOCAL_PREFIXES):
                 continue
             checked_imports += 1
             if not local_module_exists(name):
                 failures.append(f"{path}: import local introuvable: {name}")
 
-    print(f"{len(targets)} module(s) métier critique(s) analysé(s).")
+    print(f"{len(targets)} module(s) métier critique(s) trouvé(s).")
     print(f"{checked_imports} import(s) local(aux) vérifié(s).")
+    session.report(prefix="Couverture audit modules métier critiques")
+    if not session.coverage.complete:
+        return 2
+
     if failures:
         print("\nAnomalies détectées :")
         for failure in failures:

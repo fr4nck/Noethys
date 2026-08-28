@@ -6,6 +6,7 @@ L'audit privilégie le rappel : chaque signal reste à qualifier humainement ava
 correction ou attribution à l'upstream. Les catégories visent des défauts qui
 échappent facilement à une recherche textuelle simple : état partagé par défaut,
 asymétrie validation/sauvegarde, cycle de vie modal et blocage de la boucle wx.
+La couverture des sources analysées est bloquante.
 """
 
 from __future__ import annotations
@@ -16,6 +17,10 @@ import json
 from collections import Counter
 from pathlib import Path
 
+try:
+    from scripts.audit_source_coverage import SourceAuditSession
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession
 
 ROOT = Path(__file__).resolve().parents[1]
 NOETHYS = ROOT / "noethys"
@@ -54,7 +59,6 @@ def _name_is_mutated(function, name):
             if isinstance(node.func.value, ast.Name) and node.func.value.id == name and node.func.attr in MUTATING_METHODS:
                 return True, node.lineno, node.func.attr
         if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign, ast.Delete)):
-            targets = []
             if isinstance(node, ast.Assign):
                 targets = node.targets
             elif isinstance(node, ast.AnnAssign):
@@ -132,13 +136,7 @@ def _qualified_name(node):
     return ".".join(reversed(parts))
 
 
-def scan_file(path, root=NOETHYS):
-    try:
-        source = path.read_text(encoding="utf-8", errors="replace")
-        tree = ast.parse(source, filename=str(path))
-    except (OSError, SyntaxError):
-        return []
-
+def _scan_loaded(source, tree, path, root=NOETHYS):
     rel = str(path.relative_to(root)).replace("\\", "/")
     findings = []
 
@@ -215,6 +213,15 @@ def scan_file(path, root=NOETHYS):
     return findings
 
 
+def scan_file(path, root=NOETHYS):
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    session.require_complete()
+    assert loaded is not None
+    source, tree = loaded
+    return _scan_loaded(source, tree, path, root)
+
+
 def build_report(root=NOETHYS):
     findings = []
     for path in iter_python_files(root):
@@ -228,10 +235,22 @@ def build_report(root=NOETHYS):
     }
 
 
+def _coverage_session(root=NOETHYS):
+    session = SourceAuditSession(iter_python_files(root))
+    for path in session.paths:
+        session.parse(path)
+    return session
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", default="", metavar="FILE")
     args = parser.parse_args(argv)
+
+    coverage = _coverage_session()
+    coverage.report(prefix="Couverture audit pièges sémantiques")
+    coverage.require_complete()
+
     report = build_report()
     print(f"SEMANTIC_TRAPS={report['count']} — {report['kinds']} — {report['priorities']}")
     for item in report["findings"]:

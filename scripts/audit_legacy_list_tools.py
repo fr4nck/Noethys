@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 """Inventorie les raccords encore dépendants des outils de listes historiques.
 
-L'objectif n'est pas de faire échouer la CI : ce script fournit une dette
-mesurable pour terminer la migration Repens écran par écran sans chercher des
-usages à la main.
+L'objectif n'est pas de faire échouer la CI sur les occurrences : ce script
+fournit une dette mesurable pour terminer la migration Repens écran par écran.
+En revanche, sa couverture des sources est bloquante.
 """
 
 from __future__ import annotations
@@ -14,6 +14,10 @@ import json
 import re
 from pathlib import Path
 
+try:
+    from scripts.audit_source_coverage import SourceAuditSession, iter_python_files
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession, iter_python_files
 
 PATTERNS = {
     "ctrl_outils_historique": re.compile(r"\bCTRL_ObjectListView\.CTRL_Outils\b"),
@@ -35,12 +39,7 @@ CODES_ECRAN = {
 }
 
 
-def scan_file(path: Path) -> list[dict[str, object]]:
-    try:
-        text = path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return []
-
+def scan_text(path: Path, text: str) -> list[dict[str, object]]:
     findings = []
     for lineno, line in enumerate(text.splitlines(), start=1):
         for code, pattern in PATTERNS.items():
@@ -54,6 +53,15 @@ def scan_file(path: Path) -> list[dict[str, object]]:
     return findings
 
 
+def scan_file(path: Path) -> list[dict[str, object]]:
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    session.require_complete()
+    assert loaded is not None
+    text, _tree = loaded
+    return scan_text(path, text)
+
+
 def _est_source_historique(path: Path, root: Path) -> bool:
     try:
         relatif = path.relative_to(root).as_posix()
@@ -62,18 +70,24 @@ def _est_source_historique(path: Path, root: Path) -> bool:
     return relatif == SOURCE_HISTORIQUE or relatif.endswith("/" + SOURCE_HISTORIQUE)
 
 
-def scan(root: Path) -> list[dict[str, object]]:
+def _scan_with_session(root: Path):
+    session = SourceAuditSession(iter_python_files(root, skip_dirs=SKIP_DIRS))
     findings = []
-    for path in sorted(root.rglob("*.py")):
-        if any(part in SKIP_DIRS for part in path.parts):
+    for path in session.paths:
+        loaded = session.parse(path)
+        if loaded is None:
             continue
-        items = scan_file(path)
+        text, _tree = loaded
+        items = scan_text(path, text)
         if _est_source_historique(path, root):
-            # La définition historique n'est pas un écran restant à migrer.
-            # On ne conserve ici que ses anciens assets afin de matérialiser le
-            # dernier raccord central encore à retirer une fois les appels partis.
             items = [item for item in items if item["code"] == "assets_filtre_16px"]
         findings.extend(items)
+    return findings, session
+
+
+def scan(root: Path) -> list[dict[str, object]]:
+    findings, session = _scan_with_session(root)
+    session.require_complete()
     return findings
 
 
@@ -85,7 +99,6 @@ def summarize(findings: list[dict[str, object]]) -> dict[str, int]:
 
 
 def screens(findings: list[dict[str, object]]) -> list[str]:
-    """Retourne les écrans encore raccordés aux anciens outils, sans doublons."""
     return sorted({
         str(item["path"])
         for item in findings
@@ -100,19 +113,19 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(args.root)
-    findings = scan(root)
+    findings, session = _scan_with_session(root)
     counts = summarize(findings)
     legacy_screens = screens(findings)
 
     for item in findings:
-        print(
-            "{code} {path}:{line}: {text}".format(**item)
-        )
+        print("{code} {path}:{line}: {text}".format(**item))
 
     print("\nDette outils de listes :")
     for code in PATTERNS:
         print(f"- {code}: {counts[code]}")
     print(f"- ecrans_metier_restants: {len(legacy_screens)}")
+    session.report(prefix="Couverture audit outils de listes historiques")
+    session.require_complete()
 
     if args.json_path:
         output = Path(args.json_path)

@@ -3,11 +3,10 @@
 """Classe les alertes de ``audit_runtime_patterns`` pour une passe de hardening.
 
 L'audit historique privilégie le rappel : il signale volontairement des motifs
-qui peuvent être sûrs (agrégat SQL garanti sur une ligne, garde placée sur la
-même ligne, accès entouré d'un handler, sélection provenant du même dialogue,
-lookup d'une entité par sa clé, etc.). Ce module ne masque pas ces occurrences :
-il les classe afin que la passe anti-bugs consacre la revue humaine aux chemins
-réellement ambigus.
+qui peuvent être sûrs. Ce module ne masque pas ces occurrences : il les classe
+afin que la passe anti-bugs consacre la revue humaine aux chemins réellement
+ambigus. Les lectures complémentaires réutilisent le contrat de couverture des
+sources et ne tolèrent aucun décodage/parsing silencieusement dégradé.
 """
 
 from __future__ import annotations
@@ -16,34 +15,36 @@ import ast
 import json
 import re
 from collections import Counter
+from functools import lru_cache
 from pathlib import Path
 
 from scripts import audit_runtime_patterns as base
-
+from scripts.audit_source_coverage import SourceAuditSession
 
 ROOT = base.NOETHYS_ROOT
 
 
-def _source_lines(relpath: str) -> list[str]:
+@lru_cache(maxsize=None)
+def _loaded_source(relpath: str):
     path = ROOT / relpath
-    try:
-        return path.read_text(encoding="utf-8", errors="replace").splitlines()
-    except OSError:
-        return []
+    session = SourceAuditSession([path])
+    loaded = session.parse(path)
+    session.require_complete()
+    assert loaded is not None
+    return loaded
+
+
+def _source_lines(relpath: str) -> list[str]:
+    source, _tree = _loaded_source(relpath)
+    return source.splitlines()
 
 
 def _source_tree(relpath: str):
-    lines = _source_lines(relpath)
-    if not lines:
-        return None
-    try:
-        return ast.parse("\n".join(lines), filename=relpath)
-    except SyntaxError:
-        return None
+    _source, tree = _loaded_source(relpath)
+    return tree
 
 
 def _sql_window(lines: list[str], line_1based: int, lookback: int = 35) -> str:
-    """Retourne le contexte SQL proche sans prétendre reconstruire le flot."""
     start = max(0, line_1based - lookback - 1)
     end = min(len(lines), line_1based)
     return "\n".join(lines[start:end]).upper()
@@ -56,7 +57,6 @@ def _last_select_window(lines: list[str], line_1based: int) -> str:
 
 
 def _single_row_aggregate(lines: list[str], line_1based: int) -> bool:
-    """Agrégat SQL sans GROUP BY : SQL renvoie une ligne même sur ensemble vide."""
     query = _last_select_window(lines, line_1based)
     if not query or "GROUP BY" in query:
         return False
@@ -64,12 +64,6 @@ def _single_row_aggregate(lines: list[str], line_1based: int) -> bool:
 
 
 def _primary_key_lookup(lines: list[str], line_1based: int) -> bool:
-    """Lookup d'une entité unique par identifiant fourni par le contexte métier.
-
-    On ne le déclare pas « garanti par SQL » : l'intégrité de l'ID reste une
-    précondition métier. Il est simplement séparé des indexations réellement
-    ambiguës afin de ne pas confondre invariant d'entité et bug démontré.
-    """
     query = _last_select_window(lines, line_1based)
     if not query or "GROUP BY" in query:
         return False
@@ -97,8 +91,6 @@ def _line_inside(node, line: int) -> bool:
 
 def _inside_handled_try(relpath: str, line: int) -> bool:
     tree = _source_tree(relpath)
-    if tree is None:
-        return False
     for node in ast.walk(tree):
         if not isinstance(node, ast.Try) or not node.handlers:
             continue
@@ -110,8 +102,6 @@ def _inside_handled_try(relpath: str, line: int) -> bool:
 
 def _inside_main_guard(relpath: str, line: int) -> bool:
     tree = _source_tree(relpath)
-    if tree is None:
-        return False
     for node in ast.walk(tree):
         if not isinstance(node, ast.If) or not _line_inside(node, line):
             continue
@@ -207,15 +197,7 @@ def classify_result_assign(item: dict) -> dict:
 
 
 def _bare_except_shapes(relpath: str) -> dict[int, str]:
-    lines = _source_lines(relpath)
-    if not lines:
-        return {}
-    source = "\n".join(lines)
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
-        return {}
-
+    _source, tree = _loaded_source(relpath)
     shapes: dict[int, str] = {}
     for node in ast.walk(tree):
         if not isinstance(node, ast.ExceptHandler) or node.type is not None:
@@ -294,6 +276,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", default="", metavar="FILE")
     args = parser.parse_args()
+
+    # Le socle runtime affiche ici la preuve agrégée trouvés=lus=parsés.
+    raw_coverage = base._coverage_session(ROOT)
+    raw_coverage.report(prefix="Couverture classement runtime")
+    raw_coverage.require_complete()
 
     report = build_report()
     for kind, data in report["summary"].items():

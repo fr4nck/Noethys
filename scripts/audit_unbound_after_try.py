@@ -7,7 +7,7 @@ Ce motif produit un ``UnboundLocalError`` uniquement sur le chemin d'erreur et
 échappe donc facilement aux tests heureux. L'analyse reste conservative, mais
 respecte l'ordre d'exécution à l'intérieur des blocs suivants afin de ne pas
 confondre une réaffectation dans un nouveau ``try``/une boucle avec une lecture
-de l'ancienne variable.
+de l'ancienne variable. La couverture des sources est bloquante.
 """
 
 from __future__ import annotations
@@ -17,6 +17,10 @@ import ast
 import json
 from pathlib import Path
 
+try:
+    from scripts.audit_source_coverage import SourceAuditSession
+except ModuleNotFoundError:
+    from audit_source_coverage import SourceAuditSession
 
 ROOT = Path(__file__).resolve().parents[1]
 NOETHYS = ROOT / "noethys"
@@ -97,9 +101,6 @@ def _first_event(statements, name):
                 return "load", _first_name_line(stmt.iter, name, ast.Load)
             target_assigns = name in _assigned_names(stmt.target)
             if target_assigns:
-                # La cible est affectée avant chaque exécution du corps. Les
-                # lectures du corps sont donc sûres ; seul le ``else`` peut
-                # s'exécuter sans itération.
                 event, line = _first_event(stmt.orelse, name)
                 if event == "load":
                     return event, line
@@ -125,9 +126,6 @@ def _first_event(statements, name):
             event, line = _first_event(stmt.body, name)
             if event == "load":
                 return event, line
-            # Si le corps commence par une affectation, les lectures suivantes
-            # de ce même corps sont protégées. Un handler peut toutefois lire
-            # le nom si l'affectation a échoué avant de le lier.
             for handler in stmt.handlers:
                 handler_event, handler_line = _first_event(handler.body, name)
                 if handler_event == "load":
@@ -145,7 +143,6 @@ def _first_event(statements, name):
                 if name in _loaded_names(item.context_expr):
                     return "load", _first_name_line(item.context_expr, name, ast.Load)
                 if item.optional_vars is not None and name in _assigned_names(item.optional_vars):
-                    # Affecté avant le corps si l'entrée du contexte réussit.
                     event, line = _first_event(stmt.body, name)
                     if event == "load":
                         return "store", getattr(stmt, "lineno", line)
@@ -157,9 +154,6 @@ def _first_event(statements, name):
         if name in _loaded_names(stmt):
             return "load", _first_name_line(stmt, name, ast.Load) or getattr(stmt, "lineno", 0)
 
-        # Une affectation top-level dans une instruction simple garantit le nom
-        # pour la suite. Pour les structures complexes, les cas ci-dessus ont
-        # déjà traité les branches sans prétendre à une garantie globale.
         if name in _assigned_names(stmt):
             return "store", getattr(stmt, "lineno", 0)
 
@@ -240,15 +234,22 @@ def iter_python_files(root=NOETHYS):
 def scan(root=NOETHYS):
     findings = []
     for path in iter_python_files(root):
-        try:
-            source = path.read_text(encoding="utf-8", errors="replace")
-            tree = ast.parse(source, filename=str(path))
-        except (OSError, SyntaxError):
-            continue
+        session = SourceAuditSession([path])
+        loaded = session.parse(path)
+        session.require_complete()
+        assert loaded is not None
+        _source, tree = loaded
         relpath = str(path.relative_to(root)).replace("\\", "/")
         findings.extend(_scan_block(tree.body, relpath))
     findings.sort(key=lambda item: (item["file"], item["read_line"], item["name"]))
     return findings
+
+
+def _coverage_session(root=NOETHYS):
+    session = SourceAuditSession(iter_python_files(root))
+    for path in session.paths:
+        session.parse(path)
+    return session
 
 
 def main(argv=None):
@@ -256,6 +257,10 @@ def main(argv=None):
     parser.add_argument("--json", default="", metavar="FILE")
     parser.add_argument("--fail-on-findings", action="store_true")
     args = parser.parse_args(argv)
+
+    coverage = _coverage_session()
+    coverage.report(prefix="Couverture audit variables après try")
+    coverage.require_complete()
 
     findings = scan()
     print(f"TRY_DEFINED_USED_AFTER={len(findings)}")
