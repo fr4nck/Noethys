@@ -1,0 +1,77 @@
+name: Temporary PR218 final scanner fix
+
+on:
+  push:
+    branches:
+      - audit/branch-assignment-flow-hardening
+    paths:
+      - .github/workflows/tmp-pr218-finalize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: audit/branch-assignment-flow-hardening
+      - name: Restore event ordering while keeping comprehension scopes isolated
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/audit_branch_assignment_gaps.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''    def visit_Name(self, node):
+              if node.id != self.name:
+                  return
+              if isinstance(node.ctx, ast.Load):
+                  self.events.append((node.lineno, "load"))
+              elif isinstance(node.ctx, ast.Del):
+                  self.events.append((node.lineno, "delete"))
+          '''
+          new = '''    def visit_Name(self, node):
+              if node.id != self.name:
+                  return
+              if isinstance(node.ctx, ast.Load):
+                  mode = "load"
+              elif isinstance(node.ctx, ast.Del):
+                  mode = "delete"
+              else:
+                  mode = "store"
+              self.events.append((node.lineno, mode))
+          '''
+          if old not in text:
+              raise SystemExit('visit_Name block not found')
+          text = text.replace(old, new, 1)
+          start = text.index('def first_event(statements, name):')
+          end = text.index('\n\ndef function_args(function):', start)
+          replacement = '''def first_event(statements, name):
+              """Retourne le premier événement de la portée englobante.
+
+              Les cibles de compréhension sont filtrées par ``NameEvents`` : elles
+              ne doivent jamais masquer une lecture ultérieure de la variable locale
+              de la fonction. Les stores ordinaires restent en revanche des bornes
+              valides, comme dans le contrat historique de cet audit.
+              """
+              visitor = NameEvents(name)
+              for statement in statements:
+                  visitor.visit(statement)
+              if not visitor.events:
+                  return None
+              return min(enumerate(visitor.events), key=lambda item: (item[1][0], item[0]))[1]
+          '''
+          text = text[:start] + replacement + text[end:]
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Targeted tests
+        run: python -m unittest tests.test_branch_assignment_gaps_audit -v
+      - name: Commit patch and remove temporary workflow
+        run: |
+          rm .github/workflows/tmp-pr218-finalize.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add scripts/audit_branch_assignment_gaps.py .github/workflows/tmp-pr218-finalize.yml
+          git commit -m "Audit: preserve outer-scope event ordering"
+          git push origin HEAD:audit/branch-assignment-flow-hardening
