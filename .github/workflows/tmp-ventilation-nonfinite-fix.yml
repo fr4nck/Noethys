@@ -1,0 +1,62 @@
+name: Temporary ventilation non-finite fix
+on:
+  push:
+    branches:
+      - fix/ventilation-regroupement-contracts
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Patch non-finite decimal handling
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('noethys/Ctrl/CTRL_Ventilation.py')
+          source = path.read_text(encoding='utf-8')
+
+          old = '''from Utils.UTILS_Decimal import FloatToDecimal as FloatToDecimal\n\nfrom Utils import UTILS_Config\n'''
+          new = '''from Utils.UTILS_Decimal import FloatToDecimal as FloatToDecimal\n\n\ndef FloatToDecimalFini(montant):\n    """Convertit un montant historique en Decimal fini, ou retourne None."""\n    try:\n        if isinstance(montant, decimal.Decimal):\n            if not montant.is_finite():\n                return None\n        valeur = FloatToDecimal(montant)\n        if not valeur.is_finite():\n            return None\n        return valeur\n    except (decimal.DecimalException, TypeError, ValueError, OverflowError):\n        return None\n\n\nfrom Utils import UTILS_Config\n'''
+          if source.count(old) != 1:
+              raise SystemExit('helper insertion mismatch')
+          source = source.replace(old, new, 1)
+
+          old = '''        creditAVentiler = FloatToDecimal(self.montant_reglement) - FloatToDecimal(self.total_ventilation)\n        \n        totalRestePrestationsAVentiler = FloatToDecimal(self.ctrl_ventilation.GetTotalRestePrestationsAVentiler())\n        if not creditAVentiler.is_finite() or not totalRestePrestationsAVentiler.is_finite():\n            self.validation = "erreur"\n            self.ctrl_image.SetBitmap(self.imgErreur)\n            self.ctrl_info.SetLabel(_(u"Vous avez saisi un montant non valide !"))\n            return\n        if creditAVentiler > totalRestePrestationsAVentiler :\n'''
+          new = '''        montant_reglement = FloatToDecimalFini(self.montant_reglement)\n        total_ventilation = FloatToDecimalFini(self.total_ventilation)\n        if montant_reglement is None or total_ventilation is None:\n            self.validation = "erreur"\n            self.ctrl_image.SetBitmap(self.imgErreur)\n            self.ctrl_info.SetLabel(_(u"Vous avez saisi un montant non valide !"))\n            return\n\n        try:\n            creditAVentiler = montant_reglement - total_ventilation\n            totalRestePrestations = self.ctrl_ventilation.GetTotalRestePrestationsAVentiler()\n        except (decimal.DecimalException, TypeError, ValueError, OverflowError):\n            self.validation = "erreur"\n            self.ctrl_image.SetBitmap(self.imgErreur)\n            self.ctrl_info.SetLabel(_(u"Vous avez saisi un montant non valide !"))\n            return\n\n        totalRestePrestationsAVentiler = FloatToDecimalFini(totalRestePrestations)\n        if totalRestePrestationsAVentiler is None:\n            self.validation = "erreur"\n            self.ctrl_image.SetBitmap(self.imgErreur)\n            self.ctrl_info.SetLabel(_(u"Vous avez saisi un montant non valide !"))\n            return\n        if creditAVentiler > totalRestePrestationsAVentiler :\n'''
+          if source.count(old) != 1:
+              raise SystemExit('MAJinfos replacement mismatch')
+          source = source.replace(old, new, 1)
+
+          old = '''            if self.montant_reglement >= FloatToDecimal(0.0):\n'''
+          new = '''            if montant_reglement >= FloatToDecimal(0.0):\n'''
+          if source.count(old) != 1:
+              raise SystemExit('normalized comparison replacement mismatch')
+          source = source.replace(old, new, 1)
+
+          path.write_text(source, encoding='utf-8')
+          PY
+          python -m py_compile noethys/Ctrl/CTRL_Ventilation.py
+          python - <<'PY'
+          from pathlib import Path
+          from scripts import audit_branch_assignment_gaps as audit
+          findings = audit.scan_file(Path('noethys/Ctrl/CTRL_Ventilation.py').resolve())
+          print('remaining=', findings)
+          if findings:
+              raise SystemExit(1)
+          PY
+      - name: Commit patch and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/tmp-ventilation-nonfinite-fix.yml
+          git add noethys/Ctrl/CTRL_Ventilation.py
+          git commit -m "Fix: valider les montants avant arithmétique"
+          git push
