@@ -1,0 +1,66 @@
+name: Temporary UTILS_Dates branch fix
+
+on:
+  push:
+    branches:
+      - fix/utils-dates-branch-gaps
+    paths:
+      - .github/workflows/tmp-utils-dates-branch-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/utils-dates-branch-gaps
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Patch UTILS_Dates
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('noethys/Utils/UTILS_Dates.py')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = {
+              '''def HeureStrEnTime(heureStr):\n    if heureStr == None or heureStr == "" : return datetime.time(0, 0)\n    if len(heureStr.split(":")) == 2 : heures, minutes = heureStr.split(":")\n    if len(heureStr.split(":")) == 3 : heures, minutes, secondes = heureStr.split(":")\n    try :\n        return datetime.time(int(heures), int(minutes))\n    except Exception:\n        return datetime.time(0, 0)\n''': '''def HeureStrEnTime(heureStr):\n    if heureStr == None or heureStr == "" : return datetime.time(0, 0)\n    elements = heureStr.split(":")\n    if len(elements) not in (2, 3):\n        return datetime.time(0, 0)\n    heures, minutes = elements[:2]\n    try :\n        return datetime.time(int(heures), int(minutes))\n    except (TypeError, ValueError):\n        return datetime.time(0, 0)\n''',
+              '''def ArrondirTime(heure=datetime.time(hour=10, minute=25), delta_minutes=15, sens="inf"):\n    """ sens = 'sup' ou 'inf' """\n    dt = datetime.datetime(year=2015, month=1, day=1, hour=heure.hour, minute=heure.minute)\n    if dt.minute % delta_minutes :\n        if sens == "sup" :\n            resultat = dt + datetime.timedelta(minutes = delta_minutes - dt.minute % delta_minutes)\n        if sens == "inf" :\n            resultat = dt - datetime.timedelta(minutes = dt.minute % delta_minutes)\n    else:\n        resultat = dt\n    return datetime.time(hour=resultat.hour, minute=resultat.minute)\n''': '''def ArrondirTime(heure=datetime.time(hour=10, minute=25), delta_minutes=15, sens="inf"):\n    """ sens = 'sup' ou 'inf' """\n    dt = datetime.datetime(year=2015, month=1, day=1, hour=heure.hour, minute=heure.minute)\n    resultat = dt\n    if dt.minute % delta_minutes :\n        if sens == "sup" :\n            resultat = dt + datetime.timedelta(minutes = delta_minutes - dt.minute % delta_minutes)\n        elif sens == "inf" :\n            resultat = dt - datetime.timedelta(minutes = dt.minute % delta_minutes)\n    return datetime.time(hour=resultat.hour, minute=resultat.minute)\n''',
+              '''def ArrondirDelta(duree=datetime.timedelta(hours=1, minutes=25), delta_minutes=15, sens="sup"):\n    duree_minutes = duree.seconds // 60\n    if duree_minutes % delta_minutes :\n        if sens == "sup" :\n            resultat = duree + datetime.timedelta(minutes = delta_minutes - duree_minutes % delta_minutes)\n        if sens == "inf" :\n            resultat = duree - datetime.timedelta(minutes = duree_minutes % delta_minutes)\n    else :\n        resultat = duree\n    return resultat\n''': '''def ArrondirDelta(duree=datetime.timedelta(hours=1, minutes=25), delta_minutes=15, sens="sup"):\n    duree_minutes = duree.seconds // 60\n    resultat = duree\n    if duree_minutes % delta_minutes :\n        if sens == "sup" :\n            resultat = duree + datetime.timedelta(minutes = delta_minutes - duree_minutes % delta_minutes)\n        elif sens == "inf" :\n            resultat = duree - datetime.timedelta(minutes = duree_minutes % delta_minutes)\n    return resultat\n''',
+          }
+
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit('Bloc attendu absent ou ambigu dans UTILS_Dates.py')
+              text = text.replace(old, new)
+
+          path.write_text(text, encoding='utf-8')
+      - name: Validate targeted changes
+        run: |
+          python -m py_compile noethys/Utils/UTILS_Dates.py
+          python -m unittest tests.test_utils_dates_duration_contract -v
+          python - <<'PY'
+          from pathlib import Path
+          from scripts import audit_branch_assignment_gaps
+          path = Path('noethys/Utils/UTILS_Dates.py').resolve()
+          findings = audit_branch_assignment_gaps.scan_file(path)
+          targets = {'HeureStrEnTime', 'ArrondirTime', 'ArrondirDelta'}
+          remaining = [item for item in findings if item['function'] in targets]
+          if remaining:
+              raise SystemExit('Signaux résiduels: %r' % remaining)
+          print('UTILS_Dates targeted branch gaps: 0')
+          PY
+      - name: Commit patch and remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/tmp-utils-dates-branch-fix.yml
+          git add noethys/Utils/UTILS_Dates.py
+          git commit -m 'Fix: sécuriser les conversions et arrondis horaires'
+          git push origin HEAD:fix/utils-dates-branch-gaps
