@@ -41,7 +41,24 @@ def _same_expr(left, right):
 
 
 def _expr_key(node):
-    return ast.dump(node, include_attributes=False)
+    """Clé structurelle indépendante du contexte Load/Store de l'AST.
+
+    Une dépendance lue dans une garde et la même expression utilisée comme
+    cible d'affectation doivent comparer égales. ``ast.dump`` brut conserve
+    pourtant ``ctx=Load()`` ou ``ctx=Store()``, ce qui masquait précisément les
+    réaffectations que cette qualification doit détecter.
+    """
+    if isinstance(node, ast.Name):
+        return ("name", node.id)
+    if isinstance(node, ast.Attribute):
+        return ("attribute", _expr_key(node.value), node.attr)
+    if isinstance(node, ast.Subscript):
+        return (
+            "subscript",
+            _expr_key(node.value),
+            ast.dump(node.slice, include_attributes=False),
+        )
+    return ("expr", ast.dump(node, include_attributes=False))
 
 
 def _negated(expr):
