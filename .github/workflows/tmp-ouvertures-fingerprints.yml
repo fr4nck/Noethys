@@ -1,0 +1,39 @@
+name: Temporary DLG_Ouvertures explicit-safe fingerprints
+
+on:
+  push:
+    branches:
+      - fix/branch-assignment-ouvertures
+    paths:
+      - .github/workflows/tmp-ouvertures-fingerprints.yml
+
+permissions:
+  contents: read
+
+jobs:
+  compute:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Compute fingerprints
+        shell: bash
+        run: |
+          python - <<'PY'
+          from scripts import qualify_branch_assignment_gaps as q
+          raw = q.base.build_report()
+          identities = {
+              ('Dlg/DLG_Ouvertures.py', 'Sauvegarde', 'prochainIDligne', 'body_only'),
+              ('Dlg/DLG_Ouvertures.py', 'TraitementLot', 'etat', 'partial_branches'),
+              ('Dlg/DLG_Ouvertures.py', 'TraitementLot', 'liste_temp', 'body_only'),
+              ('Dlg/DLG_Ouvertures.py', 'TraitementLot', 'nbrePlaces', 'partial_branches'),
+          }
+          fields = ('file', 'function', 'name', 'detail')
+          for identity in sorted(identities):
+              matches = [item for item in raw['findings'] if tuple(item[f] for f in fields) == identity]
+              if len(matches) != 1:
+                  raise SystemExit(f'{identity!r}: {len(matches)} candidate(s)')
+              print('FINGERPRINT', identity, q.qualification_key(matches[0])[4])
+          PY
