@@ -173,8 +173,14 @@ class CTRL(wx.Panel):
         orientationSizer = wx.VERTICAL
         
         if afficheToolbar == True :
-            if positionToolbar in ("gauche", "droite") : orientationTB = wx.TB_VERTICAL ; orientationSizer = wx.HORIZONTAL
-            if positionToolbar in ("haut", "bas") : orientationTB = wx.TB_HORIZONTAL ; orientationSizer = wx.VERTICAL
+            if positionToolbar in ("gauche", "droite") :
+                orientationTB = wx.TB_VERTICAL
+                orientationSizer = wx.HORIZONTAL
+            elif positionToolbar in ("haut", "bas") :
+                orientationTB = wx.TB_HORIZONTAL
+                orientationSizer = wx.VERTICAL
+            else :
+                raise ValueError("positionToolbar invalide : %s" % positionToolbar)
             self.toolBar = ToolBar(self, style= orientationTB | wx.TB_FLAT | wx.TB_TEXT)
         self.timeline_panel = TimelinePanel(self, lectureSeule=lectureSeule)
 
