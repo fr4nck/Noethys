@@ -117,6 +117,34 @@ class BranchAssignmentGapTests(unittest.TestCase):
         ''')
         self.assertTrue(any(item["name"] == "value" for item in report["findings"]))
 
+    def test_comprehension_target_does_not_bind_enclosing_function(self):
+        report = self.report_for('''
+            def f(flag, rows):
+                if flag:
+                    left = [tuple(value) for value in rows]
+                return [tuple(value) for value in rows]
+        ''')
+        self.assertFalse(any(item["name"] == "value" for item in report["findings"]))
+
+    def test_comprehension_outer_iterable_read_remains_visible(self):
+        report = self.report_for('''
+            def f(flag):
+                if flag:
+                    rows = [1]
+                return [value for value in rows]
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "rows"]
+        self.assertEqual(len(findings), 1)
+
+    def test_previous_comprehension_target_is_local_in_next_generator(self):
+        report = self.report_for('''
+            def f(flag, rows):
+                if flag:
+                    marker = [(left, right) for left in rows for right in left]
+                return [(left, right) for left in rows for right in left]
+        ''')
+        self.assertFalse(any(item["name"] in {"left", "right"} for item in report["findings"]))
+
     def test_try_assignment_with_terminating_handler_is_propagated(self):
         report = self.report_for('''
             def f(flag):
