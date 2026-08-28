@@ -671,6 +671,10 @@ class CTRL_Ventilation(gridlib.Grid):
         self.dictRegroupements = {}
         listeKeys = []
         nbreLignes = 0
+        regroupements_valides = ("individu", "facture", "date", "periode")
+        if self.KeyRegroupement not in regroupements_valides:
+            raise ValueError("Regroupement inconnu : %s" % self.KeyRegroupement)
+
         for ligne_prestation in self.listeLignesPrestations :
             if self.KeyRegroupement == "individu" : 
                 key = ligne_prestation.IDindividu
@@ -678,13 +682,13 @@ class CTRL_Ventilation(gridlib.Grid):
                     label = _(u"Prestations diverses")
                 else:
                     label = ligne_prestation.nomCompletIndividu
-            if self.KeyRegroupement == "facture" : 
+            elif self.KeyRegroupement == "facture" : 
                 key = ligne_prestation.IDfacture
                 label = ligne_prestation.label_facture
-            if self.KeyRegroupement == "date" : 
+            elif self.KeyRegroupement == "date" : 
                 key = ligne_prestation.date
                 label = ligne_prestation.date_complete
-            if self.KeyRegroupement == "periode" : 
+            else:
                 key = ligne_prestation.periode
                 label = ligne_prestation.periode_complete
 
@@ -739,6 +743,8 @@ class CTRL_Ventilation(gridlib.Grid):
         self.MAJbarreInfos() 
         
     def SetRegroupement(self, key):
+        if key not in ("individu", "facture", "date", "periode"):
+            raise ValueError("Regroupement inconnu : %s" % key)
         self.KeyRegroupement = key
         self.MAJ() 
 
@@ -901,10 +907,16 @@ class CTRL(wx.Panel):
         grid_sizer_base.Fit(self)
     
     def OnRadioRegroupement(self, event):
-        if self.radio_periode.GetValue() == True : key = "periode"
-        if self.radio_facture.GetValue() == True : key = "facture"
-        if self.radio_individu.GetValue() == True : key = "individu"
-        if self.radio_date.GetValue() == True : key = "date"
+        if self.radio_periode.GetValue() == True :
+            key = "periode"
+        elif self.radio_facture.GetValue() == True :
+            key = "facture"
+        elif self.radio_individu.GetValue() == True :
+            key = "individu"
+        elif self.radio_date.GetValue() == True :
+            key = "date"
+        else:
+            return
         self.ctrl_ventilation.SetRegroupement(key)
     
     def MAJ(self):
@@ -946,6 +958,11 @@ class CTRL(wx.Panel):
         creditAVentiler = FloatToDecimal(self.montant_reglement) - FloatToDecimal(self.total_ventilation)
         
         totalRestePrestationsAVentiler = FloatToDecimal(self.ctrl_ventilation.GetTotalRestePrestationsAVentiler())
+        if not creditAVentiler.is_finite() or not totalRestePrestationsAVentiler.is_finite():
+            self.validation = "erreur"
+            self.ctrl_image.SetBitmap(self.imgErreur)
+            self.ctrl_info.SetLabel(_(u"Vous avez saisi un montant non valide !"))
+            return
         if creditAVentiler > totalRestePrestationsAVentiler :
             creditAVentiler = totalRestePrestationsAVentiler
         
@@ -956,7 +973,7 @@ class CTRL(wx.Panel):
         elif creditAVentiler > FloatToDecimal(0.0) :
             self.validation = "addition"
             label = _(u"Vous devez encore ventiler %.2f %s !") % (creditAVentiler, SYMBOLE)
-        elif creditAVentiler < FloatToDecimal(0.0) :
+        else:
             if self.montant_reglement >= FloatToDecimal(0.0):
                 self.validation = "trop"
                 label = _(u"Vous avez ventilé %.2f %s en trop !") % (-creditAVentiler, SYMBOLE)
