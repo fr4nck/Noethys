@@ -202,6 +202,36 @@ class BranchAssignmentQualificationTests(unittest.TestCase):
         self.assertEqual(finding["classification"], "review")
         self.assertEqual(finding["priority"], "high")
 
+    def test_unassigned_else_may_not_flip_body_guard(self):
+        report = self.report_for('''
+            def f(flag):
+                if flag:
+                    value = 1
+                else:
+                    flag = True
+                if flag:
+                    return value
+        ''')
+        finding = next(item for item in report["findings"] if item["name"] == "value")
+        self.assertEqual(finding["classification"], "review")
+        self.assertEqual(finding["priority"], "high")
+
+    def test_unassigned_body_may_not_flip_else_guard(self):
+        report = self.report_for('''
+            def f(flag):
+                if flag:
+                    flag = False
+                else:
+                    value = 1
+                if flag:
+                    return None
+                else:
+                    return value
+        ''')
+        finding = next(item for item in report["findings"] if item["name"] == "value")
+        self.assertEqual(finding["classification"], "review")
+        self.assertEqual(finding["priority"], "high")
+
     def test_repository_qualification_is_exported(self):
         report = audit.build_report()
         output = Path("tmp/branch-assignment-qualified-audit.json")
