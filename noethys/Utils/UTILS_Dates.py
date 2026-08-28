@@ -189,7 +189,7 @@ def HeureStrEnTime(heureStr):
     heures, minutes = elements[:2]
     try :
         return datetime.time(int(heures), int(minutes))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return datetime.time(0, 0)
 
 def DatetimeTimeEnStr(heure, separateur="h"):
