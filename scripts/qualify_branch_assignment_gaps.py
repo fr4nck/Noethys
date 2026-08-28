@@ -4,15 +4,17 @@
 
 L'inventaire de base privilégie volontairement le rappel : une variable définie
 uniquement dans une branche reste signalée dès qu'une lecture ultérieure est
-visible. Une grande partie des faux positifs historiques suit toutefois un
-contrat simple et sûr : la définition et la lecture sont protégées par la même
-condition (ou par une condition ultérieure plus restrictive).
+visible. Une partie des faux positifs historiques suit toutefois un contrat
+simple et sûr : la définition et la lecture sont protégées par une même garde
+répétable, ou par une condition ultérieure qui implique explicitement la garde
+d'origine.
 
 Ce module ne supprime aucune occurrence. Il requalifie seulement les candidats
 dont la garde corrélée est démontrable dans l'AST, dont la branche concernée
 garantit réellement la définition et dont les dépendances visibles de la garde
-ne sont pas réaffectées entre les deux tests. Les autres restent ``high`` et
-doivent être revus humainement.
+ne sont pas réaffectées entre les deux tests. Les gardes à effets de bord ou
+réévaluables par appel restent ``high``. Les autres cas non prouvés restent eux
+aussi ``high`` et doivent être revus humainement.
 """
 
 from __future__ import annotations
@@ -45,11 +47,20 @@ def _negated(expr):
     return ast.UnaryOp(op=ast.Not(), operand=expr)
 
 
+def _guard_is_repeatable(test):
+    """Exclut les gardes dont deux évaluations identiques peuvent diverger."""
+    unstable_nodes = (ast.Call, ast.NamedExpr, ast.Await, ast.Yield, ast.YieldFrom)
+    return not any(isinstance(node, unstable_nodes) for node in ast.walk(test))
+
+
 def _test_implies(candidate, required):
     """Vrai si ``candidate`` contient explicitement ``required`` comme garde.
 
     On reste volontairement conservateur : égalité structurelle ou conjonction
     ``required and ...`` seulement. Aucun raisonnement algébrique n'est tenté.
+    Cette implication n'est utilisée que lorsque la lecture se trouve dans le
+    corps du ``if`` ; l'``else`` exige une relation exacte, car la négation d'une
+    conjonction n'implique pas la négation de chacun de ses termes.
     """
     if _same_expr(candidate, required):
         return True
@@ -95,10 +106,9 @@ def _guard_is_stable_between(tree, original, later):
     """Refuse une corrélation si une dépendance visible est modifiée entre les tests.
 
     Le contrôle couvre les réaffectations explicites et les mutations directes
-    du conteneur/attribut testé (par exemple ``state.clear()``). Il ne prétend
-    pas résoudre les effets de bord arbitraires d'un appel opaque ; l'objectif
-    est d'éviter qu'une simple réutilisation textuelle d'une condition devienne
-    à tort une preuve lorsque son état a visiblement changé.
+    du conteneur/attribut testé (par exemple ``state.clear()``). Une garde qui
+    contient elle-même un appel est rejetée en amont : deux appels textuellement
+    identiques ne constituent pas une preuve de stabilité.
     """
     dependencies = _guard_dependencies(original.test)
     start = getattr(original, "end_lineno", original.lineno)
@@ -146,7 +156,7 @@ def _load_is_protected_by_correlated_guard(tree, finding):
         if isinstance(node, ast.If) and node.lineno == finding["if_line"]:
             original = node
             break
-    if original is None:
+    if original is None or not _guard_is_repeatable(original.test):
         return False
 
     line = finding["line"]
@@ -179,14 +189,20 @@ def _load_is_protected_by_correlated_guard(tree, finding):
             continue
 
         if branch == "body_only":
+            # Corps : H implique G est suffisant. Else : il faut que H soit
+            # exactement ``not G`` ; ``not G and X`` ne suffit pas car son else
+            # contient aussi le chemin ``not G and not X``.
             if in_body and _test_implies(node.test, original.test):
                 return True
-            if in_else and _test_implies(node.test, negated_original):
+            if in_else and _same_expr(node.test, negated_original):
                 return True
         elif branch == "else_only":
-            if in_else and _same_expr(node.test, original.test):
-                return True
+            # La définition vient de ``not G``. Le corps accepte une condition
+            # plus restrictive qui implique ``not G`` ; l'else n'est sûr ici
+            # que pour le test exact ``G``.
             if in_body and _test_implies(node.test, negated_original):
+                return True
+            if in_else and _same_expr(node.test, original.test):
                 return True
 
     return False
@@ -215,11 +231,11 @@ def build_report(root=ROOT):
             if _load_is_protected_by_correlated_guard(tree, item):
                 result["classification"] = "correlated_guard"
                 result["priority"] = "low"
-                result["reason"] = "la branche garantit la définition, la garde reste stable et la première lecture est protégée par la même condition ou une conjonction plus restrictive"
+                result["reason"] = "la branche garantit la définition, la garde est répétable et stable, et la première lecture est dominée par une condition sûre"
             else:
                 result["classification"] = "review"
                 result["priority"] = "high"
-                result["reason"] = "définition de branche, stabilité ou garde corrélée insuffisamment démontrable"
+                result["reason"] = "définition de branche, répétabilité, stabilité ou implication de garde insuffisamment démontrable"
             qualified.append(result)
 
     qualified.sort(key=lambda item: (item["file"], item["line"], item["name"]))
