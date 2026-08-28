@@ -31,12 +31,17 @@ class CTRL_Choix(wx.Choice):
     
     def MAJ(self, IDactivite=0):
         self.listeID = []
-        DB = GestionDB.DB()
         if IDactivite == None :
             IDactivite = 0
-        if self.mode == "activites" : req = """SELECT IDactivite, nom FROM activites ORDER BY date_fin DESC;"""
-        if self.mode == "groupes" : req = """SELECT IDgroupe, nom FROM groupes WHERE IDactivite=%d ORDER BY ordre;""" % IDactivite
-        if self.mode == "categories" : req = """SELECT IDcategorie_tarif, nom FROM categories_tarifs WHERE IDactivite=%d ORDER BY nom;""" % IDactivite
+        if self.mode == "activites" :
+            req = """SELECT IDactivite, nom FROM activites ORDER BY date_fin DESC;"""
+        elif self.mode == "groupes" :
+            req = """SELECT IDgroupe, nom FROM groupes WHERE IDactivite=%d ORDER BY ordre;""" % IDactivite
+        elif self.mode == "categories" :
+            req = """SELECT IDcategorie_tarif, nom FROM categories_tarifs WHERE IDactivite=%d ORDER BY nom;""" % IDactivite
+        else :
+            raise ValueError("Mode de sélection inconnu : %s" % self.mode)
+        DB = GestionDB.DB()
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
         DB.Close()
