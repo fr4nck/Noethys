@@ -43,31 +43,52 @@ def iter_python_files(root=NOETHYS):
         yield path
 
 
+def _target_binds_name(target, name):
+    return any(
+        isinstance(node, ast.Name)
+        and isinstance(node.ctx, ast.Store)
+        and node.id == name
+        for node in ast.walk(target)
+    )
+
+
 def _visit_comprehension_runtime_order(visitor, node, value_nodes):
-    """Visite une compréhension dans l'ordre de liaison utile à l'audit."""
+    """Visite seulement les usages qui résolvent vers la portée englobante.
+
+    Sous Python 3, les cibles des compréhensions appartiennent à une portée
+    implicite distincte. Le premier iterable est évalué avant la première
+    liaison ; ensuite, dès que le nom audité devient une cible de générateur,
+    les filtres, générateurs suivants et valeurs produites lisent cette liaison
+    locale de compréhension et non la variable de la fonction englobante.
+    """
+    bound_in_comprehension = False
     for generator in node.generators:
-        visitor.visit(generator.iter)
-        visitor.visit(generator.target)
-        for condition in generator.ifs:
-            visitor.visit(condition)
-    for value_node in value_nodes:
-        visitor.visit(value_node)
+        if not bound_in_comprehension:
+            visitor.visit(generator.iter)
+        if _target_binds_name(generator.target, visitor.name):
+            bound_in_comprehension = True
+        if not bound_in_comprehension:
+            for condition in generator.ifs:
+                visitor.visit(condition)
+    if not bound_in_comprehension:
+        for value_node in value_nodes:
+            visitor.visit(value_node)
 
 
 class NameEvents(ast.NodeVisitor):
+    """Collecte les lectures/suppressions du nom dans la portée courante."""
+
     def __init__(self, name):
         self.name = name
         self.events = []
 
     def visit_Name(self, node):
-        if node.id == self.name:
-            if isinstance(node.ctx, ast.Load):
-                mode = "load"
-            elif isinstance(node.ctx, ast.Del):
-                mode = "delete"
-            else:
-                mode = "store"
-            self.events.append((node.lineno, mode))
+        if node.id != self.name:
+            return
+        if isinstance(node.ctx, ast.Load):
+            self.events.append((node.lineno, "load"))
+        elif isinstance(node.ctx, ast.Del):
+            self.events.append((node.lineno, "delete"))
 
     def visit_ListComp(self, node):
         _visit_comprehension_runtime_order(self, node, (node.elt,))
@@ -210,12 +231,23 @@ def block_terminates(statements):
 
 
 def first_event(statements, name):
-    visitor = NameEvents(name)
+    """Premier usage risqué avant qu'une définition soit garantie.
+
+    Un simple store textuellement antérieur ne suffit pas : une affectation dans
+    un ``if``, une boucle ou une compréhension peut ne jamais s'exécuter. On ne
+    considère donc le risque écarté qu'après une instruction qui garantit le
+    nom sur tous ses chemins continuants. Les lectures/suppressions restent
+    volontairement conservatrices : mieux vaut un candidat à qualifier qu'un
+    faux négatif.
+    """
     for statement in statements:
+        visitor = NameEvents(name)
         visitor.visit(statement)
-    if not visitor.events:
-        return None
-    return min(enumerate(visitor.events), key=lambda item: (item[1][0], item[0]))[1]
+        if visitor.events:
+            return min(enumerate(visitor.events), key=lambda item: (item[1][0], item[0]))[1]
+        if name in guaranteed_definitions([statement], set()):
+            return (getattr(statement, "lineno", 0), "store")
+    return None
 
 
 def function_args(function):
