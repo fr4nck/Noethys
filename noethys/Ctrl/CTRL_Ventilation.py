@@ -1022,11 +1022,34 @@ class CTRL(wx.Panel):
         self.ColoreLabelVentilationAuto() 
         
     def Validation(self):
-        creditAVentiler = FloatToDecimal(self.montant_reglement) - FloatToDecimal(self.total_ventilation)
+        def AfficherErreurVentilation():
+            dlg = wx.MessageDialog(self, _(u"La ventilation n'est pas valide. Veuillez la vérifier..."), _(u"Erreur de saisie"), wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return False
+
         if self.validation == "ok" :
             return True
+        if self.validation == "erreur" :
+            return AfficherErreurVentilation()
+
+        montant_reglement = FloatToDecimalFini(self.montant_reglement)
+        total_ventilation = FloatToDecimalFini(self.total_ventilation)
+        if montant_reglement is None or total_ventilation is None:
+            return AfficherErreurVentilation()
+        try:
+            creditAVentiler = montant_reglement - total_ventilation
+        except (decimal.DecimalException, TypeError, ValueError, OverflowError):
+            return AfficherErreurVentilation()
+
         if self.validation == "addition" :
-            totalRestePrestationsAVentiler = FloatToDecimal(self.ctrl_ventilation.GetTotalRestePrestationsAVentiler())
+            try:
+                totalRestePrestations = self.ctrl_ventilation.GetTotalRestePrestationsAVentiler()
+            except (decimal.DecimalException, TypeError, ValueError, OverflowError):
+                return AfficherErreurVentilation()
+            totalRestePrestationsAVentiler = FloatToDecimalFini(totalRestePrestations)
+            if totalRestePrestationsAVentiler is None:
+                return AfficherErreurVentilation()
             if creditAVentiler > totalRestePrestationsAVentiler :
                 creditAVentiler = totalRestePrestationsAVentiler
             if creditAVentiler > FloatToDecimal(0.0) :
@@ -1037,11 +1060,6 @@ class CTRL(wx.Panel):
                     return False
         if self.validation == "trop" :
             dlg = wx.MessageDialog(self, _(u"Vous avez ventilé %.2f %s en trop !") % (-creditAVentiler, SYMBOLE), _(u"Erreur de saisie"), wx.OK | wx.ICON_ERROR)
-            dlg.ShowModal()
-            dlg.Destroy()
-            return False
-        if self.validation == "erreur" :
-            dlg = wx.MessageDialog(self, _(u"La ventilation n'est pas valide. Veuillez la vérifier..."), _(u"Erreur de saisie"), wx.OK | wx.ICON_ERROR)
             dlg.ShowModal()
             dlg.Destroy()
             return False
