@@ -123,6 +123,45 @@ class BranchAssignmentQualificationTests(unittest.TestCase):
         self.assertEqual(finding["classification"], "correlated_guard")
         self.assertEqual(finding["priority"], "low")
 
+    def test_reassigned_name_guard_stays_high_priority(self):
+        report = self.report_for('''
+            def f(flag):
+                if flag:
+                    value = 1
+                flag = True
+                if flag:
+                    return value
+        ''')
+        finding = next(item for item in report["findings"] if item["name"] == "value")
+        self.assertEqual(finding["classification"], "review")
+        self.assertEqual(finding["priority"], "high")
+
+    def test_reassigned_subscript_guard_stays_high_priority(self):
+        report = self.report_for('''
+            def f(state):
+                if state["ready"]:
+                    value = 1
+                state["ready"] = True
+                if state["ready"]:
+                    return value
+        ''')
+        finding = next(item for item in report["findings"] if item["name"] == "value")
+        self.assertEqual(finding["classification"], "review")
+        self.assertEqual(finding["priority"], "high")
+
+    def test_direct_container_mutation_stays_high_priority(self):
+        report = self.report_for('''
+            def f(state):
+                if state["ready"]:
+                    value = 1
+                state.clear()
+                if state["ready"]:
+                    return value
+        ''')
+        finding = next(item for item in report["findings"] if item["name"] == "value")
+        self.assertEqual(finding["classification"], "review")
+        self.assertEqual(finding["priority"], "high")
+
     def test_repository_qualification_is_exported(self):
         report = audit.build_report()
         output = Path("tmp/branch-assignment-qualified-audit.json")
