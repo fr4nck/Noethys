@@ -12,9 +12,10 @@ d'origine.
 Ce module ne supprime aucune occurrence. Il requalifie seulement les candidats
 dont la garde corrélée est démontrable dans l'AST, dont la branche concernée
 garantit réellement la définition et dont les dépendances visibles de la garde
-ne sont pas réaffectées entre les deux tests. Les gardes à effets de bord ou
-réévaluables par appel restent ``high``. Les autres cas non prouvés restent eux
-aussi ``high`` et doivent être revus humainement.
+ne sont pas modifiées sur le chemin sans affectation ni entre les deux tests.
+Les gardes à effets de bord ou réévaluables par appel restent ``high``. Les
+autres cas non prouvés restent eux aussi ``high`` et doivent être revus
+humainement.
 """
 
 from __future__ import annotations
@@ -102,15 +103,51 @@ def _target_dependencies(target):
     return keys
 
 
-def _guard_is_stable_between(tree, original, later):
-    """Refuse une corrélation si une dépendance visible est modifiée entre les tests.
+def _node_mutates_dependencies(node, dependencies):
+    targets = []
+    if isinstance(node, ast.Assign):
+        targets.extend(node.targets)
+    elif isinstance(node, ast.AnnAssign):
+        targets.append(node.target)
+    elif isinstance(node, ast.AugAssign):
+        targets.append(node.target)
+    elif isinstance(node, ast.NamedExpr):
+        targets.append(node.target)
+    elif isinstance(node, ast.Delete):
+        targets.extend(node.targets)
 
-    Le contrôle couvre les réaffectations explicites et les mutations directes
-    du conteneur/attribut testé (par exemple ``state.clear()``). Une garde qui
-    contient elle-même un appel est rejetée en amont : deux appels textuellement
-    identiques ne constituent pas une preuve de stabilité.
+    for target in targets:
+        if dependencies & _target_dependencies(target):
+            return True
+
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+        if _expr_key(node.func.value) in dependencies:
+            return True
+    return False
+
+
+def _statements_mutate_dependencies(statements, dependencies):
+    for statement in statements:
+        for node in ast.walk(statement):
+            if _node_mutates_dependencies(node, dependencies):
+                return True
+    return False
+
+
+def _guard_is_stable_between(tree, original, later, branch):
+    """Refuse une corrélation si le chemin non affecté peut modifier la garde.
+
+    Une mutation dans la branche où la variable n'est *pas* créée peut rendre
+    vraie la garde suivante et provoquer précisément l'``UnboundLocalError``
+    que l'audit cherche à conserver. On inspecte donc cette branche en entier,
+    puis les instructions exécutables entre la fin du premier ``if`` et le test
+    corrélé. Les mutations directes du conteneur/attribut testé sont incluses.
     """
     dependencies = _guard_dependencies(original.test)
+    unassigned_branch = original.orelse if branch == "body_only" else original.body
+    if _statements_mutate_dependencies(unassigned_branch, dependencies):
+        return False
+
     start = getattr(original, "end_lineno", original.lineno)
     end = later.lineno
     if end <= start:
@@ -118,30 +155,8 @@ def _guard_is_stable_between(tree, original, later):
 
     for node in ast.walk(tree):
         line = getattr(node, "lineno", 0)
-        if not (start < line < end):
-            continue
-
-        targets = []
-        if isinstance(node, ast.Assign):
-            targets.extend(node.targets)
-        elif isinstance(node, ast.AnnAssign):
-            targets.append(node.target)
-        elif isinstance(node, ast.AugAssign):
-            targets.append(node.target)
-        elif isinstance(node, ast.NamedExpr):
-            targets.append(node.target)
-        elif isinstance(node, ast.Delete):
-            targets.extend(node.targets)
-
-        for target in targets:
-            if dependencies & _target_dependencies(target):
-                return False
-
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-            receiver = node.func.value
-            if _expr_key(receiver) in dependencies:
-                return False
-
+        if start < line < end and _node_mutates_dependencies(node, dependencies):
+            return False
     return True
 
 
@@ -185,7 +200,7 @@ def _load_is_protected_by_correlated_guard(tree, finding):
         in_else = _line_in_statements(node.orelse, line)
         if not (in_body or in_else):
             continue
-        if not _guard_is_stable_between(tree, original, node):
+        if not _guard_is_stable_between(tree, original, node, branch):
             continue
 
         if branch == "body_only":
