@@ -259,9 +259,12 @@ class Dialog(wx.Dialog):
         
         # Si des erreurs ont été trouvées
         if nbreErreurs > 0 or nbreNonTraites > 0 :
-            if nbreErreurs > 0 and nbreNonTraites == 0 : intro = _(u"%d erreurs ont été trouvées lors de l'importation. ") % nbreErreurs
-            if nbreErreurs == 0 and nbreNonTraites > 0 : intro = _(u"%d actions n'ont pas été traitées. ") % nbreNonTraites
-            if nbreErreurs > 0 and nbreNonTraites > 0 : intro = _(u"%d actions n'ont pas été traitées et %d erreurs ont été trouvées. ") % (nbreErreurs, nbreNonTraites)
+            if nbreErreurs > 0 and nbreNonTraites == 0 :
+                intro = _(u"%d erreurs ont été trouvées lors de l'importation. ") % nbreErreurs
+            elif nbreErreurs == 0 :
+                intro = _(u"%d actions n'ont pas été traitées. ") % nbreNonTraites
+            else :
+                intro = _(u"%d actions n'ont pas été traitées et %d erreurs ont été trouvées. ") % (nbreErreurs, nbreNonTraites)
             dlg = wx.MessageDialog(self, _(u"%s\n\nConfirmez-vous tout de même l'archivage des fichiers de synchronisation traités ?\n(Si vous choisissez Non, les fichiers seront conservés)") % intro, _(u"Archivage"), wx.YES_NO|wx.CANCEL|wx.YES_DEFAULT|wx.ICON_QUESTION)
             reponse = dlg.ShowModal()
             dlg.Destroy()
@@ -303,6 +306,19 @@ class Dialog(wx.Dialog):
 
 
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+ETATS_CONSOMMATION = {
+    "reservation": ("reservation", "reservation"),
+    "attente": ("attente", "reservation"),
+    "refus": ("refus", "reservation"),
+    "present": ("reservation", "present"),
+    "absenti": ("reservation", "absenti"),
+    "absentj": ("reservation", "absentj"),
+}
+
+def GetModeEtatConsommation(etat):
+    return ETATS_CONSOMMATION.get(etat)
 
 
 class Abort(Exception): 
@@ -361,20 +377,20 @@ class Traitement(Thread):
                         if 'phoenix' not in wx.PlatformInfo:
                             wx.Yield()
 
-                        if track.etat == "reservation" : mode, etat = "reservation", "reservation"
-                        if track.etat == "attente" : mode, etat = "attente", "reservation"
-                        if track.etat == "refus" : mode, etat = "refus", "reservation"
-                        if track.etat == "present" : mode, etat = "reservation", "present"
-                        if track.etat == "absenti" : mode, etat = "reservation", "absenti"
-                        if track.etat == "absentj" : mode, etat = "reservation", "absentj"
+                        mode_etat = GetModeEtatConsommation(track.etat)
+                        if mode_etat is None :
+                            resultat = _(u"État de consommation inconnu : %s") % track.etat
+                        else :
+                            mode, etat = mode_etat
+                            heure_debut = self.ConvertitHeure(track.heure_debut)
+                            heure_fin = self.ConvertitHeure(track.heure_fin)
 
-                        heure_debut = self.ConvertitHeure(track.heure_debut)
-                        heure_fin = self.ConvertitHeure(track.heure_fin)
-
-                        if track.action == "ajouter" or track.action == "modifier" :
-                            resultat = self.parent.ctrl_grille.SaisieConso(IDunite=track.IDunite, mode=mode, etat=etat, heure_debut=heure_debut, heure_fin=heure_fin, quantite=track.quantite)
-                        if track.action == "supprimer" :
-                            resultat = self.parent.ctrl_grille.SupprimeConso(IDunite=track.IDunite, date=track.date)
+                            if track.action == "ajouter" or track.action == "modifier" :
+                                resultat = self.parent.ctrl_grille.SaisieConso(IDunite=track.IDunite, mode=mode, etat=etat, heure_debut=heure_debut, heure_fin=heure_fin, quantite=track.quantite)
+                            elif track.action == "supprimer" :
+                                resultat = self.parent.ctrl_grille.SupprimeConso(IDunite=track.IDunite, date=track.date)
+                            else :
+                                resultat = _(u"Action de consommation inconnue : %s") % track.action
 
                         # Sauvegarde de la grille des conso + Ecrit log
                         if resultat == True :
