@@ -49,6 +49,18 @@ EXPLICIT_SAFE = {
     ('Dlg/DLG_Saisie_portail_demande.py', 'Traitement_factures', 'reponse', 'body_only', '4d35390aa5af82e149c8e869939032d3ffefaf86b1598f61f7a3d743bdc983e0'): (
         "les chemins continuants sont couverts par methode_envoi != 'email' ou methode_envoi == 'email' ; chacun définit reponse avant le retour"
     ),
+    ('Dlg/DLG_Ouvertures.py', 'Sauvegarde', 'prochainIDligne', 'body_only', 'be2a517abf7c8b4245b285e27a22a3a5d5022c13421bd3d4ff842cffd8bc5ae2'): (
+        "prochainIDligne est initialisé lorsque DB.isNetwork est faux et sa lecture pour attribuer un IDligne est protégée par le même garde ; en mode réseau cette lecture n'est jamais atteinte"
+    ),
+    ('Dlg/DLG_Ouvertures.py', 'TraitementLot', 'etat', 'partial_branches', 'c0d13e7cc9b6a33b2c3404ce03b99235d6b8e8b2dbc577b51e653dcddc1551f9'): (
+        "le bloc extérieur limite action à date, schema ou reinit ; date/schema affectent etat ou passent par l'except qui le replie à False, tandis que reinit passe par le else qui l'affecte aussi"
+    ),
+    ('Dlg/DLG_Ouvertures.py', 'TraitementLot', 'liste_temp', 'body_only', 'c0913bd34f86edcdd512abb5180f11a4d5277f0efe0c600d39cd3eba485fa64c'): (
+        "la boucle sur liste_temp n'est atteinte que sous action date/schema ; chacun de ces deux chemins l'affecte dans le try et toute erreur quitte directement ce try vers l'except sans exécuter la boucle"
+    ),
+    ('Dlg/DLG_Ouvertures.py', 'TraitementLot', 'nbrePlaces', 'partial_branches', 'c3c4355421b4b54d0daa627449f414c23ad2d33240c8ae5e1c2c7957976a2fe9'): (
+        "le bloc extérieur limite action à date, schema ou reinit ; date/schema affectent nbrePlaces ou passent par l'except qui le replie à 0, tandis que reinit passe par le else qui l'affecte à 0"
+    ),
 }
 
 def _candidate_fingerprint(root, item):
