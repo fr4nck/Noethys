@@ -94,6 +94,28 @@ class BranchAssignmentQualificationTests(unittest.TestCase):
         self.assertEqual(report["count"], raw["count"])
         self.assert_all_review_high(report)
 
+    def test_explicit_safe_registry_is_exact_and_unambiguous_on_repository(self):
+        report = audit.build_report()
+        registry = report["explicit_safe_registry"]
+        self.assertEqual(registry["configured"], len(audit.EXPLICIT_SAFE))
+        self.assertEqual(registry["matched"], len(audit.EXPLICIT_SAFE))
+        self.assertEqual(registry["unmatched"], [])
+        self.assertEqual(registry["ambiguous"], [])
+
+        safe_keys = {
+            audit.qualification_key(item)
+            for item in report["findings"]
+            if item["classification"] == "explicit_safe"
+        }
+        self.assertEqual(safe_keys, set(audit.EXPLICIT_SAFE))
+        self.assertTrue(
+            all(
+                item["priority"] == "low"
+                for item in report["findings"]
+                if item["classification"] == "explicit_safe"
+            )
+        )
+
     def test_repository_qualification_is_exported_without_hidden_candidates(self):
         raw = base.build_report()
         report = audit.build_report()
@@ -105,8 +127,13 @@ class BranchAssignmentQualificationTests(unittest.TestCase):
             f"{report['priorities']} {report['classifications']}"
         )
         self.assertEqual(report["count"], raw["count"])
-        if report["count"]:
-            self.assert_all_review_high(report)
+        self.assertEqual(report["explicit_safe_registry"]["unmatched"], [])
+        self.assertEqual(report["explicit_safe_registry"]["ambiguous"], [])
+        self.assertEqual(report["priorities"].get("low", 0), len(audit.EXPLICIT_SAFE))
+        self.assertEqual(
+            report["priorities"].get("high", 0),
+            report["count"] - len(audit.EXPLICIT_SAFE),
+        )
         self.assertIn("findings", report)
 
 
