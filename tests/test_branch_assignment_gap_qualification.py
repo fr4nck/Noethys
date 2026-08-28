@@ -202,6 +202,19 @@ class BranchAssignmentQualificationTests(unittest.TestCase):
         self.assertEqual(finding["classification"], "review")
         self.assertEqual(finding["priority"], "high")
 
+    def test_guard_dependency_passed_to_helper_stays_high_priority(self):
+        report = self.report_for('''
+            def f(state):
+                if state["ready"]:
+                    value = 1
+                set_ready(state)
+                if state["ready"]:
+                    return value
+        ''')
+        finding = next(item for item in report["findings"] if item["name"] == "value")
+        self.assertEqual(finding["classification"], "review")
+        self.assertEqual(finding["priority"], "high")
+
     def test_unassigned_else_may_not_flip_body_guard(self):
         report = self.report_for('''
             def f(flag):
