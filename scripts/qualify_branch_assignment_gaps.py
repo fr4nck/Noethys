@@ -9,8 +9,9 @@ contrat simple et sûr : la définition et la lecture sont protégées par la m�
 condition (ou par une condition ultérieure plus restrictive).
 
 Ce module ne supprime aucune occurrence. Il requalifie seulement les candidats
-dont la garde corrélée est démontrable dans l'AST. Les autres restent ``high``
-et doivent être revus humainement.
+dont la garde corrélée est démontrable dans l'AST et dont la branche concernée
+garantit réellement la définition. Les autres restent ``high`` et doivent être
+revus humainement.
 """
 
 from __future__ import annotations
@@ -68,6 +69,11 @@ def _name_loaded(node, name):
     return False
 
 
+def _branch_guarantees_name(original, branch, name):
+    statements = original.body if branch == "body_only" else original.orelse
+    return name in base.guaranteed_definitions(statements, set())
+
+
 def _load_is_protected_by_correlated_guard(tree, finding):
     original = None
     for node in ast.walk(tree):
@@ -80,6 +86,14 @@ def _load_is_protected_by_correlated_guard(tree, finding):
     line = finding["line"]
     name = finding["name"]
     branch = finding["detail"]
+
+    # ``assigned_names`` voit volontairement les affectations imbriquées pour
+    # maximiser le rappel. Une garde extérieure identique ne suffit donc pas :
+    # il faut d'abord prouver que la branche prise définit réellement le nom sur
+    # tous ses chemins qui continuent.
+    if not _branch_guarantees_name(original, branch, name):
+        return False
+
     negated_original = _negated(original.test)
 
     for node in ast.walk(tree):
@@ -131,11 +145,11 @@ def build_report(root=ROOT):
             if _load_is_protected_by_correlated_guard(tree, item):
                 result["classification"] = "correlated_guard"
                 result["priority"] = "low"
-                result["reason"] = "la première lecture est protégée par la même garde ou une conjonction plus restrictive"
+                result["reason"] = "la branche garantit la définition et la première lecture est protégée par la même garde ou une conjonction plus restrictive"
             else:
                 result["classification"] = "review"
                 result["priority"] = "high"
-                result["reason"] = "aucune garde corrélée démontrable ne protège la première lecture"
+                result["reason"] = "définition de branche ou garde corrélée insuffisamment démontrable"
             qualified.append(result)
 
     qualified.sort(key=lambda item: (item["file"], item["line"], item["name"]))
