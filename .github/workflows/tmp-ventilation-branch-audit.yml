@@ -20,7 +20,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           from scripts import audit_branch_assignment_gaps as audit
-          path = Path('noethys/Ctrl/CTRL_Ventilation.py')
+          path = Path('noethys/Ctrl/CTRL_Ventilation.py').resolve()
           findings = audit.scan_file(path)
           print('COUNT=', len(findings))
           for item in findings:
