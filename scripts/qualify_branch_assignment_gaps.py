@@ -17,7 +17,10 @@ signalée et couverte par les tests du dépôt.
 from __future__ import annotations
 
 import argparse
+import ast
+import hashlib
 import json
+import tokenize
 from collections import Counter
 from pathlib import Path
 
@@ -33,58 +36,98 @@ ROOT = base.NOETHYS
 # chaque entrée doit être justifiée par un invariant de contrôle de flot précis
 # et rester unique dans l'inventaire brut.
 EXPLICIT_SAFE = {
-    (
-        "Dlg/DLG_Saisie_portail_demande.py",
-        "MAJ_informations",
-        "dict_periodes",
-        "body_only",
-    ): (
-        "la lecture n'est atteinte qu'en itérant des paiements de type période ; "
-        "ce même ensemble non vide initialise dict_periodes juste avant"
+    ('Dlg/DLG_Saisie_portail_demande.py', 'MAJ_informations', 'dict_periodes', 'body_only', '0343a39678fbf0f9bf748fec2787518bfd7b996f259d2e928f4066c1880bb363'): (
+        "la lecture n'est atteinte qu'en itérant des paiements de type période ; ce même ensemble non vide initialise dict_periodes juste avant"
     ),
-    (
-        "Dlg/DLG_Saisie_portail_demande.py",
-        "MAJ_informations",
-        "dict_factures",
-        "body_only",
-    ): (
-        "la lecture n'est atteinte qu'en itérant des paiements de type facture ; "
-        "ce même ensemble non vide initialise dict_factures juste avant"
+    ('Dlg/DLG_Saisie_portail_demande.py', 'MAJ_informations', 'dict_factures', 'body_only', '661e61d415ec7daa109e89d5e9c5eca87e624e3b09fa3f1eae7f51ee5bb27372'): (
+        "la lecture n'est atteinte qu'en itérant des paiements de type facture ; ce même ensemble non vide initialise dict_factures juste avant"
     ),
-    (
-        "Dlg/DLG_Saisie_portail_demande.py",
-        "Traitement_recus",
-        "reponse",
-        "body_only",
-    ): (
-        "les chemins continuants sont couverts par methode_envoi != 'email' ou "
-        "methode_envoi == 'email' ; chacun définit reponse avant le retour"
+    ('Dlg/DLG_Saisie_portail_demande.py', 'Traitement_recus', 'reponse', 'body_only', '7bf64ac505cc641391cd756a60032158c26c9b976868e45a9c95574c2c33b321'): (
+        "les chemins continuants sont couverts par methode_envoi != 'email' ou methode_envoi == 'email' ; chacun définit reponse avant le retour"
     ),
-    (
-        "Dlg/DLG_Saisie_portail_demande.py",
-        "Traitement_factures",
-        "reponse",
-        "body_only",
-    ): (
-        "les chemins continuants sont couverts par methode_envoi != 'email' ou "
-        "methode_envoi == 'email' ; chacun définit reponse avant le retour"
+    ('Dlg/DLG_Saisie_portail_demande.py', 'Traitement_factures', 'reponse', 'body_only', '84ef787a336bf91244a97181fa077d299621266533e4532f3e7fe73694d90398'): (
+        "les chemins continuants sont couverts par methode_envoi != 'email' ou methode_envoi == 'email' ; chacun définit reponse avant le retour"
     ),
 }
 
+def _candidate_fingerprint(root, item):
+    """Empreinte la structure AST qui justifie une qualification explicite.
 
-def qualification_key(item):
-    return (item["file"], item["function"], item["name"], item["detail"])
+    Les numéros de ligne servent uniquement à retrouver les nœuds signalés par
+    le scanner. Ils ne participent pas à l'empreinte : un déplacement de code
+    reste donc stable, tandis qu'une modification du branchement ou de la
+    lecture rend automatiquement l'entrée de registre obsolète.
+    """
+    path = Path(root) / item["file"]
+    try:
+        with tokenize.open(path) as stream:
+            tree = ast.parse(stream.read(), filename=str(path))
+    except (OSError, SyntaxError, UnicodeError):
+        return None
+
+    functions = [
+        node for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name == item["function"]
+    ]
+    for function in functions:
+        if_node = next((
+            node for node in ast.walk(function)
+            if isinstance(node, ast.If)
+            and getattr(node, "lineno", None) == item["if_line"]
+        ), None)
+        if if_node is None:
+            continue
+
+        candidates = []
+        for node in ast.walk(function):
+            if not isinstance(node, ast.stmt):
+                continue
+            found = any(
+                isinstance(child, ast.Name)
+                and child.id == item["name"]
+                and getattr(child, "lineno", None) == item["line"]
+                and isinstance(child.ctx, (ast.Load, ast.Del))
+                for child in ast.walk(node)
+            )
+            if found:
+                start = getattr(node, "lineno", item["line"])
+                end = getattr(node, "end_lineno", start)
+                candidates.append((end - start, len(list(ast.walk(node))), node))
+        if not candidates:
+            continue
+
+        event_node = min(candidates, key=lambda entry: (entry[0], entry[1]))[2]
+        payload = "|".join((
+            item["function"],
+            item["name"],
+            item["detail"],
+            ast.dump(if_node, include_attributes=False),
+            ast.dump(event_node, include_attributes=False),
+        ))
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return None
+
+
+def qualification_key(item, root=ROOT):
+    return (
+        item["file"],
+        item["function"],
+        item["name"],
+        item["detail"],
+        _candidate_fingerprint(root, item),
+    )
 
 
 def build_report(root=ROOT):
     raw = base.build_report(root)
-    key_counts = Counter(qualification_key(item) for item in raw["findings"])
+    key_counts = Counter(qualification_key(item, root) for item in raw["findings"])
     matched = set()
     findings = []
 
     for item in raw["findings"]:
         result = dict(item)
-        key = qualification_key(item)
+        key = qualification_key(item, root)
         reason = EXPLICIT_SAFE.get(key)
         if reason is not None and key_counts[key] == 1:
             result["classification"] = "explicit_safe"

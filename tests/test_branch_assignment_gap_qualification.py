@@ -116,6 +116,26 @@ class BranchAssignmentQualificationTests(unittest.TestCase):
             )
         )
 
+    def test_stale_explicit_safe_structure_is_not_downgraded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "Dlg" / "DLG_Saisie_portail_demande.py"
+            target.parent.mkdir(parents=True)
+            target.write_text(textwrap.dedent("""
+                def MAJ_informations(flag):
+                    if flag:
+                        dict_periodes = {}
+                    return dict_periodes
+            """), encoding="utf-8")
+            report = audit.build_report(root)
+
+        candidate = next(
+            item for item in report["findings"]
+            if item["function"] == "MAJ_informations" and item["name"] == "dict_periodes"
+        )
+        self.assertEqual(candidate["classification"], "review")
+        self.assertEqual(candidate["priority"], "high")
+
     def test_repository_qualification_is_exported_without_hidden_candidates(self):
         raw = base.build_report()
         report = audit.build_report()

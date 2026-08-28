@@ -41,6 +41,12 @@ class PortailPaymentVentilationContractTests(unittest.TestCase):
             {"facture": {12: 10.5}, "periode": {}},
         )
 
+    def test_leading_and_interior_empty_segments_are_rejected(self):
+        for value in (",F12#10.50", "F12#10.50,,P7#3.25", "F12#10.50,,"):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    self.parse(value)
+
     def test_unknown_prefix_is_rejected_instead_of_reusing_previous_type(self):
         with self.assertRaises(ValueError):
             self.parse("F12#10.50,X7#3.25")

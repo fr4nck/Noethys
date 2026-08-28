@@ -45,10 +45,16 @@ def ParseVentilationPaiement(ventilation):
 
     types = {"F": "facture", "P": "periode"}
     nbre_elements = 0
-    for valeur in (u"%s" % ventilation).split(","):
+    valeurs = (u"%s" % ventilation).split(",")
+    for index, valeur in enumerate(valeurs):
         valeur = valeur.strip()
         if not valeur:
-            continue
+            # Compatibilité historique : une unique virgule finale est tolérée.
+            # Un segment vide en tête ou au milieu est en revanche une donnée
+            # malformée et doit interrompre le traitement du paiement.
+            if index == len(valeurs) - 1 and index > 0:
+                continue
+            raise ValueError(u"entrée de ventilation vide")
         type_impaye = types.get(valeur[0])
         if type_impaye is None:
             raise ValueError(u"type de ventilation inconnu : %s" % valeur[0])
