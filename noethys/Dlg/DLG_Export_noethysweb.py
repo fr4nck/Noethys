@@ -188,7 +188,7 @@ class Dialog(wx.Dialog):
         UTILS_Aide.Aide("")
 
     def OnBoutonRepertoire(self, event):
-        if self.ctrl_repertoire.GetValue != "":
+        if self.ctrl_repertoire.GetValue() != "":
             cheminDefaut = self.ctrl_repertoire.GetValue()
             if os.path.isdir(cheminDefaut) == False :
                 cheminDefaut = ""

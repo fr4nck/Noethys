@@ -361,7 +361,7 @@ class CTRL_Parametres(wx.Panel) :
         self.ctrl_email.Enable(etat)
 
     def OnBoutonRepertoire(self, event): 
-        if self.ctrl_repertoire.GetValue != "" : 
+        if self.ctrl_repertoire.GetValue() != "" : 
             cheminDefaut = self.ctrl_repertoire.GetValue()
             if os.path.isdir(cheminDefaut) == False :
                 cheminDefaut = ""

@@ -407,7 +407,7 @@ class Saisie(wx.Dialog):
         return self.ctrl_dateFin.GetDate()      
     
     def OnBoutonOk(self, event):
-        if self.ctrl_nom.GetSelection == -1 :
+        if self.ctrl_nom.GetSelection() == -1 :
             dlg = wx.MessageDialog(self, _(u"Vous devez obligatoirement sélectionner un nom de période !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
             dlg.ShowModal()
             dlg.Destroy()
