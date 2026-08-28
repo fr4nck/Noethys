@@ -95,6 +95,34 @@ class BranchAssignmentQualificationTests(unittest.TestCase):
         self.assertEqual(finding["classification"], "correlated_guard")
         self.assertEqual(finding["priority"], "low")
 
+    def test_same_outer_guard_does_not_hide_nested_one_sided_assignment(self):
+        report = self.report_for('''
+            def f(outer, inner):
+                if outer:
+                    if inner:
+                        value = 1
+                if outer:
+                    return value
+        ''')
+        finding = next(item for item in report["findings"] if item["name"] == "value")
+        self.assertEqual(finding["classification"], "review")
+        self.assertEqual(finding["priority"], "high")
+
+    def test_same_outer_guard_qualifies_nested_exhaustive_assignment(self):
+        report = self.report_for('''
+            def f(outer, inner):
+                if outer:
+                    if inner:
+                        value = 1
+                    else:
+                        value = 2
+                if outer:
+                    return value
+        ''')
+        finding = next(item for item in report["findings"] if item["name"] == "value")
+        self.assertEqual(finding["classification"], "correlated_guard")
+        self.assertEqual(finding["priority"], "low")
+
     def test_repository_qualification_is_exported(self):
         report = audit.build_report()
         output = Path("tmp/branch-assignment-qualified-audit.json")
