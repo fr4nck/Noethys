@@ -158,6 +158,7 @@ class BranchAssignmentQualificationTests(unittest.TestCase):
         )
         self.assertEqual(candidate["classification"], "review")
         self.assertEqual(candidate["priority"], "high")
+        self.assertGreater(len(report["explicit_safe_registry"]["unmatched"]), 0)
 
     def test_repository_qualification_is_exported_without_hidden_candidates(self):
         raw = base.build_report()
