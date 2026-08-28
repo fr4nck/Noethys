@@ -184,6 +184,29 @@ class BranchAssignmentGapTests(unittest.TestCase):
         ''')
         self.assertEqual(report["count"], 0)
 
+    def test_with_body_assignment_is_not_guaranteed_after_suppression(self):
+        report = self.report_for('''
+            def f(flag):
+                with suppress(Exception):
+                    value = operation()
+                if flag:
+                    value = 2
+                return value
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "value"]
+        self.assertEqual(len(findings), 1)
+
+    def test_with_as_target_is_guaranteed_on_continuing_path(self):
+        report = self.report_for('''
+            def f(flag):
+                with manager() as handle:
+                    operation()
+                if flag:
+                    handle = replacement()
+                return handle
+        ''')
+        self.assertFalse(any(item["name"] == "handle" for item in report["findings"]))
+
     def test_repository_inventory_is_exported(self):
         report = audit.build_report()
         output = Path("tmp/branch-assignment-audit.json")
