@@ -39,6 +39,27 @@ class BranchAssignmentGapTests(unittest.TestCase):
         ''')
         self.assertEqual(report["count"], 0)
 
+    def test_unvalued_annotation_does_not_define_local(self):
+        report = self.report_for('''
+            def f(flag):
+                value: int
+                if flag:
+                    value = 1
+                return value
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "value"]
+        self.assertEqual(len(findings), 1)
+
+    def test_valued_annotation_defines_local(self):
+        report = self.report_for('''
+            def f(flag):
+                value: int = 0
+                if flag:
+                    value = 1
+                return value
+        ''')
+        self.assertFalse(any(item["name"] == "value" for item in report["findings"]))
+
     def test_terminating_unassigned_branch_is_safe(self):
         report = self.report_for('''
             def f(flag):
@@ -85,6 +106,34 @@ class BranchAssignmentGapTests(unittest.TestCase):
                 return value
         ''')
         self.assertEqual(report["count"], 0)
+
+    def test_partial_assignment_in_both_branches_is_detected(self):
+        report = self.report_for('''
+            def f(flag, left_ready, right_ready):
+                if flag:
+                    if left_ready:
+                        value = 1
+                else:
+                    if right_ready:
+                        value = 2
+                return value
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "value"]
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0]["detail"], "partial_branches")
+
+    def test_partial_assignment_on_continuing_branch_is_detected_when_other_branch_terminates(self):
+        report = self.report_for('''
+            def f(flag, ready):
+                if flag:
+                    if ready:
+                        value = 1
+                else:
+                    return None
+                return value
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "value"]
+        self.assertEqual(len(findings), 1)
 
     def test_exhaustive_if_elif_else_is_propagated(self):
         report = self.report_for('''
@@ -229,6 +278,18 @@ class BranchAssignmentGapTests(unittest.TestCase):
                 return first
         ''')
         self.assertFalse(any(item["name"] == "first" for item in report["findings"]))
+
+    def test_destructured_first_with_target_is_not_guaranteed_after_suppressed_unpack_error(self):
+        report = self.report_for('''
+            def f(flag):
+                with suppressing_manager() as (left, right):
+                    operation()
+                if flag:
+                    right = replacement()
+                return right
+        ''')
+        findings = [item for item in report["findings"] if item["name"] == "right"]
+        self.assertEqual(len(findings), 1)
 
     def test_delete_removes_definition_before_later_branch(self):
         report = self.report_for('''
