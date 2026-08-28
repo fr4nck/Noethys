@@ -6,6 +6,12 @@ Le contrôle est volontairement conservateur : il ne signale qu'une affectation
 présente dans une seule branche, sans définition antérieure visible, lorsque le
 premier usage ultérieur de ce nom est une lecture. Les résultats restent des
 candidats à qualifier humainement. La couverture des sources est bloquante.
+
+La propagation des définitions suit les chemins qui peuvent réellement
+continuer après un branchement. Une chaîne exhaustive ``if/elif/else`` qui
+définit un nom dans toutes ses branches rend donc ce nom disponible ensuite,
+y compris lorsque les ``elif`` sont représentés par des ``If`` imbriqués dans
+``orelse`` par l'AST Python.
 """
 
 from __future__ import annotations
@@ -147,6 +153,75 @@ def function_args(function):
     return result
 
 
+def guaranteed_definitions(statements, predefined):
+    """Retourne les noms définis sur tous les chemins qui atteignent la suite.
+
+    Cette fonction est volontairement prudente. Les boucles ne propagent pas
+    leurs affectations car leur corps peut ne jamais s'exécuter. Pour un ``if``
+    exhaustif, l'intersection des définitions des branches est en revanche
+    garantie. Lorsqu'une branche termine le flot, seule la branche qui continue
+    contribue aux définitions disponibles après le ``if``.
+    """
+    defined = set(predefined)
+    for statement in statements:
+        if isinstance(statement, ast.If):
+            body_defined = guaranteed_definitions(statement.body, defined)
+            body_terminates = block_terminates(statement.body)
+
+            if statement.orelse:
+                else_defined = guaranteed_definitions(statement.orelse, defined)
+                else_terminates = block_terminates(statement.orelse)
+                if body_terminates and not else_terminates:
+                    defined = else_defined
+                elif else_terminates and not body_terminates:
+                    defined = body_defined
+                elif not body_terminates and not else_terminates:
+                    defined = body_defined & else_defined
+                else:
+                    # Aucun chemin ne poursuit normalement après ce branchement.
+                    return defined
+
+        elif isinstance(statement, ast.Try):
+            body_defined = guaranteed_definitions(statement.body, defined)
+            handler_states = [guaranteed_definitions(handler.body, defined) for handler in statement.handlers]
+            handler_terminations = [block_terminates(handler.body) for handler in statement.handlers]
+
+            continuing_states = []
+            if not block_terminates(statement.body):
+                if statement.orelse:
+                    continuing_states.append(guaranteed_definitions(statement.orelse, body_defined))
+                else:
+                    continuing_states.append(body_defined)
+            for state, terminates in zip(handler_states, handler_terminations):
+                if not terminates:
+                    continuing_states.append(state)
+
+            if continuing_states:
+                merged = set(continuing_states[0])
+                for state in continuing_states[1:]:
+                    merged.intersection_update(state)
+                defined = merged
+
+            if statement.finalbody:
+                defined = guaranteed_definitions(statement.finalbody, defined)
+
+        elif isinstance(statement, (ast.With, ast.AsyncWith)):
+            with_defined = set(defined)
+            for item in statement.items:
+                if item.optional_vars is not None:
+                    with_defined.update(target_names(item.optional_vars))
+            defined = guaranteed_definitions(statement.body, with_defined)
+
+        elif isinstance(statement, (ast.For, ast.AsyncFor, ast.While)):
+            # Le corps d'une boucle peut ne pas être parcouru. Ne rien propager.
+            pass
+
+        else:
+            defined.update(direct_definitions(statement))
+
+    return defined
+
+
 def scan_sequence(statements, predefined, relpath, function_name, findings):
     defined = set(predefined)
     for index, statement in enumerate(statements):
@@ -184,10 +259,19 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
             scan_sequence(statement.body, defined, relpath, function_name, findings)
             scan_sequence(statement.orelse, defined, relpath, function_name, findings)
 
+            body_defined = guaranteed_definitions(statement.body, defined)
+            body_terminates = block_terminates(statement.body)
             if statement.orelse:
-                body_defined = direct_definitions_in_sequence(statement.body)
-                else_defined = direct_definitions_in_sequence(statement.orelse)
-                defined.update(body_defined & else_defined)
+                else_defined = guaranteed_definitions(statement.orelse, defined)
+                else_terminates = block_terminates(statement.orelse)
+                if body_terminates and not else_terminates:
+                    defined = else_defined
+                elif else_terminates and not body_terminates:
+                    defined = body_defined
+                elif not body_terminates and not else_terminates:
+                    defined = body_defined & else_defined
+            # Sans ``else``, le corps peut ne pas s'exécuter : aucune nouvelle
+            # définition n'est garantie après le branchement.
 
         elif isinstance(statement, (ast.For, ast.AsyncFor)):
             loop_defined = defined | target_names(statement.target)
@@ -204,6 +288,7 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
                 if item.optional_vars is not None:
                     with_defined.update(target_names(item.optional_vars))
             scan_sequence(statement.body, with_defined, relpath, function_name, findings)
+            defined = guaranteed_definitions(statement.body, with_defined)
 
         elif isinstance(statement, ast.Try):
             scan_sequence(statement.body, defined, relpath, function_name, findings)
@@ -215,13 +300,7 @@ def scan_sequence(statements, predefined, relpath, function_name, findings):
             scan_sequence(statement.orelse, defined, relpath, function_name, findings)
             scan_sequence(statement.finalbody, defined, relpath, function_name, findings)
 
-            handlers_terminate = not statement.handlers or all(
-                block_terminates(handler.body) for handler in statement.handlers
-            )
-            if handlers_terminate:
-                defined.update(direct_definitions_in_sequence(statement.body))
-                defined.update(direct_definitions_in_sequence(statement.orelse))
-            defined.update(direct_definitions_in_sequence(statement.finalbody))
+            defined = guaranteed_definitions([statement], defined)
 
         defined.update(direct_definitions(statement))
 
