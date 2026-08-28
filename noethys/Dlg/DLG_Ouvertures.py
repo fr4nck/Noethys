@@ -254,8 +254,14 @@ def hex_to_rgb(value):
 
 def CreationImage(largeur, hauteur, couleur=None):
     """ couleur peut être RGB ou HEXA """
-    if type(couleur) == str : r, v, b = hex_to_rgb(couleur)
-    if type(couleur) == tuple : r, v, b = couleur
+    if couleur is None:
+        couleur = (255, 255, 255)
+    if isinstance(couleur, str):
+        r, v, b = hex_to_rgb(couleur)
+    elif isinstance(couleur, tuple) and len(couleur) == 3:
+        r, v, b = couleur
+    else:
+        raise ValueError("couleur doit être une chaîne HEXA ou un tuple RGB")
     if 'phoenix' in wx.PlatformInfo:
         bmp = wx.Image(largeur, hauteur, True)
         bmp.SetRGB((0, 0, largeur, hauteur), r, v, b)
@@ -488,10 +494,18 @@ class CaseOuvertureRenderer(GridCellRenderer):
         if largeurRond < hauteurRond:
             largeurRond = hauteurRond
 
-        if "gauche" in alignement: xRond = 1
-        if "droite" in alignement: xRond = taille[0] - largeurRond - 1
-        if "haut" in alignement: yRond = 1
-        if "bas" in alignement: yRond = taille[1] - hauteurRond - 1
+        if "gauche" in alignement:
+            xRond = 1
+        elif "droite" in alignement:
+            xRond = taille[0] - largeurRond - 1
+        else:
+            raise ValueError("alignement horizontal invalide : %s" % alignement)
+        if "haut" in alignement:
+            yRond = 1
+        elif "bas" in alignement:
+            yRond = taille[1] - hauteurRond - 1
+        else:
+            raise ValueError("alignement vertical invalide : %s" % alignement)
 
         if 'phoenix' in wx.PlatformInfo:
             dc.DrawRoundedRectangle(wx.Rect(xRond, yRond, largeurRond, hauteurRond), hauteurRond / 2.0)
