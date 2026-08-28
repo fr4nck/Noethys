@@ -70,11 +70,46 @@ class Info:
         return self.label
 
 
+class FakeDialog:
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+        self.destroyed = False
+        self.modal_calls = 0
+
+    def ShowModal(self):
+        self.modal_calls += 1
+        return FakeWx.ID_YES
+
+    def Destroy(self):
+        self.destroyed = True
+
+
+class FakeWx:
+    OK = 1
+    ICON_ERROR = 2
+    YES_NO = 4
+    NO_DEFAULT = 8
+    CANCEL = 16
+    ICON_EXCLAMATION = 32
+    ID_YES = 5103
+    dialogs = []
+
+    @classmethod
+    def MessageDialog(cls, *args, **kwargs):
+        dialog = FakeDialog(*args, **kwargs)
+        cls.dialogs.append(dialog)
+        return dialog
+
+
 class Dummy:
     pass
 
 
 class VentilationRegroupementContractTests(unittest.TestCase):
+    def setUp(self):
+        FakeWx.dialogs = []
+
     def extract_majinfos(self):
         return extract_method(
             "CTRL",
@@ -85,6 +120,20 @@ class VentilationRegroupementContractTests(unittest.TestCase):
                 "FloatToDecimalFini": finite_converter(),
                 "_": lambda text: text,
                 "SYMBOLE": "€",
+            },
+        )
+
+    def extract_validation(self, converter=None):
+        return extract_method(
+            "CTRL",
+            "Validation",
+            {
+                "decimal": decimal,
+                "FloatToDecimal": float_to_decimal,
+                "FloatToDecimalFini": finite_converter() if converter is None else converter,
+                "_": lambda text: text,
+                "SYMBOLE": "€",
+                "wx": FakeWx,
             },
         )
 
@@ -102,6 +151,13 @@ class VentilationRegroupementContractTests(unittest.TestCase):
         self.assertEqual("erreur", dummy.validation)
         self.assertIs(dummy.imgErreur, dummy.ctrl_image.bitmap)
         self.assertEqual("Vous avez saisi un montant non valide !", dummy.ctrl_info.label)
+
+    def assert_generic_validation_error(self):
+        self.assertEqual(1, len(FakeWx.dialogs))
+        dialog = FakeWx.dialogs[0]
+        self.assertEqual(1, dialog.modal_calls)
+        self.assertTrue(dialog.destroyed)
+        self.assertIn("La ventilation n'est pas valide", dialog.args[1])
 
     def test_set_regroupement_rejects_unknown_key_before_mutating_state(self):
         method = extract_method("CTRL_Ventilation", "SetRegroupement")
@@ -211,6 +267,44 @@ class VentilationRegroupementContractTests(unittest.TestCase):
 
         self.extract_majinfos()(dummy)
         self.assert_invalid_amount(dummy)
+
+    def test_final_validation_short_circuits_error_state_before_signaling_nan_conversion(self):
+        def forbidden_converter(value):
+            raise AssertionError("Un état déjà invalide ne doit lancer aucune conversion")
+
+        dummy = Dummy()
+        dummy.validation = "erreur"
+        dummy.montant_reglement = decimal.Decimal("sNaN")
+        dummy.total_ventilation = decimal.Decimal("0")
+
+        self.assertFalse(self.extract_validation(converter=forbidden_converter)(dummy))
+        self.assert_generic_validation_error()
+
+    def test_final_validation_short_circuits_error_state_before_infinity_subtraction(self):
+        def forbidden_converter(value):
+            raise AssertionError("Un état déjà invalide ne doit lancer aucune arithmétique")
+
+        dummy = Dummy()
+        dummy.validation = "erreur"
+        dummy.montant_reglement = decimal.Decimal("Infinity")
+        dummy.total_ventilation = decimal.Decimal("Infinity")
+
+        self.assertFalse(self.extract_validation(converter=forbidden_converter)(dummy))
+        self.assert_generic_validation_error()
+
+    def test_final_validation_catches_remainder_aggregation_decimal_error(self):
+        class Ventilation:
+            def GetTotalRestePrestationsAVentiler(self):
+                raise decimal.InvalidOperation
+
+        dummy = Dummy()
+        dummy.validation = "addition"
+        dummy.montant_reglement = decimal.Decimal("10")
+        dummy.total_ventilation = decimal.Decimal("2")
+        dummy.ctrl_ventilation = Ventilation()
+
+        self.assertFalse(self.extract_validation()(dummy))
+        self.assert_generic_validation_error()
 
     def test_ctrl_ventilation_has_no_branch_assignment_gap_left(self):
         findings = branch_audit.scan_file(SOURCE.resolve())
