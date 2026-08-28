@@ -9,9 +9,10 @@ contrat simple et sûr : la définition et la lecture sont protégées par la m�
 condition (ou par une condition ultérieure plus restrictive).
 
 Ce module ne supprime aucune occurrence. Il requalifie seulement les candidats
-dont la garde corrélée est démontrable dans l'AST et dont la branche concernée
-garantit réellement la définition. Les autres restent ``high`` et doivent être
-revus humainement.
+dont la garde corrélée est démontrable dans l'AST, dont la branche concernée
+garantit réellement la définition et dont les dépendances visibles de la garde
+ne sont pas réaffectées entre les deux tests. Les autres restent ``high`` et
+doivent être revus humainement.
 """
 
 from __future__ import annotations
@@ -34,6 +35,10 @@ ROOT = base.NOETHYS
 
 def _same_expr(left, right):
     return ast.dump(left, include_attributes=False) == ast.dump(right, include_attributes=False)
+
+
+def _expr_key(node):
+    return ast.dump(node, include_attributes=False)
 
 
 def _negated(expr):
@@ -67,6 +72,67 @@ def _name_loaded(node, name):
         if isinstance(child, ast.Name) and child.id == name and isinstance(child.ctx, ast.Load):
             return True
     return False
+
+
+def _guard_dependencies(test):
+    """Expressions dont une réaffectation explicite peut changer la garde."""
+    dependencies = set()
+    for node in ast.walk(test):
+        if isinstance(node, (ast.Name, ast.Attribute, ast.Subscript)):
+            dependencies.add(_expr_key(node))
+    return dependencies
+
+
+def _target_dependencies(target):
+    keys = set()
+    for node in ast.walk(target):
+        if isinstance(node, (ast.Name, ast.Attribute, ast.Subscript)):
+            keys.add(_expr_key(node))
+    return keys
+
+
+def _guard_is_stable_between(tree, original, later):
+    """Refuse une corrélation si une dépendance visible est modifiée entre les tests.
+
+    Le contrôle couvre les réaffectations explicites et les mutations directes
+    du conteneur/attribut testé (par exemple ``state.clear()``). Il ne prétend
+    pas résoudre les effets de bord arbitraires d'un appel opaque ; l'objectif
+    est d'éviter qu'une simple réutilisation textuelle d'une condition devienne
+    à tort une preuve lorsque son état a visiblement changé.
+    """
+    dependencies = _guard_dependencies(original.test)
+    start = getattr(original, "end_lineno", original.lineno)
+    end = later.lineno
+    if end <= start:
+        return True
+
+    for node in ast.walk(tree):
+        line = getattr(node, "lineno", 0)
+        if not (start < line < end):
+            continue
+
+        targets = []
+        if isinstance(node, ast.Assign):
+            targets.extend(node.targets)
+        elif isinstance(node, ast.AnnAssign):
+            targets.append(node.target)
+        elif isinstance(node, ast.AugAssign):
+            targets.append(node.target)
+        elif isinstance(node, ast.NamedExpr):
+            targets.append(node.target)
+        elif isinstance(node, ast.Delete):
+            targets.extend(node.targets)
+
+        for target in targets:
+            if dependencies & _target_dependencies(target):
+                return False
+
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            receiver = node.func.value
+            if _expr_key(receiver) in dependencies:
+                return False
+
+    return True
 
 
 def _branch_guarantees_name(original, branch, name):
@@ -107,6 +173,10 @@ def _load_is_protected_by_correlated_guard(tree, finding):
 
         in_body = _line_in_statements(node.body, line)
         in_else = _line_in_statements(node.orelse, line)
+        if not (in_body or in_else):
+            continue
+        if not _guard_is_stable_between(tree, original, node):
+            continue
 
         if branch == "body_only":
             if in_body and _test_implies(node.test, original.test):
@@ -145,11 +215,11 @@ def build_report(root=ROOT):
             if _load_is_protected_by_correlated_guard(tree, item):
                 result["classification"] = "correlated_guard"
                 result["priority"] = "low"
-                result["reason"] = "la branche garantit la définition et la première lecture est protégée par la même garde ou une conjonction plus restrictive"
+                result["reason"] = "la branche garantit la définition, la garde reste stable et la première lecture est protégée par la même condition ou une conjonction plus restrictive"
             else:
                 result["classification"] = "review"
                 result["priority"] = "high"
-                result["reason"] = "définition de branche ou garde corrélée insuffisamment démontrable"
+                result["reason"] = "définition de branche, stabilité ou garde corrélée insuffisamment démontrable"
             qualified.append(result)
 
     qualified.sort(key=lambda item: (item["file"], item["line"], item["name"]))
