@@ -23,16 +23,19 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          from textwrap import dedent
 
           path = Path('noethys/Dlg/DLG_Dates_forfait_date.py')
           source = path.read_text(encoding='utf-8')
-          old = '''def CreationImage(largeur, hauteur, couleur=None):
+          old = dedent('''\
+          def CreationImage(largeur, hauteur, couleur=None):
               """ couleur peut être RGB ou HEXA """
               if type(couleur) == str : r, v, b = hex_to_rgb(couleur)
               if type(couleur) == tuple : r, v, b = couleur
               if 'phoenix' in wx.PlatformInfo:
-          '''.replace('          ', '')
-          new = '''def CreationImage(largeur, hauteur, couleur=None):
+          ''')
+          new = dedent('''\
+          def CreationImage(largeur, hauteur, couleur=None):
               """ couleur peut être RGB ou HEXA """
               if couleur is None:
                   couleur = (255, 255, 255)
@@ -43,13 +46,13 @@ jobs:
               else:
                   raise ValueError("couleur doit être une chaîne HEXA ou un tuple RGB")
               if 'phoenix' in wx.PlatformInfo:
-          '''.replace('          ', '')
+          ''')
           if source.count(old) != 1:
               raise SystemExit(f'bloc CreationImage inattendu: occurrences={source.count(old)}')
           path.write_text(source.replace(old, new), encoding='utf-8')
 
-          test = Path('tests/test_dates_forfait_color_contract.py')
-          test.write_text(r'''#!/usr/bin/env python3
+          test_source = dedent(r'''\
+          #!/usr/bin/env python3
           # -*- coding: utf-8 -*-
 
           import ast
@@ -132,7 +135,8 @@ jobs:
 
           if __name__ == "__main__":
               unittest.main()
-          '''.replace('          ', ''), encoding='utf-8')
+          ''')
+          Path('tests/test_dates_forfait_color_contract.py').write_text(test_source, encoding='utf-8')
           PY
           python -m unittest tests.test_dates_forfait_color_contract
           python scripts/audit_branch_assignment_gaps.py --json /tmp/branch-gaps.json >/tmp/branch-gaps.txt
