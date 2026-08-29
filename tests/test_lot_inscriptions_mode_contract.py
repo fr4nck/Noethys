@@ -75,17 +75,17 @@ class FakeChoice:
 class LotInscriptionsModeContractTests(unittest.TestCase):
     def test_three_historical_modes_keep_their_queries(self):
         cases = (
-            ("activites", "FROM activites"),
-            ("groupes", "FROM groupes"),
-            ("categories", "FROM categories_tarifs"),
+            ("activites", "SELECT IDactivite, nom FROM activites ORDER BY date_fin DESC;"),
+            ("groupes", "SELECT IDgroupe, nom FROM groupes WHERE IDactivite=12 ORDER BY ordre;"),
+            ("categories", "SELECT IDcategorie_tarif, nom FROM categories_tarifs WHERE IDactivite=12 ORDER BY nom;"),
         )
-        for mode, fragment in cases:
+        for mode, expected_req in cases:
             with self.subTest(mode=mode):
                 factory = DBFactory()
                 choice = FakeChoice(mode)
                 load_maj(factory)(choice, IDactivite=12)
                 self.assertEqual(len(factory.instances), 1)
-                self.assertIn(fragment, factory.instances[0].req)
+                self.assertEqual(factory.instances[0].req, expected_req)
                 self.assertTrue(factory.instances[0].closed)
                 self.assertEqual(choice.listeID, [7])
                 self.assertEqual(choice.items, ["Valeur"])
