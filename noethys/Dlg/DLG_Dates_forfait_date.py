@@ -53,8 +53,14 @@ def hex_to_rgb(value):
 
 def CreationImage(largeur, hauteur, couleur=None):
     """ couleur peut être RGB ou HEXA """
-    if type(couleur) == str : r, v, b = hex_to_rgb(couleur)
-    if type(couleur) == tuple : r, v, b = couleur
+    if couleur is None:
+        couleur = (255, 255, 255)
+    if isinstance(couleur, str):
+        r, v, b = hex_to_rgb(couleur)
+    elif isinstance(couleur, tuple) and len(couleur) == 3:
+        r, v, b = couleur
+    else:
+        raise ValueError("couleur doit être une chaîne HEXA ou un tuple RGB")
     if 'phoenix' in wx.PlatformInfo:
         bmp = wx.Image(largeur, hauteur, True)
         bmp.SetRGB((0, 0, largeur, hauteur), r, v, b)
