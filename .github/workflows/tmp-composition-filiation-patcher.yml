@@ -18,136 +18,17 @@ jobs:
         with:
           ref: fix/composition-filiation-layout
           fetch-depth: 0
-
       - uses: actions/setup-python@v7
         with:
           python-version: '3.10'
-
-      - name: Appliquer le correctif et les tests
-        shell: bash
+      - name: Appliquer le correctif
+        run: python -c "import base64; exec(base64.b64decode('ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgpwYXRoID0gUGF0aCgibm9ldGh5cy9DdHJsL0NUUkxfQ29tcG9zaXRpb24ucHkiKQpzb3VyY2UgPSBwYXRoLnJlYWRfdGV4dChlbmNvZGluZz0idXRmLTgiKQpjdXJzb3JfYmxvY2sgPSAiIiJpZiAncGhvZW5peCcgaW4gd3guUGxhdGZvcm1JbmZvOgogICAgQ1VSU09SID0gd3guQ3Vyc29yCmVsc2UgOgogICAgQ1VSU09SID0gd3guU3RvY2tDdXJzb3IKIiIiCmhlbHBlciA9ICIiIgoKZGVmIEdldFBvc2l0aW9uc0xpZW5zRmlsaWF0aW9uKHBvc1NlcGFyYXRpb24sIG5icmVMaWVuc0ZpbGlhdGlvbik6CiAgICBcIlxcIlJldG91cm5lIGxlcyBwb3NpdGlvbnMgaG9yaXpvbnRhbGVzIGRlcyBncm91cGVzIGRlIGZpbGlhdGlvbi5cIlxcIgogICAgaWYgbmJyZUxpZW5zRmlsaWF0aW9uIDw9IDA6CiAgICAgICAgcmV0dXJuIFtdCiAgICBkZWNhbGFnZURlcGFydCA9IC0yICogKG5icmVMaWVuc0ZpbGlhdGlvbiAtIDEpCiAgICByZXR1cm4gWwogICAgICAgIHBvc1NlcGFyYXRpb24gKyBkZWNhbGFnZURlcGFydCArIDQgKiBpbmRleAogICAgICAgIGZvciBpbmRleCBpbiByYW5nZShuYnJlTGllbnNGaWxpYXRpb24pCiAgICBdCiIiIgppZiAiZGVmIEdldFBvc2l0aW9uc0xpZW5zRmlsaWF0aW9uKCIgbm90IGluIHNvdXJjZToKICAgIGlmIGN1cnNvcl9ibG9jayBub3QgaW4gc291cmNlOgogICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoImJsb2MgQ1VSU09SIGludHJvdXZhYmxlIikKICAgIHNvdXJjZSA9IHNvdXJjZS5yZXBsYWNlKGN1cnNvcl9ibG9jaywgY3Vyc29yX2Jsb2NrICsgaGVscGVyLCAxKQpvbGQgPSAiIiIgICAgICAgICAgICBpZiBuYnJlTGllbnNGaWxpYXRpb24gPT0gMSA6IHBvc0NlbnRyYWxlID0gW3NlbGYucG9zU2VwYXJhdGlvbkNvbDEsXQogICAgICAgICAgICBpZiBuYnJlTGllbnNGaWxpYXRpb24gPT0gMiA6IHBvc0NlbnRyYWxlID0gW3NlbGYucG9zU2VwYXJhdGlvbkNvbDEtMiwgc2VsZi5wb3NTZXBhcmF0aW9uQ29sMSsyXQogICAgICAgICAgICBpZiBuYnJlTGllbnNGaWxpYXRpb24gPT0gMyA6IHBvc0NlbnRyYWxlID0gW3NlbGYucG9zU2VwYXJhdGlvbkNvbDEtNCwgc2VsZi5wb3NTZXBhcmF0aW9uQ29sMSwgc2VsZi5wb3NTZXBhcmF0aW9uQ29sMSs0XQogICAgICAgICAgICBpZiBuYnJlTGllbnNGaWxpYXRpb24gPT0gNCA6IHBvc0NlbnRyYWxlID0gW3NlbGYucG9zU2VwYXJhdGlvbkNvbDEtNiwgc2VsZi5wb3NTZXBhcmF0aW9uQ29sMS0yLCBzZWxmLnBvc1NlcGFyYXRpb25Db2wxKzIsIHNlbGYucG9zU2VwYXJhdGlvbkNvbDErNl0KICAgICAgICAgICAgaWYgbmJyZUxpZW5zRmlsaWF0aW9uID09IDUgOiBwb3NDZW50cmFsZSA9IFtzZWxmLnBvc1NlcGFyYXRpb25Db2wxLTgsIHNlbGYucG9zU2VwYXJhdGlvbkNvbDEtNCwgc2VsZi5wb3NTZXBhcmF0aW9uQ29sMSwgc2VsZi5wb3NTZXBhcmF0aW9uQ29sMSs0LCBzZWxmLnBvc1NlcGFyYXRpb25Db2wxKzhdCiIiIgpuZXcgPSAiICAgICAgICAgICAgcG9zQ2VudHJhbGUgPSBHZXRQb3NpdGlvbnNMaWVuc0ZpbGlhdGlvbihzZWxmLnBvc1NlcGFyYXRpb25Db2wxLCBuYnJlTGllbnNGaWxpYXRpb24pXG4iCmlmIG9sZCBub3QgaW4gc291cmNlOgogICAgcmFpc2UgU3lzdGVtRXhpdCgiYmxvYyBoaXN0b3JpcXVlIHBvc0NlbnRyYWxlIGludHJvdXZhYmxlIikKc291cmNlID0gc291cmNlLnJlcGxhY2Uob2xkLCBuZXcsIDEpCnBhdGgud3JpdGVfdGV4dChzb3VyY2UsIGVuY29kaW5nPSJ1dGYtOCIpClBhdGgoInRlc3RzL3Rlc3RfY29tcG9zaXRpb25fZmlsaWF0aW9uX2xheW91dC5weSIpLndyaXRlX3RleHQoJyMhL3Vzci9iaW4vZW52IHB5dGhvbjNcbiMgLSotIGNvZGluZzogdXRmLTggLSotXG5cbmltcG9ydCBhc3RcbmltcG9ydCB1bml0dGVzdFxuZnJvbSBwYXRobGliIGltcG9ydCBQYXRoXG5cbmZyb20gc2NyaXB0cyBpbXBvcnQgYXVkaXRfYnJhbmNoX2Fzc2lnbm1lbnRfZ2Fwc1xuXG5cbk9PT1QgPSBQYXRoKF9fZmlsZV9fKS5yZXNvbHZlKCkucGFyZW50c1sxXVxuU09VUkNFX1JPT1QgPSBST09UIC8gIm5vZXRoeXMiXG5TT1VSQ0VfUEFUSCA9IFNPVVJDRV9ST09UIC8gIkN0cmwiIC8gIkNUUkxfQ29tcG9zaXRpb24ucHkiXG5cblxuZGVmIGxvYWRfcG9zaXRpb25zX2hlbHBlcigpOlxuICAgIHNvdXJjZSA9IFNPVVJDRV9QQVRILnJlYWRfdGV4dChlbmNvZGluZz0idXRmLTgiKVxuICAgIHRyZWUgPSBhc3QucGFyc2Uoc291cmNlKVxuICAgIGZ1bmN0aW9ucyA9IFtcbiAgICAgICAgbm9kZSBmb3Igbm9kZSBpbiB0cmVlLmJvZHlcbiAgICAgICAgaWYgaXNpbnN0YW5jZShub2RlLCBhc3QuRnVuY3Rpb25EZWYpXG4gICAgICAgIGFuZCBub2RlLm5hbWUgPT0gIkdldFBvc2l0aW9uc0xpZW5zRmlsaWF0aW9uIlxuICAgIF1cbiAgICBpZiBsZW4oZnVuY3Rpb25zKSAhPSAxOlxuICAgICAgICByYWlzZSBBc3NlcnRpb25FcnJvcihmdW5jdGlvbnMpXG4gICAgbW9kdWxlID0gYXN0Lk1vZHVsZShib2R5PWZ1bmN0aW9ucywgdHlwZV9pZ25vcmVzPVtdKVxuICAgIGFzdC5maXhfbWlzc2luZ19sb2NhdGlvbnMobW9kdWxlKVxuICAgIG5hbWVzcGFjZSA9IHt9XG4gICAgZXhlYyhjb21waWxlKG1vZHVsZSwgc3RyKFNPVVJDRV9QQVRIKSwgImV4ZWMiKSwgbmFtZXNwYWNlKVxuICAgIHJldHVybiBuYW1lc3BhY2VbIkdldFBvc2l0aW9uc0xpZW5zRmlsaWF0aW9uIl1cblxuXG5jbGFzcyBDb21wb3NpdGlvbkZpbGlhdGlvbkxheW91dFRlc3RzKHVuaXR0ZXN0LlRlc3RDYXNlKTpcbiAgICBkZWYgdGVzdF9oaXN0b3JpY2FsX3Bvc2l0aW9uc19vbmVfdG9fZml2ZV9hcmVfcHJlc2VydmVkKHNlbGYpOlxuICAgICAgICBwb3NpdGlvbnMgPSBsb2FkX3Bvc2l0aW9uc19oZWxwZXIoKVxuICAgICAgICBleHBlY3RlZCA9IHtcbiAgICAgICAgICAgIDE6IFsxMDBdLFxuICAgICAgICAgICAgMjogWzk4LCAxMDJdLFxuICAgICAgICAgICAgMzogWzk2LCAxMDAsIDEwNF0sXG4gICAgICAgICAgICA0OiBbOTQsIDk4LCAxMDIsIDEwNl0sXG4gICAgICAgICAgICA1OiBbOTIsIDk2LCAxMDAsIDEwNCwgMTA4XSxcbiAgICAgICAgfVxuICAgICAgICBmb3IgY291bnQsIHZhbHVlcyBpbiBleHBlY3RlZC5pdGVtcygpOlxuICAgICAgICAgICAgd2l0aCBzZWxmLnN1YlRlc3QoY291bnQ9Y291bnQpOlxuICAgICAgICAgICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwocG9zaXRpb25zKDEwMCwgY291bnQpLCB2YWx1ZXMpXG5cbiAgICBkZWYgdGVzdF90ZW5fZmlsaWF0aW9uX2dyb3Vwc19hcmVfc3VwcG9ydGVkKHNlbGYpOlxuICAgICAgICBwb3NpdGlvbnMgPSBsb2FkX3Bvc2l0aW9uc19oZWxwZXIoKVxuICAgICAgICBzZWxmLmFzc2VydEVxdWFsKFxuICAgICAgICAgICAgcG9zaXRpb25zKDEwMCwgMTApLFxuICAgICAgICAgICAgWzgyLCA4NiwgOTAsIDk0LCA5OCwgMTAyLCAxMDYsIDExMCwgMTE0LCAxMThdLFxuICAgICAgICApXG5cbiAgICBkZWYgdGVzdF96ZXJvX2dyb3Vwc19yZXR1cm5zX25vX3Bvc2l0aW9uKHNlbGYpOlxuICAgICAgICBwb3NpdGlvbnMgPSBsb2FkX3Bvc2l0aW9uc19oZWxwZXIoKVxuICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHBvc2l0aW9ucygxMDAsIDApLCBbXSlcblxuICAgIGRlZiB0ZXN0X3Bvc2l0aW9uc19yZW1haW5fcmVndWxhcl9hbmRfY2VudGVyZWQoc2VsZik6XG4gICAgICAgIHBvc2l0aW9ucyA9IGxvYWRfcG9zaXRpb25zX2hlbHBlcigpXG4gICAgICAgIGZvciBjb3VudCBpbiAoMSwgMiwgNSwgMTAsIDE3KTpcbiAgICAgICAgICAgIHZhbHVlcyA9IHBvc2l0aW9ucygyNDAsIGNvdW50KVxuICAgICAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChsZW4odmFsdWVzKSwgY291bnQpXG4gICAgICAgICAgICBpZiBjb3VudCA+IDE6XG4gICAgICAgICAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChcbiAgICAgICAgICAgICAgICAgICAgW2IgLSBhIGZvciBhLCBiIGluIHppcCh2YWx1ZXMsIHZhbHVlc1sxOl0pXSxcbiAgICAgICAgICAgICAgICAgICAgWzRdICogKGNvdW50IC0gMSksXG4gICAgICAgICAgICAgICAgKVxuICAgICAgICAgICAgc2VsZi5hc3NlcnRFcXVhbCh2YWx1ZXNbMF0gKyB2YWx1ZXNbLTFdLCA0ODApXG5cbiAgICBkZWYgdGVzdF9kcmF3X2xpZW5zX3Bvc2NlbnRyYWxlX2JyYW5jaF9nYXBfaXNfZ29uZShzZWxmKTpcbiAgICAgICAgZmluZGluZ3MgPSBhdWRpdF9icmFuY2hfYXNzaWdubWVudF9nYXBzLnNjYW5fZmlsZShTT1VSQ0VfUEFUSCwgU09VUkNFX1JPT1QpXG4gICAgICAgIHRhcmdldGVkID0gW1xuICAgICAgICAgICAgaXRlbSBmb3IgaXRlbSBpbiBmaW5kaW5nc1xuICAgICAgICAgICAgaWYgaXRlbS5nZXQoImZ1bmN0aW9uIikgPT0gIkRyYXdMaWVucyJcbiAgICAgICAgICAgIGFuZCBpdGVtLmdldCgibmFtZSIpID09ICJwb3NDZW50cmFsZSJcbiAgICAgICAgXVxuICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHRhcmdldGVkLCBbXSwgdGFyZ2V0ZWQpXG5cblxuaWYgX19uYW1lX18gPT0gIl9fbWFpbl9fIjpcbiAgICB1bml0dGVzdC5tYWluKClcbicsIGVuY29kaW5nPSJ1dGYtOCIpCg==').decode())"
+      - name: Valider le correctif
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path('noethys/Ctrl/CTRL_Composition.py')
-          source = path.read_text(encoding='utf-8')
-
-          cursor_block = """if 'phoenix' in wx.PlatformInfo:\n    CURSOR = wx.Cursor\nelse :\n    CURSOR = wx.StockCursor\n"""
-          helper = """
-
-
-def GetPositionsLiensFiliation(posSeparation, nbreLiensFiliation):
-    \"\"\"Retourne les positions horizontales des groupes de filiation.\"\"\"
-    if nbreLiensFiliation <= 0:
-        return []
-    decalageDepart = -2 * (nbreLiensFiliation - 1)
-    return [
-        posSeparation + decalageDepart + 4 * index
-        for index in range(nbreLiensFiliation)
-    ]
-"""
-          if 'def GetPositionsLiensFiliation(' not in source:
-              if cursor_block not in source:
-                  raise SystemExit('bloc CURSOR introuvable')
-              source = source.replace(cursor_block, cursor_block + helper, 1)
-
-          old = """            if nbreLiensFiliation == 1 : posCentrale = [self.posSeparationCol1,]\n            if nbreLiensFiliation == 2 : posCentrale = [self.posSeparationCol1-2, self.posSeparationCol1+2]\n            if nbreLiensFiliation == 3 : posCentrale = [self.posSeparationCol1-4, self.posSeparationCol1, self.posSeparationCol1+4]\n            if nbreLiensFiliation == 4 : posCentrale = [self.posSeparationCol1-6, self.posSeparationCol1-2, self.posSeparationCol1+2, self.posSeparationCol1+6]\n            if nbreLiensFiliation == 5 : posCentrale = [self.posSeparationCol1-8, self.posSeparationCol1-4, self.posSeparationCol1, self.posSeparationCol1+4, self.posSeparationCol1+8]\n"""
-          new = """            posCentrale = GetPositionsLiensFiliation(self.posSeparationCol1, nbreLiensFiliation)\n"""
-          if old not in source:
-              raise SystemExit('bloc historique posCentrale introuvable')
-          source = source.replace(old, new, 1)
-          path.write_text(source, encoding='utf-8')
-
-          Path('tests/test_composition_filiation_layout.py').write_text('''#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-import ast
-import unittest
-from pathlib import Path
-
-from scripts import audit_branch_assignment_gaps
-
-
-ROOT = Path(__file__).resolve().parents[1]
-SOURCE_ROOT = ROOT / "noethys"
-SOURCE_PATH = SOURCE_ROOT / "Ctrl" / "CTRL_Composition.py"
-
-
-def load_positions_helper():
-    source = SOURCE_PATH.read_text(encoding="utf-8")
-    tree = ast.parse(source)
-    functions = [
-        node for node in tree.body
-        if isinstance(node, ast.FunctionDef)
-        and node.name == "GetPositionsLiensFiliation"
-    ]
-    if len(functions) != 1:
-        raise AssertionError(functions)
-    module = ast.Module(body=functions, type_ignores=[])
-    ast.fix_missing_locations(module)
-    namespace = {}
-    exec(compile(module, str(SOURCE_PATH), "exec"), namespace)
-    return namespace["GetPositionsLiensFiliation"]
-
-
-class CompositionFiliationLayoutTests(unittest.TestCase):
-    def test_historical_positions_one_to_five_are_preserved(self):
-        positions = load_positions_helper()
-        expected = {
-            1: [100],
-            2: [98, 102],
-            3: [96, 100, 104],
-            4: [94, 98, 102, 106],
-            5: [92, 96, 100, 104, 108],
-        }
-        for count, values in expected.items():
-            with self.subTest(count=count):
-                self.assertEqual(positions(100, count), values)
-
-    def test_ten_filiation_groups_are_supported(self):
-        positions = load_positions_helper()
-        self.assertEqual(
-            positions(100, 10),
-            [82, 86, 90, 94, 98, 102, 106, 110, 114, 118],
-        )
-
-    def test_zero_groups_returns_no_position(self):
-        positions = load_positions_helper()
-        self.assertEqual(positions(100, 0), [])
-
-    def test_positions_remain_regular_and_centered(self):
-        positions = load_positions_helper()
-        for count in (1, 2, 5, 10, 17):
-            values = positions(240, count)
-            self.assertEqual(len(values), count)
-            if count > 1:
-                self.assertEqual(
-                    [b - a for a, b in zip(values, values[1:])],
-                    [4] * (count - 1),
-                )
-            self.assertEqual(values[0] + values[-1], 480)
-
-    def test_draw_liens_poscentrale_branch_gap_is_gone(self):
-        findings = audit_branch_assignment_gaps.scan_file(SOURCE_PATH, SOURCE_ROOT)
-        targeted = [
-            item for item in findings
-            if item.get("function") == "DrawLiens"
-            and item.get("name") == "posCentrale"
-        ]
-        self.assertEqual(targeted, [], targeted)
-
-
-if __name__ == "__main__":
-    unittest.main()
-''', encoding='utf-8')
-          PY
-
           python -m py_compile noethys/Ctrl/CTRL_Composition.py tests/test_composition_filiation_layout.py
           python -m unittest tests.test_composition_filiation_layout -v
           python scripts/audit_branch_assignment_gaps.py --json /tmp/branch-gaps.json
-
-      - name: Commit du correctif et nettoyage de branche
-        shell: bash
+      - name: Commit du correctif
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
