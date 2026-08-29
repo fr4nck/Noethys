@@ -1,0 +1,145 @@
+name: TEMP dates forfait color contract
+
+on:
+  push:
+    branches:
+      - fix/dates-forfait-color-contract
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/dates-forfait-color-contract
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Appliquer le correctif et les contrats
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('noethys/Dlg/DLG_Dates_forfait_date.py')
+          source = path.read_text(encoding='utf-8')
+          old = '''def CreationImage(largeur, hauteur, couleur=None):
+              """ couleur peut être RGB ou HEXA """
+              if type(couleur) == str : r, v, b = hex_to_rgb(couleur)
+              if type(couleur) == tuple : r, v, b = couleur
+              if 'phoenix' in wx.PlatformInfo:
+          '''.replace('          ', '')
+          new = '''def CreationImage(largeur, hauteur, couleur=None):
+              """ couleur peut être RGB ou HEXA """
+              if couleur is None:
+                  couleur = (255, 255, 255)
+              if isinstance(couleur, str):
+                  r, v, b = hex_to_rgb(couleur)
+              elif isinstance(couleur, tuple) and len(couleur) == 3:
+                  r, v, b = couleur
+              else:
+                  raise ValueError("couleur doit être une chaîne HEXA ou un tuple RGB")
+              if 'phoenix' in wx.PlatformInfo:
+          '''.replace('          ', '')
+          if source.count(old) != 1:
+              raise SystemExit(f'bloc CreationImage inattendu: occurrences={source.count(old)}')
+          path.write_text(source.replace(old, new), encoding='utf-8')
+
+          test = Path('tests/test_dates_forfait_color_contract.py')
+          test.write_text(r'''#!/usr/bin/env python3
+          # -*- coding: utf-8 -*-
+
+          import ast
+          import types
+          import unittest
+          from pathlib import Path
+
+          from scripts import audit_branch_assignment_gaps
+
+
+          ROOT = Path(__file__).resolve().parents[1]
+          SOURCE_ROOT = ROOT / "noethys"
+          SOURCE_PATH = SOURCE_ROOT / "Dlg" / "DLG_Dates_forfait_date.py"
+
+
+          class FakeImage:
+              def __init__(self, largeur, hauteur, clear):
+                  self.largeur = largeur
+                  self.hauteur = hauteur
+                  self.clear = clear
+                  self.rgb = None
+
+              def SetRGB(self, rect, r, v, b):
+                  self.rgb = (rect, r, v, b)
+
+              def ConvertToBitmap(self):
+                  return self
+
+
+          def load_creation_image():
+              source = SOURCE_PATH.read_text(encoding="utf-8")
+              tree = ast.parse(source)
+              wanted = {"hex_to_rgb", "CreationImage"}
+              functions = [
+                  node for node in tree.body
+                  if isinstance(node, ast.FunctionDef) and node.name in wanted
+              ]
+              module = ast.Module(body=functions, type_ignores=[])
+              ast.fix_missing_locations(module)
+              fake_wx = types.SimpleNamespace(
+                  PlatformInfo=("phoenix",),
+                  Image=FakeImage,
+              )
+              namespace = {"wx": fake_wx}
+              exec(compile(module, str(SOURCE_PATH), "exec"), namespace)
+              return namespace["CreationImage"]
+
+
+          class DatesForfaitColorContractTests(unittest.TestCase):
+              def test_historical_hex_and_rgb_inputs_are_preserved(self):
+                  creation_image = load_creation_image()
+                  self.assertEqual(
+                      creation_image(8, 6, "#123456").rgb,
+                      ((0, 0, 8, 6), 0x12, 0x34, 0x56),
+                  )
+                  self.assertEqual(
+                      creation_image(5, 4, (1, 2, 3)).rgb,
+                      ((0, 0, 5, 4), 1, 2, 3),
+                  )
+
+              def test_default_colour_is_white(self):
+                  image = load_creation_image()(3, 2)
+                  self.assertEqual(image.rgb, ((0, 0, 3, 2), 255, 255, 255))
+
+              def test_unsupported_colour_is_rejected_explicitly(self):
+                  with self.assertRaisesRegex(ValueError, "chaîne HEXA ou un tuple RGB"):
+                      load_creation_image()(3, 2, [1, 2, 3])
+                  with self.assertRaisesRegex(ValueError, "chaîne HEXA ou un tuple RGB"):
+                      load_creation_image()(3, 2, (1, 2))
+
+              def test_creation_image_branch_assignment_gaps_are_gone(self):
+                  findings = audit_branch_assignment_gaps.scan_file(SOURCE_PATH, SOURCE_ROOT)
+                  targeted = [
+                      item for item in findings
+                      if item.get("function") == "CreationImage"
+                      and item.get("name") in {"r", "v", "b"}
+                  ]
+                  self.assertEqual(targeted, [], targeted)
+
+
+          if __name__ == "__main__":
+              unittest.main()
+          '''.replace('          ', ''), encoding='utf-8')
+          PY
+          python -m unittest tests.test_dates_forfait_color_contract
+          python scripts/audit_branch_assignment_gaps.py --json /tmp/branch-gaps.json >/tmp/branch-gaps.txt
+          grep 'BRANCH_ASSIGNMENT_GAPS=' /tmp/branch-gaps.txt
+          rm .github/workflows/tmp-dates-forfait-color-contract.yml
+          git config user.name "fr4nck"
+          git config user.email "f.bellardie@gmail.com"
+          git add noethys/Dlg/DLG_Dates_forfait_date.py tests/test_dates_forfait_color_contract.py .github/workflows/tmp-dates-forfait-color-contract.yml
+          git commit -m "Fix — sécuriser les couleurs des dates de forfait"
+          git push origin HEAD:fix/dates-forfait-color-contract
