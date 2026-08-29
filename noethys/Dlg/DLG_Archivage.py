@@ -151,16 +151,19 @@ class Page(wx.Panel):
             if self.radio_sans_activite.GetValue() == True :
                 index = self.ctrl_date_sans_activite.GetSelection()
                 type_filtre = "sans"
-
-            if self.radio_avec_activite.GetValue() == True :
+            elif self.radio_avec_activite.GetValue() == True :
                 index = self.ctrl_date_avec_activite.GetSelection()
                 type_filtre = "avec"
+            else :
+                return
 
             type_valeur, valeur, label = CHOIX_DELAIS[index]
             if type_valeur == "mois" :
                 date_limite = date_jour - relativedelta.relativedelta(months=+valeur)
-            if type_valeur == "annees":
+            elif type_valeur == "annees":
                 date_limite = date_jour - relativedelta.relativedelta(years=+valeur)
+            else :
+                raise ValueError("Type de délai inconnu : %s" % type_valeur)
             filtre = (type_filtre, date_limite)
 
         self.ctrl_listview.SetFiltre(filtre)
