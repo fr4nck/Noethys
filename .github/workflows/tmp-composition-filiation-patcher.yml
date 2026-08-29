@@ -1,0 +1,158 @@
+name: Temp composition filiation patcher
+
+on:
+  pull_request:
+    branches:
+      - master
+    types: [opened, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    if: github.head_ref == 'fix/composition-filiation-layout'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/composition-filiation-layout
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+
+      - name: Appliquer le correctif et les tests
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('noethys/Ctrl/CTRL_Composition.py')
+          source = path.read_text(encoding='utf-8')
+
+          cursor_block = """if 'phoenix' in wx.PlatformInfo:\n    CURSOR = wx.Cursor\nelse :\n    CURSOR = wx.StockCursor\n"""
+          helper = """
+
+
+def GetPositionsLiensFiliation(posSeparation, nbreLiensFiliation):
+    \"\"\"Retourne les positions horizontales des groupes de filiation.\"\"\"
+    if nbreLiensFiliation <= 0:
+        return []
+    decalageDepart = -2 * (nbreLiensFiliation - 1)
+    return [
+        posSeparation + decalageDepart + 4 * index
+        for index in range(nbreLiensFiliation)
+    ]
+"""
+          if 'def GetPositionsLiensFiliation(' not in source:
+              if cursor_block not in source:
+                  raise SystemExit('bloc CURSOR introuvable')
+              source = source.replace(cursor_block, cursor_block + helper, 1)
+
+          old = """            if nbreLiensFiliation == 1 : posCentrale = [self.posSeparationCol1,]\n            if nbreLiensFiliation == 2 : posCentrale = [self.posSeparationCol1-2, self.posSeparationCol1+2]\n            if nbreLiensFiliation == 3 : posCentrale = [self.posSeparationCol1-4, self.posSeparationCol1, self.posSeparationCol1+4]\n            if nbreLiensFiliation == 4 : posCentrale = [self.posSeparationCol1-6, self.posSeparationCol1-2, self.posSeparationCol1+2, self.posSeparationCol1+6]\n            if nbreLiensFiliation == 5 : posCentrale = [self.posSeparationCol1-8, self.posSeparationCol1-4, self.posSeparationCol1, self.posSeparationCol1+4, self.posSeparationCol1+8]\n"""
+          new = """            posCentrale = GetPositionsLiensFiliation(self.posSeparationCol1, nbreLiensFiliation)\n"""
+          if old not in source:
+              raise SystemExit('bloc historique posCentrale introuvable')
+          source = source.replace(old, new, 1)
+          path.write_text(source, encoding='utf-8')
+
+          Path('tests/test_composition_filiation_layout.py').write_text('''#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import ast
+import unittest
+from pathlib import Path
+
+from scripts import audit_branch_assignment_gaps
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SOURCE_ROOT = ROOT / "noethys"
+SOURCE_PATH = SOURCE_ROOT / "Ctrl" / "CTRL_Composition.py"
+
+
+def load_positions_helper():
+    source = SOURCE_PATH.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    functions = [
+        node for node in tree.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "GetPositionsLiensFiliation"
+    ]
+    if len(functions) != 1:
+        raise AssertionError(functions)
+    module = ast.Module(body=functions, type_ignores=[])
+    ast.fix_missing_locations(module)
+    namespace = {}
+    exec(compile(module, str(SOURCE_PATH), "exec"), namespace)
+    return namespace["GetPositionsLiensFiliation"]
+
+
+class CompositionFiliationLayoutTests(unittest.TestCase):
+    def test_historical_positions_one_to_five_are_preserved(self):
+        positions = load_positions_helper()
+        expected = {
+            1: [100],
+            2: [98, 102],
+            3: [96, 100, 104],
+            4: [94, 98, 102, 106],
+            5: [92, 96, 100, 104, 108],
+        }
+        for count, values in expected.items():
+            with self.subTest(count=count):
+                self.assertEqual(positions(100, count), values)
+
+    def test_ten_filiation_groups_are_supported(self):
+        positions = load_positions_helper()
+        self.assertEqual(
+            positions(100, 10),
+            [82, 86, 90, 94, 98, 102, 106, 110, 114, 118],
+        )
+
+    def test_zero_groups_returns_no_position(self):
+        positions = load_positions_helper()
+        self.assertEqual(positions(100, 0), [])
+
+    def test_positions_remain_regular_and_centered(self):
+        positions = load_positions_helper()
+        for count in (1, 2, 5, 10, 17):
+            values = positions(240, count)
+            self.assertEqual(len(values), count)
+            if count > 1:
+                self.assertEqual(
+                    [b - a for a, b in zip(values, values[1:])],
+                    [4] * (count - 1),
+                )
+            self.assertEqual(values[0] + values[-1], 480)
+
+    def test_draw_liens_poscentrale_branch_gap_is_gone(self):
+        findings = audit_branch_assignment_gaps.scan_file(SOURCE_PATH, SOURCE_ROOT)
+        targeted = [
+            item for item in findings
+            if item.get("function") == "DrawLiens"
+            and item.get("name") == "posCentrale"
+        ]
+        self.assertEqual(targeted, [], targeted)
+
+
+if __name__ == "__main__":
+    unittest.main()
+''', encoding='utf-8')
+          PY
+
+          python -m py_compile noethys/Ctrl/CTRL_Composition.py tests/test_composition_filiation_layout.py
+          python -m unittest tests.test_composition_filiation_layout -v
+          python scripts/audit_branch_assignment_gaps.py --json /tmp/branch-gaps.json
+
+      - name: Commit du correctif et nettoyage de branche
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f .tmp-composition-filiation-trigger
+          rm -f .github/workflows/tmp-composition-filiation-patcher.yml
+          git add -A
+          git commit -m 'Fix — généraliser le placement des filiations'
+          git push origin HEAD:fix/composition-filiation-layout
