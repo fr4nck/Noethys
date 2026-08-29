@@ -1,16 +1,17 @@
 name: Temp composition filiation layout
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/composition-filiation-layout
+      - master
+    types: [opened, reopened, synchronize]
 
 permissions:
   contents: write
 
 jobs:
   patch-and-test:
-    if: github.actor != 'github-actions[bot]'
+    if: github.head_ref == 'fix/composition-filiation-layout' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
