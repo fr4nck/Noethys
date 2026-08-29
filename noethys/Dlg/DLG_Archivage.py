@@ -155,7 +155,6 @@ class Page(wx.Panel):
                 index = self.ctrl_date_avec_activite.GetSelection()
                 type_filtre = "avec"
             else :
-                self.ctrl_listview.SetFiltre(None)
                 return
 
             type_valeur, valeur, label = CHOIX_DELAIS[index]

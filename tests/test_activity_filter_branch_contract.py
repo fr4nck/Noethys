@@ -105,12 +105,13 @@ class ActivityFilterBranchContractTests(unittest.TestCase):
                 load_method(path)(page)
                 self.assertEqual(page.ctrl_listview.filters[-1][0], "avec")
 
-    def test_no_selected_radio_falls_back_to_no_filter(self):
+    def test_no_selected_radio_preserves_previous_filter(self):
         for path in TARGETS:
             with self.subTest(path=path.name):
                 page = FakePage()
+                page.ctrl_listview.filters.append(("sans", "existing"))
                 load_method(path)(page)
-                self.assertEqual(page.ctrl_listview.filters, [None])
+                self.assertEqual(page.ctrl_listview.filters, [("sans", "existing")])
 
     def test_unknown_delay_type_fails_explicitly(self):
         for path in TARGETS:
