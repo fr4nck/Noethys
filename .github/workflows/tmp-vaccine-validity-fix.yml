@@ -1,0 +1,241 @@
+name: Temporary vaccine validity hardening
+
+on:
+  push:
+    branches:
+      - fix/vaccine-validity-contract
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/vaccine-validity-contract
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Patch vaccine validity contract
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('noethys/Dlg/DLG_Saisie_typesVaccins.py')
+          text = path.read_text(encoding='utf-8')
+
+          old_check = '        if self.ctrl_maladies.GetIDcoches() == 0:\n'
+          new_check = '        if not self.ctrl_maladies.GetIDcoches():\n'
+          if text.count(old_check) != 1:
+              raise SystemExit('contrôle maladies attendu absent ou ambigu')
+          text = text.replace(old_check, new_check, 1)
+
+          start = text.index('    def SetValidite(self, validite=None):\n')
+          end = text.index('    def SetMaladiesAssociees', start)
+          replacement = '''    def SetValidite(self, validite=None):
+        if validite is None:
+            jours = 0
+            mois = 0
+            annees = 0
+        else:
+            posM = validite.find("m")
+            posA = validite.find("a")
+            jours = int(validite[1:posM-1])
+            mois = int(validite[posM+1:posA-1])
+            annees = int(validite[posA+1:])
+
+        if jours == 0 and mois == 0 and annees == 0:
+            self.radio_duree_1.SetValue(True)
+            self.radio_duree_2.SetValue(False)
+        else:
+            self.radio_duree_1.SetValue(False)
+            self.radio_duree_2.SetValue(True)
+            self.spin_jours.SetValue(jours)
+            self.spin_mois.SetValue(mois)
+            self.spin_annees.SetValue(annees)
+        self.OnRadioDuree(None)
+    
+'''
+          path.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
+          PY
+
+          cat > tests/test_vaccine_validity_contract.py <<'PY'
+          #!/usr/bin/env python3
+          # -*- coding: utf-8 -*-
+
+          import ast
+          import types
+          import unittest
+          from pathlib import Path
+
+          from scripts import audit_branch_assignment_gaps
+
+
+          ROOT = Path(__file__).resolve().parents[1]
+          SOURCE_ROOT = ROOT / "noethys"
+          SOURCE_PATH = SOURCE_ROOT / "Dlg" / "DLG_Saisie_typesVaccins.py"
+
+
+          def load_method(name, extra_globals=None):
+              source = SOURCE_PATH.read_text(encoding="utf-8")
+              tree = ast.parse(source)
+              method = next(
+                  item
+                  for node in tree.body if isinstance(node, ast.ClassDef) and node.name == "Dialog"
+                  for item in node.body
+                  if isinstance(item, ast.FunctionDef) and item.name == name
+              )
+              module = ast.Module(body=[method], type_ignores=[])
+              ast.fix_missing_locations(module)
+              namespace = {}
+              if extra_globals:
+                  namespace.update(extra_globals)
+              exec(compile(module, str(SOURCE_PATH), "exec"), namespace)
+              return namespace[name]
+
+
+          class ValueControl:
+              def __init__(self, value=None):
+                  self.value = value
+                  self.focused = False
+
+              def GetValue(self):
+                  return self.value
+
+              def SetValue(self, value):
+                  self.value = value
+
+              def SetFocus(self):
+                  self.focused = True
+
+
+          class VaccinePage:
+              def __init__(self):
+                  self.radio_duree_1 = ValueControl(False)
+                  self.radio_duree_2 = ValueControl(False)
+                  self.spin_jours = ValueControl(99)
+                  self.spin_mois = ValueControl(99)
+                  self.spin_annees = ValueControl(99)
+                  self.radio_refreshes = 0
+
+              def OnRadioDuree(self, event):
+                  self.radio_refreshes += 1
+
+
+          class DiseaseControl:
+              def __init__(self, ids):
+                  self.ids = ids
+
+              def GetIDcoches(self):
+                  return self.ids
+
+
+          class FakeMessageDialog:
+              created = []
+
+              def __init__(self, *args, **kwargs):
+                  self.__class__.created.append(self)
+
+              def ShowModal(self):
+                  return 1
+
+              def Destroy(self):
+                  pass
+
+
+          class ValidationPage:
+              def __init__(self, disease_ids):
+                  self.ctrl_nom = ValueControl("Vaccin")
+                  self.spin_jours = ValueControl(0)
+                  self.spin_mois = ValueControl(0)
+                  self.spin_annees = ValueControl(0)
+                  self.radio_duree_2 = ValueControl(False)
+                  self.ctrl_maladies = DiseaseControl(disease_ids)
+                  self.ended = []
+
+              def EndModal(self, value):
+                  self.ended.append(value)
+
+
+          WX = types.SimpleNamespace(
+              MessageDialog=FakeMessageDialog,
+              OK=1,
+              ICON_EXCLAMATION=2,
+              ID_OK=5100,
+          )
+
+
+          class VaccineValidityContractTests(unittest.TestCase):
+              def setUp(self):
+                  FakeMessageDialog.created = []
+
+              def test_none_validity_selects_unlimited_without_unbound_local(self):
+                  page = VaccinePage()
+                  load_method("SetValidite")(page, None)
+                  self.assertTrue(page.radio_duree_1.value)
+                  self.assertFalse(page.radio_duree_2.value)
+                  self.assertEqual(page.radio_refreshes, 1)
+
+              def test_zero_validity_string_keeps_unlimited_mode(self):
+                  page = VaccinePage()
+                  load_method("SetValidite")(page, "j0-m0-a0")
+                  self.assertTrue(page.radio_duree_1.value)
+                  self.assertFalse(page.radio_duree_2.value)
+
+              def test_historical_limited_validity_is_preserved(self):
+                  page = VaccinePage()
+                  load_method("SetValidite")(page, "j5-m2-a1")
+                  self.assertFalse(page.radio_duree_1.value)
+                  self.assertTrue(page.radio_duree_2.value)
+                  self.assertEqual((page.spin_jours.value, page.spin_mois.value, page.spin_annees.value), (5, 2, 1))
+
+              def test_empty_disease_selection_blocks_validation(self):
+                  method = load_method("OnBoutonOk", {"wx": WX, "_": lambda value: value})
+                  page = ValidationPage([])
+                  result = method(page, None)
+                  self.assertIsNone(result)
+                  self.assertEqual(page.ended, [])
+                  self.assertEqual(len(FakeMessageDialog.created), 1)
+
+              def test_non_empty_disease_selection_can_validate(self):
+                  method = load_method("OnBoutonOk", {"wx": WX, "_": lambda value: value})
+                  page = ValidationPage([7])
+                  method(page, None)
+                  self.assertEqual(page.ended, [WX.ID_OK])
+                  self.assertEqual(FakeMessageDialog.created, [])
+
+              def test_empty_list_check_no_longer_compares_list_to_integer(self):
+                  source = SOURCE_PATH.read_text(encoding="utf-8")
+                  self.assertIn("if not self.ctrl_maladies.GetIDcoches():", source)
+                  self.assertNotIn("self.ctrl_maladies.GetIDcoches() == 0", source)
+
+              def test_set_validite_branch_assignment_gaps_are_gone(self):
+                  findings = audit_branch_assignment_gaps.scan_file(SOURCE_PATH, SOURCE_ROOT)
+                  targeted = [
+                      item for item in findings
+                      if item.get("function") == "SetValidite" and item.get("name") in {"jours", "mois", "annees"}
+                  ]
+                  self.assertEqual(targeted, [], targeted)
+
+
+          if __name__ == "__main__":
+              unittest.main()
+          PY
+      - name: Validate targeted regressions
+        shell: bash
+        run: |
+          python -m py_compile noethys/Dlg/DLG_Saisie_typesVaccins.py tests/test_vaccine_validity_contract.py
+          python -m unittest discover -s tests -p 'test_vaccine_validity_contract.py' -v
+      - name: Commit patch and remove temporary workflow
+        shell: bash
+        run: |
+          rm .github/workflows/tmp-vaccine-validity-fix.yml
+          git config user.name "fr4nck"
+          git config user.email "f.bellardie@gmail.com"
+          git add noethys/Dlg/DLG_Saisie_typesVaccins.py tests/test_vaccine_validity_contract.py .github/workflows/tmp-vaccine-validity-fix.yml
+          git commit -m "Fix: sécuriser la validité et les maladies des vaccins"
+          git push origin HEAD:fix/vaccine-validity-contract
