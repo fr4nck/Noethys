@@ -88,14 +88,18 @@ def CouleurStrToTuple(texte=None):
     return couleur
 
 def ConvertToRVB(couleur=None):
+    if couleur is None:
+        return (255, 255, 255)
     if type(couleur) == str :
-        r, v, b = hex_to_rgb(couleur)
+        return hex_to_rgb(couleur)
     if type(couleur) == tuple :
-        r, v, b = couleur[0], couleur[1], couleur[2]
+        if len(couleur) < 3:
+            raise ValueError("couleur doit contenir au moins trois composantes RGB")
+        return (couleur[0], couleur[1], couleur[2])
     if type(couleur) == wx.Colour :
         col = couleur.Get()
-        r, v, b = col[0], col[1], col[2]
-    return (r, v, b)
+        return (col[0], col[1], col[2])
+    raise ValueError("couleur doit être une chaîne HEXA, un tuple RGB ou un wx.Colour")
 
 def CreationCarreCouleur(largeur, hauteur, couleur=None, contour=False):
     """ couleur peut être RGB ou HEXA """
