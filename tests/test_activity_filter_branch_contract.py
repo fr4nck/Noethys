@@ -110,7 +110,8 @@ class ActivityFilterBranchContractTests(unittest.TestCase):
             with self.subTest(path=path.name):
                 page = FakePage()
                 page.ctrl_listview.filters.append(("sans", "existing"))
-                load_method(path)(page)
+                result = load_method(path)(page)
+                self.assertIsNone(result)
                 self.assertEqual(page.ctrl_listview.filters, [("sans", "existing")])
 
     def test_unknown_delay_type_fails_explicitly(self):
