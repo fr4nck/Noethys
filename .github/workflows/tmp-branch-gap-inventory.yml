@@ -1,0 +1,33 @@
+name: TEMP branch_assignment_gap inventory
+
+on:
+  push:
+    branches:
+      - audit/tmp-branch-gap-inventory-20260829
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Inventorier les affectations conditionnelles
+        run: python scripts/audit_branch_assignment_gaps.py --json branch-assignment-gaps.json
+      - name: Synthèse par fichier
+        run: |
+          python - <<'PY'
+          import json
+          from collections import Counter
+          from pathlib import Path
+
+          report = json.loads(Path('branch-assignment-gaps.json').read_text(encoding='utf-8'))
+          counts = Counter(item['file'] for item in report['findings'])
+          print('TOP_FILES')
+          for path, count in counts.most_common(40):
+              print(f'{count:3d} {path}')
+          PY
