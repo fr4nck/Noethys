@@ -25,57 +25,43 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          old = '''        if self.radio_tous.GetValue() == True :
-              filtre = None
-          else :
-              if self.radio_sans_activite.GetValue() == True :
-                  index = self.ctrl_date_sans_activite.GetSelection()
-                  type_filtre = "sans"
-
-              if self.radio_avec_activite.GetValue() == True :
-                  index = self.ctrl_date_avec_activite.GetSelection()
-                  type_filtre = "avec"
-
-              type_valeur, valeur, label = CHOIX_DELAIS[index]
-              if type_valeur == "mois" :
-                  date_limite = date_jour - relativedelta.relativedelta(months=+valeur)
-              if type_valeur == "annees":
-                  date_limite = date_jour - relativedelta.relativedelta(years=+valeur)
-              filtre = (type_filtre, date_limite)
-          '''
-
-          new = '''        if self.radio_tous.GetValue() == True :
-              filtre = None
-          else :
-              if self.radio_sans_activite.GetValue() == True :
-                  index = self.ctrl_date_sans_activite.GetSelection()
-                  type_filtre = "sans"
-              elif self.radio_avec_activite.GetValue() == True :
-                  index = self.ctrl_date_avec_activite.GetSelection()
-                  type_filtre = "avec"
-              else :
-                  self.ctrl_listview.SetFiltre(None)
-                  return
-
-              type_valeur, valeur, label = CHOIX_DELAIS[index]
-              if type_valeur == "mois" :
-                  date_limite = date_jour - relativedelta.relativedelta(months=+valeur)
-              elif type_valeur == "annees":
-                  date_limite = date_jour - relativedelta.relativedelta(years=+valeur)
-              else :
-                  raise ValueError("Type de délai inconnu : %s" % type_valeur)
-              filtre = (type_filtre, date_limite)
-          '''
-
           targets = [
               Path('noethys/Dlg/DLG_Archivage.py'),
               Path('noethys/Dlg/DLG_Comptes_internet.py'),
           ]
+          replacement = ''.join([
+              "        if self.radio_tous.GetValue() == True :\n",
+              "            filtre = None\n",
+              "        else :\n",
+              "            if self.radio_sans_activite.GetValue() == True :\n",
+              "                index = self.ctrl_date_sans_activite.GetSelection()\n",
+              "                type_filtre = \"sans\"\n",
+              "            elif self.radio_avec_activite.GetValue() == True :\n",
+              "                index = self.ctrl_date_avec_activite.GetSelection()\n",
+              "                type_filtre = \"avec\"\n",
+              "            else :\n",
+              "                self.ctrl_listview.SetFiltre(None)\n",
+              "                return\n",
+              "\n",
+              "            type_valeur, valeur, label = CHOIX_DELAIS[index]\n",
+              "            if type_valeur == \"mois\" :\n",
+              "                date_limite = date_jour - relativedelta.relativedelta(months=+valeur)\n",
+              "            elif type_valeur == \"annees\":\n",
+              "                date_limite = date_jour - relativedelta.relativedelta(years=+valeur)\n",
+              "            else :\n",
+              "                raise ValueError(\"Type de délai inconnu : %s\" % type_valeur)\n",
+              "            filtre = (type_filtre, date_limite)\n",
+              "\n",
+          ])
+
           for path in targets:
               text = path.read_text(encoding='utf-8')
-              if text.count(old) != 1:
-                  raise SystemExit(f'{path}: bloc attendu absent ou ambigu')
-              path.write_text(text.replace(old, new, 1), encoding='utf-8')
+              method_start = text.index('    def OnRadioSelection(self, event=None):')
+              start = text.index('        if self.radio_tous.GetValue() == True :\n', method_start)
+              end = text.index('        self.ctrl_listview.SetFiltre(filtre)\n', start)
+              if text.find('    def ', start + 1, end) != -1:
+                  raise SystemExit(f'{path}: bornes de méthode incohérentes')
+              path.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
           PY
 
           cat > tests/test_activity_filter_branch_contract.py <<'PY'
@@ -84,7 +70,6 @@ jobs:
 
           import ast
           import datetime
-          import types
           import unittest
           from pathlib import Path
 
@@ -198,11 +183,9 @@ jobs:
                   for path in TARGETS:
                       with self.subTest(path=path.name):
                           method = load_method(path)
-                          namespace = method.__globals__
-                          namespace["CHOIX_DELAIS"] = [("semaines", 2, "2 semaines")]
-                          page = FakePage(sans=True)
+                          method.__globals__["CHOIX_DELAIS"] = [("semaines", 2, "2 semaines")]
                           with self.assertRaises(ValueError):
-                              method(page)
+                              method(FakePage(sans=True))
 
               def test_targeted_branch_assignment_gaps_are_gone(self):
                   targeted_names = {"index", "type_filtre", "date_limite"}
