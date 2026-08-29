@@ -72,6 +72,7 @@ def ConvertirToutesImagesPNG():
             nbreConversions += 1
     print("%d images PNG ont ete converties" % nbreConversions)
     
+
 def hex_to_rgb(value):
     value = value.lstrip('#')
     lv = len(value)
