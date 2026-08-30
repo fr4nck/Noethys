@@ -1,0 +1,29 @@
+name: Temp gap batch inventory
+on:
+  push:
+    branches:
+      - fix/branch-assignment-gap-batch-01
+jobs:
+  inventory:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Inventory
+        run: |
+          python scripts/audit_branch_assignment_gaps.py --json /tmp/gaps.json || true
+          python - <<'PY'
+          import json
+          from collections import Counter
+          p='/tmp/gaps.json'
+          data=json.load(open(p, encoding='utf-8'))
+          items=data if isinstance(data,list) else data.get('findings', data.get('items', []))
+          print('COUNT', len(items))
+          print('TOP FILES')
+          for k,v in Counter(x.get('path') or x.get('file') for x in items).most_common(20): print(v,k)
+          print('FIRST 80')
+          for x in items[:80]: print(x)
+          PY
