@@ -29,6 +29,14 @@ def GetNomCategorie(IDcategorie=1):
     return nom_categorie
 
 
+def _GetArchivageEtat(etat):
+    if etat == "archiver":
+        return "archive", _(u"archiver")
+    if etat == "desarchiver":
+        return None, _(u"désarchiver")
+    raise ValueError("Etat d'archivage non supporté : %r" % (etat,))
+
+
 class Archivage():
     def __init__(self):
         self.liste_familles = []
@@ -50,12 +58,7 @@ class Archivage():
         return resultat
 
     def Archiver_familles(self, etat="archiver"):
-        if etat == "archiver" :
-            valeur = "archive"
-            label = _(u"archiver")
-        elif etat == "desarchiver" :
-            valeur = None
-            label = _(u"désarchiver")
+        valeur, label = _GetArchivageEtat(etat)
 
         # Sélection des individus
         liste_individus = self.SelectionIndividus(intro=_(u"Cochez les individus à %s :") % label)
@@ -84,12 +87,7 @@ class Archivage():
 
     def Archiver_individus(self, etat="archiver"):
         """ Effacer les individus """
-        if etat == "archiver" :
-            valeur = "archive"
-            label = _(u"archiver")
-        elif etat == "desarchiver" :
-            valeur = None
-            label = _(u"désarchiver")
+        valeur, label = _GetArchivageEtat(etat)
 
         # Sélection des individus
         liste_individus = self.SelectionIndividus(intro=_(u"Cochez les individus à %s :") % label)
@@ -554,6 +552,7 @@ class CTRL_Selection(HTL.HyperTreeList):
         for index in range(0, self.GetChildrenCount(self.root)):
             item = self.GetNext(item)
             ID = self.GetPyData(item)["ID"]
+            nom_complet = None
 
             if self.liste_familles != [] and self.GetPyData(item)["type"] == "individu" and self.IsItemChecked(item) and self.IsItemEnabled(item):
                 nom_complet = self.GetPyData(item)["label"]
