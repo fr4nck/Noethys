@@ -230,6 +230,9 @@ class Dialog(wx.Dialog):
         self.ctrl_nom.SetValue(nom)
 
     def SetValidite(self, validite=None):
+        jours = 0
+        mois = 0
+        annees = 0
         if validite != None :
             posM = validite.find("m")
             posA = validite.find("a")
