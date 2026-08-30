@@ -2,8 +2,12 @@
 """Export des séances canoniques Noethys vers le contrat ``noethys-session/1``."""
 from __future__ import unicode_literals
 
-from Utils import UTILS_Interventions
-from Utils import UTILS_Interventions_Execution
+try:
+    from noethys.Utils import UTILS_Interventions
+    from noethys.Utils import UTILS_Interventions_Execution
+except ImportError:  # lancement historique depuis le répertoire noethys
+    from Utils import UTILS_Interventions
+    from Utils import UTILS_Interventions_Execution
 
 
 class PMSLSessionExportService(object):
