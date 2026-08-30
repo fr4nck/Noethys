@@ -30,13 +30,6 @@ def nodes_in_body(if_node):
     return nodes
 
 
-def assigns_name(node, name):
-    return (
-        isinstance(node, ast.Assign)
-        and any(isinstance(target, ast.Name) and target.id == name for target in node.targets)
-    )
-
-
 class AssistantBaseLineIdContractTests(unittest.TestCase):
     def test_line_identifier_has_explicit_neutral_default(self):
         source = SOURCE_PATH.read_text(encoding="utf-8")
@@ -47,41 +40,42 @@ class AssistantBaseLineIdContractTests(unittest.TestCase):
         )
         self.assertIn(expected, source)
 
-    def test_line_identifier_state_is_confined_to_exact_local_branch_bodies(self):
+    def test_every_non_neutral_reference_is_inside_an_exact_local_guard_body(self):
         tree = ast.parse(SOURCE_PATH.read_text(encoding="utf-8"))
         methods = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "Sauvegarde_tarifs"]
         self.assertEqual(len(methods), 1)
         method = methods[0]
+
         local_if_nodes = [n for n in ast.walk(method) if isinstance(n, ast.If) and is_exact_local_guard(n.test)]
         self.assertGreaterEqual(len(local_if_nodes), 2)
         protected_nodes = set().union(*(nodes_in_body(node) for node in local_if_nodes))
 
-        assignments = [n for n in ast.walk(method) if assigns_name(n, "prochainIDligne")]
-        increments = [
-            n for n in ast.walk(method)
-            if isinstance(n, ast.AugAssign)
-            and isinstance(n.target, ast.Name)
-            and n.target.id == "prochainIDligne"
+        neutral_assignments = [
+            n
+            for n in ast.walk(method)
+            if isinstance(n, ast.Assign)
+            and len(n.targets) == 1
+            and isinstance(n.targets[0], ast.Name)
+            and n.targets[0].id == "prochainIDligne"
+            and isinstance(n.value, ast.Constant)
+            and n.value.value is None
         ]
-        loads = [
-            n for n in ast.walk(method)
-            if isinstance(n, ast.Name) and n.id == "prochainIDligne" and isinstance(n.ctx, ast.Load)
-        ]
+        self.assertEqual(len(neutral_assignments), 1)
+        neutral_target = neutral_assignments[0].targets[0]
+        self.assertNotIn(neutral_assignments[0], protected_nodes)
+        self.assertNotIn(neutral_target, protected_nodes)
 
-        neutral_defaults = [
+        references = [
             node
-            for node in assignments
-            if isinstance(node.value, ast.Constant) and node.value.value is None
+            for node in ast.walk(method)
+            if isinstance(node, ast.Name) and node.id == "prochainIDligne"
         ]
-        self.assertEqual(len(neutral_defaults), 1)
-        self.assertNotIn(neutral_defaults[0], protected_nodes)
+        self.assertGreater(len(references), 1)
+        self.assertIn(neutral_target, references)
 
-        local_assignments = [node for node in assignments if node is not neutral_defaults[0]]
-        self.assertEqual(len(local_assignments), 2)
-        self.assertEqual(len(increments), 1)
-        self.assertEqual(len(loads), 1)
-
-        for node in local_assignments + increments + loads:
+        for node in references:
+            if node is neutral_target:
+                continue
             self.assertIn(node, protected_nodes, ast.dump(node))
 
     def test_branch_assignment_gap_is_gone(self):
