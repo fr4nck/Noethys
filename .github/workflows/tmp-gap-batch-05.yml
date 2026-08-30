@@ -28,29 +28,46 @@ jobs:
           before, after = s.split(marker, 1)
           after = after.replace('    # Selection des lignes\n    if autoriseSelections == True :\n', '    # Selection des lignes\n    listeSelections = []\n    if autoriseSelections == True :\n', 1)
           after = after.replace('    # Mode Enregistrer\n    if mode == "enregistrer" :\n', '    cheminFichier = None\n\n    # Mode Enregistrer\n    if mode == "enregistrer" :\n', 1)
-          old = '''                if separateur != None :
-                    donnees = valeur.split(separateur)
-                    if len(donnees) == 2 :
-                        heures, minutes = donnees
-                    if len(donnees) == 3 :
-                        heures, minutes, secondes = donnees
-                    valeur = datetime.timedelta(minutes= int(heures)*60 + int(minutes))
-                    return (valeur, format_heure)
-'''
-          new = '''                if separateur != None :
-                    donnees = valeur.split(separateur)
-                    if len(donnees) in (2, 3):
-                        heures, minutes = donnees[:2]
-                        valeur = datetime.timedelta(minutes=int(heures) * 60 + int(minutes))
-                        return (valeur, format_heure)
-'''
+          old = "                if separateur != None :\n                    donnees = valeur.split(separateur)\n                    if len(donnees) == 2 :\n                        heures, minutes = donnees\n                    if len(donnees) == 3 :\n                        heures, minutes, secondes = donnees\n                    valeur = datetime.timedelta(minutes= int(heures)*60 + int(minutes))\n                    return (valeur, format_heure)\n"
+          new = "                if separateur != None :\n                    donnees = valeur.split(separateur)\n                    if len(donnees) in (2, 3):\n                        heures, minutes = donnees[:2]\n                        valeur = datetime.timedelta(minutes=int(heures) * 60 + int(minutes))\n                        return (valeur, format_heure)\n"
           if old not in after:
               raise SystemExit('time parsing block not found')
           after = after.replace(old, new, 1)
           p.write_text(before + marker + after, encoding='utf-8')
+          PY
+          cat > tests/test_utils_export_branch_contract.py <<'PY'
+          import ast
+          import pathlib
+          import unittest
 
-          t = Path('tests/test_utils_export_branch_contract.py')
-          t.write_text('''import ast\nimport pathlib\nimport unittest\n\nfrom scripts import audit_branch_assignment_gaps\n\nROOT = pathlib.Path(__file__).resolve().parents[1]\nSOURCE = ROOT / "noethys" / "Utils" / "UTILS_Export.py"\nSOURCE_ROOT = ROOT / "noethys"\n\n\nclass UtilsExportBranchContractTests(unittest.TestCase):\n    def test_targeted_gaps_are_gone(self):\n        findings = audit_branch_assignment_gaps.scan_file(SOURCE, SOURCE_ROOT)\n        targeted_names = {"listeSelections", "cheminFichier", "heures", "minutes"}\n        targeted = [x for x in findings if x.get("name") in targeted_names and x.get("function") in {"ExportTexte", "ExportExcel", "RechercheFormat"}]\n        self.assertEqual(targeted, [], targeted)\n\n    def test_module_parses(self):\n        ast.parse(SOURCE.read_text(encoding="utf-8"), filename=str(SOURCE))\n\n    def test_time_parser_uses_first_two_fields_only_for_supported_shapes(self):\n        tree = ast.parse(SOURCE.read_text(encoding="utf-8"))\n        export_excel = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "ExportExcel")\n        recherche = next(n for n in ast.walk(export_excel) if isinstance(n, ast.FunctionDef) and n.name == "RechercheFormat")\n        text = ast.unparse(recherche)\n        self.assertIn("len(donnees) in (2, 3)", text)\n        self.assertIn("heures, minutes = donnees[:2]", text)\n\n\nif __name__ == "__main__":\n    unittest.main()\n''', encoding='utf-8')
+          from scripts import audit_branch_assignment_gaps
+
+          ROOT = pathlib.Path(__file__).resolve().parents[1]
+          SOURCE = ROOT / "noethys" / "Utils" / "UTILS_Export.py"
+          SOURCE_ROOT = ROOT / "noethys"
+
+
+          class UtilsExportBranchContractTests(unittest.TestCase):
+              def test_targeted_gaps_are_gone(self):
+                  findings = audit_branch_assignment_gaps.scan_file(SOURCE, SOURCE_ROOT)
+                  targeted_names = {"listeSelections", "cheminFichier", "heures", "minutes"}
+                  targeted = [x for x in findings if x.get("name") in targeted_names and x.get("function") in {"ExportTexte", "ExportExcel", "RechercheFormat"}]
+                  self.assertEqual(targeted, [], targeted)
+
+              def test_module_parses(self):
+                  ast.parse(SOURCE.read_text(encoding="utf-8"), filename=str(SOURCE))
+
+              def test_time_parser_uses_first_two_fields_only_for_supported_shapes(self):
+                  tree = ast.parse(SOURCE.read_text(encoding="utf-8"))
+                  export_excel = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "ExportExcel")
+                  recherche = next(n for n in ast.walk(export_excel) if isinstance(n, ast.FunctionDef) and n.name == "RechercheFormat")
+                  text = ast.unparse(recherche)
+                  self.assertIn("len(donnees) in (2, 3)", text)
+                  self.assertIn("heures, minutes = donnees[:2]", text)
+
+
+          if __name__ == "__main__":
+              unittest.main()
           PY
       - name: Validate targeted batch
         run: |
