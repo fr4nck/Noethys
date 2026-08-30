@@ -31,7 +31,19 @@ class PMSLSessionExportService(object):
         if self.db.ExecuterReq(req) != 1:
             return []
         ids = [int(row[0]) for row in (self.db.ResultatReq() or [])]
-        return [self.execution.ConstruireInterventionEchange(IDintervention) for IDintervention in ids]
+        enrichi = self._has_table("interventions_execution") and self._has_table("lieux")
+        if enrichi:
+            return [self.execution.ConstruireInterventionEchange(IDintervention) for IDintervention in ids]
+        return [self.interventions.LireIntervention(IDintervention) for IDintervention in ids]
+
+    def _has_table(self, nom_table):
+        methode = getattr(self.db, "IsTableExists", None)
+        if methode is None:
+            return False
+        try:
+            return bool(methode(nom_table))
+        except Exception:
+            return False
 
     @staticmethod
     def _safe_date(value):
