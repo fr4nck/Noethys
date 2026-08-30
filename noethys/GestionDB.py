@@ -1030,7 +1030,7 @@ def GetConnexionReseau(nomFichier="", pooling=True):
         connexion = MySQLdb.connect(host=host, user=user, passwd=passwd, port=int(port), use_unicode=True, conv=my_conv, ssl=CERTIFICATS_SSL)
         connexion.set_character_set('utf8')
 
-    if INTERFACE_MYSQL == "mysql.connector":
+    elif INTERFACE_MYSQL == "mysql.connector":
         if "_" in nomFichier :
             suffixe = nomFichier.split("_")[-1]
         else :
@@ -1054,6 +1054,9 @@ def GetConnexionReseau(nomFichier="", pooling=True):
             params["pool_size"] = POOL_MYSQL
 
         connexion = mysql.connector.connect(**params)
+
+    else:
+        raise ValueError("Interface MySQL non supportée : %s" % INTERFACE_MYSQL)
 
     return connexion, nomFichier
 
