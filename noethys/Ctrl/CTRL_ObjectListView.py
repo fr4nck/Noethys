@@ -433,6 +433,7 @@ class ObjectListView(OLV.ObjectListView):
             choix = dictFiltre["choix"]
             criteres = dictFiltre["criteres"]
             typeDonnee = dictFiltre["typeDonnee"]
+            filtre = None
             
             # Texte
             if typeDonnee == "texte" :
@@ -460,25 +461,22 @@ class ObjectListView(OLV.ObjectListView):
             if typeDonnee in ("entier", "montant") :
                 
                 if choix == "COMPRIS" :
-                    min = str(criteres.split(";")[0])
-                    max = str(criteres.split(";")[1])
+                    minimum, maximum = [str(valeur) for valeur in criteres.split(";")[:2]]
+                    filtre = "track.%s >= %s and track.%s <= %s" % (code, minimum, code, maximum)
                 else :
                     criteres = str(criteres)
-                        
-                if choix == "EGAL" :
-                    filtre = "track.%s == %s" % (code, criteres)
-                if choix == "DIFFERENT" :
-                    filtre = "track.%s != %s" % (code, criteres)
-                if choix == "SUP" :
-                    filtre = "track.%s > %s" % (code, criteres)
-                if choix == "SUPEGAL" :
-                    filtre = "track.%s >= %s" % (code, criteres)
-                if choix == "INF" :
-                    filtre = "track.%s < %s" % (code, criteres)
-                if choix == "INFEGAL" :
-                    filtre = "track.%s <= %s" % (code, criteres)
-                if choix == "COMPRIS" :
-                    filtre = "track.%s >= %s and track.%s <= %s" % (code, min, code, max)
+                    if choix == "EGAL" :
+                        filtre = "track.%s == %s" % (code, criteres)
+                    elif choix == "DIFFERENT" :
+                        filtre = "track.%s != %s" % (code, criteres)
+                    elif choix == "SUP" :
+                        filtre = "track.%s > %s" % (code, criteres)
+                    elif choix == "SUPEGAL" :
+                        filtre = "track.%s >= %s" % (code, criteres)
+                    elif choix == "INF" :
+                        filtre = "track.%s < %s" % (code, criteres)
+                    elif choix == "INFEGAL" :
+                        filtre = "track.%s <= %s" % (code, criteres)
 
             # Date
             if typeDonnee in ("date", "dateheure") :
@@ -513,6 +511,8 @@ class ObjectListView(OLV.ObjectListView):
                     filtre = "track.ID%s in %s" % (code, self.GetCotisations(mode=code, choix=choix, criteres=criteres))
 
             # mémorisation
+            if filtre is None :
+                raise ValueError("Filtre de colonne non supporté : type=%s choix=%s" % (typeDonnee, choix))
             listeFiltresFinale.append(filtre) 
         
         return listeFiltresFinale
@@ -589,8 +589,10 @@ class ObjectListView(OLV.ObjectListView):
         # Choix de la key
         if mode == "individu" :
             key = "inscriptions.IDindividu"
-        if mode == "famille" :
+        elif mode == "famille" :
             key = "inscriptions.IDfamille"
+        else :
+            raise ValueError("Mode d'inscription non supporté : %s" % mode)
         
         import GestionDB
         DB = GestionDB.DB()
