@@ -124,10 +124,10 @@ class Renderer_gauge(object):
             if nbrePlacesRestantes > self.seuil_alerte : 
                 etat = "disponible"
                 couleur = COULEUR_DISPONIBLE
-            if nbrePlacesRestantes > 0 and nbrePlacesRestantes <= self.seuil_alerte : 
+            elif nbrePlacesRestantes > 0 :
                 etat = "alerte"
                 couleur = COULEUR_ALERTE
-            if nbrePlacesRestantes <= 0 : 
+            else : 
                 etat = "complet"
                 couleur = COULEUR_COMPLET
 
