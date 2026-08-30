@@ -398,12 +398,13 @@ class Dialog(wx.Dialog):
             if donnees == None :
                 return None
             if donnees["type"] == "famille" :
-                return
-            if donnees["type"] == "piece" :
-                IDtype_piece = donnees["IDtype_piece"]
-                IDindividu = donnees["IDindividu"]
-                IDfamille = donnees["IDfamille"]
-                nomPiece = donnees["nomPiece"]
+                return None
+            if donnees["type"] != "piece" :
+                return None
+            IDtype_piece = donnees["IDtype_piece"]
+            IDindividu = donnees["IDindividu"]
+            IDfamille = donnees["IDfamille"]
+            nomPiece = donnees["nomPiece"]
         elif self.radio_pieces_2.GetValue() == True:
             donnees = self.ctrl_pieces_autres.GetDonneesSelection() 
             if donnees == None :
@@ -417,6 +418,8 @@ class Dialog(wx.Dialog):
             IDtype_piece = None
             IDindividu = None
             nomPiece = None
+        else:
+            return None
         return { "IDfamille":IDfamille, "IDtype_piece":IDtype_piece, "IDindividu":IDindividu, "nomPiece":nomPiece}
             
 
