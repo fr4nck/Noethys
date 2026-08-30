@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "noethys"
 SOURCE_PATH = SOURCE_ROOT / "Ctrl" / "CTRL_Assistant_base.py"
 
+
 class AssistantBaseLineIdContractTests(unittest.TestCase):
     def test_line_identifier_has_explicit_neutral_default(self):
         source = SOURCE_PATH.read_text(encoding="utf-8")
@@ -27,14 +28,36 @@ class AssistantBaseLineIdContractTests(unittest.TestCase):
             if isinstance(n, ast.If) and "DB.isNetwork == False" in ast.unparse(n.test)
         ]
         self.assertGreaterEqual(len(local_if_nodes), 2)
-        loads = [n for n in ast.walk(method) if isinstance(n, ast.Name) and n.id == "prochainIDligne" and isinstance(n.ctx, ast.Load)]
+
+        loads = [
+            n for n in ast.walk(method)
+            if isinstance(n, ast.Name) and n.id == "prochainIDligne" and isinstance(n.ctx, ast.Load)
+        ]
+        increments = [
+            n for n in ast.walk(method)
+            if isinstance(n, ast.AugAssign)
+            and isinstance(n.target, ast.Name)
+            and n.target.id == "prochainIDligne"
+        ]
         self.assertEqual(len(loads), 1)
-        self.assertTrue(any(loads[0] in list(ast.walk(node)) for node in local_if_nodes))
+        self.assertEqual(len(increments), 1)
+
+        consumptions = loads + increments
+        for consumption in consumptions:
+            self.assertTrue(
+                any(consumption in list(ast.walk(node)) for node in local_if_nodes),
+                ast.dump(consumption),
+            )
 
     def test_branch_assignment_gap_is_gone(self):
         findings = audit_branch_assignment_gaps.scan_file(SOURCE_PATH, SOURCE_ROOT)
-        targeted = [item for item in findings if item.get("function") == "Sauvegarde_tarifs" and item.get("name") == "prochainIDligne"]
+        targeted = [
+            item
+            for item in findings
+            if item.get("function") == "Sauvegarde_tarifs" and item.get("name") == "prochainIDligne"
+        ]
         self.assertEqual(targeted, [], targeted)
+
 
 if __name__ == "__main__":
     unittest.main()
