@@ -1,0 +1,73 @@
+name: Temp gap batch 05
+
+on:
+  push:
+    branches:
+      - fix/branch-assignment-gap-batch-05
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Patch source and tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('noethys/Utils/UTILS_Export.py')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('    # Selection des lignes\n    if autoriseSelections == True :\n', '    # Selection des lignes\n    listeSelections = []\n    if autoriseSelections == True :\n', 1)
+          marker = 'def ExportExcel(listview=None, grid=None, titre=_(u"Liste"), listeColonnes=None, listeValeurs=None, autoriseSelections=True):'
+          before, after = s.split(marker, 1)
+          after = after.replace('    # Selection des lignes\n    if autoriseSelections == True :\n', '    # Selection des lignes\n    listeSelections = []\n    if autoriseSelections == True :\n', 1)
+          after = after.replace('    # Mode Enregistrer\n    if mode == "enregistrer" :\n', '    cheminFichier = None\n\n    # Mode Enregistrer\n    if mode == "enregistrer" :\n', 1)
+          old = '''                if separateur != None :
+                    donnees = valeur.split(separateur)
+                    if len(donnees) == 2 :
+                        heures, minutes = donnees
+                    if len(donnees) == 3 :
+                        heures, minutes, secondes = donnees
+                    valeur = datetime.timedelta(minutes= int(heures)*60 + int(minutes))
+                    return (valeur, format_heure)
+'''
+          new = '''                if separateur != None :
+                    donnees = valeur.split(separateur)
+                    if len(donnees) in (2, 3):
+                        heures, minutes = donnees[:2]
+                        valeur = datetime.timedelta(minutes=int(heures) * 60 + int(minutes))
+                        return (valeur, format_heure)
+'''
+          if old not in after:
+              raise SystemExit('time parsing block not found')
+          after = after.replace(old, new, 1)
+          p.write_text(before + marker + after, encoding='utf-8')
+
+          t = Path('tests/test_utils_export_branch_contract.py')
+          t.write_text('''import ast\nimport pathlib\nimport unittest\n\nfrom scripts import audit_branch_assignment_gaps\n\nROOT = pathlib.Path(__file__).resolve().parents[1]\nSOURCE = ROOT / "noethys" / "Utils" / "UTILS_Export.py"\nSOURCE_ROOT = ROOT / "noethys"\n\n\nclass UtilsExportBranchContractTests(unittest.TestCase):\n    def test_targeted_gaps_are_gone(self):\n        findings = audit_branch_assignment_gaps.scan_file(SOURCE, SOURCE_ROOT)\n        targeted_names = {"listeSelections", "cheminFichier", "heures", "minutes"}\n        targeted = [x for x in findings if x.get("name") in targeted_names and x.get("function") in {"ExportTexte", "ExportExcel", "RechercheFormat"}]\n        self.assertEqual(targeted, [], targeted)\n\n    def test_module_parses(self):\n        ast.parse(SOURCE.read_text(encoding="utf-8"), filename=str(SOURCE))\n\n    def test_time_parser_uses_first_two_fields_only_for_supported_shapes(self):\n        tree = ast.parse(SOURCE.read_text(encoding="utf-8"))\n        export_excel = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "ExportExcel")\n        recherche = next(n for n in ast.walk(export_excel) if isinstance(n, ast.FunctionDef) and n.name == "RechercheFormat")\n        text = ast.unparse(recherche)\n        self.assertIn("len(donnees) in (2, 3)", text)\n        self.assertIn("heures, minutes = donnees[:2]", text)\n\n\nif __name__ == "__main__":\n    unittest.main()\n''', encoding='utf-8')
+          PY
+      - name: Validate targeted batch
+        run: |
+          python -m unittest tests.test_utils_export_branch_contract
+          python scripts/audit_branch_assignment_gaps.py --json /tmp/gaps.json || true
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/gaps.json', encoding='utf-8'))
+          findings=data if isinstance(data,list) else data.get('findings', data.get('results',[]))
+          print('COUNT_AFTER', len(findings))
+          assert len(findings) == 216, len(findings)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/tmp-gap-batch-05.yml
+          git add noethys/Utils/UTILS_Export.py tests/test_utils_export_branch_contract.py
+          git commit -m 'Fix — expliciter les contrats d export'
+          git push
