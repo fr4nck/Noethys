@@ -815,6 +815,7 @@ class Dialog(wx.Dialog):
 
         # Recherche des prochains ID
         prochainIDtarif = DB.GetProchainID("tarifs")
+        prochainIDligne = None
         if DB.isNetwork == False:
             req = """SELECT max(IDligne) FROM tarifs_lignes;"""
             DB.ExecuterReq(req)
