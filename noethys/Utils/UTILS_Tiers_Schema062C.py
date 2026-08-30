@@ -5,7 +5,7 @@
 Noe-062B reste responsable de ``structures``, ``structures_contacts`` et
 ``interventions``. Noe-062C ajoute uniquement les tables ``lieux`` et
 ``interventions_execution``. Une base 062B conforme peut donc être enrichie
-sans ALTER TABLE ni réparation silencieuse.
+sans modification de table existante ni réparation silencieuse.
 """
 from __future__ import unicode_literals
 
