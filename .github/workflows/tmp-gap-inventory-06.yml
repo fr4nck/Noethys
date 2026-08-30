@@ -1,4 +1,4 @@
-name: Temp gap inventory 06
+name: Temp gap batch 06 patch
 
 on:
   push:
@@ -6,10 +6,10 @@ on:
       - fix/branch-assignment-gap-batch-06
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  inventory:
+  patch:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -17,21 +17,135 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - name: Inventorier les gaps
+      - name: Appliquer les corrections
         run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          vaccine = Path('noethys/Dlg/DLG_Saisie_typesVaccins.py')
+          text = vaccine.read_text(encoding='utf-8')
+          old = '''    def SetValidite(self, validite=None):
+        if validite != None :
+            posM = validite.find("m")
+            posA = validite.find("a")
+            jours = int(validite[1:posM-1])
+            mois = int(validite[posM+1:posA-1])
+            annees = int(validite[posA+1:])
+        if validite == None or (jours == 0 and mois == 0 and annees == 0) :
+'''
+          new = '''    def SetValidite(self, validite=None):
+        jours = 0
+        mois = 0
+        annees = 0
+        if validite != None :
+            posM = validite.find("m")
+            posA = validite.find("a")
+            jours = int(validite[1:posM-1])
+            mois = int(validite[posM+1:posA-1])
+            annees = int(validite[posA+1:])
+        if validite == None or (jours == 0 and mois == 0 and annees == 0) :
+'''
+          if old not in text:
+              raise SystemExit('bloc SetValidite introuvable')
+          vaccine.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          replacements = {
+              'noethys/Dlg/DLG_Envoi_sms.py': (
+                  '''    if "gauche" in alignement:\n        xRond = 1\n    if "droite" in alignement:\n        xRond = largeurImage - largeurRond - 1\n    if "haut" in alignement:\n        yRond = 1\n    if "bas" in alignement:\n        yRond = hauteurImage - hauteurRond - 1\n''',
+                  '''    if "gauche" in alignement:\n        xRond = 1\n    elif "droite" in alignement:\n        xRond = largeurImage - largeurRond - 1\n    else:\n        raise ValueError("Alignement horizontal non supporté : %s" % alignement)\n    if "haut" in alignement:\n        yRond = 1\n    elif "bas" in alignement:\n        yRond = hauteurImage - hauteurRond - 1\n    else:\n        raise ValueError("Alignement vertical non supporté : %s" % alignement)\n'''
+              ),
+              'noethys/Dlg/DLG_Selection_mails.py': (
+                  '''    if "gauche" in alignement : xRond = 1\n    if "droite" in alignement : xRond = largeurImage - largeurRond - 1\n    if "haut" in alignement : yRond = 1\n    if "bas" in alignement : yRond = hauteurImage - hauteurRond - 1\n''',
+                  '''    if "gauche" in alignement :\n        xRond = 1\n    elif "droite" in alignement :\n        xRond = largeurImage - largeurRond - 1\n    else:\n        raise ValueError("Alignement horizontal non supporté : %s" % alignement)\n    if "haut" in alignement :\n        yRond = 1\n    elif "bas" in alignement :\n        yRond = hauteurImage - hauteurRond - 1\n    else:\n        raise ValueError("Alignement vertical non supporté : %s" % alignement)\n'''
+              ),
+          }
+          for filename, (old, new) in replacements.items():
+              path = Path(filename)
+              text = path.read_text(encoding='utf-8')
+              if old not in text:
+                  raise SystemExit('bloc alignement introuvable: ' + filename)
+              path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Ajouter les tests de contrat
+        run: |
+          cat > tests/test_small_ui_branch_contracts.py <<'PY'
+          import ast
+          import pathlib
+          import unittest
+
+          from scripts import audit_branch_assignment_gaps
+
+          ROOT = pathlib.Path(__file__).resolve().parents[1]
+          SOURCE_ROOT = ROOT / 'noethys'
+          VACCINE = SOURCE_ROOT / 'Dlg' / 'DLG_Saisie_typesVaccins.py'
+          SMS = SOURCE_ROOT / 'Dlg' / 'DLG_Envoi_sms.py'
+          MAILS = SOURCE_ROOT / 'Dlg' / 'DLG_Selection_mails.py'
+
+
+          class SmallUiBranchContractsTests(unittest.TestCase):
+              def test_targeted_gaps_are_gone(self):
+                  expected = {
+                      ('Dlg/DLG_Saisie_typesVaccins.py', 'SetValidite', 'jours'),
+                      ('Dlg/DLG_Saisie_typesVaccins.py', 'SetValidite', 'mois'),
+                      ('Dlg/DLG_Saisie_typesVaccins.py', 'SetValidite', 'annees'),
+                      ('Dlg/DLG_Envoi_sms.py', 'AjouteTexteImage', 'xRond'),
+                      ('Dlg/DLG_Envoi_sms.py', 'AjouteTexteImage', 'yRond'),
+                      ('Dlg/DLG_Selection_mails.py', 'AjouteTexteImage', 'xRond'),
+                      ('Dlg/DLG_Selection_mails.py', 'AjouteTexteImage', 'yRond'),
+                  }
+                  found = set()
+                  for source in (VACCINE, SMS, MAILS):
+                      for item in audit_branch_assignment_gaps.scan_file(source, SOURCE_ROOT):
+                          key = (item['file'], item['function'], item['name'])
+                          if key in expected:
+                              found.add(key)
+                  self.assertEqual(found, set(), found)
+
+              def test_modules_parse(self):
+                  for source in (VACCINE, SMS, MAILS):
+                      ast.parse(source.read_text(encoding='utf-8'), filename=str(source))
+
+              def test_vaccine_validity_has_neutral_duration_defaults(self):
+                  tree = ast.parse(VACCINE.read_text(encoding='utf-8'))
+                  method = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == 'SetValidite')
+                  initial = {
+                      n.targets[0].id: ast.literal_eval(n.value)
+                      for n in method.body[:3]
+                      if isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Name)
+                  }
+                  self.assertEqual(initial, {'jours': 0, 'mois': 0, 'annees': 0})
+
+              def test_badge_alignment_is_exhaustive_in_both_helpers(self):
+                  for source in (SMS, MAILS):
+                      tree = ast.parse(source.read_text(encoding='utf-8'))
+                      helper = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == 'AjouteTexteImage')
+                      raises = [n for n in ast.walk(helper) if isinstance(n, ast.Raise)]
+                      self.assertGreaterEqual(len(raises), 2)
+
+
+          if __name__ == '__main__':
+              unittest.main()
+          PY
+
+      - name: Valider le lot
+        run: |
+          python -m unittest tests.test_small_ui_branch_contracts -v
           python scripts/audit_branch_assignment_gaps.py --json /tmp/gaps.json
           python - <<'PY'
           import json
-          from collections import Counter
-
           with open('/tmp/gaps.json', encoding='utf-8') as fh:
               report = json.load(fh)
-          findings = report['findings']
-          print('COUNT', report['count'])
-          print('TOP_FILES')
-          for path, count in Counter(item['file'] for item in findings).most_common(25):
-              print(count, path)
-          print('FIRST_FINDINGS')
-          for item in findings[:120]:
-              print(item['file'], item['function'], item['name'], item['line'], item['if_line'], item['detail'])
+          print('BRANCH_ASSIGNMENT_GAPS', report['count'])
+          if report['count'] != 209:
+              raise SystemExit('audit attendu=209, obtenu=%s' % report['count'])
           PY
+
+      - name: Committer sans le workflow temporaire
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/tmp-gap-inventory-06.yml
+          git add noethys/Dlg/DLG_Saisie_typesVaccins.py noethys/Dlg/DLG_Envoi_sms.py noethys/Dlg/DLG_Selection_mails.py tests/test_small_ui_branch_contracts.py
+          git commit -m 'Fix — expliciter plusieurs contrats UI conditionnels'
+          git push origin HEAD:fix/branch-assignment-gap-batch-06
