@@ -640,7 +640,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
             
             
             # Catégorie
-            if type(dictCategorie) == dict :
+            else :
                 typeLigne = "categorie"
                 hauteurLigne = 30
                 label = dictCategorie["label"]
@@ -658,7 +658,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                 if typeLigne == "groupe" :
                     etat = "groupe"
                     
-                if typeLigne == "categorie" :
+                else :
                     if dictAction["code"] not in dictCategorie["actions"] :
                         etat = "inactif"
                     else :
@@ -712,6 +712,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         numColonne = event.GetCol()
         self.ActiveTooltip(actif=False)
         self.case_selection = None
+        case = None
         if (numLigne, numColonne) in self.dictCases :
             case = self.dictCases[(numLigne, numColonne)]
             if case.typeLigne == "categorie" and case.etat != "inactif" :
@@ -766,6 +767,8 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         ID = event.GetId() 
         
         # sélectionne l'état à appliquer
+        etat = None
+        IDcommande = None
         if str(ID)[0] == "1" : 
             etat = "autorisation"
             IDcommande = ID-100
