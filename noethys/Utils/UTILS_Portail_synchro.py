@@ -190,6 +190,13 @@ class Synchro():
         liste_lignes.append(Ecrit_ligne("CAPTCHA", self.dict_parametres["captcha"], type_valeur=int))
 
         # Paramètres SMTP pour Flask-mail
+        MAIL_SERVER = None
+        MAIL_DEFAULT_SENDER = None
+        MAIL_PORT = None
+        MAIL_USE_TLS = None
+        MAIL_USE_SSL = None
+        MAIL_USERNAME = None
+        MAIL_PASSWORD = None
         if self.dict_parametres["email_type_adresse"] > 0 :
             adresse_valide = False
 
