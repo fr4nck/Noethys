@@ -1,0 +1,46 @@
+name: Temp review fix batch 06
+on:
+  push:
+    branches: [fix/branch-assignment-gap-batch-06]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Corriger la priorité historique
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          for filename in ('noethys/Dlg/DLG_Envoi_sms.py', 'noethys/Dlg/DLG_Selection_mails.py'):
+              p = Path(filename)
+              s = p.read_text(encoding='utf-8')
+              s = s.replace('''    if "gauche" in alignement:\n        xRond = 1\n    elif "droite" in alignement:\n        xRond = largeurImage - largeurRond - 1\n    else:\n''', '''    if "droite" in alignement:\n        xRond = largeurImage - largeurRond - 1\n    elif "gauche" in alignement:\n        xRond = 1\n    else:\n''')
+              s = s.replace('''    if "haut" in alignement:\n        yRond = 1\n    elif "bas" in alignement:\n        yRond = hauteurImage - hauteurRond - 1\n    else:\n''', '''    if "bas" in alignement:\n        yRond = hauteurImage - hauteurRond - 1\n    elif "haut" in alignement:\n        yRond = 1\n    else:\n''')
+              s = s.replace('''    if "gauche" in alignement :\n        xRond = 1\n    elif "droite" in alignement :\n        xRond = largeurImage - largeurRond - 1\n    else:\n''', '''    if "droite" in alignement :\n        xRond = largeurImage - largeurRond - 1\n    elif "gauche" in alignement :\n        xRond = 1\n    else:\n''')
+              s = s.replace('''    if "haut" in alignement :\n        yRond = 1\n    elif "bas" in alignement :\n        yRond = hauteurImage - hauteurRond - 1\n    else:\n''', '''    if "bas" in alignement :\n        yRond = hauteurImage - hauteurRond - 1\n    elif "haut" in alignement :\n        yRond = 1\n    else:\n''')
+              p.write_text(s, encoding='utf-8')
+          PY
+      - name: Valider
+        run: |
+          python -m unittest tests.test_small_ui_branch_contracts -v
+          python scripts/audit_branch_assignment_gaps.py --json /tmp/gaps.json
+          python - <<'PY'
+          import json
+          r=json.load(open('/tmp/gaps.json', encoding='utf-8'))
+          print('BRANCH_ASSIGNMENT_GAPS', r['count'])
+          assert r['count'] == 209, r['count']
+          PY
+      - name: Committer
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/tmp-gap-review-fix-06.yml
+          git add noethys/Dlg/DLG_Envoi_sms.py noethys/Dlg/DLG_Selection_mails.py
+          git commit -m 'Fix — préserver la priorité historique des alignements'
+          git push origin HEAD:fix/branch-assignment-gap-batch-06
