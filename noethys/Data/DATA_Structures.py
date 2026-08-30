@@ -135,7 +135,7 @@ DB_STRUCTURES = {
 
     "interventions_execution": [
         ("IDexecution_intervention", "INTEGER PRIMARY KEY AUTOINCREMENT", u"ID de l'extension opérationnelle"),
-        ("IDintervention", "INTEGER", u"Séance canonique concernée ; une seule extension par séance"),
+        ("IDintervention", "INTEGER UNIQUE", u"Séance canonique concernée ; une seule extension par séance"),
         ("UIDintervenant_habituel", "VARCHAR(100)", u"UID RH stable de l'intervenant habituel"),
         ("UIDintervenant_prevu", "VARCHAR(100)", u"UID RH stable de l'intervenant prévu"),
         ("UIDintervenant_reel", "VARCHAR(100)", u"UID RH stable de l'intervenant ayant réellement assuré la séance"),
