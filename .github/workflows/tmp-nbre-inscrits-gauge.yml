@@ -1,0 +1,24 @@
+name: Temp nbre inscrits gauge patcher
+
+on:
+  push:
+    branches:
+      - fix/nbre-inscrits-gauge-color-contract
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/nbre-inscrits-gauge-color-contract
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Appliquer le correctif
+        run: python -c "import base64; exec(base64.b64decode('ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCg'p'))"
