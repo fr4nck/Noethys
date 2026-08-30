@@ -8,26 +8,67 @@ SOURCE_ROOT = ROOT / "noethys"
 SOURCE_PATH = SOURCE_ROOT / "Ctrl" / "CTRL_Assistant_base.py"
 
 
-def is_exact_local_guard(test):
-    return (
-        isinstance(test, ast.Compare)
-        and isinstance(test.left, ast.Attribute)
-        and isinstance(test.left.value, ast.Name)
-        and test.left.value.id == "DB"
-        and test.left.attr == "isNetwork"
-        and len(test.ops) == 1
-        and isinstance(test.ops[0], ast.Eq)
-        and len(test.comparators) == 1
-        and isinstance(test.comparators[0], ast.Constant)
-        and test.comparators[0].value is False
-    )
+def load_sauvegarde_tarifs():
+    tree = ast.parse(SOURCE_PATH.read_text(encoding="utf-8"))
+    methods = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name == "Sauvegarde_tarifs"
+    ]
+    if len(methods) != 1:
+        raise AssertionError("Méthode Sauvegarde_tarifs introuvable ou ambiguë")
+    module = ast.Module(body=[methods[0]], type_ignores=[])
+    ast.fix_missing_locations(module)
+    namespace = {}
+    exec(compile(module, str(SOURCE_PATH), "exec"), namespace)
+    return namespace["Sauvegarde_tarifs"]
 
 
-def nodes_in_body(if_node):
-    nodes = set()
-    for statement in if_node.body:
-        nodes.update(ast.walk(statement))
-    return nodes
+class FakeTrack:
+    def __init__(self, nom_table, lignes=None):
+        self.nom_table = nom_table
+        self.lignes = [] if lignes is None else lignes
+
+    def MAJ(self, valeurs):
+        for key, value in valeurs.items():
+            setattr(self, key, value)
+
+    def Get_variables_pour_db(self):
+        return []
+
+    def Get_champs_pour_db(self):
+        return "champ"
+
+    def Get_interrogations_pour_db(self):
+        return "?"
+
+
+class FakeDB:
+    def __init__(self, is_network, max_line_id=None):
+        self.isNetwork = is_network
+        self.max_line_id = max_line_id
+        self.executed = []
+        self.executemany = []
+
+    def GetProchainID(self, table):
+        self.requested_table = table
+        return 10
+
+    def ExecuterReq(self, req):
+        self.executed.append(req)
+
+    def ResultatReq(self):
+        return [(self.max_line_id,)]
+
+    def Executermany(self, req, donnees, commit=False):
+        self.executemany.append((req, donnees, commit))
+
+    def ReqInsert(self, table, donnees):
+        return 1
+
+
+class Owner:
+    dict_valeurs = {"IDactivite": 123}
 
 
 class AssistantBaseLineIdContractTests(unittest.TestCase):
@@ -40,43 +81,40 @@ class AssistantBaseLineIdContractTests(unittest.TestCase):
         )
         self.assertIn(expected, source)
 
-    def test_every_non_neutral_reference_is_inside_an_exact_local_guard_body(self):
-        tree = ast.parse(SOURCE_PATH.read_text(encoding="utf-8"))
-        methods = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "Sauvegarde_tarifs"]
-        self.assertEqual(len(methods), 1)
-        method = methods[0]
+    def test_network_path_never_assigns_or_uses_local_line_identifier(self):
+        sauvegarde = load_sauvegarde_tarifs()
+        line = FakeTrack("tarifs_lignes")
+        tariff = FakeTrack("tarifs", [line])
+        db = FakeDB(is_network=True)
 
-        local_if_nodes = [n for n in ast.walk(method) if isinstance(n, ast.If) and is_exact_local_guard(n.test)]
-        self.assertGreaterEqual(len(local_if_nodes), 2)
-        protected_nodes = set().union(*(nodes_in_body(node) for node in local_if_nodes))
+        sauvegarde(Owner(), DB=db, listeTarifs=[tariff])
 
-        neutral_assignments = [
-            n
-            for n in ast.walk(method)
-            if isinstance(n, ast.Assign)
-            and len(n.targets) == 1
-            and isinstance(n.targets[0], ast.Name)
-            and n.targets[0].id == "prochainIDligne"
-            and isinstance(n.value, ast.Constant)
-            and n.value.value is None
-        ]
-        self.assertEqual(len(neutral_assignments), 1)
-        neutral_target = neutral_assignments[0].targets[0]
-        self.assertNotIn(neutral_assignments[0], protected_nodes)
-        self.assertNotIn(neutral_target, protected_nodes)
+        self.assertFalse(hasattr(line, "IDligne"))
+        self.assertEqual(db.executed, [])
+        self.assertEqual(len(db.executemany), 2)
 
-        references = [
-            node
-            for node in ast.walk(method)
-            if isinstance(node, ast.Name) and node.id == "prochainIDligne"
-        ]
-        self.assertGreater(len(references), 1)
-        self.assertIn(neutral_target, references)
+    def test_local_path_assigns_sequential_line_identifiers_from_empty_table(self):
+        sauvegarde = load_sauvegarde_tarifs()
+        line1 = FakeTrack("tarifs_lignes")
+        line2 = FakeTrack("tarifs_lignes")
+        tariff = FakeTrack("tarifs", [line1, line2])
+        db = FakeDB(is_network=False, max_line_id=None)
 
-        for node in references:
-            if node is neutral_target:
-                continue
-            self.assertIn(node, protected_nodes, ast.dump(node))
+        sauvegarde(Owner(), DB=db, listeTarifs=[tariff])
+
+        self.assertEqual((line1.IDligne, line2.IDligne), (1, 2))
+        self.assertEqual(len(db.executed), 1)
+        self.assertEqual(len(db.executemany), 2)
+
+    def test_local_path_continues_after_existing_maximum(self):
+        sauvegarde = load_sauvegarde_tarifs()
+        line = FakeTrack("tarifs_lignes")
+        tariff = FakeTrack("tarifs", [line])
+        db = FakeDB(is_network=False, max_line_id=41)
+
+        sauvegarde(Owner(), DB=db, listeTarifs=[tariff])
+
+        self.assertEqual(line.IDligne, 42)
 
     def test_branch_assignment_gap_is_gone(self):
         findings = audit_branch_assignment_gaps.scan_file(SOURCE_PATH, SOURCE_ROOT)
