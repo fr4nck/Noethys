@@ -971,6 +971,8 @@ class CTRL_Page_cotisations(wx.Panel):
         self.OnCheckCotisations(None)
 
     def GetValeur(self):
+        choix = None
+        criteres = None
         if self.check_cotisations.GetValue() == True:
             choix = "AJOUR"
             listeCotisations = self.ctrl_cotisations.GetTexteCoches()
