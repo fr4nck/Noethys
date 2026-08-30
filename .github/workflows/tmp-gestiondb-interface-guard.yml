@@ -1,0 +1,55 @@
+name: Temp GestionDB interface guard
+
+on:
+  push:
+    branches:
+      - fix/gestiondb-interface-guard
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/gestiondb-interface-guard
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Appliquer le correctif et les tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('noethys/GestionDB.py')
+          source = path.read_text(encoding='utf-8')
+          old = '''    if INTERFACE_MYSQL == "mysqldb":\n        my_conv = conversions\n        my_conv[FIELD_TYPE.LONG] = int\n        connexion = MySQLdb.connect(host=host, user=user, passwd=passwd, port=int(port), use_unicode=True, conv=my_conv, ssl=CERTIFICATS_SSL)\n        connexion.set_character_set('utf8')\n\n    if INTERFACE_MYSQL == "mysql.connector":\n'''
+          new = '''    if INTERFACE_MYSQL == "mysqldb":\n        my_conv = conversions\n        my_conv[FIELD_TYPE.LONG] = int\n        connexion = MySQLdb.connect(host=host, user=user, passwd=passwd, port=int(port), use_unicode=True, conv=my_conv, ssl=CERTIFICATS_SSL)\n        connexion.set_character_set('utf8')\n\n    elif INTERFACE_MYSQL == "mysql.connector":\n'''
+          if old not in source:
+              raise SystemExit('bloc interface MySQL introuvable')
+          source = source.replace(old, new, 1)
+          old_return = '''        connexion = mysql.connector.connect(**params)\n\n    return connexion, nomFichier\n'''
+          new_return = '''        connexion = mysql.connector.connect(**params)\n\n    else:\n        raise ValueError("Interface MySQL non supportée : %s" % INTERFACE_MYSQL)\n\n    return connexion, nomFichier\n'''
+          if old_return not in source:
+              raise SystemExit('retour GetConnexionReseau introuvable')
+          source = source.replace(old_return, new_return, 1)
+          path.write_text(source, encoding='utf-8')
+
+          Path('tests/test_gestiondb_mysql_interface_contract.py').write_text('''import ast\nimport unittest\nfrom pathlib import Path\nfrom scripts import audit_branch_assignment_gaps\nROOT=Path(__file__).resolve().parents[1]\nSOURCE_ROOT=ROOT/"noethys"\nSOURCE_PATH=SOURCE_ROOT/"GestionDB.py"\n\ndef load_func(interface):\n source=SOURCE_PATH.read_text(encoding="utf-8"); tree=ast.parse(source)\n funcs=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=="GetConnexionReseau"]\n if len(funcs)!=1: raise AssertionError(funcs)\n module=ast.Module(body=funcs,type_ignores=[]); ast.fix_missing_locations(module)\n class C:\n  def set_character_set(self,v): self.charset=v\n class MDB:\n  @staticmethod\n  def connect(**kw): c=C(); c.kwargs=kw; return c\n class Conn:\n  @staticmethod\n  def connect(**kw): c=C(); c.kwargs=kw; return c\n class Mysql: connector=Conn()\n class FT: LONG="LONG"\n ns={"INTERFACE_MYSQL":interface,"POOL_MYSQL":0,"CERTIFICATS_SSL":{},"MySQLdb":MDB(),"mysql":Mysql(),"FIELD_TYPE":FT,"conversions":{},"DecodeMdpReseau":lambda v:v}\n exec(compile(module,str(SOURCE_PATH),"exec"),ns); return ns["GetConnexionReseau"]\n\nclass T(unittest.TestCase):\n F="3306;localhost;user;password[RESEAU]Base_DATA.dat"\n def test_mysqldb(self):\n  c,n=load_func("mysqldb")(self.F); self.assertEqual(c.charset,"utf8"); self.assertEqual(c.kwargs["host"],"localhost"); self.assertEqual(n,"base_data.dat")\n def test_connector(self):\n  c,n=load_func("mysql.connector")(self.F); self.assertEqual(c.kwargs["port"],3306); self.assertEqual(n,"base_data.dat")\n def test_unknown(self):\n  with self.assertRaisesRegex(ValueError,"Interface MySQL non supportée"): load_func("unexpected")(self.F)\n def test_gap_gone(self):\n  f=audit_branch_assignment_gaps.scan_file(SOURCE_PATH,SOURCE_ROOT); t=[x for x in f if x.get("function")=="GetConnexionReseau" and x.get("name")=="connexion"]; self.assertEqual(t,[])\n''', encoding='utf-8')
+          PY
+      - name: Valider le correctif
+        run: |
+          python -m py_compile noethys/GestionDB.py tests/test_gestiondb_mysql_interface_contract.py
+          python -m unittest tests.test_gestiondb_mysql_interface_contract -v
+          python scripts/audit_branch_assignment_gaps.py --json /tmp/branch-gaps.json
+      - name: Commit du correctif
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/tmp-gestiondb-interface-guard.yml
+          git add -A
+          git commit -m 'Fix — expliciter les interfaces MySQL supportées'
+          git push origin HEAD:fix/gestiondb-interface-guard
