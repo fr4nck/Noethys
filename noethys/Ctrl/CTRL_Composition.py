@@ -1508,10 +1508,13 @@ class CTRL_Liste(HTL.HyperTreeList):
             dictCategories[dictIndividu["categorie"]].append((IDindividu, dictIndividu))
             
         # Création des branche CATEGORIES
+        labelsCategories = {
+            1: _(u"Représentants"),
+            2: _(u"Enfants"),
+            3: _(u"Contacts"),
+        }
         for IDcategorie in (1, 2, 3) :
-            if IDcategorie == 1 : label = _(u"Représentants")
-            if IDcategorie == 2 : label = _(u"Enfants")
-            if IDcategorie == 3 : label = _(u"Contacts")
+            label = labelsCategories[IDcategorie]
             brancheCategorie = self.AppendItem(self.root, label)
             self.SetPyData(brancheCategorie, {"type" : "categorie", "IDcategorie" : IDcategorie} )
             self.SetItemBold(brancheCategorie, True)
