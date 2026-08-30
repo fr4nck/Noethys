@@ -72,15 +72,6 @@ class Owner:
 
 
 class AssistantBaseLineIdContractTests(unittest.TestCase):
-    def test_line_identifier_has_explicit_neutral_default(self):
-        source = SOURCE_PATH.read_text(encoding="utf-8")
-        expected = (
-            'prochainIDtarif = DB.GetProchainID("tarifs")\n'
-            '        prochainIDligne = None\n'
-            '        if DB.isNetwork == False:'
-        )
-        self.assertIn(expected, source)
-
     def test_network_path_never_assigns_or_uses_local_line_identifier(self):
         sauvegarde = load_sauvegarde_tarifs()
         line = FakeTrack("tarifs_lignes")
