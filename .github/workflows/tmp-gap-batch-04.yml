@@ -1,0 +1,65 @@
+name: Temp gap batch 04
+
+on:
+  push:
+    branches:
+      - fix/branch-assignment-gap-batch-04
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Patch source and tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('noethys/Utils/UTILS_Archivage.py')
+          text = path.read_text(encoding='utf-8')
+          marker = "\n\nclass Archivage():\n"
+          helper = '''\n\ndef _GetArchivageEtat(etat):\n    if etat == "archiver":\n        return "archive", _(u"archiver")\n    if etat == "desarchiver":\n        return None, _(u"désarchiver")\n    raise ValueError("Etat d'archivage non supporté : %r" % (etat,))\n'''
+          if helper.strip() not in text:
+              text = text.replace(marker, helper + marker, 1)
+          old = '''        if etat == "archiver" :\n            valeur = "archive"\n            label = _(u"archiver")\n        elif etat == "desarchiver" :\n            valeur = None\n            label = _(u"désarchiver")\n'''
+          if text.count(old) != 2:
+              raise SystemExit('Bloc archivage inattendu: %d occurrences' % text.count(old))
+          text = text.replace(old, '        valeur, label = _GetArchivageEtat(etat)\n', 2)
+          old2 = '''        for index in range(0, self.GetChildrenCount(self.root)):\n            item = self.GetNext(item)\n            ID = self.GetPyData(item)["ID"]\n\n            if self.liste_familles != []'''
+          new2 = '''        for index in range(0, self.GetChildrenCount(self.root)):\n            item = self.GetNext(item)\n            ID = self.GetPyData(item)["ID"]\n            nom_complet = None\n\n            if self.liste_familles != []'''
+          if old2 not in text:
+              raise SystemExit('Bloc GetCoches inattendu')
+          text = text.replace(old2, new2, 1)
+          path.write_text(text, encoding='utf-8')
+
+          test = Path('tests/test_utils_archivage_contract.py')
+          test.write_text('''import ast\nimport pathlib\nimport unittest\n\nfrom scripts import audit_branch_assignment_gaps\n\nROOT = pathlib.Path(__file__).resolve().parents[1]\nSOURCE_ROOT = ROOT / "noethys"\nSOURCE = SOURCE_ROOT / "Utils" / "UTILS_Archivage.py"\n\n\ndef load_helper():\n    tree = ast.parse(SOURCE.read_text(encoding="utf-8"))\n    node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_GetArchivageEtat")\n    module = ast.Module(body=[node], type_ignores=[])\n    ns = {"_": lambda value: value}\n    exec(compile(module, str(SOURCE), "exec"), ns)\n    return ns["_GetArchivageEtat"]\n\n\nclass ArchivageContractTests(unittest.TestCase):\n    def test_supported_states_preserve_historical_values(self):\n        helper = load_helper()\n        self.assertEqual(helper("archiver"), ("archive", "archiver"))\n        self.assertEqual(helper("desarchiver"), (None, "désarchiver"))\n\n    def test_unsupported_state_is_explicit(self):\n        with self.assertRaises(ValueError):\n            load_helper()("inconnu")\n\n    def test_targeted_gaps_disappear(self):\n        findings = audit_branch_assignment_gaps.scan_file(SOURCE, SOURCE_ROOT)\n        targeted = [\n            item for item in findings\n            if (item.get("function"), item.get("name")) in {\n                ("Archiver_familles", "label"),\n                ("Archiver_familles", "valeur"),\n                ("Archiver_individus", "label"),\n                ("Archiver_individus", "valeur"),\n                ("GetCoches", "nom_complet"),\n            }\n        ]\n        self.assertEqual(targeted, [], targeted)\n\n    def test_module_parses(self):\n        ast.parse(SOURCE.read_text(encoding="utf-8"))\n\n\nif __name__ == "__main__":\n    unittest.main()\n''', encoding='utf-8')
+          PY
+      - name: Validate targeted batch
+        run: |
+          python -m unittest tests.test_utils_archivage_contract -v
+          python scripts/audit_branch_assignment_gaps.py --json /tmp/gaps.json || true
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/gaps.json', encoding='utf-8'))
+          findings=data if isinstance(data,list) else data.get('findings', data.get('results', []))
+          print('COUNT', len(findings))
+          assert len(findings) == 221, len(findings)
+          PY
+          python scripts/audit_fragile_date_parsing.py
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/tmp-gap-batch-04.yml
+          git add noethys/Utils/UTILS_Archivage.py tests/test_utils_archivage_contract.py
+          git commit -m 'Fix — expliciter le contrat d archivage'
+          git push
