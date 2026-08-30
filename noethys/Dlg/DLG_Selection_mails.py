@@ -410,10 +410,18 @@ def AjouteTexteImage(image=None, texte="", alignement="droite-bas", padding=0, t
     if largeurRond < hauteurRond :
         largeurRond = hauteurRond
         
-    if "gauche" in alignement : xRond = 1
-    if "droite" in alignement : xRond = largeurImage - largeurRond - 1
-    if "haut" in alignement : yRond = 1
-    if "bas" in alignement : yRond = hauteurImage - hauteurRond - 1
+    if "gauche" in alignement :
+        xRond = 1
+    elif "droite" in alignement :
+        xRond = largeurImage - largeurRond - 1
+    else:
+        raise ValueError("Alignement horizontal non supporte : %s" % alignement)
+    if "haut" in alignement :
+        yRond = 1
+    elif "bas" in alignement :
+        yRond = hauteurImage - hauteurRond - 1
+    else:
+        raise ValueError("Alignement vertical non supporte : %s" % alignement)
 
     if 'phoenix' in wx.PlatformInfo:
         dc.DrawRoundedRectangle(wx.Rect(xRond, yRond, largeurRond, hauteurRond), hauteurRond/2.0)
