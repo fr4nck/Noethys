@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 """Export lecture seule Noethys -> PMSL Équipe.
 
-Construit un payload stable et minimal : activités, unités, groupes et ouvertures.
-Aucune écriture locale n'est effectuée ; l'envoi se fait via le endpoint natif /push
-qui crée uniquement un lot entrant en prévisualisation côté PMSL.
+Construit le référentiel/calendrier historique et, lorsque Noe-062B est activé,
+ajoute les séances canoniques dans ``interventions``. Une base historique sans
+la table ``interventions`` conserve exactement le payload calendrier existant.
+Aucune écriture locale n'est effectuée ; l'envoi se fait via le endpoint natif
+/push qui crée uniquement un lot entrant en prévisualisation côté PMSL.
 """
 from __future__ import unicode_literals
+
 
 def _new_db():
     try:
@@ -41,7 +44,7 @@ class PMSLExportService(object):
         query += " ORDER BY date, IDouverture"
         openings = self._rows(query)
 
-        return {
+        payload = {
             "kind": "noethys_reference_calendar",
             "version": 1,
             "filters": {"date_start": date_start, "date_end": date_end},
@@ -72,6 +75,20 @@ class PMSLExportService(object):
             },
         }
 
+        if self._has_table("interventions"):
+            try:
+                from noethys.Utils.UTILS_PMSL_Sessions import PMSLSessionExportService
+            except ImportError:  # lancement historique depuis le répertoire noethys
+                from Utils.UTILS_PMSL_Sessions import PMSLSessionExportService
+            interventions = PMSLSessionExportService(self.db).build_interventions(
+                date_start=date_start,
+                date_end=date_end,
+            )
+            payload["interventions"] = interventions
+            payload["counts"]["interventions"] = len(interventions)
+
+        return payload
+
     def push(self, client, date_start=None, date_end=None):
         payload = self.build_payload(date_start=date_start, date_end=date_end)
         response = client.push(payload)
@@ -80,6 +97,15 @@ class PMSLExportService(object):
     def _rows(self, query):
         self.db.ExecuterReq(query)
         return self.db.ResultatReq() or []
+
+    def _has_table(self, nom_table):
+        methode = getattr(self.db, "IsTableExists", None)
+        if methode is None:
+            return False
+        try:
+            return bool(methode(nom_table))
+        except Exception:
+            return False
 
     @staticmethod
     def _safe_date(value):
