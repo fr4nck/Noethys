@@ -305,6 +305,7 @@ class Page_conclusion(Assistant.Page):
         # Saisie d'une tarification
         if self.parent.dict_valeurs["recopier_tarifs"] == None :
             # Nom de tarif
+            IDnom_tarif = None
             if self.parent.dict_valeurs["gratuit"] == False:
                 nom_tarif = self.parent.dict_valeurs["nom"]
                 listeDonnees = [("IDactivite", IDactivite), ("nom", nom_tarif)]
