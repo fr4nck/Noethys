@@ -23,9 +23,30 @@ class UtilsExportBranchContractTests(unittest.TestCase):
         tree = ast.parse(SOURCE.read_text(encoding="utf-8"))
         export_excel = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "ExportExcel")
         recherche = next(n for n in ast.walk(export_excel) if isinstance(n, ast.FunctionDef) and n.name == "RechercheFormat")
-        text = ast.unparse(recherche)
-        self.assertIn("len(donnees) in (2, 3)", text)
-        self.assertIn("heures, minutes = donnees[:2]", text)
+
+        length_guard = next(
+            n for n in ast.walk(recherche)
+            if isinstance(n, ast.If)
+            and isinstance(n.test, ast.Compare)
+            and isinstance(n.test.left, ast.Call)
+            and isinstance(n.test.left.func, ast.Name)
+            and n.test.left.func.id == "len"
+        )
+        self.assertEqual(ast.literal_eval(length_guard.test.comparators[0]), (2, 3))
+
+        unpack = next(
+            n for n in ast.walk(recherche)
+            if isinstance(n, ast.Assign)
+            and len(n.targets) == 1
+            and isinstance(n.targets[0], (ast.Tuple, ast.List))
+            and [elt.id for elt in n.targets[0].elts] == ["heures", "minutes"]
+        )
+        self.assertIsInstance(unpack.value, ast.Subscript)
+        self.assertIsInstance(unpack.value.value, ast.Name)
+        self.assertEqual(unpack.value.value.id, "donnees")
+        self.assertIsInstance(unpack.value.slice, ast.Slice)
+        self.assertIsNone(unpack.value.slice.lower)
+        self.assertEqual(ast.literal_eval(unpack.value.slice.upper), 2)
 
 
 if __name__ == "__main__":
