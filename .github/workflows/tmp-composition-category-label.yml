@@ -1,0 +1,49 @@
+name: Temp composition category label
+
+on:
+  push:
+    branches:
+      - fix/composition-category-label-contract
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/composition-category-label-contract
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Appliquer le correctif et les tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('noethys/Ctrl/CTRL_Composition.py')
+          source = path.read_text(encoding='utf-8')
+          old = '''        # Création des branche CATEGORIES\n        for IDcategorie in (1, 2, 3) :\n            if IDcategorie == 1 : label = _(u"Représentants")\n            if IDcategorie == 2 : label = _(u"Enfants")\n            if IDcategorie == 3 : label = _(u"Contacts")\n            brancheCategorie = self.AppendItem(self.root, label)\n'''
+          new = '''        # Création des branche CATEGORIES\n        labelsCategories = {\n            1: _(u"Représentants"),\n            2: _(u"Enfants"),\n            3: _(u"Contacts"),\n        }\n        for IDcategorie in (1, 2, 3) :\n            label = labelsCategories[IDcategorie]\n            brancheCategorie = self.AppendItem(self.root, label)\n'''
+          if old not in source:
+              raise SystemExit('bloc catégories attendu introuvable')
+          path.write_text(source.replace(old, new, 1), encoding='utf-8')
+
+          Path('tests/test_composition_category_label_contract.py').write_text('''import ast\nimport unittest\nfrom pathlib import Path\nfrom scripts import audit_branch_assignment_gaps\n\nROOT = Path(__file__).resolve().parents[1]\nSOURCE_ROOT = ROOT / "noethys"\nSOURCE_PATH = SOURCE_ROOT / "Ctrl" / "CTRL_Composition.py"\n\nclass CompositionCategoryLabelContractTests(unittest.TestCase):\n    def test_historical_category_labels_are_preserved(self):\n        source = SOURCE_PATH.read_text(encoding="utf-8")\n        self.assertIn('1: _(u"Représentants")', source)\n        self.assertIn('2: _(u"Enfants")', source)\n        self.assertIn('3: _(u"Contacts")', source)\n        self.assertIn('label = labelsCategories[IDcategorie]', source)\n\n    def test_creation_branches_label_gap_is_gone(self):\n        findings = audit_branch_assignment_gaps.scan_file(SOURCE_PATH, SOURCE_ROOT)\n        targeted = [item for item in findings if item.get("function") == "CreationBranches" and item.get("name") == "label"]\n        self.assertEqual(targeted, [], targeted)\n\n    def test_category_iteration_stays_historical(self):\n        tree = ast.parse(SOURCE_PATH.read_text(encoding="utf-8"))\n        funcs = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "CreationBranches"]\n        self.assertEqual(len(funcs), 1)\n        text = ast.unparse(funcs[0])\n        self.assertIn('for IDcategorie in (1, 2, 3):', text)\n\nif __name__ == "__main__":\n    unittest.main()\n''', encoding='utf-8')
+          PY
+      - name: Valider le correctif
+        run: |
+          python -m py_compile noethys/Ctrl/CTRL_Composition.py tests/test_composition_category_label_contract.py
+          python -m unittest tests.test_composition_category_label_contract -v
+          python scripts/audit_branch_assignment_gaps.py --json /tmp/branch-gaps.json
+      - name: Commit du correctif
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/tmp-composition-category-label.yml
+          git add -A
+          git commit -m 'Fix — expliciter les libellés de catégories de composition'
+          git push origin HEAD:fix/composition-category-label-contract
