@@ -203,6 +203,21 @@ class Noe062CExecutionTests(unittest.TestCase):
         finally:
             db.Close()
 
+    def test_contrainte_bdd_refuse_deux_executions_pour_la_meme_seance(self):
+        db, IDintervention = _db_pret()
+        try:
+            db.cursor.execute(
+                "INSERT INTO interventions_execution (IDintervention) VALUES (?)",
+                (IDintervention,),
+            )
+            with self.assertRaises(sqlite3.IntegrityError):
+                db.cursor.execute(
+                    "INSERT INTO interventions_execution (IDintervention) VALUES (?)",
+                    (IDintervention,),
+                )
+        finally:
+            db.Close()
+
     def test_horaire_reel_incoherent_est_refuse_avant_ecriture(self):
         db, IDintervention = _db_pret()
         try:
