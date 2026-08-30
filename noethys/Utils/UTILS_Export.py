@@ -92,6 +92,7 @@ def ExportTexte(listview=None, grid=None, titre=u"", listeColonnes=None, listeVa
         listeColonnes, listeValeurs = GetValeursGrid(grid)
 
     # Selection des lignes
+    listeSelections = []
     if autoriseSelections == True :
         dlg = DLG_Selection_liste.Dialog(None, listeColonnes, listeValeurs, type="exportTexte")
         if dlg.ShowModal() == wx.ID_OK:
@@ -198,6 +199,7 @@ def ExportExcel(listview=None, grid=None, titre=_(u"Liste"), listeColonnes=None,
         listeColonnes, listeValeurs = GetValeursGrid(grid)
     
     # Selection des lignes
+    listeSelections = []
     if autoriseSelections == True :
         dlg = DLG_Selection_liste.Dialog(None, listeColonnes, listeValeurs, type="exportExcel")
         if dlg.ShowModal() == wx.ID_OK:
@@ -220,6 +222,8 @@ def ExportExcel(listview=None, grid=None, titre=_(u"Liste"), listeColonnes=None,
 
     # Définit le nom et le chemin du fichier
     nomFichier = "ExportExcel_%s.xlsx" % datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+
+    cheminFichier = None
 
     # Mode Enregistrer
     if mode == "enregistrer" :
@@ -366,12 +370,10 @@ def ExportExcel(listview=None, grid=None, titre=_(u"Liste"), listeColonnes=None,
                     separateur = None
                 if separateur != None :
                     donnees = valeur.split(separateur)
-                    if len(donnees) == 2 :
-                        heures, minutes = donnees
-                    if len(donnees) == 3 :
-                        heures, minutes, secondes = donnees
-                    valeur = datetime.timedelta(minutes= int(heures)*60 + int(minutes))
-                    return (valeur, format_heure)
+                    if len(donnees) in (2, 3):
+                        heures, minutes = donnees[:2]
+                        valeur = datetime.timedelta(minutes=int(heures) * 60 + int(minutes))
+                        return (valeur, format_heure)
         except Exception:
             pass
 
