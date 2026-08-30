@@ -28,17 +28,21 @@ class UtilsExportBranchContractTests(unittest.TestCase):
             n for n in ast.walk(recherche)
             if isinstance(n, ast.If)
             and isinstance(n.test, ast.Compare)
+            and len(n.test.ops) == 1
+            and isinstance(n.test.ops[0], ast.In)
             and isinstance(n.test.left, ast.Call)
             and isinstance(n.test.left.func, ast.Name)
             and n.test.left.func.id == "len"
+            and ast.literal_eval(n.test.comparators[0]) == (2, 3)
         )
         self.assertEqual(ast.literal_eval(length_guard.test.comparators[0]), (2, 3))
 
         unpack = next(
-            n for n in ast.walk(recherche)
+            n for n in ast.walk(length_guard)
             if isinstance(n, ast.Assign)
             and len(n.targets) == 1
             and isinstance(n.targets[0], (ast.Tuple, ast.List))
+            and all(isinstance(elt, ast.Name) for elt in n.targets[0].elts)
             and [elt.id for elt in n.targets[0].elts] == ["heures", "minutes"]
         )
         self.assertIsInstance(unpack.value, ast.Subscript)
