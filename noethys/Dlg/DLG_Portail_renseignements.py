@@ -158,14 +158,16 @@ class Adresse(wx.Panel):
         if champ == "adresse_auto" :
             resultat = self.ctrl_adresse_auto.SetID(valeur)
             self.OnChoix()
-        if champ == "rue_resid" :
+        elif champ == "rue_resid" :
             resultat = True
             self.ctrl_rue.SetValue(valeur)
-        if champ == "cp_resid" :
+        elif champ == "cp_resid" :
             resultat = self.ctrl_ville.SetValueCP(valeur)
-        if champ == "ville_resid" :
+        elif champ == "ville_resid" :
             resultat = True
             self.ctrl_ville.SetValueVille(valeur)
+        else:
+            raise ValueError("Champ d'adresse inconnu : %s" % champ)
         return resultat
 
     def GetValeurs(self):

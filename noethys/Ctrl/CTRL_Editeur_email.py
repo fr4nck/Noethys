@@ -791,10 +791,11 @@ class CTRL(wx.Panel):
         attr = rt.RichTextAttr()
         attr.SetFlags(wx.TEXT_ATTR_LEFT_INDENT)
         ip = self.ctrl_editeur.GetInsertionPoint()
-        if self.ctrl_editeur.GetStyle(ip, attr):
-            r = rt.RichTextRange(ip, ip)
-            if self.ctrl_editeur.HasSelection():
-                r = self.ctrl_editeur.GetSelectionRange()
+        if not self.ctrl_editeur.GetStyle(ip, attr):
+            return
+        r = rt.RichTextRange(ip, ip)
+        if self.ctrl_editeur.HasSelection():
+            r = self.ctrl_editeur.GetSelectionRange()
 
         if attr.GetLeftIndent() >= 100:
             attr.SetLeftIndent(attr.GetLeftIndent() - 100)

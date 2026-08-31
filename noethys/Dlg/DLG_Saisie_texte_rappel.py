@@ -297,10 +297,11 @@ class Dialog(wx.Dialog):
         attr = rt.RichTextAttr()
         attr.SetFlags(wx.TEXT_ATTR_LEFT_INDENT)
         ip = self.ctrl_texte.GetInsertionPoint()
-        if self.ctrl_texte.GetStyle(ip, attr):
-            r = rt.RichTextRange(ip, ip)
-            if self.ctrl_texte.HasSelection():
-                r = self.ctrl_texte.GetSelectionRange()
+        if not self.ctrl_texte.GetStyle(ip, attr):
+            return
+        r = rt.RichTextRange(ip, ip)
+        if self.ctrl_texte.HasSelection():
+            r = self.ctrl_texte.GetSelectionRange()
 
         if attr.GetLeftIndent() >= 100:
             attr.SetLeftIndent(attr.GetLeftIndent() - 100)
