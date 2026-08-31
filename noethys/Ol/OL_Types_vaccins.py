@@ -55,13 +55,12 @@ def FormatDuree(duree):
     nbreItems = len(listItems)
     if nbreItems == 0:
         resultat = _(u"Validité illimitée")
-    else:
-        if nbreItems == 1:
-            resultat = listItems[0]
-        if nbreItems == 2:
-            resultat = listItems[0] + " et " + listItems[1]
-        if nbreItems == 3:
-            resultat = listItems[0] + ", " + listItems[1] + " et " + listItems[2]
+    elif nbreItems == 1:
+        resultat = listItems[0]
+    elif nbreItems == 2:
+        resultat = listItems[0] + " et " + listItems[1]
+    else :
+        resultat = listItems[0] + ", " + listItems[1] + " et " + listItems[2]
 
     return resultat
 
