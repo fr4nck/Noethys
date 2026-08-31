@@ -21,7 +21,7 @@ jobs:
         run: python -m unittest tests.test_small_ui_branch_contracts_batch_11 -v
       - name: Audit exact count and coverage
         run: |
-          python scripts/audit_branch_assignment_gaps.py --json > /tmp/gaps.json
+          python scripts/audit_branch_assignment_gaps.py --json /tmp/gaps.json
           python - <<'PY'
           import json
           data=json.load(open('/tmp/gaps.json', encoding='utf-8'))
