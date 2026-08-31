@@ -80,6 +80,7 @@ class Titre():
 
         # Dessine le mot MENUS
         afficher_mot_menu = False
+        largeur_box = 0
 
         if afficher_mot_menu == True :
 
@@ -457,6 +458,7 @@ class Case():
             marge_haut = (hauteur - (hauteur_paragraphes + (len(liste_paragraphes) - 1) * espace_vertical)) / 2.0
 
         # Préparation des images
+        separateur_image = None
         if self.parent.dictDonnees["case_separateur_type"] == "image" and self.parent.dictDonnees["case_separateur_image"] != "aucune":
             img = wx.Image(Chemins.GetStaticPath("Images/Menus/%s" % self.parent.dictDonnees["case_separateur_image"]), wx.BITMAP_TYPE_ANY)
             ratio_image = 1.0 * img.GetWidth() / img.GetHeight()
@@ -473,7 +475,7 @@ class Case():
 
             # Dessine l'image de séparation
             if self.parent.dictDonnees["case_separateur_type"] != "aucun" and index < len(liste_paragraphes) - 1:
-                if self.parent.dictDonnees["case_separateur_type"] == "image" :
+                if self.parent.dictDonnees["case_separateur_type"] == "image" and separateur_image is not None:
                     separateur_image.drawOn(self.canvas, self.largeur_case / 2.0 - separateur_image._width / 2.0, y_paragraphe - espace_vertical / 2.0 - separateur_image._height / 2.0)
                 elif self.parent.dictDonnees["case_separateur_type"] == "ligne":
                     largeur_separateur = self.largeur_case / 3.5
@@ -618,10 +620,12 @@ class Impression():
         # Calcule les pages
         if dictDonnees["type"] == "mensuel" :
             liste_pages = [{"annee" : date.year, "mois" : date.month} for date in list(rrule.rrule(rrule.MONTHLY, dtstart=dictDonnees["date_debut"], until=dictDonnees["date_fin"]))]
-        if dictDonnees["type"] == "hebdomadaire" :
+        elif dictDonnees["type"] == "hebdomadaire" :
             liste_pages = [{"date" : date} for date in list(rrule.rrule(rrule.WEEKLY, dtstart=dictDonnees["date_debut"], until=dictDonnees["date_fin"]))]
-        if dictDonnees["type"] == "quotidien" :
+        elif dictDonnees["type"] == "quotidien" :
             liste_pages = [{"date" : date} for date in list(rrule.rrule(rrule.DAILY, dtstart=dictDonnees["date_debut"], until=dictDonnees["date_fin"]))]
+        else :
+            raise ValueError("Type d'impression de menu inconnu : %s" % dictDonnees["type"])
 
         num_page = 0
         for dict_page in liste_pages :
@@ -633,13 +637,13 @@ class Impression():
                 nbre_colonnes = len(dictDonnees["jours_semaine"])
                 texte_titre = UTILS_Dates.PeriodeComplete(mois=dict_page["mois"], annee=dict_page["annee"])
 
-            if dictDonnees["type"] == "hebdomadaire":
+            elif dictDonnees["type"] == "hebdomadaire":
                 calendrier = self.GetCalendrierSemaine(date=dict_page["date"], jours_semaine=dictDonnees["jours_semaine"])
                 nbre_lignes = 1
                 nbre_colonnes = len(dictDonnees["jours_semaine"])
                 texte_titre = self.GetLabelSemaine(calendrier[0], calendrier[-1])
 
-            if dictDonnees["type"] == "quotidien":
+            else :
                 calendrier = None
                 nbre_lignes = 1
                 nbre_colonnes = 1
