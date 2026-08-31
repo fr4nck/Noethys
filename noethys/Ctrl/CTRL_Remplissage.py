@@ -85,6 +85,7 @@ class CaseSeparationActivite():
         
         # Dessin de la case
         self.renderer = RendererCaseActivite(self)
+        labelActivite = u""
         if self.IDactivite != None :
             if grid.dictActivites != None :
                 labelActivite = grid.dictActivites[IDactivite]["nom"]
@@ -774,6 +775,7 @@ class RendererCaseEvenement(GridCellRenderer):
         # Calcul de la largeur d'un bouton
         nbre_evenements = len(self.case.liste_evenements)
         marge = 2
+        largeur_bouton = 0
         if len(self.case.liste_evenements) :
             largeur_bouton = (1.0 * (rectCase.width - marge -1) / nbre_evenements) - marge*2
 
