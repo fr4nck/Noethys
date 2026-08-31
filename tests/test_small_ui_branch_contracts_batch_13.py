@@ -30,10 +30,18 @@ class TestBatch13Contracts(unittest.TestCase):
                     remaining.add(key)
         self.assertEqual(remaining, set())
 
-    def test_event_period_defaults_to_no_filter(self):
+    def test_event_period_contract_is_explicit(self):
         source = (NOETHYS / "Ctrl/CTRL_Evenements.py").read_text(encoding="utf-8")
+        self.assertIn('if self.periode == None', source)
         self.assertIn('conditionPeriode = ""', source)
+        self.assertIn('raise ValueError("Type de période inconnu', source)
         self.assertIn('WHERE evenements.IDactivite IN %s %s', source)
+
+    def test_text_position_contract_is_explicit(self):
+        source = (NOETHYS / "Ctrl/CTRL_Grille_renderers.py").read_text(encoding="utf-8")
+        self.assertIn('if position == "gauche"', source)
+        self.assertIn('elif position == "droite"', source)
+        self.assertIn('raise ValueError("Position de texte inconnue', source)
 
     def test_render_defaults_are_neutral(self):
         source = (NOETHYS / "Ctrl/CTRL_Grille_renderers.py").read_text(encoding="utf-8")

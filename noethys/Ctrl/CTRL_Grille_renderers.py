@@ -630,9 +630,12 @@ class CaseMultihoraires(GridCellRenderer):
         if (largeurTexte*2.5) > rectBarre.width :
             return 0, 0, 0, 0
         gc.SetFont(wx.Font(8, wx.SWISS, wx.NORMAL, wx.NORMAL), couleur)
-        x = rectBarre.x + 3
-        if position == "gauche" : x = rectBarre.x + 3
-        if position == "droite" : x = rectBarre.width + rectBarre.x - largeurTexte - 3
+        if position == "gauche" :
+            x = rectBarre.x + 3
+        elif position == "droite" :
+            x = rectBarre.width + rectBarre.x - largeurTexte - 3
+        else :
+            raise ValueError("Position de texte inconnue : %s" % position)
         y = rectBarre.y + 1
         gc.DrawText(texte, x, y)
         return x, y, largeurTexte, hauteurTexte
