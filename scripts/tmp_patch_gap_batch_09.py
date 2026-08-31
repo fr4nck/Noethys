@@ -70,10 +70,10 @@ class OlLabelBranchContractTests(unittest.TestCase):
         namespace = {"_": lambda value: value}
         exec(source, namespace)
         format_duree = namespace["FormatDuree"]
-        self.assertEqual(format_duree(None), "Validité illimitée")
-        self.assertEqual(format_duree(1), "1 jour")
-        self.assertEqual(format_duree(31), "1 jour et 1 mois")
-        self.assertEqual(format_duree(396), "1 jour, 1 mois et 1 année")
+        self.assertEqual(format_duree("j0-m0-a0"), "Validité illimitée")
+        self.assertEqual(format_duree("j1-m0-a0"), "1 jour")
+        self.assertEqual(format_duree("j1-m1-a0"), "1 jour et 1 mois")
+        self.assertEqual(format_duree("j1-m1-a1"), "1 jour, 1 mois et 1 année")
 
 
 if __name__ == "__main__":
