@@ -484,7 +484,7 @@ class Dialog(wx.Dialog):
 
         # ------------ MODE INSCRITS ---------------------------------
 
-        if dictParametres["mode"] == "inscrits":
+        elif dictParametres["mode"] == "inscrits":
 
             dictOuvertures = {}
             for IDgroupe, dictGroupe in dictGroupes.items():
@@ -504,6 +504,9 @@ class Dialog(wx.Dialog):
             ;""" % conditionActivites
             DB.ExecuterReq(req)
             listeIndividus = DB.ResultatReq()
+        else:
+            DB.Close()
+            raise ValueError("Mode anniversaire inconnu : %s" % dictParametres["mode"])
 
         DB.Close()
 

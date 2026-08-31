@@ -457,9 +457,13 @@ class MyPreviewFrame(wx.PreviewFrame):
         if 'phoenix' not in wx.PlatformInfo:
             controlBar = self.GetControlBar()
         else:
+            controlBar = None
             for ctrl in self.GetChildren():
                 if "ControlBar" in str(ctrl):
                     controlBar = ctrl
+                    break
+            if controlBar is None:
+                raise RuntimeError("Barre de contrôle d'aperçu introuvable")
 
         liste_controles = controlBar.GetChildren()
 
