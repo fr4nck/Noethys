@@ -1,0 +1,37 @@
+name: tmp gap patch 09
+on:
+  push:
+    branches: [fix/branch-assignment-gap-batch-09]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Appliquer et valider
+        run: |
+          python scripts/tmp_patch_gap_batch_09.py
+          python -m unittest tests.test_ol_label_branch_contracts
+          python scripts/audit_branch_assignment_gaps.py --json /tmp/gaps.json
+          python - <<'PY'
+          import json
+          with open('/tmp/gaps.json', encoding='utf-8') as fh:
+              report = json.load(fh)
+          print('COUNT', report['count'])
+          assert report['count'] == 193, report['count']
+          PY
+      - name: Nettoyer et pousser
+        run: |
+          git rm scripts/tmp_patch_gap_batch_09.py .github/workflows/tmp-gap-patch-09.yml
+          git add noethys/Ol/OL_PES_pieces.py noethys/Ol/OL_Prelevements.py noethys/Ol/OL_Prelevements_national.py noethys/Ol/OL_Prelevements_sepa.py noethys/Ol/OL_Types_vaccins.py tests/test_ol_label_branch_contracts.py
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "fix: expliciter les libelles de totaux"
+          git push
