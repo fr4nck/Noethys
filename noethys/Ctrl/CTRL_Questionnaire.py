@@ -969,17 +969,19 @@ class CTRL(HTL.HyperTreeList):
     def MAJ(self, importation=True, selection=None):
         """ Met à jour (redessine) tout le contrôle """
         self.Freeze()
-        self.DeleteAllItems()
-        # Création de la racine
-        self.root = self.AddRoot(_(u"Racine"))
-        if importation == True :
-            self.Importation()
-        # Création des contrôles
-        self.Remplissage(selection=selection)
-        # Mémorisation des valeurs initiales
-        if importation == True :
-            self.dictValeursInitiales = self.GetValeurs()
-        self.Thaw()
+        try:
+            self.DeleteAllItems()
+            # Création de la racine
+            self.root = self.AddRoot(_(u"Racine"))
+            if importation == True :
+                self.Importation()
+            # Création des contrôles
+            self.Remplissage(selection=selection)
+            # Mémorisation des valeurs initiales
+            if importation == True :
+                self.dictValeursInitiales = self.GetValeurs()
+        finally:
+            self.Thaw()
 
     def Importation(self):
         self.dictCategories = {}
@@ -1054,6 +1056,16 @@ class CTRL(HTL.HyperTreeList):
 
 
     def Remplissage(self, selection=None):
+        controles_valides = {
+            None, "ligne_texte", "bloc_texte", "entier", "decimal", "montant",
+            "liste_deroulante", "liste_coches", "case_coche", "date", "slider",
+            "couleur", "documents", "codebarres", "rfid",
+        }
+        for IDcategorie in self.listeIDcategorie:
+            for track in self.dictCategories[IDcategorie]["questions"]:
+                if track.controle not in controles_valides:
+                    raise ValueError("Type de contrôle de questionnaire inconnu : %s" % track.controle)
+
         # Création des branches
         self.dictBranches = {}
         indexCategorie = 0
@@ -1126,17 +1138,15 @@ class CTRL(HTL.HyperTreeList):
                         if track.controle == "rfid" : ctrl = CTRL_rfid(self.GetMainWindow(), item=brancheQuestion, track=track) # size=(largeurControle, 20) )
 
                         if track.controle != None :
-                            if ctrl == None :
-                                raise ValueError("Type de contrôle de questionnaire inconnu : %s" % track.controle)
                             self.SetItemWindow(brancheQuestion, ctrl, 1)
                             track.ctrl = ctrl
 
-                        # Insère la valeur
-                        if IDquestion in self.dictReponses :
-                            valeur = self.dictReponses[IDquestion]["reponse"]
-                        else:
-                            valeur = track.defaut
-                        track.SetValeurStr(valeur)
+                            # Insère la valeur uniquement lorsqu'un contrôle existe
+                            if IDquestion in self.dictReponses :
+                                valeur = self.dictReponses[IDquestion]["reponse"]
+                            else:
+                                valeur = track.defaut
+                            track.SetValeurStr(valeur)
 
                         indexQuestion += 1
 
