@@ -26,6 +26,9 @@ class TestBatch16Permissions(unittest.TestCase):
 
     def test_restrictions_fail_closed_for_empty_or_unknown_modes(self):
         source = (NOETHYS / "Utils/UTILS_Utilisateurs.py").read_text(encoding="utf-8")
+        self.assertIn('mode, listeID = code.split(":", 1)', source)
+        self.assertIn('if listeID == ""', source)
+        self.assertIn("except (TypeError, ValueError)", source)
         self.assertIn("listeActivites = []", source)
         self.assertIn("else : condition = None", source)
         self.assertIn("if condition != None", source)
