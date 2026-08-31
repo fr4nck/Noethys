@@ -1081,22 +1081,26 @@ class Dialog(wx.Dialog):
         dlg = wx.TextEntryDialog(self, _(u"Veuillez saisir une largeur en pixels (50 par défaut) :"), "Largeur d'une colonne unité")
         dlg.SetValue(str(largeur))
         reponse = dlg.ShowModal()
-        if reponse == wx.ID_OK:
-            newLargeur = dlg.GetValue()
-            try:
-                newLargeur = int(newLargeur)
-            except Exception:
-                dlg2 = wx.MessageDialog(self, _(u"La valeur saisie semble incorrecte !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_INFORMATION)
-                dlg2.ShowModal()
-                dlg2.Destroy()
-                dlg.Destroy()
-                return
-            if newLargeur < 30 or newLargeur > 300:
-                dlg2 = wx.MessageDialog(self, _(u"La valeur doit être comprise entre 30 et 300 !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_INFORMATION)
-                dlg2.ShowModal()
-                dlg2.Destroy()
-                return
-            self.panel_grille.grille.SetLargeurColonneUnite(newLargeur)
+        if reponse != wx.ID_OK:
+            dlg.Destroy()
+            return
+
+        newLargeur = dlg.GetValue()
+        try:
+            newLargeur = int(newLargeur)
+        except Exception:
+            dlg2 = wx.MessageDialog(self, _(u"La valeur saisie semble incorrecte !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_INFORMATION)
+            dlg2.ShowModal()
+            dlg2.Destroy()
+            dlg.Destroy()
+            return
+        if newLargeur < 30 or newLargeur > 300:
+            dlg2 = wx.MessageDialog(self, _(u"La valeur doit être comprise entre 30 et 300 !"), _(u"Erreur de saisie"), wx.OK | wx.ICON_INFORMATION)
+            dlg2.ShowModal()
+            dlg2.Destroy()
+            dlg.Destroy()
+            return
+        self.panel_grille.grille.SetLargeurColonneUnite(newLargeur)
         dlg.Destroy()
         UTILS_Config.SetParametre("largeur_colonne_unite", newLargeur)
 

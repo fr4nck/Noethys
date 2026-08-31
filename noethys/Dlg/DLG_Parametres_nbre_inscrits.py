@@ -157,10 +157,12 @@ class Dialog(wx.Dialog):
             listeID.append(str(ID))
         if mode == "toutes" : 
             parametre = None
-        if mode == "groupes" : 
+        elif mode == "groupes" : 
             parametre = "liste_groupes_activites###%s" % ";".join(listeID)
-        if mode == "activites" : 
+        elif mode == "activites" : 
             parametre = "liste_activites###%s" % ";".join(listeID)
+        else:
+            raise ValueError("Mode de sélection d'activités inconnu : %s" % mode)
         UTILS_Config.SetParametre("nbre_inscrits_parametre_activites", parametre)
         
         # Options

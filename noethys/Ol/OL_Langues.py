@@ -189,10 +189,11 @@ class ListView(FastObjectListView):
 
     def Ajouter(self, event):
         dlg = Saisie(self)
-        code = None
-        if dlg.ShowModal() == wx.ID_OK:
-            code = dlg.GetCode()
-            nom = dlg.GetNom()
+        if dlg.ShowModal() != wx.ID_OK:
+            dlg.Destroy()
+            return
+        code = dlg.GetCode()
+        nom = dlg.GetNom()
         dlg.Destroy()
         if code == None : 
             return

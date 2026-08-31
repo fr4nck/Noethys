@@ -547,12 +547,15 @@ class Panel_identite(wx.Panel):
         if genre == None :
             self.ctrl_civilite.SetFocus()
         else:
-            if IDcategorie == 1 and genre == "M" : IDcivilite = 1
-            if IDcategorie == 1 and genre == "F" : IDcivilite = 3
-            if IDcategorie == 2 and genre == "M" : IDcivilite = 4
-            if IDcategorie == 2 and genre == "F" : IDcivilite = 5
-            if IDcategorie == 3 and genre == "M" : IDcivilite = 1
-            if IDcategorie == 3 and genre == "F" : IDcivilite = 3
+            civilites = {
+                (1, "M"): 1, (1, "F"): 3,
+                (2, "M"): 4, (2, "F"): 5,
+                (3, "M"): 1, (3, "F"): 3,
+            }
+            try:
+                IDcivilite = civilites[(IDcategorie, genre)]
+            except KeyError:
+                raise ValueError("Catégorie ou genre inconnu : %s / %s" % (IDcategorie, genre))
             self.ctrl_civilite.SetID(IDcivilite)
         self.OnChoiceCivilite(None)
 

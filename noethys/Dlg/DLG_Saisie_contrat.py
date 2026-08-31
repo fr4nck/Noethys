@@ -109,10 +109,14 @@ class CTRL_Tarif(CTRL_Ultrachoice.CTRL):
             nom = dictTarif["nomTarif"]
             date_debut = dictTarif["date_debut"]
             date_fin = dictTarif["date_fin"]
-            if date_debut == None and date_fin == None : label = _(u"%s (Sans période de validité)") % nom
-            if date_debut == None and date_fin != None : label = _(u"%s (Jusqu'au %s)") % (nom, UTILS_Dates.DateDDEnFr(date_fin))
-            if date_debut != None and date_fin == None : label = _(u"%s (A partir du %s)") % (nom, UTILS_Dates.DateDDEnFr(date_debut))
-            if date_debut != None and date_fin != None : label = _(u"%s (Du %s au %s)") % (nom, UTILS_Dates.DateDDEnFr(date_debut), UTILS_Dates.DateDDEnFr(date_fin))
+            if date_debut == None and date_fin == None :
+                label = _(u"%s (Sans période de validité)") % nom
+            elif date_debut == None :
+                label = _(u"%s (Jusqu'au %s)") % (nom, UTILS_Dates.DateDDEnFr(date_fin))
+            elif date_fin == None :
+                label = _(u"%s (A partir du %s)") % (nom, UTILS_Dates.DateDDEnFr(date_debut))
+            else:
+                label = _(u"%s (Du %s au %s)") % (nom, UTILS_Dates.DateDDEnFr(date_debut), UTILS_Dates.DateDDEnFr(date_fin))
             
             description = dictTarif["nomPrecisTarif"] + " --- " + " ou ".join(dictTarif["listeNomsCategories"])
             listeItems.append({"label" : label, "description" : description})
