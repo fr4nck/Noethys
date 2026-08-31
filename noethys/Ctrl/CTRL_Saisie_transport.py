@@ -783,8 +783,12 @@ class CTRL_DateHeure(wx.Panel):
         return self.ctrl_heure.GetHeure()
 
     def Validation(self):
-        if self.rubrique == "depart" : nomTemp = _(u"de départ")
-        if self.rubrique == "arrivee" : nomTemp = _(u"d'arrivée")
+        if self.rubrique == "depart" :
+            nomTemp = _(u"de départ")
+        elif self.rubrique == "arrivee" :
+            nomTemp = _(u"d'arrivée")
+        else :
+            raise ValueError("Rubrique de transport inconnue : %r" % self.rubrique)
 
         if self.GetDate() == None  and self.ctrl_date.IsShown() :
             dlg = wx.MessageDialog(self, _(u"Vous devez obligatoirement saisir une date %s !") % nomTemp, _(u"Erreur de saisie"), wx.OK | wx.ICON_EXCLAMATION)
@@ -1374,12 +1378,14 @@ class CTRL(wx.Panel):
             if type == "CALENDRIER" :
                 date_min = min(parametres["dates"])
                 date_max = max(parametres["dates"])
-            
-            if type == "PLANNING" :
+            elif type == "PLANNING" :
                 date_min = parametres["date_debut"]
                 date_max = parametres["date_fin"]
+            else :
+                raise ValueError("Mode de saisie multiple inconnu : %r" % type)
             
             # Récupération des jours de présence sur l'activité donnée
+            listeDatesPresences = []
             if parametres["activite"] != None :
                 req = """SELECT IDconso, date, IDunite
                 FROM consommations 
@@ -1395,8 +1401,7 @@ class CTRL(wx.Panel):
             # Création de la liste de jours initiale
             if type == "CALENDRIER" :
                 liste_dates = parametres["dates"]
-                
-            if type == "PLANNING" :
+            else :  # PLANNING, validé ci-dessus
                 liste_dates = [date_min,]
                 date = date_min
                 for x in range((date_max - date_min).days) :
