@@ -1108,6 +1108,7 @@ class CTRL(HTL.HyperTreeList):
                         track.largeur = self.largeurReponse - 7
 
                         # CTRL du type de calcul
+                        ctrl = None
                         if track.controle == "ligne_texte" : ctrl = CTRL_ligne_texte(self.GetMainWindow(), item=brancheQuestion, track=track) # size=(largeurControle, -1) )
                         if track.controle == "bloc_texte" : ctrl = CTRL_bloc_texte(self.GetMainWindow(), item=brancheQuestion, track=track) # size=(largeurControle, 60) )
                         if track.controle == "entier" : ctrl = CTRL_entier(self.GetMainWindow(), item=brancheQuestion, track=track) # size=(largeurControle, -1) )
@@ -1125,6 +1126,8 @@ class CTRL(HTL.HyperTreeList):
                         if track.controle == "rfid" : ctrl = CTRL_rfid(self.GetMainWindow(), item=brancheQuestion, track=track) # size=(largeurControle, 20) )
 
                         if track.controle != None :
+                            if ctrl == None :
+                                raise ValueError("Type de contrôle de questionnaire inconnu : %s" % track.controle)
                             self.SetItemWindow(brancheQuestion, ctrl, 1)
                             track.ctrl = ctrl
 
