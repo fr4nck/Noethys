@@ -122,8 +122,17 @@ def VerificationDroits(dictUtilisateur=None, categorie="", action="", IDactivite
         # Restriction
         if etat.startswith("restriction") :
             code = etat.replace("restriction_", "")
-            mode, listeID = code.split(":")
-            listeID = [int(x) for x in listeID.split(";")]
+            try :
+                mode, listeID = code.split(":", 1)
+            except ValueError :
+                return False
+            if listeID == "" :
+                listeID = []
+            else :
+                try :
+                    listeID = [int(x) for x in listeID.split(";")]
+                except (TypeError, ValueError) :
+                    return False
                         
             listeActivites = []
             if mode == "groupes" :
