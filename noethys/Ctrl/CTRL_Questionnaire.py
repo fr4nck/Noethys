@@ -970,11 +970,25 @@ class CTRL(HTL.HyperTreeList):
         """ Met à jour (redessine) tout le contrôle """
         self.Freeze()
         try:
+            if importation == True :
+                ancien_modele = (self.dictCategories, self.listeIDcategorie, self.dictValeursInitiales, self.dictReponses)
+                try:
+                    self.Importation()
+                    controles_valides = {
+                        None, "ligne_texte", "bloc_texte", "entier", "decimal", "montant",
+                        "liste_deroulante", "liste_coches", "case_coche", "date", "slider",
+                        "couleur", "documents", "codebarres", "rfid",
+                    }
+                    for IDcategorie in self.listeIDcategorie:
+                        for track in self.dictCategories[IDcategorie]["questions"]:
+                            if track.controle not in controles_valides:
+                                raise ValueError("Type de contrôle de questionnaire inconnu : %s" % track.controle)
+                except Exception:
+                    self.dictCategories, self.listeIDcategorie, self.dictValeursInitiales, self.dictReponses = ancien_modele
+                    raise
             self.DeleteAllItems()
             # Création de la racine
             self.root = self.AddRoot(_(u"Racine"))
-            if importation == True :
-                self.Importation()
             # Création des contrôles
             self.Remplissage(selection=selection)
             # Mémorisation des valeurs initiales

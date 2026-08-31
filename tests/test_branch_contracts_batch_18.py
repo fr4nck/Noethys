@@ -43,3 +43,11 @@ class TestBatch18Questionnaire(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+def test_maj_validates_import_before_clearing_tree_and_restores_model_on_failure(self):
+    source = SOURCE_PATH.read_text(encoding="utf-8")
+    maj = source[source.index("    def MAJ("):source.index("    def Importation(")]
+    self.assertLess(maj.index("self.Importation()"), maj.index("self.DeleteAllItems()"))
+    self.assertIn("ancien_modele", maj)
+    self.assertIn("= ancien_modele", maj)
+    self.assertLess(maj.index("Type de contrôle de questionnaire inconnu"), maj.index("self.DeleteAllItems()"))
