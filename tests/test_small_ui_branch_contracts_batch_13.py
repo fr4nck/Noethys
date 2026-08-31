@@ -40,8 +40,17 @@ class TestBatch13Contracts(unittest.TestCase):
     def test_text_position_contract_is_explicit(self):
         source = (NOETHYS / "Ctrl/CTRL_Grille_renderers.py").read_text(encoding="utf-8")
         self.assertIn('if position == "gauche"', source)
-        self.assertIn('elif position == "droite"', source)
+        self.assertIn('if position not in ("gauche", "droite")', source)
+        self.assertIn('else :', source)
         self.assertIn('raise ValueError("Position de texte inconnue', source)
+
+    def test_invalid_text_position_is_checked_before_width_shortcut(self):
+        source = (NOETHYS / "Ctrl/CTRL_Grille_renderers.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        draw = next(node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == "DrawTexte")
+        first_if = next(node for node in draw.body if isinstance(node, ast.If))
+        self.assertIn("position", ast.unparse(first_if.test))
+        self.assertTrue(any(isinstance(node, ast.Raise) for node in ast.walk(first_if)))
 
     def test_render_defaults_are_neutral(self):
         source = (NOETHYS / "Ctrl/CTRL_Grille_renderers.py").read_text(encoding="utf-8")

@@ -626,16 +626,16 @@ class CaseMultihoraires(GridCellRenderer):
         dcGrid.Blit(rect.x, rect.y, rect.GetWidth(), rect.GetHeight(), image, 0, 0)
         
     def DrawTexte(self, gc, rectBarre, texte="07h30", couleur=(0, 0, 0), position="gauche"):
+        if position not in ("gauche", "droite") :
+            raise ValueError("Position de texte inconnue : %s" % position)
         largeurTexte, hauteurTexte = gc.GetTextExtent(texte)
         if (largeurTexte*2.5) > rectBarre.width :
             return 0, 0, 0, 0
         gc.SetFont(wx.Font(8, wx.SWISS, wx.NORMAL, wx.NORMAL), couleur)
         if position == "gauche" :
             x = rectBarre.x + 3
-        elif position == "droite" :
-            x = rectBarre.width + rectBarre.x - largeurTexte - 3
         else :
-            raise ValueError("Position de texte inconnue : %s" % position)
+            x = rectBarre.width + rectBarre.x - largeurTexte - 3
         y = rectBarre.y + 1
         gc.DrawText(texte, x, y)
         return x, y, largeurTexte, hauteurTexte
