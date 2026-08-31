@@ -74,10 +74,10 @@ class SaisiePays(wx.Panel):
         """Recherche par l'IDpays ou le nom du pays."""
         if IDpays is None and nomPays is None:
             return
-        if IDpays is not None:
-            pays = self.Recherche_Pays(IDpays=IDpays)
         if nomPays is not None:
             pays = self.Recherche_Pays(nomPays=nomPays)
+        else:
+            pays = self.Recherche_Pays(IDpays=IDpays)
         self.IDpays = pays[0]
         self.image_pays.SetBitmap(self._ChargeDrapeau(pays[1]))
         if self.mode == "pays":

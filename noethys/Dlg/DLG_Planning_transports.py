@@ -168,10 +168,12 @@ class ToolBar(wx.ToolBar):
 
     def OnChercherDate(self, event):
         dlg = DLG_Recherche_date(self)
-        if dlg.ShowModal():
+        if dlg.ShowModal() == wx.ID_OK:
             newDate = dlg.GetDate()
-        dlg.Destroy()
-        self.parent.ctrl_planning.SetDate(newDate)
+            dlg.Destroy()
+            self.parent.ctrl_planning.SetDate(newDate)
+        else:
+            dlg.Destroy()
 
     def OnApercu(self, event):
         """ Aperçu avant impression """
