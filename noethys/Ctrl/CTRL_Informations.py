@@ -342,7 +342,7 @@ class CTRL(wx.TreeCtrl):
                 IDfamille = dictValeurs["IDfamille"]
                 IDindividu = dictValeurs["IDindividu"]
                 prenom = dictValeurs["prenom"]
-                label = u"?"
+                labelRenseignement = u"?"
                 for ID, label in Renseignements.LISTE_TYPES_RENSEIGNEMENTS :
                     if ID == IDtype_renseignement :
                         labelRenseignement = label

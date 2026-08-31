@@ -630,6 +630,7 @@ class CaseMultihoraires(GridCellRenderer):
         if (largeurTexte*2.5) > rectBarre.width :
             return 0, 0, 0, 0
         gc.SetFont(wx.Font(8, wx.SWISS, wx.NORMAL, wx.NORMAL), couleur)
+        x = rectBarre.x + 3
         if position == "gauche" : x = rectBarre.x + 3
         if position == "droite" : x = rectBarre.width + rectBarre.x - largeurTexte - 3
         y = rectBarre.y + 1
@@ -720,6 +721,7 @@ class CaseEvenement(GridCellRenderer):
         # Calcul de la largeur d'un bouton
         nbre_evenements = len(self.case.liste_evenements)
         marge = 2
+        largeur_bouton = 0
         if len(self.case.liste_evenements) :
             largeur_bouton = (1.0 * (rectCase.width - marge -1) / nbre_evenements) - marge*2
 

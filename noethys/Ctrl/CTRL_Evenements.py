@@ -142,6 +142,7 @@ class CTRL(CT.CustomTreeCtrl):
         elif len(self.listeActivites) == 1 : conditionActivites = "(%d)" % self.listeActivites[0]
         else : conditionActivites = str(tuple(self.listeActivites))
 
+        conditionPeriode = ""
         if self.periode != None :
             if self.periode[0] == "periode" :
                 conditionPeriode = "AND date>='%s' AND date<='%s' " % (self.periode[1][0], self.periode[1][1])
@@ -150,9 +151,6 @@ class CTRL(CT.CustomTreeCtrl):
                 if len(listeDates) == 0: conditionPeriode = "AND date=''"
                 elif len(listeDates) == 1: conditionPeriode = "AND date='%s'" % listeDates[0]
                 else: conditionPeriode = "AND date IN %s" % str(tuple(listeDates))
-        else :
-            conditionPeriode = ""
-
         DB = GestionDB.DB()
         req = """SELECT IDevenement, evenements.IDactivite, date, evenements.nom, heure_debut, heure_fin,
         activites.nom
