@@ -98,6 +98,8 @@ class Gestion():
                 date = donnees["date"]
                 if type(date) in (str, six.text_type):
                     date = UTILS_Dates.DateEngEnDateDD(date)
+            else:
+                raise TypeError("Type de donnée de gestion non supporté : %s" % type(donnees).__name__)
 
             # Vérifie que la date n'est pas dans une période de gestion
             for periode in self.liste_periodes :
