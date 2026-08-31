@@ -357,17 +357,22 @@ class ListView(FastObjectListView):
             if key in dictDetails :
                 dictDetail = dictDetails[key]
                 if dictDetail["nbre"] == 1 :
-                    if key == "attente" : label = _(u"en attente")
-                    if key == "valide" : label = _(u"validé")
-                    if key == "refus" : label = _(u"refusé")
-                    if key == "regle" : label = _(u"réglé")
-                    if key == "pasregle" : label = _(u"non réglé")
+                    dictLabels = {
+                        "attente" : _(u"en attente"),
+                        "valide" : _(u"validé"),
+                        "refus" : _(u"refusé"),
+                        "regle" : _(u"réglé"),
+                        "pasregle" : _(u"non réglé"),
+                    }
                 else :
-                    if key == "attente" : label = _(u"en attente")
-                    if key == "valide" : label = _(u"validés")
-                    if key == "refus" : label = _(u"refusés")
-                    if key == "regle" : label = _(u"réglés")
-                    if key == "pasregle" : label = _(u"non réglés")
+                    dictLabels = {
+                        "attente" : _(u"en attente"),
+                        "valide" : _(u"validés"),
+                        "refus" : _(u"refusés"),
+                        "regle" : _(u"réglés"),
+                        "pasregle" : _(u"non réglés"),
+                    }
+                label = dictLabels[key]
                 texteDetail = u"%d %s (%.2f %s), " % (dictDetail["nbre"], label, dictDetail["montant"], SYMBOLE)
                 texte += texteDetail
         if len(dictDetails) > 0 :
