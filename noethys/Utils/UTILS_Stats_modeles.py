@@ -312,6 +312,9 @@ class HTML():
         DB.Close() 
         
     def GetHTML(self, rubrique=None, page=None, mode="affichage", selectionsCodes=[]):
+        if mode not in ("affichage", "impression") :
+            raise ValueError("Mode inconnu pour GetHTML : %r (attendu 'affichage' ou 'impression')" % (mode,))
+
         if rubrique == None and page == None : 
             tout = True
         else : 
@@ -331,7 +334,7 @@ class HTML():
             html += u"""</FONT></BODY></HTML>"""
 
         # Mode 'impression'
-        if mode == "impression" :
+        else :
             html = u"""<HTML><BODY>"""
             numRubrique = 1
             numPage = 0
