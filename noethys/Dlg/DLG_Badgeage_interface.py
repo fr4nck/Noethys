@@ -843,9 +843,9 @@ class CTRL_Interface(wx.Panel):
                     badgeage_debut = maintenant
                 else:
                     # Si on doit modifier une conso existante
-                    heureDebut = conso.heure_debut
+                    heureDebut = conso_a_modifier.heure_debut
                     heureFin = heure
-                    badgeage_debut = conso.badgeage_debut
+                    badgeage_debut = conso_a_modifier.badgeage_debut
                     badgeage_fin = maintenant
 
                     # On Vérifie que le badgeage de début date de plus d'une minute
