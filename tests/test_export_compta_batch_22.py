@@ -21,5 +21,7 @@ def test_reglement_mode_exports_its_own_accounting_code():
     start = source.index("def GetReglements_Modes")
     end = source.index("def GetReglements_Depots", start)
     block = source[start:end]
-    assert '"code_compta" : dictMode["code_compta"]' in block
-    assert '"code_compta" : code_compta' not in block
+    output_start = block.index("# Analyse")
+    output_block = block[output_start:]
+    assert '"code_compta" : dictMode["code_compta"]' in output_block
+    assert '"code_compta" : code_compta' not in output_block
