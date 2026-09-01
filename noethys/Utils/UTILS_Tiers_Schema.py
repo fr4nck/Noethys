@@ -19,6 +19,17 @@ TABLES_062A = ("structures", "structures_contacts")
 TABLES_062B = ("interventions",)
 TABLES_062B_COMPLET = TABLES_062A + TABLES_062B
 
+# Contrats indépendants : ils permettent d'enrichir le référentiel sans changer
+# le comportement historique d'AssurerSchema062B(), déjà utilisé pour les
+# premières interventions.
+TABLES_062B_GROUPES = ("structures_groupes",)
+TABLES_062B_GROUPES_COMPLET = TABLES_062A + TABLES_062B_GROUPES
+TABLES_062B_ROLES_CONTACTS = TABLES_062A + ("structures_roles_contacts",)
+TABLES_062B_REFERENTIEL = TABLES_062A + (
+    "structures_groupes",
+    "structures_roles_contacts",
+)
+
 
 def _descriptions_attendues(nom_table):
     return tuple(DATA_Structures.DB_STRUCTURES[nom_table])
@@ -93,9 +104,6 @@ def _metadata_table(db, nom_table):
             colonnes[nom] = {
                 "type": type_sql,
                 "pk": bool(pk),
-                # En SQLite, INTEGER PRIMARY KEY est l'alias du rowid ;
-                # AUTOINCREMENT n'est pas nécessaire à l'identité du champ mais
-                # le contrat Noethys le déclare pour éviter la réutilisation.
                 "auto": bool(pk) and _categorie_type(type_sql) == "integer",
             }
     else:
@@ -228,3 +236,33 @@ def AssurerSchema062B(db, appliquer=False):
     ces liens restent optionnels et pourront être enrichis ensuite.
     """
     return _assurer_schema(db, TABLES_062B_COMPLET, appliquer=appliquer)
+
+
+def InspecterSchema062BGroupes(db):
+    """Inspecte structures, contacts et groupes libres sans écrire en base."""
+    return InspecterSchema(db, tables=TABLES_062B_GROUPES_COMPLET)
+
+
+def AssurerSchema062BGroupes(db, appliquer=False):
+    """Active explicitement les groupes libres des tiers."""
+    return _assurer_schema(db, TABLES_062B_GROUPES_COMPLET, appliquer=appliquer)
+
+
+def InspecterSchema062BRolesContacts(db):
+    """Inspecte le lot autonome des rôles métier de contacts."""
+    return InspecterSchema(db, tables=TABLES_062B_ROLES_CONTACTS)
+
+
+def AssurerSchema062BRolesContacts(db, appliquer=False):
+    """Active explicitement les rôles de contacts sans toucher aux autres lots."""
+    return _assurer_schema(db, TABLES_062B_ROLES_CONTACTS, appliquer=appliquer)
+
+
+def InspecterSchema062BReferentiel(db):
+    """Inspecte le référentiel 062B consolidé : tiers, groupes et rôles."""
+    return InspecterSchema(db, tables=TABLES_062B_REFERENTIEL)
+
+
+def AssurerSchema062BReferentiel(db, appliquer=False):
+    """Active en une passe les groupes et rôles sur un socle tiers conforme."""
+    return _assurer_schema(db, TABLES_062B_REFERENTIEL, appliquer=appliquer)
