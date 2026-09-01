@@ -918,8 +918,11 @@ class Dialog(wx.Dialog):
     def GetLabelParametres(self):
         """ Renvoie les paramètres pour impression """
         nom = self.ctrl_nom.GetValue()
-        if self.ctrl_date.GetDate() != None :
-            date = UTILS_Dates.DateEngFr(str(self.ctrl_date.GetDate()))
+        date = self.ctrl_date.GetDate()
+        if date != None :
+            date = UTILS_Dates.DateEngFr(str(date))
+        else :
+            date = u""
         texte = _(u"Prélèvement : '%s' (%s)") % (nom, date)
         return texte
     
