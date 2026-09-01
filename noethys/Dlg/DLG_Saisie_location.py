@@ -23,6 +23,7 @@ from Utils import UTILS_Customize
 from Utils import UTILS_Locations
 from Utils import UTILS_Gestion
 from Utils import UTILS_Historique
+from Utils import UTILS_Locations_Recurrence
 from Dlg import DLG_Messagebox
 import GestionDB
 from Ol import OL_Locations_prestations
@@ -1019,113 +1020,8 @@ class Dialog(wx.Dialog):
 
     def Calcule_occurences(self, dictDonnees={}):
         """ Calcule les occurences """
-        liste_resultats = []
-        date_debut = dictDonnees["date_debut"]
-        date_fin = dictDonnees["date_fin"]
-        heure_debut = dictDonnees["heure_debut"]
-        heure_fin = dictDonnees["heure_fin"]
-        jours_vacances = dictDonnees["jours_vacances"]
-        jours_scolaires = dictDonnees["jours_scolaires"]
-        semaines = dictDonnees["semaines"]
-        feries = dictDonnees["feries"]
+        return UTILS_Locations_Recurrence.CalculerOccurrences(dictDonnees)
 
-        # Importation vacances et fériés
-        DB = GestionDB.DB()
-        req = """SELECT date_debut, date_fin, nom, annee FROM vacances ORDER BY date_debut;"""
-        DB.ExecuterReq(req)
-        listeVacances = DB.ResultatReq()
-        req = """SELECT type, nom, jour, mois, annee FROM jours_feries;"""
-        DB.ExecuterReq(req)
-        listeFeries = DB.ResultatReq()
-        DB.Close()
-
-        def EstEnVacances( dateDD):
-            date = str(dateDD)
-            for valeurs in listeVacances:
-                date_debut = valeurs[0]
-                date_fin = valeurs[1]
-                if date >= date_debut and date <= date_fin:
-                    return True
-            return False
-
-        def EstFerie(dateDD):
-            jour = dateDD.day
-            mois = dateDD.month
-            annee = dateDD.year
-            for type, nom, jourTmp, moisTmp, anneeTmp in listeFeries:
-                jourTmp = int(jourTmp)
-                moisTmp = int(moisTmp)
-                anneeTmp = int(anneeTmp)
-                if type == "fixe":
-                    if jourTmp == jour and moisTmp == mois:
-                        return True
-                else:
-                    if jourTmp == jour and moisTmp == mois and anneeTmp == annee:
-                        return True
-            return False
-
-        # Init calendrier
-        date_debut_temp = date_debut
-        date_fin_temp = date_fin
-
-        if "date" in dictDonnees:
-            date = dictDonnees["date"]
-            if date < date_debut_temp:
-                date_debut_temp = date
-            if date > date_fin_temp:
-                date_fin_temp = date
-
-        # Liste dates
-        listeDates = [date_debut, ]
-        tmp = date_debut
-        while tmp < date_fin:
-            tmp += datetime.timedelta(days=1)
-            listeDates.append(tmp)
-
-        date = date_debut
-        numSemaine = copy.copy(semaines)
-        dateTemp = date
-        for date in listeDates:
-
-            # Vérifie période et jour
-            valide = False
-            if EstEnVacances(date):
-                if date.weekday() in jours_vacances:
-                    valide = True
-            else:
-                if date.weekday() in jours_scolaires:
-                    valide = True
-
-            # Calcul le numéro de semaine
-            if len(listeDates) > 0:
-                if date.weekday() < dateTemp.weekday():
-                    numSemaine += 1
-
-            # Fréquence semaines
-            if semaines in (2, 3, 4):
-                if numSemaine % semaines != 0:
-                    valide = False
-
-            # Semaines paires et impaires
-            if valide == True and semaines in (5, 6):
-                numSemaineAnnee = date.isocalendar()[1]
-                if numSemaineAnnee % 2 == 0 and semaines == 6:
-                    valide = False
-                if numSemaineAnnee % 2 != 0 and semaines == 5:
-                    valide = False
-
-            # Vérifie si férié
-            if feries == False and EstFerie(date) == True:
-                valide = False
-
-            # Application
-            if valide == True:
-                date_debut_final = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=int(heure_debut[:2]), minute=int(heure_debut[3:]))
-                date_fin_final = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=int(heure_fin[:2]), minute=int(heure_fin[3:]))
-                liste_resultats.append({"date_debut": date_debut_final, "date_fin": date_fin_final})
-
-            dateTemp = date
-        return liste_resultats
 
 
 if __name__ == u"__main__":
