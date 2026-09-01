@@ -1,0 +1,635 @@
+{
+  "RESULT_UNGUARDED": [
+    {
+      "file": "Ctrl/CTRL_Classes.py",
+      "line": 275,
+      "snippet": "nbre = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ctrl/CTRL_Liste_fichiers.py",
+      "line": 363,
+      "snippet": "description, logo = DB.ResultatReq()[0]"
+    },
+    {
+      "file": "Dlg/DLG_Infos_fichier.py",
+      "line": 100,
+      "snippet": "nbre = self.DB.ResultatReq()[0][0]"
+    },
+    {
+      "file": "Ol/OL_Analytiques.py",
+      "line": 242,
+      "snippet": "nbreVentilations = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Banques.py",
+      "line": 256,
+      "snippet": "nbreFamilles = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Caisses.py",
+      "line": 238,
+      "snippet": "nbreFamilles = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Caisses.py",
+      "line": 253,
+      "snippet": "nbreFamilles = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Caisses.py",
+      "line": 268,
+      "snippet": "nbreAides = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Categories_operations.py",
+      "line": 235,
+      "snippet": "nbreVentilations = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Categories_produits.py",
+      "line": 257,
+      "snippet": "nbreProduitsRattaches = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Comptes_bancaires.py",
+      "line": 245,
+      "snippet": "nbre = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Comptes_bancaires.py",
+      "line": 260,
+      "snippet": "nbre = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Comptes_bancaires.py",
+      "line": 275,
+      "snippet": "nbre = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Comptes_bancaires.py",
+      "line": 290,
+      "snippet": "nbre = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Comptes_comptables.py",
+      "line": 224,
+      "snippet": "nbreCategorie = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Ecoles.py",
+      "line": 310,
+      "snippet": "nbreClasses = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Ecoles.py",
+      "line": 325,
+      "snippet": "nbreIndividus = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Emetteurs.py",
+      "line": 274,
+      "snippet": "nbreReglements = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Exercices.py",
+      "line": 249,
+      "snippet": "nbreVentilations = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Groupes.py",
+      "line": 268,
+      "snippet": "nbreUnites = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Groupes.py",
+      "line": 283,
+      "snippet": "nbreOuvertures = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Groupes.py",
+      "line": 313,
+      "snippet": "nbreInscriptions = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Groupes.py",
+      "line": 328,
+      "snippet": "nbreConsommations = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Medecins.py",
+      "line": 277,
+      "snippet": "nbreIndividus = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Modes_reglements.py",
+      "line": 295,
+      "snippet": "nbreReglements = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Niveaux_scolaires.py",
+      "line": 291,
+      "snippet": "nbreIndividus = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Perceptions.py",
+      "line": 273,
+      "snippet": "nbreLots = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Prefixes_factures.py",
+      "line": 227,
+      "snippet": "nbreFactures = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Produits.py",
+      "line": 342,
+      "snippet": "nbreLocationsRattachees = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Regies_factures.py",
+      "line": 227,
+      "snippet": "nbreFactures = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Regimes.py",
+      "line": 238,
+      "snippet": "nbreCaisses = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Releves_compta.py",
+      "line": 242,
+      "snippet": "nbreOperations = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Restaurateurs.py",
+      "line": 277,
+      "snippet": "nbreUnites = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Restaurateurs.py",
+      "line": 292,
+      "snippet": "nbreMenus = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Tiers.py",
+      "line": 218,
+      "snippet": "nbreOperations = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Types_cotisations.py",
+      "line": 267,
+      "snippet": "nbreCotisations = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Types_cotisations.py",
+      "line": 282,
+      "snippet": "nbreActivites = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Types_maladies.py",
+      "line": 240,
+      "snippet": "nbreVaccins = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Types_pieces.py",
+      "line": 275,
+      "snippet": "nbrePieces = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Types_pieces.py",
+      "line": 290,
+      "snippet": "nbreActivites = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Types_quotients.py",
+      "line": 249,
+      "snippet": "nbreTarifs = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Types_vaccins.py",
+      "line": 343,
+      "snippet": "nbreVaccins = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Unites.py",
+      "line": 266,
+      "snippet": "nbreUnites = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Unites.py",
+      "line": 281,
+      "snippet": "nbreOuvertures = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Unites.py",
+      "line": 296,
+      "snippet": "nbreCombiTarifs = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Unites.py",
+      "line": 311,
+      "snippet": "nbreCombiAides = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Unites_cotisations.py",
+      "line": 315,
+      "snippet": "nbreCotisations = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Unites_remplissage.py",
+      "line": 260,
+      "snippet": "nbreRemplissages = int(DB.ResultatReq()[0][0])"
+    },
+    {
+      "file": "Ol/OL_Utilisateurs.py",
+      "line": 295,
+      "snippet": "nbreConso = int(DB.ResultatReq()[0][0])"
+    }
+  ],
+  "RESULT_ASSIGN": [
+    {
+      "file": "Ctrl/CTRL_Assistant_base.py",
+      "line_assign": 822,
+      "line_access": 823,
+      "snippet_assign": "listeTemp = DB.ResultatReq()",
+      "snippet_access": "if listeTemp[0][0] == None:"
+    },
+    {
+      "file": "Ctrl/CTRL_Attestations_selection.py",
+      "line_assign": 523,
+      "line_access": 525,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "if listeDonnees[0][0] == None :"
+    },
+    {
+      "file": "Ctrl/CTRL_Commande_repas_auto.py",
+      "line_assign": 129,
+      "line_access": 131,
+      "snippet_assign": "resultat = DB.ResultatReq()",
+      "snippet_access": "if resultat and resultat[0] and resultat[0][0]:"
+    },
+    {
+      "file": "Ctrl/CTRL_Depot_prestations.py",
+      "line_assign": 78,
+      "line_access": 79,
+      "snippet_assign": "liste_donnees = DB.ResultatReq()",
+      "snippet_access": "montant_depot = liste_donnees[0][0]"
+    },
+    {
+      "file": "Ctrl/CTRL_Detail_aides.py",
+      "line_assign": 118,
+      "line_access": 120,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "self.IDcompte_payeur = listeDonnees[0][0] if listeDonnees else 0"
+    },
+    {
+      "file": "Ctrl/CTRL_Numfacture.py",
+      "line_assign": 138,
+      "line_access": 139,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "totalActuel = listeDonnees[0][1] if listeDonnees else 0.0"
+    },
+    {
+      "file": "Ctrl/CTRL_Photo.py",
+      "line_assign": 329,
+      "line_access": 331,
+      "snippet_assign": "resultats = DB.ResultatReq()",
+      "snippet_access": "if not resultats or resultats[0][0] is None:"
+    },
+    {
+      "file": "Ctrl/CTRL_Portail_pages.py",
+      "line_assign": 725,
+      "line_access": 726,
+      "snippet_assign": "listeTemp = DB.ResultatReq()",
+      "snippet_access": "if len(listeTemp) == 0 or listeTemp[0][0] == None :"
+    },
+    {
+      "file": "Ctrl/CTRL_Portail_pages.py",
+      "line_assign": 878,
+      "line_access": 879,
+      "snippet_assign": "listeTemp = DB.ResultatReq()",
+      "snippet_access": "if len(listeTemp) == 0 or listeTemp[0][0] == None :"
+    },
+    {
+      "file": "Ctrl/CTRL_Repartition.py",
+      "line_assign": 118,
+      "line_access": 120,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "self.IDcompte_payeur = listeDonnees[0][0] if listeDonnees else 0"
+    },
+    {
+      "file": "Ctrl/CTRL_Tarification_calcul.py",
+      "line_assign": 909,
+      "line_access": 910,
+      "snippet_assign": "listeTemp = DB.ResultatReq()",
+      "snippet_access": "if listeTemp[0][0] == None :"
+    },
+    {
+      "file": "Dlg/DLG_Apercu_fusion_emails.py",
+      "line_assign": 183,
+      "line_access": 185,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "categorie, nom, description, objet, texte_xml, IDadresse, defaut = listeDonnees[0]"
+    },
+    {
+      "file": "Dlg/DLG_Badgeage_interface.py",
+      "line_assign": 105,
+      "line_access": 106,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "nom, abrege, date_debut, date_fin = listeDonnees[0]"
+    },
+    {
+      "file": "Dlg/DLG_Factures_generation_parametres.py",
+      "line_assign": 765,
+      "line_access": 767,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "if listeDonnees[0][0] == None:"
+    },
+    {
+      "file": "Dlg/DLG_Factures_generation_selection.py",
+      "line_assign": 227,
+      "line_access": 229,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "if listeDonnees[0][0] == None :"
+    },
+    {
+      "file": "Dlg/DLG_Famille.py",
+      "line_assign": 574,
+      "line_access": 576,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "IDcompte_payeur = listeDonnees[0][0]"
+    },
+    {
+      "file": "Dlg/DLG_Famille.py",
+      "line_assign": 787,
+      "line_access": 789,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "IDcompte_payeur = listeDonnees[0][0]"
+    },
+    {
+      "file": "Dlg/DLG_Famille_factures.py",
+      "line_assign": 263,
+      "line_access": 265,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "self.IDcompte_payeur = listeDonnees[0][0] if listeDonnees else 0"
+    },
+    {
+      "file": "Dlg/DLG_Famille_reglements.py",
+      "line_assign": 81,
+      "line_access": 83,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "activation = listeDonnees[0][1] if listeDonnees else None"
+    },
+    {
+      "file": "Dlg/DLG_Famille_reglements.py",
+      "line_assign": 123,
+      "line_access": 125,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "if listeDonnees and listeDonnees[0][1] != None :"
+    },
+    {
+      "file": "Dlg/DLG_Famille_reglements.py",
+      "line_assign": 164,
+      "line_access": 166,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "if listeDonnees and listeDonnees[0][1] != None :"
+    },
+    {
+      "file": "Dlg/DLG_Image_interactive.py",
+      "line_assign": 168,
+      "line_access": 169,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "self.categorie, self.IDdonnee = listeDonnees[0]"
+    },
+    {
+      "file": "Dlg/DLG_Inscription.py",
+      "line_assign": 792,
+      "line_access": 794,
+      "snippet_assign": "listeActivites = DB.ResultatReq()",
+      "snippet_access": "nom, abrege, date_debut, date_fin, nbre_inscrits_max, inscriptions_multiples = listeActivites[0]"
+    },
+    {
+      "file": "Dlg/DLG_Noedoc.py",
+      "line_assign": 5492,
+      "line_access": 5494,
+      "snippet_assign": "donneesLogo = DB.ResultatReq()",
+      "snippet_access": "buffer = donneesLogo[0][0] if donneesLogo else None"
+    },
+    {
+      "file": "Dlg/DLG_Ouvertures.py",
+      "line_assign": 678,
+      "line_access": 679,
+      "snippet_assign": "listeTemp = DB.ResultatReq()",
+      "snippet_access": "if listeTemp[0][0] == None:"
+    },
+    {
+      "file": "Dlg/DLG_Rappels_generation_selection.py",
+      "line_assign": 201,
+      "line_access": 203,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "if listeDonnees[0][0] == None :"
+    },
+    {
+      "file": "Dlg/DLG_Saisie_categorie_question.py",
+      "line_assign": 132,
+      "line_access": 133,
+      "snippet_assign": "listeTemp = DB.ResultatReq()",
+      "snippet_access": "ordre = listeTemp[0][0]"
+    },
+    {
+      "file": "Dlg/DLG_Saisie_classe.py",
+      "line_assign": 185,
+      "line_access": 187,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "nom = listeDonnees[0][0]"
+    },
+    {
+      "file": "Dlg/DLG_Saisie_contrat.py",
+      "line_assign": 165,
+      "line_access": 167,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "self.IDactivite, self.nomActivite = listeDonnees[0]"
+    },
+    {
+      "file": "Dlg/DLG_Saisie_contrat.py",
+      "line_assign": 177,
+      "line_access": 179,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "self.IDactivite, self.nomActivite, self.IDcompte_payeur, self.IDfamille, self.IDcategorie_tarif, sel"
+    },
+    {
+      "file": "Dlg/DLG_Saisie_contratpsu.py",
+      "line_assign": 603,
+      "line_access": 604,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "IDindividu, IDfamille, IDactivite, IDgroupe, IDcategorie_tarif, IDcompte_payeur, date_inscription, p"
+    },
+    {
+      "file": "Dlg/DLG_Saisie_contratpsu.py",
+      "line_assign": 636,
+      "line_access": 637,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "psu_unite_prevision, psu_unite_presence, psu_tarif_forfait, psu_etiquette_rtt = listeDonnees[0]"
+    },
+    {
+      "file": "Dlg/DLG_Saisie_inscriptions_scolaires.py",
+      "line_assign": 547,
+      "line_access": 550,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "nomEcole = listeDonnees[0][0]"
+    },
+    {
+      "file": "Dlg/DLG_Saisie_location_demande.py",
+      "line_assign": 963,
+      "line_access": 964,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "date, IDfamille, observations, categories, produits, statut, motif_refus, IDlocation = listeDonnees["
+    },
+    {
+      "file": "Dlg/DLG_Saisie_modele_prestation.py",
+      "line_assign": 579,
+      "line_access": 580,
+      "snippet_assign": "listeTemp = DB.ResultatReq()",
+      "snippet_access": "if listeTemp[0][0] == None:"
+    },
+    {
+      "file": "Dlg/DLG_Saisie_portail_bloc.py",
+      "line_assign": 618,
+      "line_access": 619,
+      "snippet_assign": "listeTemp = DB.ResultatReq()",
+      "snippet_access": "if len(listeTemp) == 0 or listeTemp[0][0] == None :"
+    },
+    {
+      "file": "Dlg/DLG_Saisie_produit.py",
+      "line_assign": 550,
+      "line_access": 551,
+      "snippet_assign": "listeTemp = DB.ResultatReq()",
+      "snippet_access": "if listeTemp[0][0] == None:"
+    },
+    {
+      "file": "Dlg/DLG_Saisie_question.py",
+      "line_assign": 716,
+      "line_access": 717,
+      "snippet_assign": "listeTemp = DB.ResultatReq()",
+      "snippet_access": "ordre = listeTemp[0][0]"
+    },
+    {
+      "file": "Dlg/DLG_Saisie_typesPieces.py",
+      "line_assign": 285,
+      "line_access": 287,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "nom, public, duree_validite, valide_rattachement = listeDonnees[0]"
+    },
+    {
+      "file": "FonctionsPerso.py",
+      "line_assign": 1301,
+      "line_access": 1303,
+      "snippet_assign": "listeTemp = DB.ResultatReq()",
+      "snippet_access": "IDfichier = listeTemp[0][2]"
+    },
+    {
+      "file": "GestionDB.py",
+      "line_assign": 565,
+      "line_access": 566,
+      "snippet_assign": "temp = self.ResultatReq()",
+      "snippet_access": "if temp[0][0] == None :"
+    },
+    {
+      "file": "Ol/OL_Inscriptions_scolaires.py",
+      "line_assign": 346,
+      "line_access": 349,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "IDecole = listeDonnees[0][0]"
+    },
+    {
+      "file": "Ol/OL_Reglements.py",
+      "line_assign": 585,
+      "line_access": 586,
+      "snippet_assign": "listeFamilles = DB.ResultatReq()",
+      "snippet_access": "IDfamille = listeFamilles[0][0] if listeFamilles else None"
+    },
+    {
+      "file": "Utils/UTILS_Export_noethysweb.py",
+      "line_assign": 1281,
+      "line_access": 1282,
+      "snippet_assign": "liste_logo = self.parent.DB.ResultatReq()",
+      "snippet_access": "logo = liste_logo[0][0] if liste_logo else None"
+    },
+    {
+      "file": "Utils/UTILS_Portail_synchro.py",
+      "line_assign": 1644,
+      "line_access": 1645,
+      "snippet_assign": "listeTemp = DB.ResultatReq()",
+      "snippet_access": "if not listeTemp or listeTemp[0][0] is None:"
+    },
+    {
+      "file": "Utils/UTILS_Procedures.py",
+      "line_assign": 1657,
+      "line_access": 1664,
+      "snippet_assign": "listeActivites = DB.ResultatReq()",
+      "snippet_access": "IDactivite, nom = listeActivites[index]"
+    },
+    {
+      "file": "Utils/UTILS_Procedures.py",
+      "line_assign": 1678,
+      "line_access": 1684,
+      "snippet_assign": "listeInscriptions = DB.ResultatReq()",
+      "snippet_access": "listeIDinscription = [listeInscriptions[index][0]"
+    },
+    {
+      "file": "Utils/UTILS_Procedures.py",
+      "line_assign": 1740,
+      "line_access": 1747,
+      "snippet_assign": "listeUnites = DB.ResultatReq()",
+      "snippet_access": "IDunite, nom_unite, nom_activite = listeUnites[index]"
+    },
+    {
+      "file": "Utils/UTILS_Procedures.py",
+      "line_assign": 1776,
+      "line_access": 1783,
+      "snippet_assign": "listeActivites = DB.ResultatReq()",
+      "snippet_access": "IDactivite = listeActivites[index][0]"
+    },
+    {
+      "file": "Utils/UTILS_Stats_familles.py",
+      "line_assign": 49,
+      "line_access": 51,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "if listeDonnees[0][0] == None or listeDonnees[0][1] == None :"
+    },
+    {
+      "file": "Utils/UTILS_Stats_familles.py",
+      "line_assign": 333,
+      "line_access": 340,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "if len(listeDonnees) == 0 or listeDonnees[0][0] == 0 :"
+    },
+    {
+      "file": "Utils/UTILS_Stats_individus.py",
+      "line_assign": 47,
+      "line_access": 49,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "if listeDonnees[0][0] == None or listeDonnees[0][1] == None :"
+    },
+    {
+      "file": "Utils/UTILS_Stats_individus.py",
+      "line_assign": 305,
+      "line_access": 306,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "cp, ville = listeDonnees[0]"
+    },
+    {
+      "file": "Utils/UTILS_Stats_individus.py",
+      "line_assign": 617,
+      "line_access": 624,
+      "snippet_assign": "listeDonnees = DB.ResultatReq()",
+      "snippet_access": "if len(listeDonnees) == 0 or listeDonnees[0][0] == 0 :"
+    }
+  ],
+  "DB_UNCLOSED": [],
+  "BARE_EXCEPT": [],
+  "PY2_BUILTINS": [],
+  "UNSAFE_EXEC": [],
+  "INVALID_ESCAPE": [],
+  "ENCODING_MBCS": []
+}

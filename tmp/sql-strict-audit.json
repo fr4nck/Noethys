@@ -1,0 +1,3060 @@
+{
+  "counts": {
+    "REVIEW": 150,
+    "DEDUPE": 11,
+    "SAFE": 77
+  },
+  "findings": [
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Assistant_annuelle.py",
+      "line": 144,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : activites.nom, activites.date_debut, activites.date_fin",
+      "ungrouped_items": [
+        "activites.nom",
+        "activites.date_debut",
+        "activites.date_fin"
+      ],
+      "sql": "SELECT activites.IDactivite, activites.nom, activites.date_debut, activites.date_fin\n        FROM activites\n        LEFT JOIN tarifs ON tarifs.IDactivite = activites.IDactivite\n        WHERE type='FORFAIT' AND forfait_saisie_auto=1 AND forfait_suppression_auto=1 AND activites.date_debut IS NOT NULL and activites.date_fin IS NOT NULL\n        GROUP BY activites.IDactivite\n        ORDER BY activites.date_debut DESC;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Attestations_selection.py",
+      "line": 98,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDcompte_payeur, prestations.date, categorie, label, ...",
+      "ungrouped_items": [
+        "prestations.IDcompte_payeur",
+        "prestations.date",
+        "categorie",
+        "label",
+        "prestations.montant_initial",
+        "prestations.montant",
+        "prestations.tva",
+        "prestations.IDactivite",
+        "activites.nom",
+        "activites.abrege",
+        "prestations.IDtarif",
+        "noms_tarifs.nom",
+        "categories_tarifs.nom",
+        "IDfacture",
+        "prestations.IDindividu",
+        "prestations.IDfamille",
+        "forfait_date_debut",
+        "forfait_date_fin"
+      ],
+      "sql": "\n    SELECT prestations.IDprestation, prestations.IDcompte_payeur, prestations.date, categorie, \n    label, prestations.montant_initial, prestations.montant, prestations.tva,\n    prestations.IDactivite, activites.nom, activites.abrege,\n    prestations.IDtarif, noms_tarifs.nom, categories_tarifs.nom, IDfacture, \n    prestations.IDindividu, prestations.IDfamille, forfait_date_debut, forfait_date_fin\n    FROM prestations\n    LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n    LEFT JOIN tarifs ON prestations.IDtarif = tarifs.IDtarif\n    LEFT JOIN noms_tarifs ON tarifs.IDnom_tarif = noms_tarifs.IDnom_tarif\n    LEFT JOIN categories_tarifs ON tarifs.IDcategorie_tarif = categories_tarifs.IDcategorie_tarif\n    LEFT JOIN individus ON individus.IDindividu = prestations.IDindividu\n    WHERE (prestations.IDactivite IN %s OR prestations.IDactivite IS NULL)\n    AND %s\n    %s\n    GROUP BY prestations.IDprestation\n    ORDER BY prestations.date\n    ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Badgeage_controles.py",
+      "line": 54,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : nom, prenom",
+      "ungrouped_items": [
+        "nom",
+        "prenom"
+      ],
+      "sql": "SELECT individus.IDindividu, nom, prenom \n                    FROM individus \n                    LEFT JOIN inscriptions ON inscriptions.IDindividu = individus.IDindividu\n                    WHERE inscriptions.statut='ok'\n                    AND inscriptions.IDactivite IN %s\n                    AND (date_desinscription IS NULL OR date_desinscription>='%s')\n                    GROUP BY individus.IDindividu\n                    ORDER BY nom, prenom;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Badgeage_controles.py",
+      "line": 271,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDcivilite, nom, prenom",
+      "ungrouped_items": [
+        "IDcivilite",
+        "nom",
+        "prenom"
+      ],
+      "sql": "SELECT individus.IDindividu, IDcivilite, nom, prenom \n                        FROM individus \n                        LEFT JOIN inscriptions ON inscriptions.IDindividu = individus.IDindividu\n                        WHERE inscriptions.statut='ok' AND inscriptions.IDactivite IN %s\n                        AND (date_desinscription IS NULL OR date_desinscription>='%s')\n                        GROUP BY individus.IDindividu\n                        ORDER BY nom, prenom;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Calendrier.py",
+      "line": 731,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : date",
+      "ungrouped_items": [
+        "date"
+      ],
+      "sql": "\n        SELECT date\n        FROM presences\n        WHERE date >= '%s' And date <= '%s'\n        GROUP BY presences.date;\n        "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Detail_aides.py",
+      "line": 158,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : aides.IDfamille, aides.IDactivite, activites.abrege, aides.nom, ...",
+      "ungrouped_items": [
+        "aides.IDfamille",
+        "aides.IDactivite",
+        "activites.abrege",
+        "aides.nom",
+        "aides.date_debut",
+        "aides.date_fin",
+        "aides.IDcaisse",
+        "caisses.nom",
+        "aides.montant_max",
+        "aides.nbre_dates_max"
+      ],
+      "sql": "SELECT \n        aides.IDaide, aides.IDfamille, \n        aides.IDactivite, activites.abrege, \n        aides.nom, aides.date_debut, aides.date_fin, \n        aides.IDcaisse, caisses.nom,\n        aides.montant_max, aides.nbre_dates_max,\n        SUM(deductions.montant) as total_deductions,\n        COUNT(deductions.IDdeduction) as nbre_deductions\n        FROM aides\n        LEFT JOIN activites ON activites.IDactivite = aides.IDactivite\n        LEFT JOIN caisses ON caisses.IDcaisse = aides.IDcaisse\n        LEFT JOIN deductions ON deductions.IDaide = aides.IDaide\n        %s\n        GROUP BY aides.IDaide\n        ORDER BY aides.date_debut\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Grille.py",
+      "line": 1834,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDcompte_payeur, date, categorie, label, ...",
+      "ungrouped_items": [
+        "prestations.IDcompte_payeur",
+        "date",
+        "categorie",
+        "label",
+        "prestations.montant_initial",
+        "prestations.montant",
+        "IDactivite",
+        "IDtarif",
+        "IDfacture",
+        "IDfamille",
+        "IDindividu",
+        "forfait",
+        "temps_facture",
+        "IDcategorie_tarif",
+        "forfait_date_debut",
+        "forfait_date_fin",
+        "code_compta",
+        "code_produit_local",
+        "tva"
+      ],
+      "sql": "SELECT prestations.IDprestation, prestations.IDcompte_payeur, date, categorie, label, \n        prestations.montant_initial, prestations.montant, IDactivite, IDtarif, IDfacture, IDfamille, IDindividu, forfait, temps_facture, IDcategorie_tarif,\n        SUM(ventilation.montant), forfait_date_debut, forfait_date_fin, code_compta, code_produit_local, tva\n        FROM prestations\n        LEFT JOIN ventilation ON ventilation.IDprestation = prestations.IDprestation\n        %s\n        GROUP BY prestations.IDprestation;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Grille_activite3.py",
+      "line": 73,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : nom, abrege, date_debut, date_fin",
+      "ungrouped_items": [
+        "nom",
+        "abrege",
+        "date_debut",
+        "date_fin"
+      ],
+      "sql": "SELECT activites.IDactivite, nom, abrege, date_debut, date_fin\n        FROM activites\n        LEFT JOIN ouvertures ON ouvertures.IDactivite = activites.IDactivite\n        WHERE ouvertures.date='%s'\n        GROUP BY activites.IDactivite\n        ORDER BY nom;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Grille_activite3.py",
+      "line": 291,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : activites.nom, activites.abrege, date_debut, date_fin, ...",
+      "ungrouped_items": [
+        "activites.nom",
+        "activites.abrege",
+        "date_debut",
+        "date_fin",
+        "groupes.nom"
+      ],
+      "sql": "SELECT\n        activites.IDactivite, activites.nom, activites.abrege,\n        date_debut, date_fin,\n        groupes.IDgroupe, groupes.nom\n        FROM activites\n        LEFT JOIN ouvertures ON ouvertures.IDactivite = activites.IDactivite\n        LEFT JOIN groupes ON groupes.IDgroupe = ouvertures.IDgroupe\n        WHERE ouvertures.date='%s'\n        GROUP BY groupes.IDgroupe, activites.IDactivite\n        ORDER BY groupes.ordre;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Grille_ecoles.py",
+      "line": 186,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : ecoles.nom, classes.IDclasse, classes.nom, classes.niveaux, ...",
+      "ungrouped_items": [
+        "ecoles.nom",
+        "classes.IDclasse",
+        "classes.nom",
+        "classes.niveaux",
+        "classes.date_debut",
+        "classes.date_fin"
+      ],
+      "sql": "SELECT ecoles.IDecole, ecoles.nom,\n        classes.IDclasse, classes.nom, classes.niveaux,\n        classes.date_debut, classes.date_fin\n        FROM scolarite\n        LEFT JOIN ecoles ON ecoles.IDecole = scolarite.IDecole\n        LEFT JOIN classes ON classes.IDclasse = scolarite.IDclasse\n        WHERE scolarite.IDclasse IS NOT NULL\n              AND scolarite.date_debut<='{0}' AND scolarite.date_fin>='{0}'\n        GROUP BY scolarite.IDclasse, ecoles.IDecole;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Informations.py",
+      "line": 469,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : types_pieces.nom, types_pieces.public, types_pieces.valide_rattachement, individus.prenom",
+      "ungrouped_items": [
+        "types_pieces.nom",
+        "types_pieces.public",
+        "types_pieces.valide_rattachement",
+        "individus.prenom"
+      ],
+      "sql": "\n        SELECT \n        inscriptions.IDfamille, pieces_activites.IDtype_piece, types_pieces.nom, types_pieces.public, types_pieces.valide_rattachement, individus.prenom, individus.IDindividu\n        FROM pieces_activites \n        LEFT JOIN types_pieces ON types_pieces.IDtype_piece = pieces_activites.IDtype_piece\n        LEFT JOIN inscriptions ON inscriptions.IDactivite = pieces_activites.IDactivite\n        LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n        LEFT JOIN activites ON activites.IDactivite = inscriptions.IDactivite\n        WHERE inscriptions.statut='ok' AND (inscriptions.date_desinscription IS NULL OR inscriptions.date_desinscription>='%s') %s AND activites.date_fin>='%s'\n        GROUP BY inscriptions.IDfamille, pieces_activites.IDtype_piece, individus.IDindividu;\n        "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Informations.py",
+      "line": 596,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDtype_renseignement, individus.prenom",
+      "ungrouped_items": [
+        "IDtype_renseignement",
+        "individus.prenom"
+      ],
+      "sql": "\n        SELECT \n        inscriptions.IDfamille, individus.IDindividu, IDtype_renseignement, individus.prenom\n        FROM renseignements_activites \n        LEFT JOIN inscriptions ON inscriptions.IDactivite = renseignements_activites.IDactivite\n        LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n        LEFT JOIN activites ON activites.IDactivite = inscriptions.IDactivite\n        WHERE inscriptions.statut='ok' AND (inscriptions.date_desinscription IS NULL OR inscriptions.date_desinscription>='%s') %s AND activites.date_fin>='%s'\n        GROUP BY individus.IDindividu, renseignements_activites.IDtype_renseignement, inscriptions.IDfamille;\n        "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Informations.py",
+      "line": 797,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prenom",
+      "ungrouped_items": [
+        "prenom"
+      ],
+      "sql": "\n        SELECT inscriptions.IDindividu, prenom\n        FROM activites\n        LEFT JOIN inscriptions ON inscriptions.IDactivite = activites.IDactivite\n        LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n        WHERE inscriptions.statut='ok' AND (inscriptions.date_desinscription IS NULL OR inscriptions.date_desinscription>='%s') AND vaccins_obligatoires=1 %s AND activites.date_fin>='%s'\n        GROUP BY inscriptions.IDindividu;\n        "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Informations.py",
+      "line": 894,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : types_cotisations.nom, types_cotisations.type, individus.prenom",
+      "ungrouped_items": [
+        "types_cotisations.nom",
+        "types_cotisations.type",
+        "individus.prenom"
+      ],
+      "sql": "\n        SELECT \n        inscriptions.IDfamille, cotisations_activites.IDactivite, cotisations_activites.IDtype_cotisation, types_cotisations.nom, types_cotisations.type, individus.prenom, individus.IDindividu\n        FROM cotisations_activites \n        LEFT JOIN types_cotisations ON types_cotisations.IDtype_cotisation = cotisations_activites.IDtype_cotisation\n        LEFT JOIN inscriptions ON inscriptions.IDactivite = cotisations_activites.IDactivite\n        LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n        LEFT JOIN activites ON activites.IDactivite = inscriptions.IDactivite\n        WHERE inscriptions.statut='ok' AND (inscriptions.date_desinscription IS NULL OR inscriptions.date_desinscription>='%s') AND types_cotisations.IDtype_cotisation IS NOT NULL %s AND activites.date_fin>='%s'\n        GROUP BY inscriptions.IDfamille, cotisations_activites.IDtype_cotisation, individus.IDindividu, cotisations_activites.IDactivite;\n        "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Numfacture.py",
+      "line": 101,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : factures.total, factures.regle, factures.solde, etat, ...",
+      "ungrouped_items": [
+        "factures.total",
+        "factures.regle",
+        "factures.solde",
+        "etat",
+        "comptes_payeurs.IDfamille"
+      ],
+      "sql": "\n        SELECT\n        factures.IDfacture, factures.total, factures.regle, factures.solde,\n        SUM(ventilation.montant), etat,\n        comptes_payeurs.IDfamille\n        FROM factures\n        LEFT JOIN prestations ON prestations.IDfacture = factures.IDfacture\n        LEFT JOIN ventilation ON prestations.IDprestation = ventilation.IDprestation\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = factures.IDcompte_payeur\n        LEFT JOIN factures_prefixes ON factures_prefixes.IDprefixe = factures.IDprefixe\n        %s %s\n        GROUP BY factures.IDfacture\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_ObjectListView.py",
+      "line": 615,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : inscriptions.IDfamille, inscriptions.IDindividu, individus.IDcivilite, individus.nom, ...",
+      "ungrouped_items": [
+        "inscriptions.IDfamille",
+        "inscriptions.IDindividu",
+        "individus.IDcivilite",
+        "individus.nom",
+        "individus.prenom"
+      ],
+      "sql": "SELECT inscriptions.IDinscription, inscriptions.IDfamille, inscriptions.IDindividu, individus.IDcivilite, individus.nom, individus.prenom, SUM(consommations.quantite)\n            FROM consommations\n            LEFT JOIN inscriptions ON inscriptions.IDinscription = consommations.IDinscription\n            LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n            WHERE inscriptions.statut='ok' AND (inscriptions.date_desinscription IS NULL OR inscriptions.date_desinscription>='%s')  %s %s %s %s %s\n            GROUP BY inscriptions.IDinscription\n            ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Pieces_obligatoires.py",
+      "line": 113,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : types_pieces.nom, types_pieces.public, types_pieces.valide_rattachement, individus.prenom",
+      "ungrouped_items": [
+        "types_pieces.nom",
+        "types_pieces.public",
+        "types_pieces.valide_rattachement",
+        "individus.prenom"
+      ],
+      "sql": "\n        SELECT\n        inscriptions.IDfamille, pieces_activites.IDtype_piece, types_pieces.nom, types_pieces.public, types_pieces.valide_rattachement, individus.prenom, individus.IDindividu\n        FROM pieces_activites\n        LEFT JOIN types_pieces ON types_pieces.IDtype_piece = pieces_activites.IDtype_piece\n        LEFT JOIN inscriptions ON inscriptions.IDactivite = pieces_activites.IDactivite\n        LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n        LEFT JOIN activites ON activites.IDactivite = inscriptions.IDactivite\n        WHERE inscriptions.statut='ok' AND activites.date_fin>='%s' %s\n        GROUP BY inscriptions.IDfamille, pieces_activites.IDtype_piece, individus.IDindividu;\n        "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Repartition.py",
+      "line": 201,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : reglements.IDcompte_payeur, reglements.date, reglements.IDmode, modes_reglements.label, ...",
+      "ungrouped_items": [
+        "reglements.IDcompte_payeur",
+        "reglements.date",
+        "reglements.IDmode",
+        "modes_reglements.label",
+        "reglements.IDemetteur",
+        "emetteurs.nom",
+        "reglements.numero_piece",
+        "reglements.montant",
+        "payeurs.IDpayeur",
+        "payeurs.nom",
+        "reglements.observations",
+        "numero_quittancier",
+        "IDprestation_frais",
+        "reglements.IDcompte",
+        "date_differe",
+        "encaissement_attente",
+        "reglements.IDdepot",
+        "depots.date",
+        "depots.nom",
+        "depots.verrouillage",
+        "date_saisie",
+        "IDutilisateur"
+      ],
+      "sql": "SELECT\n        reglements.IDreglement, reglements.IDcompte_payeur, reglements.date,\n        reglements.IDmode, modes_reglements.label,\n        reglements.IDemetteur, emetteurs.nom,\n        reglements.numero_piece, reglements.montant,\n        payeurs.IDpayeur, payeurs.nom,\n        reglements.observations, numero_quittancier, IDprestation_frais, reglements.IDcompte, date_differe,\n        encaissement_attente,\n        reglements.IDdepot, depots.date, depots.nom, depots.verrouillage,\n        date_saisie, IDutilisateur,\n        SUM(ventilation.montant) AS total_ventilation\n        FROM reglements\n        LEFT JOIN ventilation ON reglements.IDreglement = ventilation.IDreglement\n        LEFT JOIN modes_reglements ON reglements.IDmode=modes_reglements.IDmode\n        LEFT JOIN emetteurs ON reglements.IDemetteur=emetteurs.IDemetteur\n        LEFT JOIN payeurs ON reglements.IDpayeur=payeurs.IDpayeur\n        LEFT JOIN depots ON reglements.IDdepot=depots.IDdepot\n        WHERE reglements.IDcompte_payeur=%d\n        GROUP BY reglements.IDreglement\n        ORDER BY reglements.date;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Selection_inscrits_presents.py",
+      "line": 68,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : nom, abrege, date_debut, date_fin",
+      "ungrouped_items": [
+        "nom",
+        "abrege",
+        "date_debut",
+        "date_fin"
+      ],
+      "sql": "SELECT activites.IDactivite, nom, abrege, date_debut, date_fin\n        FROM activites\n        LEFT JOIN ouvertures ON ouvertures.IDactivite = activites.IDactivite\n        WHERE %s\n        GROUP BY activites.IDactivite\n        ORDER BY date_fin DESC;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Selection_lot_conso.py",
+      "line": 35,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : rattachements.IDindividu, individus.nom, individus.prenom",
+      "ungrouped_items": [
+        "rattachements.IDindividu",
+        "individus.nom",
+        "individus.prenom"
+      ],
+      "sql": "SELECT rattachements.IDindividu, individus.nom, individus.prenom\n        FROM rattachements\n        LEFT JOIN individus ON individus.IDindividu = rattachements.IDindividu\n        LEFT JOIN inscriptions ON inscriptions.IDindividu = rattachements.IDindividu\n        WHERE rattachements.IDfamille=%d AND IDcategorie IN (1, 2)\n        AND inscriptions.statut='ok' AND inscriptions.IDactivite IS NOT NULL\n        GROUP BY individus.IDindividu\n        ORDER BY individus.nom, individus.prenom;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Selection_lot_conso.py",
+      "line": 113,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : activites.nom",
+      "ungrouped_items": [
+        "activites.nom"
+      ],
+      "sql": "SELECT inscriptions.IDactivite, activites.nom\n        FROM inscriptions\n        LEFT JOIN activites ON activites.IDactivite = inscriptions.IDactivite\n        WHERE %s\n        GROUP BY inscriptions.IDactivite\n        ORDER BY activites.nom;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Synthese_ventilation.py",
+      "line": 159,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : depots.date, nom, verrouillage, depots.IDcompte",
+      "ungrouped_items": [
+        "depots.date",
+        "nom",
+        "verrouillage",
+        "depots.IDcompte"
+      ],
+      "sql": "SELECT depots.IDdepot, depots.date, nom, verrouillage, depots.IDcompte,\n        SUM(reglements.montant)\n        FROM depots\n        LEFT JOIN reglements ON reglements.IDdepot = depots.IDdepot\n        WHERE depots.IDdepot IN %s\n        GROUP BY depots.IDdepot\n        ORDER BY depots.date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Ticker_presents.py",
+      "line": 128,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : activites.IDactivite, activites.nom, groupes.nom, groupes.ordre",
+      "ungrouped_items": [
+        "activites.IDactivite",
+        "activites.nom",
+        "groupes.nom",
+        "groupes.ordre"
+      ],
+      "sql": "SELECT activites.IDactivite, activites.nom, groupes.IDgroupe, groupes.nom, groupes.ordre, COUNT(IDconso), SUM(quantite)\n        FROM consommations\n        LEFT JOIN activites ON activites.IDactivite = consommations.IDactivite\n        LEFT JOIN groupes ON groupes.IDgroupe = consommations.IDgroupe\n        WHERE consommations.IDactivite IN %s\n        AND date = '%s'\n        AND heure_debut <= '%s'\n        AND heure_fin >= '%s'\n        AND consommations.etat IN (\"reservation\", \"present\")\n        GROUP BY consommations.IDactivite, consommations.IDindividu, groupes.IDgroupe\n        ORDER BY activites.nom, groupes.ordre;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ctrl/CTRL_Ventilation.py",
+      "line": 608,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDcompte_payeur, date, categorie, label, ...",
+      "ungrouped_items": [
+        "prestations.IDcompte_payeur",
+        "date",
+        "categorie",
+        "label",
+        "prestations.montant",
+        "prestations.IDactivite",
+        "activites.nom",
+        "prestations.IDtarif",
+        "noms_tarifs.nom",
+        "categories_tarifs.nom",
+        "prestations.IDfacture",
+        "factures.IDprefixe",
+        "factures_prefixes.prefixe",
+        "factures.numero",
+        "factures.date_edition",
+        "IDfamille",
+        "prestations.IDindividu",
+        "individus.nom",
+        "individus.prenom"
+      ],
+      "sql": "\n        SELECT prestations.IDprestation, prestations.IDcompte_payeur, date, categorie, label, prestations.montant, \n        prestations.IDactivite, activites.nom,\n        prestations.IDtarif, noms_tarifs.nom, categories_tarifs.nom, \n        prestations.IDfacture, factures.IDprefixe, factures_prefixes.prefixe, factures.numero, factures.date_edition,\n        IDfamille, prestations.IDindividu, \n        individus.nom, individus.prenom\n        FROM prestations\n        LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n        LEFT JOIN individus ON prestations.IDindividu = individus.IDindividu\n        LEFT JOIN tarifs ON prestations.IDtarif = tarifs.IDtarif\n        LEFT JOIN noms_tarifs ON tarifs.IDnom_tarif = noms_tarifs.IDnom_tarif\n        LEFT JOIN categories_tarifs ON tarifs.IDcategorie_tarif = categories_tarifs.IDcategorie_tarif\n        LEFT JOIN factures ON prestations.IDfacture = factures.IDfacture\n        LEFT JOIN factures_prefixes ON factures_prefixes.IDprefixe = factures.IDprefixe\n        WHERE prestations.IDcompte_payeur = %d \n        GROUP BY prestations.IDprestation\n        ORDER BY date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Anniversaires.py",
+      "line": 474,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDcivilite, nom, prenom, date_naiss",
+      "ungrouped_items": [
+        "IDcivilite",
+        "nom",
+        "prenom",
+        "date_naiss"
+      ],
+      "sql": "SELECT individus.IDindividu, IDcivilite, nom, prenom, date_naiss\n            FROM consommations \n            LEFT JOIN individus ON individus.IDindividu = consommations.IDindividu\n            WHERE consommations.etat IN (\"reservation\", \"present\")\n            AND IDactivite IN %s AND %s\n            GROUP BY individus.IDindividu\n            ORDER BY nom, prenom\n            ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Anniversaires.py",
+      "line": 498,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDcivilite, nom, prenom, date_naiss",
+      "ungrouped_items": [
+        "IDcivilite",
+        "nom",
+        "prenom",
+        "date_naiss"
+      ],
+      "sql": "SELECT individus.IDindividu, IDcivilite, nom, prenom, date_naiss\n            FROM individus \n            LEFT JOIN inscriptions ON inscriptions.IDindividu = individus.IDindividu\n            WHERE inscriptions.statut='ok' AND IDactivite IN %s\n            GROUP BY individus.IDindividu\n            ORDER BY nom, prenom\n            ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Chronologie.py",
+      "line": 150,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDconso, individus.nom, prenom, consommations.IDactivite, ...",
+      "ungrouped_items": [
+        "IDconso",
+        "individus.nom",
+        "prenom",
+        "consommations.IDactivite",
+        "heure_debut",
+        "heure_fin",
+        "IDunite",
+        "consommations.IDgroupe",
+        "consommations.etat",
+        "groupes.nom",
+        "activites.nom"
+      ],
+      "sql": "SELECT IDconso, consommations.IDindividu, individus.nom, prenom, consommations.IDactivite, \n        date, heure_debut, heure_fin, IDunite, consommations.IDgroupe, consommations.etat, groupes.nom,\n        activites.nom\n        FROM consommations\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = consommations.IDcompte_payeur\n        LEFT JOIN individus ON individus.IDindividu = consommations.IDindividu\n        LEFT JOIN groupes ON groupes.IDgroupe = consommations.IDgroupe\n        LEFT JOIN activites ON activites.IDactivite = consommations.IDactivite\n        %s\n        GROUP BY date, consommations.IDindividu\n        ORDER BY date;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Compta_graphiques.py",
+      "line": 292,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : compta_categories.nom",
+      "ungrouped_items": [
+        "compta_categories.nom"
+      ],
+      "sql": "SELECT compta_operations_budgetaires.IDcategorie, compta_categories.nom, SUM(compta_operations_budgetaires.montant)\n            FROM compta_operations_budgetaires\n            LEFT JOIN compta_categories ON compta_categories.IDcategorie = compta_operations_budgetaires.IDcategorie\n            WHERE compta_operations_budgetaires.type='%s' %s\n            GROUP BY compta_operations_budgetaires.IDcategorie\n            ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Compta_graphiques.py",
+      "line": 306,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : compta_categories.nom",
+      "ungrouped_items": [
+        "compta_categories.nom"
+      ],
+      "sql": "SELECT compta_ventilation.IDcategorie, compta_categories.nom, SUM(compta_ventilation.montant)\n            FROM compta_ventilation\n            LEFT JOIN compta_categories ON compta_categories.IDcategorie = compta_ventilation.IDcategorie\n            WHERE type='%s' %s\n            GROUP BY compta_ventilation.IDcategorie\n            ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Compta_graphiques.py",
+      "line": 375,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : compta_tiers.nom",
+      "ungrouped_items": [
+        "compta_tiers.nom"
+      ],
+      "sql": "SELECT compta_tiers.IDtiers, compta_tiers.nom, SUM(compta_ventilation.montant)\n        FROM compta_tiers\n        LEFT JOIN compta_operations ON compta_operations.IDtiers = compta_tiers.IDtiers\n        LEFT JOIN compta_ventilation ON compta_ventilation.IDoperation = compta_operations.IDoperation\n        WHERE type='%s' %s\n        GROUP BY compta_tiers.IDtiers\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Depots.py",
+      "line": 232,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : reglements.IDcompte_payeur, reglements.date, reglements.IDmode, modes_reglements.label, ...",
+      "ungrouped_items": [
+        "reglements.IDcompte_payeur",
+        "reglements.date",
+        "reglements.IDmode",
+        "modes_reglements.label",
+        "reglements.IDemetteur",
+        "emetteurs.nom",
+        "reglements.numero_piece",
+        "reglements.montant",
+        "payeurs.IDpayeur",
+        "payeurs.nom",
+        "reglements.observations",
+        "numero_quittancier",
+        "IDprestation_frais",
+        "reglements.IDcompte",
+        "date_differe",
+        "encaissement_attente",
+        "reglements.IDdepot",
+        "depots.date",
+        "depots.nom",
+        "depots.verrouillage",
+        "date_saisie",
+        "IDutilisateur",
+        "comptes_bancaires.nom",
+        "familles.IDfamille",
+        "familles.email_depots",
+        "reglements.avis_depot"
+      ],
+      "sql": "SELECT \n        reglements.IDreglement, reglements.IDcompte_payeur, reglements.date, \n        reglements.IDmode, modes_reglements.label, \n        reglements.IDemetteur, emetteurs.nom, \n        reglements.numero_piece, reglements.montant, \n        payeurs.IDpayeur, payeurs.nom, \n        reglements.observations, numero_quittancier, IDprestation_frais, reglements.IDcompte, date_differe, \n        encaissement_attente, \n        reglements.IDdepot, depots.date, depots.nom, depots.verrouillage, \n        date_saisie, IDutilisateur,\n        comptes_bancaires.nom,\n        familles.IDfamille, familles.email_depots,\n        reglements.avis_depot\n        FROM reglements\n        LEFT JOIN modes_reglements ON reglements.IDmode=modes_reglements.IDmode\n        LEFT JOIN emetteurs ON reglements.IDemetteur=emetteurs.IDemetteur\n        LEFT JOIN payeurs ON reglements.IDpayeur=payeurs.IDpayeur\n        LEFT JOIN depots ON reglements.IDdepot=depots.IDdepot\n        LEFT JOIN comptes_bancaires ON comptes_bancaires.IDcompte=reglements.IDcompte\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = reglements.IDcompte_payeur\n        LEFT JOIN familles ON familles.IDfamille = comptes_payeurs.IDfamille\n        WHERE reglements.IDdepot IS NULL\n        GROUP BY reglements.IDreglement\n        ORDER BY reglements.date;\n        "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Depots_prestations.py",
+      "line": 169,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : depots.date, depots.nom",
+      "ungrouped_items": [
+        "depots.date",
+        "depots.nom"
+      ],
+      "sql": "SELECT depots.IDdepot, depots.date, depots.nom, SUM(reglements.montant), COUNT(reglements.IDreglement)\n        FROM depots\n        LEFT JOIN reglements ON reglements.IDdepot = depots.IDdepot\n        GROUP BY depots.IDdepot\n        ORDER BY depots.date;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Export_helios.py",
+      "line": 435,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDfacture, prestations.label, prestations.montant, prestations.IDindividu, ...",
+      "ungrouped_items": [
+        "prestations.IDfacture",
+        "prestations.label",
+        "prestations.montant",
+        "prestations.IDindividu",
+        "individus.nom",
+        "individus.prenom",
+        "prestations.IDactivite",
+        "activites.nom"
+      ],
+      "sql": "\n        SELECT prestations.IDprestation, prestations.IDfacture, prestations.label, prestations.montant, \n        prestations.IDindividu, individus.nom, individus.prenom,\n        prestations.IDactivite, activites.nom\n        FROM prestations\n        LEFT JOIN individus ON prestations.IDindividu = individus.IDindividu\n        LEFT JOIN activites ON activites.IDactivite = prestations.IDactivite\n        WHERE prestations.IDfacture IN %s\n        GROUP BY prestations.IDprestation\n        ORDER BY prestations.date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Famille_caisse.py",
+      "line": 121,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : nom, prenom",
+      "ungrouped_items": [
+        "nom",
+        "prenom"
+      ],
+      "sql": "SELECT individus.IDindividu, nom, prenom\n        FROM rattachements\n        LEFT JOIN individus ON individus.IDindividu = rattachements.IDindividu\n        WHERE IDfamille=%d AND IDcategorie=1\n        GROUP BY individus.IDindividu\n        ORDER BY nom, prenom;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Famille_divers.py",
+      "line": 200,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : nom, prenom",
+      "ungrouped_items": [
+        "nom",
+        "prenom"
+      ],
+      "sql": "SELECT individus.IDindividu, nom, prenom\n        FROM rattachements\n        LEFT JOIN individus ON individus.IDindividu = rattachements.IDindividu\n        WHERE IDfamille=%d AND IDcategorie=1\n        GROUP BY individus.IDindividu\n        ORDER BY nom, prenom;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Famille_divers.py",
+      "line": 233,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : nom, prenom",
+      "ungrouped_items": [
+        "nom",
+        "prenom"
+      ],
+      "sql": "SELECT individus.IDindividu, nom, prenom\n        FROM rattachements\n        LEFT JOIN individus ON individus.IDindividu = rattachements.IDindividu\n        WHERE IDfamille=%d AND IDcategorie=1\n        GROUP BY individus.IDindividu\n        ORDER BY nom, prenom;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Impression_attestation.py",
+      "line": 119,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : individus.nom, individus.prenom",
+      "ungrouped_items": [
+        "individus.nom",
+        "individus.prenom"
+      ],
+      "sql": "SELECT individus.IDindividu, individus.nom, individus.prenom\n        FROM individus\n        LEFT JOIN inscriptions ON inscriptions.IDindividu = individus.IDindividu\n        LEFT JOIN consommations ON consommations.IDindividu = individus.IDindividu\n        WHERE inscriptions.IDfamille=%d\n        AND inscriptions.statut='ok' AND consommations.date>='%s' AND consommations.date<='%s'\n        GROUP BY individus.IDindividu\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Impression_attestation.py",
+      "line": 240,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : activites.nom, activites.abrege",
+      "ungrouped_items": [
+        "activites.nom",
+        "activites.abrege"
+      ],
+      "sql": "SELECT consommations.IDactivite, activites.nom, activites.abrege\n        FROM consommations\n        LEFT JOIN activites ON activites.IDactivite = consommations.IDactivite\n        WHERE consommations.IDindividu IN %s\n        AND consommations.date>='%s' AND consommations.date<='%s'\n        GROUP BY consommations.IDactivite\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Impression_attestation.py",
+      "line": 963,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDcompte_payeur, prestations.IDfamille, prestations.date, categorie, ...",
+      "ungrouped_items": [
+        "prestations.IDcompte_payeur",
+        "prestations.IDfamille",
+        "prestations.date",
+        "categorie",
+        "label",
+        "prestations.montant_initial",
+        "prestations.montant",
+        "prestations.tva",
+        "prestations.IDactivite",
+        "activites.nom",
+        "activites.abrege",
+        "prestations.IDtarif",
+        "noms_tarifs.nom",
+        "categories_tarifs.nom",
+        "IDfacture",
+        "prestations.IDindividu",
+        "individus.IDcivilite",
+        "individus.nom",
+        "individus.prenom",
+        "individus.date_naiss",
+        "forfait_date_debut",
+        "forfait_date_fin"
+      ],
+      "sql": "\n        SELECT prestations.IDprestation, prestations.IDcompte_payeur, prestations.IDfamille, prestations.date, categorie, \n        label, prestations.montant_initial, prestations.montant, prestations.tva,\n        prestations.IDactivite, activites.nom, activites.abrege,\n        prestations.IDtarif, noms_tarifs.nom, categories_tarifs.nom, IDfacture, \n        prestations.IDindividu, \n        individus.IDcivilite, individus.nom, individus.prenom, individus.date_naiss, \n        SUM(ventilation.montant) AS montant_ventilation,\n        forfait_date_debut, forfait_date_fin\n        FROM prestations\n        LEFT JOIN ventilation ON prestations.IDprestation = ventilation.IDprestation\n        LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n        LEFT JOIN individus ON prestations.IDindividu = individus.IDindividu\n        LEFT JOIN tarifs ON prestations.IDtarif = tarifs.IDtarif\n        LEFT JOIN noms_tarifs ON tarifs.IDnom_tarif = noms_tarifs.IDnom_tarif\n        LEFT JOIN categories_tarifs ON tarifs.IDcategorie_tarif = categories_tarifs.IDcategorie_tarif\n        WHERE (prestations.IDindividu IN %s OR prestations.IDindividu IS NULL)\n        AND (prestations.IDactivite IN %s or prestations.IDactivite IS NULL)\n        AND prestations.date>='%s' AND prestations.date<='%s'\n        AND prestations.IDfamille=%d\n        %s\n        GROUP BY prestations.IDprestation\n        ORDER BY prestations.date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Impression_conso.py",
+      "line": 254,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : activites.nom, activites.abrege, date_debut, date_fin, ...",
+      "ungrouped_items": [
+        "activites.nom",
+        "activites.abrege",
+        "date_debut",
+        "date_fin",
+        "groupes.nom",
+        "groupes.ordre"
+      ],
+      "sql": "SELECT \n        activites.IDactivite, activites.nom, activites.abrege, date_debut, date_fin,\n        groupes.IDgroupe, groupes.nom, groupes.ordre\n        FROM activites\n        LEFT JOIN ouvertures ON ouvertures.IDactivite = activites.IDactivite\n        LEFT JOIN groupes ON groupes.IDgroupe = ouvertures.IDgroupe\n        WHERE ouvertures.date IN %s\n        GROUP BY groupes.IDgroupe, activites.IDactivite\n        ORDER BY groupes.ordre;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Impression_devis.py",
+      "line": 96,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : individus.nom, individus.prenom",
+      "ungrouped_items": [
+        "individus.nom",
+        "individus.prenom"
+      ],
+      "sql": "SELECT individus.IDindividu, individus.nom, individus.prenom\n        FROM individus\n        LEFT JOIN prestations ON prestations.IDindividu = individus.IDindividu\n        WHERE prestations.IDfamille=%d\n        AND prestations.date>='%s' AND prestations.date<='%s'\n        GROUP BY individus.IDindividu\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Impression_devis.py",
+      "line": 215,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : activites.nom, activites.abrege",
+      "ungrouped_items": [
+        "activites.nom",
+        "activites.abrege"
+      ],
+      "sql": "SELECT prestations.IDactivite, activites.nom, activites.abrege\n        FROM prestations\n        LEFT JOIN activites ON activites.IDactivite = prestations.IDactivite\n        WHERE prestations.IDindividu IN %s\n        AND prestations.date>='%s' AND prestations.date<='%s'\n        GROUP BY prestations.IDactivite\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Impression_devis.py",
+      "line": 830,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDcompte_payeur, prestations.IDfamille, prestations.date, categorie, ...",
+      "ungrouped_items": [
+        "prestations.IDcompte_payeur",
+        "prestations.IDfamille",
+        "prestations.date",
+        "categorie",
+        "label",
+        "prestations.montant_initial",
+        "prestations.montant",
+        "prestations.tva",
+        "prestations.IDactivite",
+        "activites.nom",
+        "activites.abrege",
+        "prestations.IDtarif",
+        "noms_tarifs.nom",
+        "categories_tarifs.nom",
+        "IDfacture",
+        "prestations.IDindividu",
+        "individus.IDcivilite",
+        "individus.nom",
+        "individus.prenom",
+        "individus.date_naiss",
+        "forfait_date_debut",
+        "forfait_date_fin"
+      ],
+      "sql": "\n        SELECT prestations.IDprestation, prestations.IDcompte_payeur, prestations.IDfamille, prestations.date, categorie, \n        label, prestations.montant_initial, prestations.montant, prestations.tva,\n        prestations.IDactivite, activites.nom, activites.abrege,\n        prestations.IDtarif, noms_tarifs.nom, categories_tarifs.nom, IDfacture, \n        prestations.IDindividu, \n        individus.IDcivilite, individus.nom, individus.prenom, individus.date_naiss, \n        SUM(ventilation.montant) AS montant_ventilation,\n        forfait_date_debut, forfait_date_fin\n        FROM prestations\n        LEFT JOIN ventilation ON prestations.IDprestation = ventilation.IDprestation\n        LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n        LEFT JOIN individus ON prestations.IDindividu = individus.IDindividu\n        LEFT JOIN tarifs ON prestations.IDtarif = tarifs.IDtarif\n        LEFT JOIN noms_tarifs ON tarifs.IDnom_tarif = noms_tarifs.IDnom_tarif\n        LEFT JOIN categories_tarifs ON tarifs.IDcategorie_tarif = categories_tarifs.IDcategorie_tarif\n        WHERE (prestations.IDindividu IN %s OR prestations.IDindividu IS NULL)\n        AND (prestations.IDactivite IN %s or prestations.IDactivite IS NULL)\n        AND prestations.date>='%s' AND prestations.date<='%s'\n        AND prestations.IDfamille=%d\n        GROUP BY prestations.IDprestation\n        ORDER BY prestations.date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Impression_infos_medicales.py",
+      "line": 573,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDcivilite, nom, prenom, date_naiss",
+      "ungrouped_items": [
+        "IDcivilite",
+        "nom",
+        "prenom",
+        "date_naiss"
+      ],
+      "sql": "SELECT individus.IDindividu, IDactivite, IDgroupe,\n            IDcivilite, nom, prenom, date_naiss\n            FROM consommations \n            LEFT JOIN individus ON individus.IDindividu = consommations.IDindividu\n            WHERE consommations.etat IN (\"reservation\", \"present\")\n            AND IDactivite IN %s AND %s\n            GROUP BY individus.IDindividu, IDactivite, IDgroupe\n            ORDER BY nom, prenom\n            ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Impression_infos_medicales.py",
+      "line": 606,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDcivilite, nom, prenom, date_naiss",
+      "ungrouped_items": [
+        "IDcivilite",
+        "nom",
+        "prenom",
+        "date_naiss"
+      ],
+      "sql": "SELECT individus.IDindividu, IDactivite, IDgroupe,\n            IDcivilite, nom, prenom, date_naiss\n            FROM individus \n            LEFT JOIN inscriptions ON inscriptions.IDindividu = individus.IDindividu\n            WHERE inscriptions.statut='ok' AND IDactivite IN %s\n            GROUP BY individus.IDindividu, IDactivite, IDgroupe\n            ORDER BY nom, prenom\n            ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Impression_recap_factures.py",
+      "line": 420,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDfacture, prestations.label, prestations.montant, prestations.IDindividu, ...",
+      "ungrouped_items": [
+        "prestations.IDfacture",
+        "prestations.label",
+        "prestations.montant",
+        "prestations.IDindividu",
+        "individus.nom",
+        "individus.prenom",
+        "prestations.IDactivite",
+        "activites.nom"
+      ],
+      "sql": "\n        SELECT prestations.IDprestation, prestations.IDfacture, prestations.label, prestations.montant, \n        prestations.IDindividu, individus.nom, individus.prenom,\n        prestations.IDactivite, activites.nom\n        FROM prestations\n        LEFT JOIN individus ON prestations.IDindividu = individus.IDindividu\n        LEFT JOIN activites ON activites.IDactivite = prestations.IDactivite\n        WHERE prestations.IDfacture IN %s\n        GROUP BY prestations.IDprestation\n        ORDER BY prestations.date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Impression_recu.py",
+      "line": 616,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : date, categorie, label, activites.IDactivite, ...",
+      "ungrouped_items": [
+        "date",
+        "categorie",
+        "label",
+        "activites.IDactivite",
+        "activites.nom",
+        "activites.abrege",
+        "individus.nom",
+        "individus.prenom",
+        "montant"
+      ],
+      "sql": "SELECT IDprestation, date, categorie, label,\n        activites.IDactivite, activites.nom, activites.abrege,\n        individus.nom, individus.prenom,\n        montant\n        FROM prestations\n        LEFT JOIN activites ON activites.IDactivite = prestations.IDactivite\n        LEFT JOIN individus ON individus.IDindividu = prestations.IDindividu\n        WHERE IDprestation IN %s\n        GROUP BY IDprestation\n        ORDER BY date;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Nbre_inscrits.py",
+      "line": 261,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : groupes.IDactivite, groupes.nom, groupes.nbre_inscrits_max",
+      "ungrouped_items": [
+        "groupes.IDactivite",
+        "groupes.nom",
+        "groupes.nbre_inscrits_max"
+      ],
+      "sql": "SELECT groupes.IDgroupe, groupes.IDactivite, groupes.nom, groupes.nbre_inscrits_max,\n        COUNT(inscriptions.IDinscription) as nbre_inscriptions\n        FROM groupes\n        LEFT JOIN activites ON activites.IDactivite = groupes.IDactivite\n        LEFT JOIN inscriptions ON inscriptions.IDgroupe = groupes.IDgroupe\n        WHERE inscriptions.statut='ok' %s\n        GROUP BY groupes.IDgroupe\n        ORDER BY groupes.ordre\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Nbre_inscrits.py",
+      "line": 291,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : activites.nom, activites.nbre_inscrits_max",
+      "ungrouped_items": [
+        "activites.nom",
+        "activites.nbre_inscrits_max"
+      ],
+      "sql": "SELECT activites.IDactivite, activites.nom, activites.nbre_inscrits_max\n        FROM activites\n        %s\n        GROUP BY activites.IDactivite\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Nbre_inscrits_2.py",
+      "line": 234,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : activites.nom, activites.abrege, activites.nbre_inscrits_max",
+      "ungrouped_items": [
+        "activites.nom",
+        "activites.abrege",
+        "activites.nbre_inscrits_max"
+      ],
+      "sql": "SELECT activites.IDactivite, activites.nom, activites.abrege, activites.nbre_inscrits_max\n        FROM activites\n        %s\n        GROUP BY activites.IDactivite\n        ORDER BY %s %s\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Releve_prestations.py",
+      "line": 278,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDcompte_payeur, prestations.date, categorie, label, ...",
+      "ungrouped_items": [
+        "prestations.IDcompte_payeur",
+        "prestations.date",
+        "categorie",
+        "label",
+        "prestations.montant",
+        "prestations.IDactivite",
+        "activites.nom",
+        "activites.abrege",
+        "prestations.IDtarif",
+        "noms_tarifs.nom",
+        "categories_tarifs.nom",
+        "IDfacture",
+        "prestations.IDindividu",
+        "prestations.IDfamille"
+      ],
+      "sql": "\n        SELECT prestations.IDprestation, prestations.IDcompte_payeur, prestations.date, categorie, \n        label, prestations.montant, \n        prestations.IDactivite, activites.nom, activites.abrege,\n        prestations.IDtarif, noms_tarifs.nom, categories_tarifs.nom, IDfacture, \n        prestations.IDindividu, prestations.IDfamille\n        FROM prestations\n        LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n        LEFT JOIN tarifs ON prestations.IDtarif = tarifs.IDtarif\n        LEFT JOIN noms_tarifs ON tarifs.IDnom_tarif = noms_tarifs.IDnom_tarif\n        LEFT JOIN categories_tarifs ON tarifs.IDcategorie_tarif = categories_tarifs.IDcategorie_tarif\n        WHERE prestations.IDfamille=%d\n        GROUP BY prestations.IDprestation\n        ORDER BY prestations.date, prestations.IDindividu, prestations.label\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Releve_prestations.py",
+      "line": 321,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : ventilation.IDprestation",
+      "ungrouped_items": [
+        "ventilation.IDprestation"
+      ],
+      "sql": "\n        SELECT ventilation.IDprestation, SUM(ventilation.montant) AS montant_ventilation\n        FROM ventilation\n        LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n        LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n        WHERE prestations.IDfamille=%d\n        GROUP BY prestations.IDprestation\n        ORDER BY prestations.date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Saisie_commandes_colonne.py",
+      "line": 69,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : activites.IDactivite, activites.nom, activites.abrege, activites.date_debut, ...",
+      "ungrouped_items": [
+        "activites.IDactivite",
+        "activites.nom",
+        "activites.abrege",
+        "activites.date_debut",
+        "activites.date_fin",
+        "groupes.nom",
+        "unites.nom",
+        "unites.ordre"
+      ],
+      "sql": "SELECT \n        activites.IDactivite, activites.nom, activites.abrege, activites.date_debut, activites.date_fin,\n        groupes.IDgroupe, groupes.nom,\n        unites.IDunite, unites.nom, unites.ordre\n        FROM activites\n        LEFT JOIN groupes ON groupes.IDactivite = activites.IDactivite\n        LEFT JOIN unites ON unites.IDactivite = activites.IDactivite\n        WHERE unites.IDunite IS NOT NULL %s\n        GROUP BY groupes.IDgroupe, unites.IDunite\n        ORDER BY activites.date_fin, groupes.ordre, unites.ordre;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Saisie_commandes_colonne.py",
+      "line": 188,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : activites.IDactivite, activites.nom, activites.abrege, activites.date_debut, ...",
+      "ungrouped_items": [
+        "activites.IDactivite",
+        "activites.nom",
+        "activites.abrege",
+        "activites.date_debut",
+        "activites.date_fin",
+        "groupes.nom"
+      ],
+      "sql": "SELECT \n        activites.IDactivite, activites.nom, activites.abrege, activites.date_debut, activites.date_fin,\n        groupes.IDgroupe, groupes.nom\n        FROM activites\n        LEFT JOIN groupes ON groupes.IDactivite = activites.IDactivite\n        GROUP BY groupes.IDgroupe\n        ORDER BY activites.date_fin, groupes.ordre;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Saisie_contrat.py",
+      "line": 412,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : forfait_date_debut, forfait_date_fin, label, montant, ...",
+      "ungrouped_items": [
+        "forfait_date_debut",
+        "forfait_date_fin",
+        "label",
+        "montant",
+        "prestations.date",
+        "prestations.IDfacture",
+        "factures.IDprefixe",
+        "factures_prefixes.prefixe",
+        "factures.numero"
+      ],
+      "sql": "SELECT prestations.IDprestation, forfait_date_debut, forfait_date_fin, label, montant, prestations.date,\n        prestations.IDfacture, factures.IDprefixe, factures_prefixes.prefixe, factures.numero,\n        COUNT(consommations.IDconso)\n        FROM prestations \n        LEFT JOIN consommations ON consommations.IDprestation = prestations.IDprestation\n        LEFT JOIN factures ON factures.IDfacture = prestations.IDfacture\n        LEFT JOIN factures_prefixes ON factures_prefixes.IDprefixe = factures.IDprefixe\n        WHERE IDcontrat=%d\n        GROUP BY prestations.IDprestation\n        ORDER BY forfait_date_debut;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Saisie_contrat_intro.py",
+      "line": 112,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : contrats.date_debut, contrats.date_fin, activites.nom, individus.nom, ...",
+      "ungrouped_items": [
+        "contrats.date_debut",
+        "contrats.date_fin",
+        "activites.nom",
+        "individus.nom",
+        "individus.prenom"
+      ],
+      "sql": "SELECT contrats.IDcontrat, contrats.date_debut, contrats.date_fin, activites.nom, SUM(prestations.montant) as total, individus.nom, individus.prenom\n        FROM contrats \n        LEFT JOIN inscriptions ON inscriptions.IDinscription=contrats.IDinscription\n        LEFT JOIN activites ON activites.IDactivite=inscriptions.IDactivite\n        LEFT JOIN prestations ON prestations.IDcontrat = contrats.IDcontrat\n        LEFT JOIN individus ON individus.IDindividu = contrats.IDindividu\n        WHERE inscriptions.IDactivite=%d\n        GROUP BY contrats.IDcontrat\n        ORDER BY contrats.date_debut; "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Saisie_depot.py",
+      "line": 325,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : reglements.IDcompte_payeur, reglements.date, reglements.IDmode, modes_reglements.label, ...",
+      "ungrouped_items": [
+        "reglements.IDcompte_payeur",
+        "reglements.date",
+        "reglements.IDmode",
+        "modes_reglements.label",
+        "reglements.IDemetteur",
+        "emetteurs.nom",
+        "reglements.numero_piece",
+        "reglements.montant",
+        "payeurs.IDpayeur",
+        "payeurs.nom",
+        "reglements.observations",
+        "numero_quittancier",
+        "IDprestation_frais",
+        "reglements.IDcompte",
+        "date_differe",
+        "encaissement_attente",
+        "reglements.IDdepot",
+        "depots.date",
+        "depots.nom",
+        "depots.verrouillage",
+        "date_saisie",
+        "IDutilisateur",
+        "comptes_bancaires.nom",
+        "familles.IDfamille",
+        "familles.email_depots",
+        "reglements.avis_depot"
+      ],
+      "sql": "SELECT\n        reglements.IDreglement, reglements.IDcompte_payeur, reglements.date,\n        reglements.IDmode, modes_reglements.label,\n        reglements.IDemetteur, emetteurs.nom,\n        reglements.numero_piece, reglements.montant,\n        payeurs.IDpayeur, payeurs.nom,\n        reglements.observations, numero_quittancier, IDprestation_frais, reglements.IDcompte, date_differe,\n        encaissement_attente,\n        reglements.IDdepot, depots.date, depots.nom, depots.verrouillage,\n        date_saisie, IDutilisateur,\n        comptes_bancaires.nom,\n        familles.IDfamille, familles.email_depots,\n        reglements.avis_depot\n        FROM reglements\n        LEFT JOIN modes_reglements ON reglements.IDmode=modes_reglements.IDmode\n        LEFT JOIN emetteurs ON reglements.IDemetteur=emetteurs.IDemetteur\n        LEFT JOIN payeurs ON reglements.IDpayeur=payeurs.IDpayeur\n        LEFT JOIN depots ON reglements.IDdepot=depots.IDdepot\n        LEFT JOIN comptes_bancaires ON comptes_bancaires.IDcompte=reglements.IDcompte\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = reglements.IDcompte_payeur\n        LEFT JOIN familles ON familles.IDfamille = comptes_payeurs.IDfamille\n        WHERE reglements.IDdepot IS NULL OR reglements.IDdepot=%d\n        GROUP BY reglements.IDreglement\n        ORDER BY reglements.date;\n        "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Saisie_lot_tresor_public_corail.py",
+      "line": 502,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.date, prestations.montant, prestations.IDfacture, prestations.label, ...",
+      "ungrouped_items": [
+        "prestations.date",
+        "prestations.montant",
+        "prestations.IDfacture",
+        "prestations.label",
+        "prestations.IDindividu",
+        "individus.nom",
+        "individus.prenom",
+        "prestations.code_compta",
+        "prestations.code_produit_local",
+        "activites.code_comptable",
+        "activites.code_produit_local"
+      ],
+      "sql": "SELECT \n        prestations.IDprestation, prestations.date, prestations.montant, prestations.IDfacture, prestations.label,\n        prestations.IDindividu, individus.nom, individus.prenom,\n        SUM(ventilation.montant) AS montant_ventilation,\n        prestations.code_compta, prestations.code_produit_local,\n        activites.code_comptable, activites.code_produit_local\n        FROM prestations\n        LEFT JOIN activites ON activites.IDactivite = prestations.IDactivite\n        LEFT JOIN ventilation ON prestations.IDprestation = ventilation.IDprestation\n        LEFT JOIN individus ON individus.IDindividu = prestations.IDindividu\n        WHERE prestations.IDfacture IN %s\n        GROUP BY prestations.IDprestation\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Saisie_lot_tresor_public_magnus.py",
+      "line": 665,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.date, prestations.montant, prestations.IDfacture, prestations.label, ...",
+      "ungrouped_items": [
+        "prestations.date",
+        "prestations.montant",
+        "prestations.IDfacture",
+        "prestations.label",
+        "prestations.IDindividu",
+        "individus.nom",
+        "individus.prenom",
+        "prestations.code_compta",
+        "prestations.code_produit_local",
+        "activites.code_comptable",
+        "activites.code_produit_local",
+        "activites.code_service"
+      ],
+      "sql": "SELECT \n        prestations.IDprestation, prestations.date, prestations.montant, prestations.IDfacture, prestations.label,\n        prestations.IDindividu, individus.nom, individus.prenom,\n        SUM(ventilation.montant) AS montant_ventilation,\n        prestations.code_compta, prestations.code_produit_local,\n        activites.code_comptable, activites.code_produit_local, activites.code_service\n        FROM prestations\n        LEFT JOIN activites ON activites.IDactivite = prestations.IDactivite\n        LEFT JOIN ventilation ON prestations.IDprestation = ventilation.IDprestation\n        LEFT JOIN individus ON individus.IDindividu = prestations.IDindividu\n        WHERE prestations.IDfacture IN %s\n        GROUP BY prestations.IDprestation\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Saisie_mandat.py",
+      "line": 166,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : nom, prenom",
+      "ungrouped_items": [
+        "nom",
+        "prenom"
+      ],
+      "sql": "SELECT individus.IDindividu, nom, prenom\n        FROM rattachements\n        LEFT JOIN individus ON individus.IDindividu = rattachements.IDindividu\n        WHERE IDfamille=%d AND IDcategorie=1\n        GROUP BY individus.IDindividu\n        ORDER BY nom, prenom;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Saisie_modele_commandes.py",
+      "line": 273,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : ordre, nom, largeur, categorie, ...",
+      "ungrouped_items": [
+        "ordre",
+        "nom",
+        "largeur",
+        "categorie",
+        "parametres"
+      ],
+      "sql": "SELECT modeles_commandes_colonnes.IDcolonne, ordre, nom, largeur, categorie, parametres,\n        COUNT(commandes_valeurs.IDvaleur)\n        FROM modeles_commandes_colonnes\n        LEFT JOIN commandes_valeurs ON commandes_valeurs.IDcolonne = modeles_commandes_colonnes.IDcolonne\n        WHERE IDmodele=%d\n        GROUP BY modeles_commandes_colonnes.IDcolonne\n        ORDER BY ordre;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Saisie_pes_piece.py",
+      "line": 102,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : nom, prenom",
+      "ungrouped_items": [
+        "nom",
+        "prenom"
+      ],
+      "sql": "SELECT individus.IDindividu, nom, prenom\n        FROM rattachements\n        LEFT JOIN individus ON individus.IDindividu = rattachements.IDindividu\n        WHERE IDfamille=%d AND IDcategorie=1\n        GROUP BY individus.IDindividu\n        ORDER BY nom, prenom;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Saisie_prefixe_facture.py",
+      "line": 148,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : nom, prefixe",
+      "ungrouped_items": [
+        "nom",
+        "prefixe"
+      ],
+      "sql": "SELECT nom, prefixe, COUNT(factures.IDprefixe)\n        FROM factures_prefixes\n        LEFT JOIN factures ON factures.IDprefixe = factures_prefixes.IDprefixe\n        WHERE factures_prefixes.IDprefixe=%d\n        GROUP BY factures_prefixes.IDprefixe;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Saisie_regie_facture.py",
+      "line": 221,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : nom, numclitipi, email_regisseur, IDcompte_bancaire",
+      "ungrouped_items": [
+        "nom",
+        "numclitipi",
+        "email_regisseur",
+        "IDcompte_bancaire"
+      ],
+      "sql": "SELECT nom, numclitipi, COUNT(factures.IDregie), email_regisseur, IDcompte_bancaire\n        FROM factures_regies\n        LEFT JOIN factures ON factures.IDregie = factures_regies.IDregie\n        WHERE factures_regies.IDregie=%d\n        GROUP BY factures_regies.IDregie;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Dlg/DLG_Saisie_rib.py",
+      "line": 134,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : nom, prenom",
+      "ungrouped_items": [
+        "nom",
+        "prenom"
+      ],
+      "sql": "SELECT individus.IDindividu, nom, prenom\n        FROM rattachements\n        LEFT JOIN individus ON individus.IDindividu = rattachements.IDindividu\n        WHERE IDfamille=%d AND IDcategorie=1\n        GROUP BY individus.IDindividu\n        ORDER BY nom, prenom;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Archivage.py",
+      "line": 415,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : date_inscription",
+      "ungrouped_items": [
+        "date_inscription"
+      ],
+      "sql": "SELECT IDfamille, date_inscription\n            FROM inscriptions\n            WHERE date_inscription>='%s'\n            GROUP BY IDfamille\n            ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Archivage.py",
+      "line": 466,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : date_inscription",
+      "ungrouped_items": [
+        "date_inscription"
+      ],
+      "sql": "SELECT IDindividu, date_inscription\n            FROM inscriptions\n            WHERE date_inscription>='%s'\n            GROUP BY IDindividu\n            ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Attestations_prestations.py",
+      "line": 79,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : activites.nom",
+      "ungrouped_items": [
+        "activites.nom"
+      ],
+      "sql": "SELECT prestations.label, prestations.IDactivite, activites.nom, COUNT(prestations.IDprestation), SUM(prestations.montant)\n        FROM prestations\n        LEFT JOIN activites ON activites.IDactivite = prestations.IDactivite\n        LEFT JOIN individus ON individus.IDindividu = prestations.IDindividu\n        WHERE prestations.IDactivite IN %s\n        AND (prestations.date>='%s' AND prestations.date<='%s')\n        AND prestations.categorie='consommation'\n        %s\n        GROUP BY prestations.label, prestations.IDactivite\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Categories_medicales.py",
+      "line": 56,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : categories_medicales.nom",
+      "ungrouped_items": [
+        "categories_medicales.nom"
+      ],
+      "sql": "SELECT categories_medicales.IDcategorie, categories_medicales.nom, Count(problemes_sante.IDprobleme) AS nbreInformations\n        FROM categories_medicales\n        LEFT JOIN problemes_sante ON problemes_sante.IDtype = categories_medicales.IDcategorie\n        GROUP BY categories_medicales.IDcategorie;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Categories_messages.py",
+      "line": 66,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : messages_categories.nom, messages_categories.priorite, messages_categories.afficher_accueil, messages_categories.afficher_liste",
+      "ungrouped_items": [
+        "messages_categories.nom",
+        "messages_categories.priorite",
+        "messages_categories.afficher_accueil",
+        "messages_categories.afficher_liste"
+      ],
+      "sql": "\n        SELECT messages_categories.IDcategorie, messages_categories.nom, messages_categories.priorite, messages_categories.afficher_accueil, messages_categories.afficher_liste,\n        COUNT(IDmessage)\n        FROM messages_categories \n        LEFT JOIN messages ON messages.IDcategorie = messages_categories.IDcategorie\n        GROUP BY messages_categories.IDcategorie\n        ORDER BY messages_categories.nom;\n        "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Categories_travail.py",
+      "line": 59,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : categories_travail.nom",
+      "ungrouped_items": [
+        "categories_travail.nom"
+      ],
+      "sql": "SELECT categories_travail.IDcategorie, categories_travail.nom, Count(individus.IDindividu) AS nbreTitulaires\n        FROM categories_travail\n        LEFT JOIN individus ON categories_travail.IDcategorie = individus.IDcategorie_travail\n        GROUP BY categories_travail.IDcategorie;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Comptes_internet.py",
+      "line": 328,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : date_inscription",
+      "ungrouped_items": [
+        "date_inscription"
+      ],
+      "sql": "SELECT IDfamille, date_inscription\n        FROM inscriptions\n        WHERE date_inscription>='%s'\n        GROUP BY IDfamille\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Contrats.py",
+      "line": 103,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : contrats.IDinscription, contrats.date_debut, contrats.date_fin, inscriptions.IDindividu, ...",
+      "ungrouped_items": [
+        "contrats.IDinscription",
+        "contrats.date_debut",
+        "contrats.date_fin",
+        "inscriptions.IDindividu",
+        "inscriptions.IDfamille",
+        "activites.nom",
+        "individus.nom",
+        "individus.prenom",
+        "contrats.type"
+      ],
+      "sql": "SELECT contrats.IDcontrat, contrats.IDinscription, contrats.date_debut, contrats.date_fin,\n        inscriptions.IDindividu, inscriptions.IDfamille, activites.nom, \n        SUM(prestations.montant) as total, \n        individus.nom, individus.prenom,\n        contrats.type\n        FROM contrats \n        LEFT JOIN inscriptions ON inscriptions.IDinscription=contrats.IDinscription\n        LEFT JOIN activites ON activites.IDactivite=inscriptions.IDactivite\n        LEFT JOIN prestations ON prestations.IDcontrat = contrats.IDcontrat\n        LEFT JOIN individus ON individus.IDindividu = contrats.IDindividu\n        WHERE inscriptions.statut='ok' %s\n        GROUP BY contrats.IDcontrat\n        ORDER BY contrats.date_debut; "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Depots.py",
+      "line": 110,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : modes_reglements.label",
+      "ungrouped_items": [
+        "modes_reglements.label"
+      ],
+      "sql": "SELECT \n        depots.IDdepot, reglements.IDmode, modes_reglements.label,\n        SUM(reglements.montant), COUNT(reglements.IDreglement)\n        FROM depots\n        LEFT JOIN reglements ON reglements.IDdepot = depots.IDdepot\n        LEFT JOIN modes_reglements ON modes_reglements.IDmode = reglements.IDmode\n        GROUP BY depots.IDdepot, reglements.IDmode\n        "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Depots_cotisations.py",
+      "line": 137,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : depots_cotisations.date, depots_cotisations.nom, depots_cotisations.verrouillage, depots_cotisations.observations",
+      "ungrouped_items": [
+        "depots_cotisations.date",
+        "depots_cotisations.nom",
+        "depots_cotisations.verrouillage",
+        "depots_cotisations.observations"
+      ],
+      "sql": "SELECT \n        depots_cotisations.IDdepot_cotisation, depots_cotisations.date, depots_cotisations.nom, \n        depots_cotisations.verrouillage, depots_cotisations.observations,\n        COUNT(IDcotisation) AS nbre_cotisations\n        FROM depots_cotisations\n        LEFT JOIN cotisations ON cotisations.IDdepot_cotisation = depots_cotisations.IDdepot_cotisation\n        GROUP BY depots_cotisations.IDdepot_cotisation\n        ORDER BY depots_cotisations.date;\n        "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Etat_nomin_champs.py",
+      "line": 214,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : activites.abrege",
+      "ungrouped_items": [
+        "activites.abrege"
+      ],
+      "sql": "SELECT label, activites.abrege\n        FROM prestations\n        LEFT JOIN activites ON activites.IDactivite = prestations.IDactivite\n        WHERE %s AND date>='%s' AND date<='%s'\n        GROUP BY label\n        ORDER BY label\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Etat_nomin_profils.py",
+      "line": 57,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : etat_nomin_profils.label",
+      "ungrouped_items": [
+        "etat_nomin_profils.label"
+      ],
+      "sql": "SELECT etat_nomin_profils.IDprofil, etat_nomin_profils.label, Count(etat_nomin_selections.IDselection) AS nbreChamps\n        FROM etat_nomin_profils\n        LEFT JOIN etat_nomin_selections ON etat_nomin_profils.IDprofil = etat_nomin_selections.IDprofil\n        GROUP BY etat_nomin_profils.IDprofil;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Etiquettes.py",
+      "line": 216,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : %s",
+      "ungrouped_items": [
+        "%s"
+      ],
+      "sql": "\n    SELECT %s\n    FROM individus \n    LEFT JOIN inscriptions ON inscriptions.IDindividu = individus.IDindividu\n    LEFT JOIN secteurs ON secteurs.IDsecteur = individus.IDsecteur\n    %s\n    WHERE individus.IDindividu>0 AND individus.deces != 1 AND individus.etat IS NULL %s %s %s\n    GROUP BY individus.IDindividu\n    ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Etiquettes.py",
+      "line": 356,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : regimes.nom, caisses.nom, num_allocataire, internet_identifiant, ...",
+      "ungrouped_items": [
+        "regimes.nom",
+        "caisses.nom",
+        "num_allocataire",
+        "internet_identifiant",
+        "internet_mdp"
+      ],
+      "sql": "\n    SELECT \n    familles.IDfamille, regimes.nom, caisses.nom, num_allocataire, internet_identifiant, internet_mdp\n    FROM familles \n    LEFT JOIN inscriptions ON inscriptions.IDfamille = familles.IDfamille\n    LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n    %s\n    AND inscriptions.IDfamille = familles.IDfamille\n    LEFT JOIN caisses ON caisses.IDcaisse = familles.IDcaisse\n    LEFT JOIN regimes ON regimes.IDregime = caisses.IDregime\n    WHERE familles.etat IS NULL AND inscriptions.statut='ok' AND (inscriptions.date_desinscription IS NULL OR inscriptions.date_desinscription>='%s') %s %s %s\n    GROUP BY familles.IDfamille\n    ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Groupes_activites.py",
+      "line": 59,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : nom, observations",
+      "ungrouped_items": [
+        "nom",
+        "observations"
+      ],
+      "sql": "SELECT types_groupes_activites.IDtype_groupe_activite, nom, observations, COUNT(IDgroupe_activite)\n        FROM types_groupes_activites\n        LEFT JOIN groupes_activites ON groupes_activites.IDtype_groupe_activite = types_groupes_activites.IDtype_groupe_activite\n        GROUP BY types_groupes_activites.IDtype_groupe_activite\n        ORDER BY nom;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Inscriptions_scolaires_2.py",
+      "line": 89,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : individus.IDcivilite, individus.nom, individus.prenom, individus.date_naiss",
+      "ungrouped_items": [
+        "individus.IDcivilite",
+        "individus.nom",
+        "individus.prenom",
+        "individus.date_naiss"
+      ],
+      "sql": "\n        SELECT individus.IDindividu, individus.IDcivilite, individus.nom, individus.prenom, individus.date_naiss,\n        MIN(date_debut), MAX(date_fin), MIN(niveaux_scolaires.abrege)\n        FROM individus \n        LEFT JOIN scolarite ON scolarite.IDindividu = individus.IDindividu\n        LEFT JOIN niveaux_scolaires ON niveaux_scolaires.IDniveau = scolarite.IDniveau\n        %s\n        GROUP BY individus.IDindividu\n        ORDER BY individus.nom, individus.prenom\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Lignes.py",
+      "line": 67,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : transports_lignes.nom",
+      "ungrouped_items": [
+        "transports_lignes.nom"
+      ],
+      "sql": "SELECT transports_lignes.IDligne, transports_lignes.nom, COUNT(transports_arrets.IDarret)\n        FROM transports_lignes\n        LEFT JOIN transports_arrets ON transports_arrets.IDligne = transports_lignes.IDligne\n        WHERE transports_lignes.categorie='%s' \n        GROUP BY transports_lignes.IDligne\n        ORDER BY transports_lignes.nom; "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Liste_codes_comptables.py",
+      "line": 80,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : inscriptions.IDinscription",
+      "ungrouped_items": [
+        "inscriptions.IDinscription"
+      ],
+      "sql": "SELECT IDfamille, inscriptions.IDinscription\n            FROM consommations\n            LEFT JOIN inscriptions ON inscriptions.IDinscription = consommations.IDinscription\n            WHERE inscriptions.statut='ok' AND date>='%s' AND date<='%s' AND consommations.etat IN ('reservation', 'present') %s\n            GROUP BY IDfamille\n            ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Liste_codes_comptables.py",
+      "line": 92,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : familles.code_comptable",
+      "ungrouped_items": [
+        "familles.code_comptable"
+      ],
+      "sql": "\n        SELECT inscriptions.IDfamille, familles.code_comptable\n        FROM inscriptions \n        LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n        LEFT JOIN familles ON familles.IDfamille = inscriptions.IDfamille\n        AND inscriptions.IDfamille = familles.IDfamille\n        LEFT JOIN caisses ON caisses.IDcaisse = familles.IDcaisse\n        LEFT JOIN regimes ON regimes.IDregime = caisses.IDregime\n        WHERE inscriptions.statut='ok' AND (inscriptions.date_desinscription IS NULL OR inscriptions.date_desinscription>='%s') %s\n        GROUP BY inscriptions.IDfamille\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Liste_cotisations.py",
+      "line": 310,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDprestation",
+      "ungrouped_items": [
+        "prestations.IDprestation"
+      ],
+      "sql": "SELECT prestations.IDprestation, SUM(montant)\n            FROM cotisations\n            LEFT JOIN prestations ON prestations.IDprestation = cotisations.IDprestation\n            %s \n            GROUP BY cotisations.IDprestation;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Liste_cotisations.py",
+      "line": 322,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDprestation",
+      "ungrouped_items": [
+        "IDprestation"
+      ],
+      "sql": "SELECT IDprestation, SUM(ventilation.montant), MIN(reglements.date), MIN(modes_reglements.label)\n            FROM ventilation\n            LEFT JOIN reglements ON reglements.IDreglement = ventilation.IDreglement\n            LEFT JOIN modes_reglements ON modes_reglements.IDmode = reglements.IDmode\n            GROUP BY ventilation.IDprestation;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Liste_cotisations.py",
+      "line": 930,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDcotisation, prestations.date",
+      "ungrouped_items": [
+        "IDcotisation",
+        "prestations.date"
+      ],
+      "sql": "SELECT IDcotisation, prestations.date, MIN(IDfacture)\n        FROM prestations\n        LEFT JOIN cotisations ON cotisations.IDprestation = prestations.IDprestation\n        WHERE IDcotisation IN %s\n        GROUP BY cotisations.IDcotisation;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Liste_detaillee_inscriptions.py",
+      "line": 288,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : %s",
+      "ungrouped_items": [
+        "%s"
+      ],
+      "sql": "\n        SELECT %s\n        FROM inscriptions \n        LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n        LEFT JOIN activites ON activites.IDactivite = inscriptions.IDactivite\n        LEFT JOIN groupes ON groupes.IDgroupe = inscriptions.IDgroupe\n        LEFT JOIN categories_tarifs ON categories_tarifs.IDcategorie_tarif = inscriptions.IDcategorie_tarif\n        LEFT JOIN categories_travail ON categories_travail.IDcategorie = individus.IDcategorie_travail\n        WHERE inscriptions.statut='ok' %s\n        GROUP BY individus.IDindividu, inscriptions.IDinscription\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Liste_familles.py",
+      "line": 57,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : inscriptions.IDinscription",
+      "ungrouped_items": [
+        "inscriptions.IDinscription"
+      ],
+      "sql": "SELECT IDfamille, inscriptions.IDinscription\n        FROM consommations\n        LEFT JOIN inscriptions ON inscriptions.IDinscription = consommations.IDinscription\n        WHERE date>='%s' AND date<='%s' AND consommations.etat IN ('reservation', 'present') %s\n        GROUP BY IDfamille\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Liste_familles.py",
+      "line": 69,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : regimes.nom, caisses.nom, num_allocataire",
+      "ungrouped_items": [
+        "regimes.nom",
+        "caisses.nom",
+        "num_allocataire"
+      ],
+      "sql": "\n    SELECT \n    inscriptions.IDfamille, regimes.nom, caisses.nom, num_allocataire\n    FROM inscriptions \n    LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n    LEFT JOIN familles ON familles.IDfamille = inscriptions.IDfamille\n    AND inscriptions.IDfamille = familles.IDfamille\n    LEFT JOIN caisses ON caisses.IDcaisse = familles.IDcaisse\n    LEFT JOIN regimes ON regimes.IDregime = caisses.IDregime\n    WHERE inscriptions.statut='ok' AND (inscriptions.date_desinscription IS NULL OR inscriptions.date_desinscription>='%s') %s %s\n    GROUP BY inscriptions.IDfamille\n    ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Liste_individus.py",
+      "line": 97,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : %s",
+      "ungrouped_items": [
+        "%s"
+      ],
+      "sql": "\n    SELECT %s\n    FROM inscriptions \n    LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n    WHERE inscriptions.statut='ok' AND (inscriptions.date_desinscription IS NULL OR inscriptions.date_desinscription>='%s') %s %s\n    GROUP BY individus.IDindividu\n    ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Liste_inscriptions.py",
+      "line": 234,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : %s",
+      "ungrouped_items": [
+        "%s"
+      ],
+      "sql": "\n        SELECT %s\n        FROM inscriptions \n        LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n        LEFT JOIN activites ON activites.IDactivite = inscriptions.IDactivite\n        LEFT JOIN groupes ON groupes.IDgroupe = inscriptions.IDgroupe\n        LEFT JOIN categories_tarifs ON categories_tarifs.IDcategorie_tarif = inscriptions.IDcategorie_tarif\n        LEFT JOIN categories_travail ON categories_travail.IDcategorie = individus.IDcategorie_travail\n        WHERE inscriptions.statut='ok' %s\n        GROUP BY individus.IDindividu, inscriptions.IDinscription\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Liste_nominative_soldes.py",
+      "line": 213,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : %s",
+      "ungrouped_items": [
+        "%s"
+      ],
+      "sql": "\n        SELECT %s\n        FROM individus \n        LEFT JOIN inscriptions ON inscriptions.IDindividu = individus.IDindividu\n        LEFT JOIN groupes ON groupes.IDgroupe = inscriptions.IDgroupe\n        LEFT JOIN categories_tarifs ON categories_tarifs.IDcategorie_tarif = inscriptions.IDcategorie_tarif\n        LEFT JOIN categories_travail ON categories_travail.IDcategorie = individus.IDcategorie_travail\n        LEFT JOIN prestations ON prestations.IDindividu = inscriptions.IDindividu\n        WHERE inscriptions.statut='ok' \n        AND prestations.IDactivite IN %s %s\n        AND inscriptions.IDgroupe IN %s\n        AND inscriptions.IDcategorie_tarif IN %s\n        GROUP BY individus.IDindividu, inscriptions.IDfamille\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Liste_quotients.py",
+      "line": 120,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : inscriptions.IDinscription",
+      "ungrouped_items": [
+        "inscriptions.IDinscription"
+      ],
+      "sql": "SELECT IDfamille, inscriptions.IDinscription\n            FROM consommations\n            LEFT JOIN inscriptions ON inscriptions.IDinscription = consommations.IDinscription\n            WHERE inscriptions.statut='ok' AND date>='%s' AND date<='%s' AND consommations.etat IN ('reservation', 'present') %s\n            GROUP BY IDfamille\n            ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Liste_quotients.py",
+      "line": 132,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : inscriptions.IDfamille, familles.autorisation_cafpro",
+      "ungrouped_items": [
+        "inscriptions.IDfamille",
+        "familles.autorisation_cafpro"
+      ],
+      "sql": "\n        SELECT inscriptions.IDfamille, familles.autorisation_cafpro\n        FROM inscriptions \n        LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n        LEFT JOIN familles ON familles.IDfamille = inscriptions.IDfamille\n        AND inscriptions.IDfamille = familles.IDfamille\n        LEFT JOIN caisses ON caisses.IDcaisse = familles.IDcaisse\n        LEFT JOIN regimes ON regimes.IDregime = caisses.IDregime\n        WHERE inscriptions.statut='ok' AND (inscriptions.date_desinscription IS NULL OR inscriptions.date_desinscription>='%s') %s\n        GROUP BY familles.IDfamille\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Liste_regimes.py",
+      "line": 85,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : regimes.nom, caisses.nom, num_allocataire",
+      "ungrouped_items": [
+        "regimes.nom",
+        "caisses.nom",
+        "num_allocataire"
+      ],
+      "sql": "\n    SELECT \n    inscriptions.IDfamille, regimes.nom, caisses.nom, num_allocataire\n    FROM inscriptions \n    LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n    LEFT JOIN familles ON familles.IDfamille = inscriptions.IDfamille\n    AND inscriptions.IDfamille = familles.IDfamille\n    LEFT JOIN caisses ON caisses.IDcaisse = familles.IDcaisse\n    LEFT JOIN regimes ON regimes.IDregime = caisses.IDregime\n    WHERE inscriptions.statut='ok' AND (inscriptions.date_desinscription IS NULL OR inscriptions.date_desinscription>='%s') %s\n    GROUP BY inscriptions.IDfamille\n    ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Liste_reglements_detail.py",
+      "line": 177,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : date_saisie, reglements.IDcompte_payeur, reglements.date, reglements.encaissement_attente, ...",
+      "ungrouped_items": [
+        "date_saisie",
+        "reglements.IDcompte_payeur",
+        "reglements.date",
+        "reglements.encaissement_attente",
+        "reglements.IDmode",
+        "modes_reglements.label",
+        "emetteurs.nom",
+        "reglements.numero_piece",
+        "reglements.montant",
+        "payeurs.nom",
+        "reglements.IDdepot",
+        "depots.date",
+        "depots.nom",
+        "comptes_payeurs.IDfamille"
+      ],
+      "sql": "SELECT \n        reglements.IDreglement, date_saisie, reglements.IDcompte_payeur, reglements.date, reglements.encaissement_attente,\n        reglements.IDmode, modes_reglements.label, emetteurs.nom, reglements.numero_piece, reglements.montant, \n        payeurs.nom, reglements.IDdepot, depots.date, depots.nom, comptes_payeurs.IDfamille\n        FROM reglements\n        LEFT JOIN modes_reglements ON reglements.IDmode=modes_reglements.IDmode\n        LEFT JOIN emetteurs ON reglements.IDemetteur=emetteurs.IDemetteur\n        LEFT JOIN payeurs ON reglements.IDpayeur=payeurs.IDpayeur\n        LEFT JOIN depots ON reglements.IDdepot=depots.IDdepot\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = reglements.IDcompte_payeur\n        %s\n        GROUP BY reglements.IDreglement\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Listes_diffusion.py",
+      "line": 59,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : listes_diffusion.nom",
+      "ungrouped_items": [
+        "listes_diffusion.nom"
+      ],
+      "sql": "SELECT listes_diffusion.IDliste, listes_diffusion.nom, Count(abonnements.IDindividu) AS nbreAbonnes\n        FROM listes_diffusion\n        LEFT JOIN abonnements ON abonnements.IDliste = listes_diffusion.IDliste\n        GROUP BY listes_diffusion.IDliste;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Lots_factures.py",
+      "line": 60,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : lots_factures.nom",
+      "ungrouped_items": [
+        "lots_factures.nom"
+      ],
+      "sql": "SELECT lots_factures.IDlot, lots_factures.nom, Count(factures.IDfacture) AS nbreFactures\n        FROM lots_factures\n        LEFT JOIN factures ON factures.IDlot = lots_factures.IDlot\n        GROUP BY lots_factures.IDlot;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Lots_pes.py",
+      "line": 69,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : pes_lots.nom, pes_lots.verrouillage, pes_lots.observations, pes_lots.format, ...",
+      "ungrouped_items": [
+        "pes_lots.nom",
+        "pes_lots.verrouillage",
+        "pes_lots.observations",
+        "pes_lots.format",
+        "exercice",
+        "mois"
+      ],
+      "sql": "SELECT pes_lots.IDlot, pes_lots.nom, pes_lots.verrouillage, pes_lots.observations, pes_lots.format, exercice, mois, Count(pes_pieces.IDlot) AS nbrePieces\n        FROM pes_lots\n        LEFT JOIN pes_pieces ON pes_pieces.IDlot = pes_lots.IDlot\n        GROUP BY pes_lots.IDlot;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Lots_prelevements.py",
+      "line": 66,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : lots_prelevements.nom, lots_prelevements.date, lots_prelevements.verrouillage, lots_prelevements.observations, ...",
+      "ungrouped_items": [
+        "lots_prelevements.nom",
+        "lots_prelevements.date",
+        "lots_prelevements.verrouillage",
+        "lots_prelevements.observations",
+        "lots_prelevements.type"
+      ],
+      "sql": "SELECT lots_prelevements.IDlot, lots_prelevements.nom, lots_prelevements.date, lots_prelevements.verrouillage, lots_prelevements.observations, lots_prelevements.type, Count(prelevements.IDlot) AS nbrePrelevements\n        FROM lots_prelevements\n        LEFT JOIN prelevements ON prelevements.IDlot = lots_prelevements.IDlot\n        GROUP BY lots_prelevements.IDlot;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Lots_rappels.py",
+      "line": 60,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : lots_rappels.nom",
+      "ungrouped_items": [
+        "lots_rappels.nom"
+      ],
+      "sql": "SELECT lots_rappels.IDlot, lots_rappels.nom, Count(rappels.IDrappel) AS nbreRappels\n        FROM lots_rappels\n        LEFT JOIN rappels ON rappels.IDlot = lots_rappels.IDlot\n        GROUP BY lots_rappels.IDlot;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Mandats.py",
+      "line": 136,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : mandats.IDfamille, rum, mandats.type, mandats.date, ...",
+      "ungrouped_items": [
+        "mandats.IDfamille",
+        "rum",
+        "mandats.type",
+        "mandats.date",
+        "mandats.IDbanque",
+        "mandats.IDindividu",
+        "individu_nom",
+        "individu_rue",
+        "individu_cp",
+        "individu_ville",
+        "iban",
+        "bic",
+        "mandats.memo",
+        "mandats.sequence",
+        "actif",
+        "individus.nom",
+        "individus.prenom",
+        "banques.nom"
+      ],
+      "sql": "SELECT \n        mandats.IDmandat, mandats.IDfamille, rum, mandats.type, mandats.date, mandats.IDbanque, mandats.IDindividu, individu_nom, individu_rue, individu_cp, individu_ville, iban, bic, mandats.memo, mandats.sequence, actif,\n        individus.nom, individus.prenom, banques.nom,\n        COUNT(prelevements.IDprelevement), COUNT(pes_pieces.IDpiece)\n        FROM mandats\n        LEFT JOIN individus ON individus.IDindividu = mandats.IDindividu\n        LEFT JOIN banques ON banques.IDbanque = mandats.IDbanque\n        LEFT JOIN prelevements ON prelevements.IDmandat = mandats.IDmandat\n        LEFT JOIN pes_pieces ON pes_pieces.prelevement_IDmandat = mandats.IDmandat\n        %s\n        GROUP BY mandats.IDmandat\n        "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Modes_reglements.py",
+      "line": 111,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : label, modes_reglements.image",
+      "ungrouped_items": [
+        "label",
+        "modes_reglements.image"
+      ],
+      "sql": "SELECT \n        modes_reglements.IDmode, label, modes_reglements.image,\n        COUNT(emetteurs.IDemetteur)\n        FROM modes_reglements\n        LEFT JOIN emetteurs ON emetteurs.IDmode = modes_reglements.IDmode\n        GROUP BY modes_reglements.IDmode\n        ORDER BY label\n        "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_PES_pieces.py",
+      "line": 1053,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDcompte_payeur, prestations.montant, prestations.IDfacture",
+      "ungrouped_items": [
+        "prestations.IDcompte_payeur",
+        "prestations.montant",
+        "prestations.IDfacture"
+      ],
+      "sql": "SELECT\n        prestations.IDprestation, prestations.IDcompte_payeur, prestations.montant,\n        prestations.IDfacture, SUM(ventilation.montant) AS montant_ventilation\n        FROM prestations\n        LEFT JOIN ventilation ON prestations.IDprestation = ventilation.IDprestation\n        WHERE prestations.IDfacture IN %s\n        GROUP BY prestations.IDprestation\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Prefixes_factures.py",
+      "line": 60,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : nom, prefixe",
+      "ungrouped_items": [
+        "nom",
+        "prefixe"
+      ],
+      "sql": "SELECT factures_prefixes.IDprefixe, nom, prefixe, COUNT(factures.IDfacture)\n        FROM factures_prefixes\n        LEFT JOIN factures ON factures.IDprefixe = factures_prefixes.IDprefixe\n        GROUP BY factures_prefixes.IDprefixe\n        ORDER BY prefixe; "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Prelevements_national.py",
+      "line": 775,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDcompte_payeur, prestations.montant, prestations.IDfacture",
+      "ungrouped_items": [
+        "prestations.IDcompte_payeur",
+        "prestations.montant",
+        "prestations.IDfacture"
+      ],
+      "sql": "SELECT\n        prestations.IDprestation, prestations.IDcompte_payeur, prestations.montant,\n        prestations.IDfacture, SUM(ventilation.montant) AS montant_ventilation\n        FROM prestations\n        LEFT JOIN ventilation ON prestations.IDprestation = ventilation.IDprestation\n        WHERE prestations.IDfacture IN %s\n        GROUP BY prestations.IDprestation\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Prelevements_sepa.py",
+      "line": 873,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDcompte_payeur, prestations.montant, prestations.IDfacture",
+      "ungrouped_items": [
+        "prestations.IDcompte_payeur",
+        "prestations.montant",
+        "prestations.IDfacture"
+      ],
+      "sql": "SELECT\n        prestations.IDprestation, prestations.IDcompte_payeur, prestations.montant,\n        prestations.IDfacture, SUM(ventilation.montant) AS montant_ventilation\n        FROM prestations\n        LEFT JOIN ventilation ON prestations.IDprestation = ventilation.IDprestation\n        WHERE prestations.IDfacture IN %s\n        GROUP BY prestations.IDprestation\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Prestations.py",
+      "line": 161,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDcompte_payeur, prestations.date, categorie, prestations.label, ...",
+      "ungrouped_items": [
+        "prestations.IDcompte_payeur",
+        "prestations.date",
+        "categorie",
+        "prestations.label",
+        "prestations.montant",
+        "prestations.IDactivite",
+        "activites.nom",
+        "activites.abrege",
+        "prestations.IDtarif",
+        "noms_tarifs.nom",
+        "categories_tarifs.nom",
+        "prestations.IDfacture",
+        "factures.IDprefixe",
+        "factures_prefixes.prefixe",
+        "factures.numero",
+        "factures.date_edition",
+        "prestations.forfait",
+        "prestations.IDcategorie_tarif",
+        "IDfamille",
+        "prestations.IDindividu",
+        "individus.nom",
+        "individus.prenom",
+        "reglement_frais"
+      ],
+      "sql": "\n        SELECT prestations.IDprestation, prestations.IDcompte_payeur, prestations.date, categorie, \n        prestations.label, prestations.montant, \n        prestations.IDactivite, activites.nom, activites.abrege,\n        prestations.IDtarif, noms_tarifs.nom, categories_tarifs.nom,\n        prestations.IDfacture, factures.IDprefixe, factures_prefixes.prefixe, factures.numero, factures.date_edition,\n        prestations.forfait, prestations.IDcategorie_tarif,\n        IDfamille, prestations.IDindividu, \n        individus.nom, individus.prenom,\n        SUM(deductions.montant) AS montant_deduction,\n        COUNT(deductions.IDdeduction) AS nbre_deductions,\n        reglement_frais\n        FROM prestations\n        LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n        LEFT JOIN individus ON prestations.IDindividu = individus.IDindividu\n        LEFT JOIN tarifs ON prestations.IDtarif = tarifs.IDtarif\n        LEFT JOIN noms_tarifs ON tarifs.IDnom_tarif = noms_tarifs.IDnom_tarif\n        LEFT JOIN categories_tarifs ON prestations.IDcategorie_tarif = categories_tarifs.IDcategorie_tarif\n        LEFT JOIN deductions ON deductions.IDprestation = prestations.IDprestation\n        LEFT JOIN factures ON prestations.IDfacture = factures.IDfacture\n        LEFT JOIN factures_prefixes ON factures_prefixes.IDprefixe = factures.IDprefixe\n        WHERE %s %s %s %s\n        GROUP BY prestations.IDprestation\n        ORDER BY prestations.date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Prestations_repartition.py",
+      "line": 190,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDcompte_payeur, prestations.date, categorie, prestations.label, ...",
+      "ungrouped_items": [
+        "prestations.IDcompte_payeur",
+        "prestations.date",
+        "categorie",
+        "prestations.label",
+        "prestations.montant",
+        "prestations.IDactivite",
+        "activites.nom",
+        "activites.abrege",
+        "prestations.IDtarif",
+        "noms_tarifs.nom",
+        "categories_tarifs.nom",
+        "prestations.IDfacture",
+        "factures.numero",
+        "factures.date_edition",
+        "prestations.forfait",
+        "prestations.IDcategorie_tarif",
+        "IDfamille",
+        "prestations.IDindividu",
+        "individus.nom",
+        "individus.prenom",
+        "reglement_frais"
+      ],
+      "sql": "\n        SELECT prestations.IDprestation, prestations.IDcompte_payeur, prestations.date, categorie, \n        prestations.label, prestations.montant, \n        prestations.IDactivite, activites.nom, activites.abrege,\n        prestations.IDtarif, noms_tarifs.nom, categories_tarifs.nom, prestations.IDfacture, factures.numero, factures.date_edition,\n        prestations.forfait, prestations.IDcategorie_tarif,\n        IDfamille, prestations.IDindividu, \n        individus.nom, individus.prenom,\n        SUM(ventilation.montant) AS montant_ventilation,\n        SUM(deductions.montant) AS montant_deduction,\n        COUNT(deductions.IDdeduction) AS nbre_deductions,\n        reglement_frais\n        FROM prestations\n        LEFT JOIN ventilation ON prestations.IDprestation = ventilation.IDprestation\n        LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n        LEFT JOIN individus ON prestations.IDindividu = individus.IDindividu\n        LEFT JOIN tarifs ON prestations.IDtarif = tarifs.IDtarif\n        LEFT JOIN noms_tarifs ON tarifs.IDnom_tarif = noms_tarifs.IDnom_tarif\n        LEFT JOIN categories_tarifs ON prestations.IDcategorie_tarif = categories_tarifs.IDcategorie_tarif\n        LEFT JOIN deductions ON deductions.IDprestation = prestations.IDprestation\n        LEFT JOIN factures ON prestations.IDfacture = factures.IDfacture\n        WHERE %s %s %s %s\n        GROUP BY prestations.IDprestation\n        ORDER BY prestations.date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Recalculer_prestations.py",
+      "line": 81,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDindividu, IDfamille, IDcompte_payeur, date, ...",
+      "ungrouped_items": [
+        "prestations.IDindividu",
+        "IDfamille",
+        "IDcompte_payeur",
+        "date",
+        "montant",
+        "individus.nom",
+        "individus.prenom"
+      ],
+      "sql": "\n        SELECT \n        IDprestation, prestations.IDindividu, IDfamille, IDcompte_payeur, date, montant,\n        individus.nom, individus.prenom\n        FROM prestations\n        LEFT JOIN individus ON individus.IDindividu = prestations.IDindividu\n        WHERE date>='%s' AND date<='%s' AND IDactivite=%d AND categorie='consommation'\n        GROUP BY IDprestation\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Regies_factures.py",
+      "line": 60,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : nom, numclitipi",
+      "ungrouped_items": [
+        "nom",
+        "numclitipi"
+      ],
+      "sql": "SELECT factures_regies.IDregie, nom, numclitipi, COUNT(factures.IDfacture)\n        FROM factures_regies\n        LEFT JOIN factures ON factures.IDregie = factures_regies.IDregie\n        GROUP BY factures_regies.IDregie\n        ORDER BY nom; "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Releves_compta.py",
+      "line": 70,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : compta_releves.nom, date_debut, date_fin, compta_releves.IDcompte_bancaire, ...",
+      "ungrouped_items": [
+        "compta_releves.nom",
+        "date_debut",
+        "date_fin",
+        "compta_releves.IDcompte_bancaire",
+        "comptes_bancaires.nom"
+      ],
+      "sql": "SELECT compta_releves.IDreleve, compta_releves.nom, date_debut, date_fin, compta_releves.IDcompte_bancaire, comptes_bancaires.nom, COUNT(compta_operations.IDoperation)\n        FROM compta_releves \n        LEFT JOIN comptes_bancaires ON comptes_bancaires.IDcompte = compta_releves.IDcompte_bancaire\n        LEFT JOIN compta_operations ON compta_operations.IDreleve = compta_releves.IDreleve\n        %s\n        GROUP BY compta_releves.IDreleve\n        ORDER BY date_debut;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Saisie_lot_deductions.py",
+      "line": 76,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDcompte_payeur, prestations.date, prestations.label, prestations.montant, ...",
+      "ungrouped_items": [
+        "prestations.IDcompte_payeur",
+        "prestations.date",
+        "prestations.label",
+        "prestations.montant",
+        "IDfamille",
+        "IDfacture"
+      ],
+      "sql": "\n        SELECT prestations.IDprestation, prestations.IDcompte_payeur, prestations.date, prestations.label, prestations.montant, IDfamille, IDfacture\n        FROM prestations\n        WHERE date>='%s' AND date<='%s'\n        GROUP BY prestations.IDprestation\n        ORDER BY prestations.date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Saisie_lot_inscriptions.py",
+      "line": 83,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : nom, prenom, date_naiss",
+      "ungrouped_items": [
+        "nom",
+        "prenom",
+        "date_naiss"
+      ],
+      "sql": "SELECT individus.IDindividu, nom, prenom, date_naiss, rattachements.IDfamille, comptes_payeurs.IDcompte_payeur\n        FROM individus\n        LEFT JOIN rattachements ON rattachements.IDindividu = individus.IDindividu\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDfamille = rattachements.IDfamille\n        WHERE IDcategorie IN (1, 2) AND rattachements.IDfamille IS NOT NULL\n        GROUP BY individus.IDindividu, rattachements.IDfamille, comptes_payeurs.IDcompte_payeur;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Secteurs.py",
+      "line": 59,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : secteurs.nom",
+      "ungrouped_items": [
+        "secteurs.nom"
+      ],
+      "sql": "SELECT secteurs.IDsecteur, secteurs.nom, Count(individus.IDindividu) AS nbreTitulaires\n        FROM secteurs\n        LEFT JOIN individus ON secteurs.IDsecteur = individus.IDsecteur\n        GROUP BY secteurs.IDsecteur;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Solder_impayes.py",
+      "line": 75,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDcompte_payeur, prestations.date, prestations.montant, IDfamille",
+      "ungrouped_items": [
+        "prestations.IDcompte_payeur",
+        "prestations.date",
+        "prestations.montant",
+        "IDfamille"
+      ],
+      "sql": "\n        SELECT prestations.IDprestation, prestations.IDcompte_payeur, prestations.date, prestations.montant, IDfamille\n        FROM prestations\n        WHERE date>='%s' AND date<='%s'\n        GROUP BY prestations.IDprestation\n        ORDER BY prestations.date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Transfert_RIB.py",
+      "line": 114,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prelevement_iban, prelevement_bic, prelevement_banque, prelevement_individu, ...",
+      "ungrouped_items": [
+        "prelevement_iban",
+        "prelevement_bic",
+        "prelevement_banque",
+        "prelevement_individu",
+        "prelevement_nom",
+        "prelevement_rue",
+        "prelevement_cp",
+        "prelevement_ville",
+        "prelevement_reference_mandat",
+        "prelevement_date_mandat",
+        "prelevement_memo",
+        "mandats.IDmandat",
+        "individus.nom",
+        "individus.prenom",
+        "banques.nom"
+      ],
+      "sql": "SELECT familles.IDfamille, prelevement_iban, prelevement_bic, prelevement_banque,\n        prelevement_individu, prelevement_nom, prelevement_rue, prelevement_cp, prelevement_ville,\n        prelevement_reference_mandat, prelevement_date_mandat, prelevement_memo,\n        mandats.IDmandat, individus.nom, individus.prenom,\n        banques.nom\n        FROM familles \n        LEFT JOIN mandats ON mandats.rum = familles.prelevement_reference_mandat\n        LEFT JOIN individus ON individus.IDindividu = familles.prelevement_individu\n        LEFT JOIN banques ON banques.IDbanque = familles.prelevement_banque\n        GROUP BY familles.IDfamille\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Types_quotients.py",
+      "line": 59,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : types_quotients.nom",
+      "ungrouped_items": [
+        "types_quotients.nom"
+      ],
+      "sql": "SELECT types_quotients.IDtype_quotient, types_quotients.nom, COUNT(quotients.IDquotient)\n        FROM types_quotients\n        LEFT JOIN quotients ON quotients.IDtype_quotient = types_quotients.IDtype_quotient\n        GROUP BY types_quotients.IDtype_quotient\n        ; "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Ol/OL_Types_sieste.py",
+      "line": 59,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : types_sieste.nom",
+      "ungrouped_items": [
+        "types_sieste.nom"
+      ],
+      "sql": "SELECT types_sieste.IDtype_sieste, types_sieste.nom, Count(individus.IDindividu) AS nbreTitulaires\n        FROM types_sieste\n        LEFT JOIN individus ON types_sieste.IDtype_sieste = individus.IDtype_sieste\n        GROUP BY types_sieste.IDtype_sieste;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Cotisations.py",
+      "line": 125,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDcotisation",
+      "ungrouped_items": [
+        "IDcotisation"
+      ],
+      "sql": "SELECT IDcotisation, SUM(montant)\n        FROM prestations\n        LEFT JOIN cotisations ON cotisations.IDprestation = prestations.IDprestation\n        WHERE cotisations.IDcotisation IN %s \n        GROUP BY cotisations.IDcotisation;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Cotisations.py",
+      "line": 136,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDcotisation",
+      "ungrouped_items": [
+        "IDcotisation"
+      ],
+      "sql": "SELECT IDcotisation, SUM(ventilation.montant), MIN(reglements.date), MIN(modes_reglements.label)\n        FROM ventilation\n        LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n        LEFT JOIN cotisations ON cotisations.IDprestation = ventilation.IDprestation\n        LEFT JOIN reglements ON reglements.IDreglement = ventilation.IDreglement\n        LEFT JOIN modes_reglements ON modes_reglements.IDmode = reglements.IDmode\n        WHERE cotisations.IDcotisation IN %s \n        GROUP BY cotisations.IDcotisation;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Cotisations_manquantes.py",
+      "line": 50,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : types_cotisations.nom, types_cotisations.type, individus.prenom",
+      "ungrouped_items": [
+        "types_cotisations.nom",
+        "types_cotisations.type",
+        "individus.prenom"
+      ],
+      "sql": "\n    SELECT \n    inscriptions.IDfamille, cotisations_activites.IDactivite, cotisations_activites.IDtype_cotisation, types_cotisations.nom, types_cotisations.type, individus.prenom, individus.IDindividu\n    FROM cotisations_activites \n    LEFT JOIN types_cotisations ON types_cotisations.IDtype_cotisation = cotisations_activites.IDtype_cotisation\n    LEFT JOIN inscriptions ON inscriptions.IDactivite = cotisations_activites.IDactivite\n    LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n    LEFT JOIN activites ON activites.IDactivite = inscriptions.IDactivite\n    %s\n    WHERE inscriptions.statut='ok' AND (inscriptions.date_desinscription IS NULL OR inscriptions.date_desinscription>='%s') %s %s AND activites.date_fin>='%s'\n    GROUP BY inscriptions.IDfamille, cotisations_activites.IDtype_cotisation, individus.IDindividu, cotisations_activites.IDactivite;\n    "
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Export_familles.py",
+      "line": 125,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : %s",
+      "ungrouped_items": [
+        "%s"
+      ],
+      "sql": "\n        SELECT %s\n        FROM prestations\n        LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n        LEFT JOIN individus ON prestations.IDindividu = individus.IDindividu\n        LEFT JOIN factures ON prestations.IDfacture = factures.IDfacture\n        %s\n        GROUP BY prestations.IDprestation\n        ORDER BY prestations.date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Export_familles.py",
+      "line": 152,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDconso, date, activites.nom, consommations.etat, ...",
+      "ungrouped_items": [
+        "IDconso",
+        "date",
+        "activites.nom",
+        "consommations.etat",
+        "unites.nom",
+        "consommations.IDindividu",
+        "comptes_payeurs.IDfamille"
+      ],
+      "sql": "\n        SELECT IDconso, date, activites.nom, consommations.etat, \n        unites.nom, consommations.IDindividu, comptes_payeurs.IDfamille\n        FROM consommations\n        LEFT JOIN activites ON activites.IDactivite = consommations.IDactivite\n        LEFT JOIN unites ON unites.IDunite = consommations.IDunite\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = consommations.IDcompte_payeur\n        %s\n        GROUP BY consommations.IDconso\n        ORDER BY date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Export_familles.py",
+      "line": 247,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : comptes_payeurs.IDfamille, reglements.date, modes_reglements.label, emetteurs.nom, ...",
+      "ungrouped_items": [
+        "comptes_payeurs.IDfamille",
+        "reglements.date",
+        "modes_reglements.label",
+        "emetteurs.nom",
+        "reglements.numero_piece",
+        "reglements.montant",
+        "payeurs.nom",
+        "reglements.observations",
+        "numero_quittancier",
+        "date_differe",
+        "date_saisie",
+        "depots.date"
+      ],
+      "sql": "SELECT\n        reglements.IDreglement, comptes_payeurs.IDfamille,\n        reglements.date, modes_reglements.label, emetteurs.nom, \n        reglements.numero_piece, reglements.montant, payeurs.nom, \n        reglements.observations, numero_quittancier, date_differe, \n        date_saisie, depots.date\n        FROM reglements\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = reglements.IDcompte_payeur\n        LEFT JOIN modes_reglements ON reglements.IDmode=modes_reglements.IDmode\n        LEFT JOIN emetteurs ON reglements.IDemetteur=emetteurs.IDemetteur\n        LEFT JOIN payeurs ON reglements.IDpayeur=payeurs.IDpayeur\n        LEFT JOIN depots ON reglements.IDdepot=depots.IDdepot\n        %s\n        GROUP BY reglements.IDreglement\n        ORDER BY date_saisie\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Facturation.py",
+      "line": 205,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDcompte_payeur, prestations.date, categorie, label, ...",
+      "ungrouped_items": [
+        "prestations.IDcompte_payeur",
+        "prestations.date",
+        "categorie",
+        "label",
+        "prestations.montant_initial",
+        "prestations.montant",
+        "prestations.tva",
+        "prestations.IDactivite",
+        "activites.nom",
+        "activites.abrege",
+        "prestations.IDtarif",
+        "noms_tarifs.nom",
+        "categories_tarifs.nom",
+        "IDfacture",
+        "prestations.IDindividu",
+        "prestations.IDfamille",
+        "forfait_date_debut",
+        "forfait_date_fin"
+      ],
+      "sql": "\n        SELECT prestations.IDprestation, prestations.IDcompte_payeur, prestations.date, categorie, \n        label, prestations.montant_initial, prestations.montant, prestations.tva, \n        prestations.IDactivite, activites.nom, activites.abrege,\n        prestations.IDtarif, noms_tarifs.nom, categories_tarifs.nom, IDfacture, \n        prestations.IDindividu, prestations.IDfamille,\n        forfait_date_debut, forfait_date_fin\n        FROM prestations\n        LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n        LEFT JOIN tarifs ON prestations.IDtarif = tarifs.IDtarif\n        LEFT JOIN noms_tarifs ON tarifs.IDnom_tarif = noms_tarifs.IDnom_tarif\n        LEFT JOIN categories_tarifs ON tarifs.IDcategorie_tarif = categories_tarifs.IDcategorie_tarif\n        %s\n        GROUP BY prestations.IDprestation\n        ORDER BY prestations.date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Facturation.py",
+      "line": 234,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : reglements.date, reglements.montant, reglements.numero_piece, modes_reglements.label, ...",
+      "ungrouped_items": [
+        "reglements.date",
+        "reglements.montant",
+        "reglements.numero_piece",
+        "modes_reglements.label",
+        "emetteurs.nom",
+        "payeurs.nom"
+      ],
+      "sql": "\n        SELECT ventilation.IDprestation, ventilation.IDreglement, ventilation.IDcompte_payeur, SUM(ventilation.montant) AS montant_ventilation,\n        reglements.date, reglements.montant, reglements.numero_piece, modes_reglements.label, emetteurs.nom, payeurs.nom\n        FROM ventilation\n        LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n        LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n        LEFT JOIN reglements ON reglements.IDreglement = ventilation.IDreglement\n        LEFT JOIN modes_reglements ON modes_reglements.IDmode = reglements.IDmode\n        LEFT JOIN emetteurs ON emetteurs.IDemetteur = reglements.IDemetteur\n        LEFT JOIN payeurs ON payeurs.IDpayeur = reglements.IDpayeur\n        %s\n        GROUP BY ventilation.IDprestation, ventilation.IDreglement, ventilation.IDcompte_payeur\n        ORDER BY prestations.date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Facturation.py",
+      "line": 299,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prestations.IDcompte_payeur, prestations.date, categorie, label, ...",
+      "ungrouped_items": [
+        "prestations.IDcompte_payeur",
+        "prestations.date",
+        "categorie",
+        "label",
+        "prestations.montant",
+        "prestations.IDactivite",
+        "activites.nom",
+        "activites.abrege",
+        "prestations.IDtarif",
+        "noms_tarifs.nom",
+        "categories_tarifs.nom",
+        "IDfacture",
+        "prestations.IDindividu",
+        "prestations.IDfamille",
+        "forfait_date_debut",
+        "forfait_date_fin"
+      ],
+      "sql": "\n        SELECT prestations.IDprestation, prestations.IDcompte_payeur, prestations.date, categorie, \n        label, prestations.montant, \n        prestations.IDactivite, activites.nom, activites.abrege,\n        prestations.IDtarif, noms_tarifs.nom, categories_tarifs.nom, IDfacture, \n        prestations.IDindividu, prestations.IDfamille,\n        forfait_date_debut, forfait_date_fin\n        FROM prestations\n        LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n        LEFT JOIN tarifs ON prestations.IDtarif = tarifs.IDtarif\n        LEFT JOIN noms_tarifs ON tarifs.IDnom_tarif = noms_tarifs.IDnom_tarif\n        LEFT JOIN categories_tarifs ON tarifs.IDcategorie_tarif = categories_tarifs.IDcategorie_tarif\n        %s\n        GROUP BY prestations.IDprestation\n        ORDER BY prestations.date\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Facturation.py",
+      "line": 814,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : factures.IDprefixe, factures_prefixes.prefixe, factures.numero, factures.IDcompte_payeur, ...",
+      "ungrouped_items": [
+        "factures.IDprefixe",
+        "factures_prefixes.prefixe",
+        "factures.numero",
+        "factures.IDcompte_payeur",
+        "factures.activites",
+        "factures.individus",
+        "factures.date_edition",
+        "factures.date_echeance",
+        "factures.IDutilisateur",
+        "factures.date_debut",
+        "factures.date_fin",
+        "factures.total",
+        "factures.regle",
+        "factures.solde",
+        "factures.prestations",
+        "lots_factures.nom",
+        "factures.mention1",
+        "factures.mention2",
+        "factures.mention3"
+      ],
+      "sql": "\n        SELECT \n        factures.IDfacture, factures.IDprefixe, factures_prefixes.prefixe, factures.numero, factures.IDcompte_payeur, factures.activites, factures.individus,\n        factures.date_edition, factures.date_echeance, factures.IDutilisateur,\n        factures.date_debut, factures.date_fin, factures.total, factures.regle, factures.solde,\n        factures.prestations, lots_factures.nom,\n        factures.mention1, factures.mention2, factures.mention3\n        FROM factures\n        LEFT JOIN lots_factures ON lots_factures.IDlot = factures.IDlot\n        LEFT JOIN factures_prefixes ON factures_prefixes.IDprefixe = factures.IDprefixe\n        WHERE factures.IDfacture IN %s\n        GROUP BY factures.IDfacture\n        ORDER BY factures.date_edition\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Pieces_manquantes.py",
+      "line": 70,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDinscription",
+      "ungrouped_items": [
+        "IDinscription"
+      ],
+      "sql": "\n        SELECT IDindividu, IDinscription\n        FROM consommations\n        WHERE date>='%s' AND date<='%s' AND consommations.etat IN ('reservation', 'present') %s\n        GROUP BY IDindividu\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Pieces_manquantes.py",
+      "line": 82,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : types_pieces.nom, types_pieces.public, types_pieces.valide_rattachement, individus.prenom",
+      "ungrouped_items": [
+        "types_pieces.nom",
+        "types_pieces.public",
+        "types_pieces.valide_rattachement",
+        "individus.prenom"
+      ],
+      "sql": "\n    SELECT \n    inscriptions.IDfamille, pieces_activites.IDtype_piece, types_pieces.nom, types_pieces.public, types_pieces.valide_rattachement, individus.prenom, individus.IDindividu\n    FROM pieces_activites \n    LEFT JOIN types_pieces ON types_pieces.IDtype_piece = pieces_activites.IDtype_piece\n    LEFT JOIN inscriptions ON inscriptions.IDactivite = pieces_activites.IDactivite\n    LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n    LEFT JOIN activites ON activites.IDactivite = inscriptions.IDactivite\n    WHERE inscriptions.statut='ok' AND (inscriptions.date_desinscription IS NULL OR inscriptions.date_desinscription>='%s') %s AND activites.date_fin>='%s'\n    GROUP BY inscriptions.IDfamille, pieces_activites.IDtype_piece, individus.IDindividu\n    ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Portail_synchro.py",
+      "line": 878,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : comptes_payeurs.IDfamille, reglements.date, modes_reglements.label, reglements.numero_piece, ...",
+      "ungrouped_items": [
+        "comptes_payeurs.IDfamille",
+        "reglements.date",
+        "modes_reglements.label",
+        "reglements.numero_piece",
+        "reglements.montant",
+        "depots.date"
+      ],
+      "sql": "SELECT\n        reglements.IDreglement, comptes_payeurs.IDfamille, reglements.date, modes_reglements.label,\n        reglements.numero_piece, reglements.montant, depots.date\n        FROM reglements\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = reglements.IDcompte_payeur\n        LEFT JOIN modes_reglements ON reglements.IDmode=modes_reglements.IDmode\n        LEFT JOIN emetteurs ON reglements.IDemetteur=emetteurs.IDemetteur\n        LEFT JOIN depots ON reglements.IDdepot=depots.IDdepot\n        %s\n        GROUP BY reglements.IDreglement\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Portail_synchro.py",
+      "line": 1304,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : ventilation.IDprestation",
+      "ungrouped_items": [
+        "ventilation.IDprestation"
+      ],
+      "sql": "SELECT ventilation.IDprestation, SUM(ventilation.montant)\n            FROM ventilation\n            LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n            WHERE IDfacture IS NULL AND %s\n            GROUP BY prestations.IDPrestation;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Procedures.py",
+      "line": 1346,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : comptes_payeurs.IDfamille, date_debut, date_fin, total",
+      "ungrouped_items": [
+        "comptes_payeurs.IDfamille",
+        "date_debut",
+        "date_fin",
+        "total"
+      ],
+      "sql": "SELECT factures.IDfacture, comptes_payeurs.IDfamille, date_debut, date_fin, total,\n    COUNT(prestations.IDprestation), SUM(prestations.montant)\n    FROM factures\n    LEFT JOIN prestations ON prestations.IDfacture = factures.IDfacture\n    LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = factures.IDcompte_payeur\n    WHERE factures.etat IS NULL\n    GROUP BY factures.IDfacture\n    ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Procedures.py",
+      "line": 1922,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : prelevements.IDfamille",
+      "ungrouped_items": [
+        "prelevements.IDfamille"
+      ],
+      "sql": "SELECT IDprelevement, prelevements.IDfamille, MIN(mandats.IDmandat) FROM prelevements\n    LEFT JOIN mandats ON mandats.IDfamille = prelevements.IDfamille\n    WHERE prelevements.IDmandat IS NULL\n    GROUP BY IDprelevement"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Rappels.py",
+      "line": 252,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : rappels.numero, rappels.IDcompte_payeur, rappels.date_edition, rappels.activites, ...",
+      "ungrouped_items": [
+        "rappels.numero",
+        "rappels.IDcompte_payeur",
+        "rappels.date_edition",
+        "rappels.activites",
+        "rappels.IDutilisateur",
+        "rappels.IDtexte",
+        "rappels.date_reference",
+        "rappels.solde",
+        "rappels.date_min",
+        "rappels.date_max",
+        "rappels.prestations",
+        "comptes_payeurs.IDfamille",
+        "lots_rappels.nom"
+      ],
+      "sql": "\n        SELECT \n        rappels.IDrappel, rappels.numero, rappels.IDcompte_payeur, \n        rappels.date_edition, rappels.activites, rappels.IDutilisateur,\n        rappels.IDtexte, rappels.date_reference, rappels.solde,\n        rappels.date_min, rappels.date_max, rappels.prestations,\n        comptes_payeurs.IDfamille, lots_rappels.nom\n        FROM rappels\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = rappels.IDcompte_payeur\n        LEFT JOIN lots_rappels ON lots_rappels.IDlot = rappels.IDlot\n        WHERE rappels.IDrappel IN %s\n        GROUP BY rappels.IDrappel\n        ORDER BY rappels.date_edition\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Stats_familles.py",
+      "line": 213,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : date_debut, date_fin, quotient",
+      "ungrouped_items": [
+        "date_debut",
+        "date_fin",
+        "quotient"
+      ],
+      "sql": "SELECT familles.IDfamille, IDquotient, date_debut, date_fin, quotient\n        FROM familles\n        LEFT JOIN quotients ON quotients.IDfamille = familles.IDfamille\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDfamille = familles.IDfamille\n        LEFT JOIN consommations ON consommations.IDcompte_payeur = comptes_payeurs.IDcompte_payeur\n        WHERE date>='%s' AND date<='%s' \n        AND consommations.etat IN ('reservation', 'present')\n        AND IDactivite IN %s\n        GROUP BY familles.IDfamille, IDquotient\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Stats_familles.py",
+      "line": 226,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : date_debut, date_fin, quotient",
+      "ungrouped_items": [
+        "date_debut",
+        "date_fin",
+        "quotient"
+      ],
+      "sql": "SELECT familles.IDfamille, IDquotient, date_debut, date_fin, quotient\n        FROM familles\n        LEFT JOIN quotients ON quotients.IDfamille = familles.IDfamille\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDfamille = familles.IDfamille\n        LEFT JOIN inscriptions ON inscriptions.IDcompte_payeur = comptes_payeurs.IDcompte_payeur\n        WHERE inscriptions.statut='ok' AND IDactivite IN %s\n        GROUP BY familles.IDfamille, IDquotient\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 96,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDcivilite",
+      "ungrouped_items": [
+        "IDcivilite"
+      ],
+      "sql": "SELECT individus.IDindividu, IDcivilite\n        FROM individus\n        LEFT JOIN consommations ON consommations.IDindividu = individus.IDindividu \n        WHERE date>='%s' AND date<='%s' \n        AND consommations.etat IN ('reservation', 'present')\n        AND IDactivite IN %s\n        GROUP BY individus.IDindividu\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 105,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDcivilite",
+      "ungrouped_items": [
+        "IDcivilite"
+      ],
+      "sql": "SELECT individus.IDindividu, IDcivilite\n        FROM individus\n        LEFT JOIN inscriptions ON inscriptions.IDindividu = individus.IDindividu \n        WHERE inscriptions.statut='ok' AND IDactivite IN %s\n        GROUP BY individus.IDindividu\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 151,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDcivilite, date_naiss",
+      "ungrouped_items": [
+        "IDcivilite",
+        "date_naiss"
+      ],
+      "sql": "SELECT individus.IDindividu, IDcivilite, date_naiss\n        FROM individus\n        LEFT JOIN consommations ON consommations.IDindividu = individus.IDindividu \n        WHERE date>='%s' AND date<='%s' \n        AND consommations.etat IN ('reservation', 'present')\n        AND IDactivite IN %s\n        GROUP BY individus.IDindividu\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 160,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : IDcivilite, date_naiss",
+      "ungrouped_items": [
+        "IDcivilite",
+        "date_naiss"
+      ],
+      "sql": "SELECT individus.IDindividu, IDcivilite, date_naiss\n        FROM individus\n        LEFT JOIN inscriptions ON inscriptions.IDindividu = individus.IDindividu \n        WHERE inscriptions.statut='ok' AND IDactivite IN %s\n        GROUP BY individus.IDindividu\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 256,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : adresse_auto",
+      "ungrouped_items": [
+        "adresse_auto"
+      ],
+      "sql": "SELECT individus.IDindividu, adresse_auto\n        FROM individus\n        LEFT JOIN consommations ON consommations.IDindividu = individus.IDindividu \n        WHERE date>='%s' AND date<='%s' \n        AND consommations.etat IN ('reservation', 'present')\n        AND IDactivite IN %s\n        GROUP BY individus.IDindividu\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 265,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : adresse_auto",
+      "ungrouped_items": [
+        "adresse_auto"
+      ],
+      "sql": "SELECT individus.IDindividu, adresse_auto\n        FROM individus\n        LEFT JOIN inscriptions ON inscriptions.IDindividu = individus.IDindividu \n        WHERE inscriptions.statut='ok' AND IDactivite IN %s\n        GROUP BY individus.IDindividu\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 339,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : individus.IDcategorie_travail, categories_travail.nom",
+      "ungrouped_items": [
+        "individus.IDcategorie_travail",
+        "categories_travail.nom"
+      ],
+      "sql": "SELECT individus.IDcategorie_travail, categories_travail.nom, COUNT(individus.IDindividu)\n        FROM individus\n        LEFT JOIN consommations ON consommations.IDindividu = individus.IDindividu \n        LEFT JOIN categories_travail ON categories_travail.IDcategorie = individus.IDcategorie_travail\n        WHERE date>='%s' AND date<='%s' \n        AND consommations.etat IN ('reservation', 'present')\n        AND IDactivite IN %s\n        GROUP BY IDcategorie_travail, consommations.IDindividu\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 349,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : individus.IDcategorie_travail, categories_travail.nom",
+      "ungrouped_items": [
+        "individus.IDcategorie_travail",
+        "categories_travail.nom"
+      ],
+      "sql": "SELECT individus.IDcategorie_travail, categories_travail.nom, COUNT(individus.IDindividu)\n        FROM individus\n        LEFT JOIN inscriptions ON inscriptions.IDindividu = individus.IDindividu \n        LEFT JOIN categories_travail ON categories_travail.IDcategorie = individus.IDcategorie_travail\n        WHERE inscriptions.statut='ok' AND IDactivite IN %s\n        GROUP BY IDcategorie_travail, inscriptions.IDindividu\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 451,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : date_desinscription",
+      "ungrouped_items": [
+        "date_desinscription"
+      ],
+      "sql": "SELECT IDindividu, date_desinscription\n    FROM inscriptions\n    WHERE date_desinscription>='%s' AND date_desinscription<='%s'\n    AND IDactivite IN %s\n    GROUP BY IDindividu\n    ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 500,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : ecoles.nom",
+      "ungrouped_items": [
+        "ecoles.nom"
+      ],
+      "sql": "SELECT scolarite.IDecole, ecoles.nom, COUNT(individus.IDindividu)\n        FROM individus\n        LEFT JOIN consommations ON consommations.IDindividu = individus.IDindividu \n        LEFT JOIN scolarite ON scolarite.IDindividu = individus.IDindividu AND scolarite.date_debut <= '%s' AND scolarite.date_fin >= '%s'\n        LEFT JOIN ecoles ON scolarite.IDecole = ecoles.IDecole\n        WHERE date>='%s' AND date<='%s' \n        AND consommations.etat IN ('reservation', 'present')\n        AND IDactivite IN %s\n        GROUP BY scolarite.IDecole, consommations.IDindividu\n        ;"
+    },
+    {
+      "classification": "REVIEW",
+      "risk": "HIGH",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 551,
+      "reason": "Expression(s) SELECT non agrégée(s) absente(s) du GROUP BY : niveaux_scolaires.ordre, niveaux_scolaires.abrege",
+      "ungrouped_items": [
+        "niveaux_scolaires.ordre",
+        "niveaux_scolaires.abrege"
+      ],
+      "sql": "SELECT scolarite.IDniveau, niveaux_scolaires.ordre, niveaux_scolaires.abrege, COUNT(individus.IDindividu)\n        FROM individus\n        LEFT JOIN consommations ON consommations.IDindividu = individus.IDindividu \n        LEFT JOIN scolarite ON scolarite.IDindividu = individus.IDindividu AND scolarite.date_debut <= '%s' AND scolarite.date_fin >= '%s'\n        LEFT JOIN niveaux_scolaires ON niveaux_scolaires.IDniveau = scolarite.IDniveau\n        WHERE date>='%s' AND date<='%s' \n        AND consommations.etat IN ('reservation', 'present')\n        AND IDactivite IN %s\n        GROUP BY scolarite.IDecole, consommations.IDindividu, scolarite.IDniveau\n        ;"
+    },
+    {
+      "classification": "DEDUPE",
+      "risk": "MEDIUM",
+      "file": "noethys/Ctrl/CTRL_Commande_repas_auto.py",
+      "line": 45,
+      "reason": "GROUP BY strict-compatible sans agrégat : dédoublonnage historique à conserver ou simplifier",
+      "ungrouped_items": [],
+      "sql": "SELECT consommations.IDactivite, activites.nom,\n    consommations.IDgroupe, groupes.nom, consommations.IDunite\n    FROM consommations\n    LEFT JOIN unites ON unites.IDunite = consommations.IDunite\n    LEFT JOIN activites ON activites.IDactivite = consommations.IDactivite\n    LEFT JOIN groupes ON groupes.IDgroupe = consommations.IDgroupe\n    WHERE consommations.date>='%s' AND consommations.date<='%s'\n    AND consommations.etat IN ('reservation', 'present')\n    AND %s\n    GROUP BY consommations.IDactivite, activites.nom, consommations.IDgroupe, groupes.nom, consommations.IDunite\n    ORDER BY activites.nom, groupes.ordre, groupes.nom, consommations.IDgroupe, consommations.IDunite;"
+    },
+    {
+      "classification": "DEDUPE",
+      "risk": "MEDIUM",
+      "file": "noethys/Ctrl/CTRL_ObjectListView.py",
+      "line": 599,
+      "reason": "GROUP BY strict-compatible sans agrégat : dédoublonnage historique à conserver ou simplifier",
+      "ungrouped_items": [],
+      "sql": "SELECT %s\n        FROM inscriptions \n        LEFT JOIN individus ON individus.IDindividu = inscriptions.IDindividu\n        %s\n        WHERE inscriptions.statut='ok' AND (inscriptions.date_desinscription IS NULL OR inscriptions.date_desinscription>='%s')  %s %s %s %s %s\n        GROUP BY %s\n        ;"
+    },
+    {
+      "classification": "DEDUPE",
+      "risk": "MEDIUM",
+      "file": "noethys/Dlg/DLG_Impression_attestation.py",
+      "line": 345,
+      "reason": "GROUP BY strict-compatible sans agrégat : dédoublonnage historique à conserver ou simplifier",
+      "ungrouped_items": [],
+      "sql": "SELECT prestations.label\n        FROM prestations\n        WHERE (IDindividu IN %s OR IDindividu IS NULL)\n        AND (prestations.IDactivite IN %s or prestations.IDactivite IS NULL)\n        AND prestations.date>='%s' AND prestations.date<='%s'\n        AND prestations.IDfamille=%d\n        %s\n        GROUP BY prestations.label\n        ;"
+    },
+    {
+      "classification": "DEDUPE",
+      "risk": "MEDIUM",
+      "file": "noethys/Dlg/DLG_Impression_devis.py",
+      "line": 314,
+      "reason": "GROUP BY strict-compatible sans agrégat : dédoublonnage historique à conserver ou simplifier",
+      "ungrouped_items": [],
+      "sql": "SELECT prestations.label\n        FROM prestations\n        WHERE (IDindividu IN %s OR IDindividu IS NULL)\n        AND (prestations.IDactivite IN %s OR prestations.IDactivite IS NULL)\n        AND prestations.date>='%s' AND prestations.date<='%s'\n        AND prestations.IDfamille=%d\n        GROUP BY prestations.label\n        ;"
+    },
+    {
+      "classification": "DEDUPE",
+      "risk": "MEDIUM",
+      "file": "noethys/Dlg/DLG_Rappels_generation_parametres.py",
+      "line": 396,
+      "reason": "GROUP BY strict-compatible sans agrégat : dédoublonnage historique à conserver ou simplifier",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcompte_payeur\n            FROM prestations\n            WHERE date>='%s' AND date<='%s'\n            GROUP BY IDcompte_payeur;"
+    },
+    {
+      "classification": "DEDUPE",
+      "risk": "MEDIUM",
+      "file": "noethys/Dlg/DLG_Rappels_generation_parametres.py",
+      "line": 415,
+      "reason": "GROUP BY strict-compatible sans agrégat : dédoublonnage historique à conserver ou simplifier",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcompte_payeur\n            FROM factures\n            WHERE IDlot=%d\n            GROUP BY IDcompte_payeur;"
+    },
+    {
+      "classification": "DEDUPE",
+      "risk": "MEDIUM",
+      "file": "noethys/Ol/OL_Liste_individus.py",
+      "line": 77,
+      "reason": "GROUP BY strict-compatible sans agrégat : dédoublonnage historique à conserver ou simplifier",
+      "ungrouped_items": [],
+      "sql": "SELECT IDindividu, IDinscription\n        FROM consommations\n        WHERE date>='%s' AND date<='%s' AND consommations.etat IN ('reservation', 'present') %s\n        GROUP BY IDindividu, IDinscription\n        ;"
+    },
+    {
+      "classification": "DEDUPE",
+      "risk": "MEDIUM",
+      "file": "noethys/Ol/OL_Liste_regimes.py",
+      "line": 74,
+      "reason": "GROUP BY strict-compatible sans agrégat : dédoublonnage historique à conserver ou simplifier",
+      "ungrouped_items": [],
+      "sql": "SELECT IDfamille\n        FROM consommations\n        LEFT JOIN inscriptions ON inscriptions.IDinscription = consommations.IDinscription\n        WHERE inscriptions.statut='ok' AND date>='%s' AND date<='%s' AND consommations.etat IN ('reservation', 'present') %s\n        GROUP BY IDfamille\n        ;"
+    },
+    {
+      "classification": "DEDUPE",
+      "risk": "MEDIUM",
+      "file": "noethys/Utils/UTILS_Procedures.py",
+      "line": 1905,
+      "reason": "GROUP BY strict-compatible sans agrégat : dédoublonnage historique à conserver ou simplifier",
+      "ungrouped_items": [],
+      "sql": "SELECT idactivite FROM inscriptions WHERE idcategorie_tarif IS NULL GROUP BY idactivite"
+    },
+    {
+      "classification": "DEDUPE",
+      "risk": "MEDIUM",
+      "file": "noethys/Utils/UTILS_Stats_familles.py",
+      "line": 159,
+      "reason": "GROUP BY strict-compatible sans agrégat : dédoublonnage historique à conserver ou simplifier",
+      "ungrouped_items": [],
+      "sql": "SELECT IDfamille, consommations.IDindividu\n        FROM consommations \n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = consommations.IDcompte_payeur\n        WHERE date>='%s' AND date<='%s' \n        AND consommations.etat IN ('reservation', 'present')\n        AND IDactivite IN %s\n        GROUP BY IDfamille, consommations.IDindividu\n        ;"
+    },
+    {
+      "classification": "DEDUPE",
+      "risk": "MEDIUM",
+      "file": "noethys/Utils/UTILS_Stats_familles.py",
+      "line": 168,
+      "reason": "GROUP BY strict-compatible sans agrégat : dédoublonnage historique à conserver ou simplifier",
+      "ungrouped_items": [],
+      "sql": "SELECT comptes_payeurs.IDfamille, inscriptions.IDindividu\n        FROM inscriptions \n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = inscriptions.IDcompte_payeur\n        WHERE inscriptions.statut='ok' AND IDactivite IN %s\n        GROUP BY comptes_payeurs.IDfamille, inscriptions.IDindividu\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ctrl/CTRL_Attestations_selection.py",
+      "line": 120,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n    SELECT prestations.IDprestation, SUM(ventilation.montant)\n    FROM ventilation\n    LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n    LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n    LEFT JOIN individus ON individus.IDindividu = prestations.IDindividu\n    WHERE (prestations.IDactivite IN %s OR prestations.IDactivite IS NULL)\n    AND %s\n    %s\n    GROUP BY prestations.IDprestation\n    ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ctrl/CTRL_Grille.py",
+      "line": 1757,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT ventilation.IDprestation, SUM(ventilation.montant)\n        FROM ventilation\n        LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n        %s\n        GROUP BY ventilation.IDprestation\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ctrl/CTRL_Inscriptions_attente.py",
+      "line": 136,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDgroupe, COUNT(IDinscription)\n        FROM inscriptions\n        WHERE inscriptions.%s AND inscriptions.statut='ok'\n        GROUP BY IDgroupe;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ctrl/CTRL_Numfacture.py",
+      "line": 132,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDfacture, SUM(montant)\n        FROM prestations\n        WHERE IDfacture=%d\n        GROUP BY IDfacture\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ctrl/CTRL_Synthese_modes_reglements.py",
+      "line": 222,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDmode, SUM(montant)\n            FROM reglements\n            LEFT JOIN depots ON depots.IDdepot = reglements.IDdepot\n            WHERE %s\n            GROUP BY IDmode\n            ; "
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ctrl/CTRL_Synthese_modes_reglements.py",
+      "line": 231,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDmode, SUM(ventilation.montant)\n            FROM ventilation\n            LEFT JOIN reglements ON reglements.IDreglement = ventilation.IDreglement\n            LEFT JOIN depots ON depots.IDdepot = reglements.IDdepot\n            WHERE %s\n            GROUP BY IDmode\n            ; "
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ctrl/CTRL_Ventilation.py",
+      "line": 596,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDprestation, SUM(montant)\n        FROM ventilation\n        WHERE IDcompte_payeur=%d\n        GROUP BY IDprestation\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Dlg/DLG_Export_compta.py",
+      "line": 463,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT \n        depots.IDdepot, depots.date, depots.nom, depots.code_compta, reglements.IDmode, modes_reglements.label, modes_reglements.type_comptable,\n        SUM(reglements.montant), COUNT(reglements.IDreglement),\n        comptes_bancaires.numero, comptes_bancaires.nom\n        FROM depots\n        LEFT JOIN reglements ON reglements.IDdepot = depots.IDdepot\n        LEFT JOIN modes_reglements ON modes_reglements.IDmode = reglements.IDmode\n        LEFT JOIN comptes_bancaires ON comptes_bancaires.IDcompte = depots.IDcompte\n        WHERE %s\n        GROUP BY depots.IDdepot, depots.date, depots.nom, depots.code_compta,\n        reglements.IDmode, modes_reglements.label, modes_reglements.type_comptable,\n        comptes_bancaires.numero, comptes_bancaires.nom\n        ORDER BY depots.date;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Dlg/DLG_Export_compta.py",
+      "line": 878,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n        SELECT prestations.IDprestation, prestations.date, prestations.code_compta, prestations.IDfacture, prestations.label,\n        prestations.montant, prestations.IDactivite, prestations.IDtarif, prestations.IDfamille, prestations.IDindividu, \n        activites.nom, activites.code_comptable,\n        tarifs.code_compta,\n        noms_tarifs.nom, \n        types_cotisations.code_comptable, types_cotisations.nom,\n        factures.numero, factures.date_edition\n        FROM prestations\n        LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n        LEFT JOIN tarifs ON prestations.IDtarif = tarifs.IDtarif\n        LEFT JOIN noms_tarifs ON tarifs.IDnom_tarif = noms_tarifs.IDnom_tarif\n        LEFT JOIN categories_tarifs ON prestations.IDcategorie_tarif = categories_tarifs.IDcategorie_tarif\n        LEFT JOIN (\n            SELECT IDprestation, MIN(IDcotisation) AS IDcotisation\n            FROM cotisations\n            WHERE IDprestation IS NOT NULL\n            GROUP BY IDprestation\n        ) cotisation_unique ON cotisation_unique.IDprestation = prestations.IDprestation\n        LEFT JOIN cotisations ON cotisations.IDcotisation = cotisation_unique.IDcotisation\n        LEFT JOIN types_cotisations ON types_cotisations.IDtype_cotisation = cotisations.IDtype_cotisation\n        LEFT JOIN factures ON factures.IDfacture = prestations.IDfacture\n        WHERE %s\n        ORDER BY prestations.date\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Dlg/DLG_Export_compta.py",
+      "line": 1238,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n        SELECT prestations.IDprestation, prestations.date, prestations.code_compta, prestations.IDfacture, prestations.label,\n        prestations.montant, prestations.IDactivite, prestations.IDtarif, prestations.IDfamille, prestations.IDindividu, \n        activites.nom, activites.code_comptable, activites.code_analytique,\n        tarifs.code_compta,\n        noms_tarifs.nom, \n        types_cotisations.code_comptable, types_cotisations.nom,\n        factures.numero, factures.date_edition,\n        individus.prenom\n        FROM prestations\n        LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n        LEFT JOIN individus ON individus.IDindividu = prestations.IDindividu\n        LEFT JOIN tarifs ON prestations.IDtarif = tarifs.IDtarif\n        LEFT JOIN noms_tarifs ON tarifs.IDnom_tarif = noms_tarifs.IDnom_tarif\n        LEFT JOIN categories_tarifs ON prestations.IDcategorie_tarif = categories_tarifs.IDcategorie_tarif\n        LEFT JOIN (\n            SELECT IDprestation, MIN(IDcotisation) AS IDcotisation\n            FROM cotisations\n            WHERE IDprestation IS NOT NULL\n            GROUP BY IDprestation\n        ) cotisation_unique ON cotisation_unique.IDprestation = prestations.IDprestation\n        LEFT JOIN cotisations ON cotisations.IDcotisation = cotisation_unique.IDcotisation\n        LEFT JOIN types_cotisations ON types_cotisations.IDtype_cotisation = cotisations.IDtype_cotisation\n        LEFT JOIN factures ON factures.IDfacture = prestations.IDfacture\n        WHERE %s\n        ORDER BY prestations.date\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Dlg/DLG_Impression_recu.py",
+      "line": 599,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDprestation, SUM(ventilation.montant) AS total_ventilation\n        FROM ventilation\n        WHERE ventilation.IDreglement=%d\n        GROUP BY IDprestation;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Dlg/DLG_Infos_fichier.py",
+      "line": 158,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcategorie, COUNT(IDaction) \n        FROM historique\n        GROUP BY IDcategorie\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Dlg/DLG_Inscription.py",
+      "line": 799,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDgroupe, COUNT(IDinscription)\n        FROM inscriptions\n        WHERE IDactivite=%d AND inscriptions.statut='ok'\n        GROUP BY IDgroupe;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Dlg/DLG_Liste_consommations.py",
+      "line": 75,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT date, COUNT(IDconso)\n        FROM consommations\n        GROUP BY date\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Dlg/DLG_Nbre_inscrits_2.py",
+      "line": 177,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT inscriptions.IDgroupe, inscriptions.statut, COUNT(inscriptions.IDinscription) as nbre_inscriptions\n        FROM inscriptions\n        LEFT JOIN activites ON activites.IDactivite = inscriptions.IDactivite\n        %s %s\n        GROUP BY inscriptions.IDgroupe, inscriptions.statut\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Dlg/DLG_Ouvertures.py",
+      "line": 1873,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT date, IDgroupe, IDunite, COUNT(IDconso)\n        FROM consommations \n        WHERE IDactivite=%d AND date>='%s' AND date<='%s'\n        GROUP BY date, IDgroupe, IDunite\n        ORDER BY date; "
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Dlg/DLG_Saisie_portail_demande.py",
+      "line": 220,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDfamille, SUM(montant)\n        FROM reglements\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = reglements.IDcompte_payeur\n        WHERE IDfamille=%d\n        GROUP BY IDfamille\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Dlg/DLG_Saisie_portail_demande.py",
+      "line": 235,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDfamille, SUM(montant)\n        FROM prestations\n        WHERE IDfamille=%d\n        GROUP BY IDfamille\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Dlg/DLG_Saisie_remboursement.py",
+      "line": 41,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcompte_payeur, SUM(montant) AS total_prestations\n    FROM prestations\n    WHERE IDcompte_payeur=%d\n    GROUP BY IDcompte_payeur;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Dlg/DLG_Saisie_remboursement.py",
+      "line": 53,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcompte_payeur, SUM(montant) AS total_reglements\n    FROM reglements\n    WHERE IDcompte_payeur=%d\n    GROUP BY IDcompte_payeur;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Archivage.py",
+      "line": 390,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDfamille, COUNT(IDprestation)\n            FROM prestations\n            WHERE date>='%s'\n            GROUP BY IDfamille\n            ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Archivage.py",
+      "line": 402,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT comptes_payeurs.IDfamille, COUNT(IDconso)\n            FROM consommations\n            LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = consommations.IDcompte_payeur\n            WHERE date>='%s'\n            GROUP BY comptes_payeurs.IDfamille\n            ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Archivage.py",
+      "line": 442,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDindividu, COUNT(IDprestation)\n            FROM prestations\n            WHERE date>='%s'\n            GROUP BY IDindividu\n            ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Archivage.py",
+      "line": 454,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDindividu, COUNT(IDconso)\n            FROM consommations\n            WHERE date>='%s'\n            GROUP BY IDindividu\n            ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Comptes_internet.py",
+      "line": 303,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDfamille, COUNT(IDprestation)\n        FROM prestations\n        WHERE date>='%s'\n        GROUP BY IDfamille\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Comptes_internet.py",
+      "line": 315,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT comptes_payeurs.IDfamille, COUNT(IDconso)\n        FROM consommations\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = consommations.IDcompte_payeur\n        WHERE date>='%s'\n        GROUP BY comptes_payeurs.IDfamille\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Factures.py",
+      "line": 224,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n        SELECT \n        prestations.IDfacture, SUM(prestations.montant)\n        FROM prestations\n        LEFT JOIN factures ON factures.IDfacture = prestations.IDfacture\n        %s\n        GROUP BY prestations.IDfacture\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Factures.py",
+      "line": 256,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n        SELECT prestations.IDfacture, SUM(ventilation.montant)\n        FROM ventilation\n        LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = prestations.IDcompte_payeur\n        LEFT JOIN factures ON factures.IDfacture = prestations.IDfacture\n        %s\n        GROUP BY prestations.IDfacture\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Inscriptions_activite.py",
+      "line": 138,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDactivite, IDgroupe, COUNT(IDinscription)\n        FROM inscriptions\n        WHERE inscriptions.statut='ok'\n        GROUP BY IDactivite, IDgroupe;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Liste_detaillee_inscriptions.py",
+      "line": 237,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDfamille, IDindividu, IDactivite, SUM(montant)\n        FROM prestations\n        WHERE %s\n        GROUP BY IDfamille, IDindividu, IDactivite\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Liste_detaillee_inscriptions.py",
+      "line": 251,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDfamille, IDindividu, IDactivite, SUM(ventilation.montant)\n        FROM ventilation\n        LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n        WHERE %s\n        GROUP BY IDfamille, IDindividu, IDactivite\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Liste_detaillee_inscriptions.py",
+      "line": 277,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n        SELECT MAX(date), consommations.IDindividu, consommations.IDactivite\n        FROM consommations \n        LEFT JOIN inscriptions ON inscriptions.IDinscription = consommations.IDinscription\n        WHERE consommations.IDindividu > 0 %s\n        GROUP BY consommations.IDindividu, consommations.IDactivite\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Liste_inscriptions.py",
+      "line": 196,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDfamille, IDindividu, SUM(montant)\n        FROM prestations\n        %s\n        GROUP BY IDfamille, IDindividu\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Liste_inscriptions.py",
+      "line": 210,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDfamille, IDindividu, SUM(ventilation.montant)\n        FROM ventilation\n        LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n        %s\n        GROUP BY IDfamille, IDindividu\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Liste_nominative_soldes.py",
+      "line": 181,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDfamille, IDindividu, SUM(montant)\n        FROM prestations\n        WHERE IDactivite IN %s %s\n        GROUP BY IDfamille, IDindividu\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Liste_nominative_soldes.py",
+      "line": 194,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDfamille, IDindividu, SUM(ventilation.montant)\n        FROM ventilation\n        LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n        WHERE prestations.IDactivite IN %s %s\n        GROUP BY IDfamille, IDindividu\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Prestations.py",
+      "line": 189,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n        SELECT ventilation.IDprestation, SUM(ventilation.montant) AS montant_ventilation\n        FROM ventilation\n        LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n        LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n        LEFT JOIN individus ON prestations.IDindividu = individus.IDindividu\n        LEFT JOIN tarifs ON prestations.IDtarif = tarifs.IDtarif\n        LEFT JOIN noms_tarifs ON tarifs.IDnom_tarif = noms_tarifs.IDnom_tarif\n        LEFT JOIN categories_tarifs ON prestations.IDcategorie_tarif = categories_tarifs.IDcategorie_tarif\n        LEFT JOIN factures ON prestations.IDfacture = factures.IDfacture\n        WHERE %s %s %s %s\n        GROUP BY ventilation.IDprestation\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Reglements.py",
+      "line": 161,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT \n        reglements.IDreglement, reglements.IDcompte_payeur, reglements.date, \n        reglements.IDmode, modes_reglements.label, \n        reglements.IDemetteur, emetteurs.nom, \n        reglements.numero_piece, reglements.montant, \n        payeurs.IDpayeur, payeurs.nom, \n        reglements.observations, numero_quittancier, IDprestation_frais, reglements.IDcompte, date_differe, \n        encaissement_attente, \n        reglements.IDdepot, depots.date, depots.nom, depots.verrouillage, \n        date_saisie, IDutilisateur,\n        ventilation_totaux.total_ventilation,\n        reglements.IDprelevement,\n        comptes_payeurs.IDfamille\n        FROM reglements\n        LEFT JOIN (\n            SELECT IDreglement, SUM(montant) AS total_ventilation\n            FROM ventilation\n            GROUP BY IDreglement\n        ) ventilation_totaux ON reglements.IDreglement = ventilation_totaux.IDreglement\n        LEFT JOIN modes_reglements ON reglements.IDmode=modes_reglements.IDmode\n        LEFT JOIN emetteurs ON reglements.IDemetteur=emetteurs.IDemetteur\n        LEFT JOIN payeurs ON reglements.IDpayeur=payeurs.IDpayeur\n        LEFT JOIN depots ON reglements.IDdepot=depots.IDdepot\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = reglements.IDcompte_payeur\n        %s\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Saisie_lot_deductions.py",
+      "line": 86,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n        SELECT ventilation.IDprestation, SUM(ventilation.montant) AS montant_ventilation\n        FROM ventilation\n        LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n        WHERE prestations.date>='%s' AND prestations.date<='%s'\n        GROUP BY ventilation.IDprestation\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Saisie_lot_forfaits_credits.py",
+      "line": 116,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n        SELECT IDindividu, IDfamille, SUM(prestations.montant)\n        FROM prestations\n        WHERE date>='%s' AND date<='%s' AND IDactivite=%d AND categorie='consommation'\n        GROUP BY IDindividu, IDfamille\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Solder_impayes.py",
+      "line": 85,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n        SELECT ventilation.IDprestation, SUM(ventilation.montant) AS montant_ventilation\n        FROM ventilation\n        LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n        WHERE prestations.date>='%s' AND prestations.date<='%s'\n        GROUP BY ventilation.IDprestation\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Soldes.py",
+      "line": 58,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcompte_payeur, SUM(montant) AS total_ventilations\n    FROM ventilation\n    GROUP BY IDcompte_payeur\n    ORDER BY IDcompte_payeur\n    ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Soldes.py",
+      "line": 74,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcompte_payeur, SUM(montant) AS total_prestations\n    FROM prestations\n    WHERE date<='%s' %s\n    GROUP BY IDcompte_payeur\n    ORDER BY IDcompte_payeur\n    ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Soldes.py",
+      "line": 87,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcompte_payeur, SUM(montant) AS total_reglements\n    FROM reglements\n    WHERE date<='%s'\n    GROUP BY IDcompte_payeur\n    ORDER BY IDcompte_payeur\n    ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Suivi_budget.py",
+      "line": 42,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDunite, COUNT(IDconso)\n        FROM consommations\n        WHERE date >='%s' AND date <='%s'\n        GROUP BY IDunite\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Suivi_budget.py",
+      "line": 61,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcategorie, SUM(montant)\n        FROM compta_ventilation\n        WHERE date_budget>='%s' AND date_budget<='%s' AND IDanalytique IN %s\n        GROUP BY IDcategorie\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Suivi_budget.py",
+      "line": 75,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcategorie, SUM(montant)\n        FROM compta_operations_budgetaires\n        WHERE date_budget>='%s' AND date_budget<='%s' AND IDanalytique IN %s\n        GROUP BY IDcategorie\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Verification_ventilation.py",
+      "line": 69,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcompte_payeur, SUM(montant) AS total_ventilations\n    FROM ventilation\n    %s\n    GROUP BY IDcompte_payeur\n    ORDER BY IDcompte_payeur\n    ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Verification_ventilation.py",
+      "line": 82,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcompte_payeur, SUM(montant) AS total_prestations\n    FROM prestations\n    %s\n    GROUP BY IDcompte_payeur\n    ORDER BY IDcompte_payeur\n    ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Ol/OL_Verification_ventilation.py",
+      "line": 95,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcompte_payeur, SUM(montant) AS total_reglements\n    FROM reglements\n    %s\n    GROUP BY IDcompte_payeur\n    ORDER BY IDcompte_payeur\n    ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Archivage.py",
+      "line": 185,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDindividu, IDfamille, COUNT(IDprestation)\n        FROM prestations\n        WHERE date>='%s' AND IDindividu IN %s\n        GROUP BY IDindividu, IDfamille;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Export_familles.py",
+      "line": 180,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n        SELECT prestations.IDfacture, SUM(prestations.montant)\n        FROM prestations\n        LEFT JOIN factures ON factures.IDfacture = prestations.IDfacture\n        GROUP BY prestations.IDfacture\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Export_familles.py",
+      "line": 206,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n        SELECT prestations.IDfacture, SUM(ventilation.montant)\n        FROM ventilation\n        LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = prestations.IDcompte_payeur\n        LEFT JOIN factures ON factures.IDfacture = prestations.IDfacture\n        %s\n        GROUP BY prestations.IDfacture\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Facturation.py",
+      "line": 324,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n        SELECT ventilation.IDprestation, SUM(ventilation.montant) AS montant_ventilation\n        FROM ventilation\n        LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n        LEFT JOIN activites ON prestations.IDactivite = activites.IDactivite\n        %s \n        GROUP BY ventilation.IDprestation\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Facturation.py",
+      "line": 392,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcompte_payeur, SUM(montant)\n        FROM prestations\n        WHERE IDcompte_payeur IN %s\n        GROUP BY IDcompte_payeur\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Facturation.py",
+      "line": 403,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcompte_payeur, SUM(montant)\n        FROM reglements\n        WHERE IDcompte_payeur IN %s\n        GROUP BY IDcompte_payeur\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Portail_synchro.py",
+      "line": 656,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDfamille, SUM(montant) AS total_prestations FROM prestations GROUP BY IDfamille;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Portail_synchro.py",
+      "line": 661,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDfamille, SUM(montant) AS total_reglements FROM reglements \n            LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = reglements.IDcompte_payeur\n            GROUP BY IDfamille;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Portail_synchro.py",
+      "line": 787,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n        SELECT\n        prestations.IDfacture, SUM(prestations.montant)\n        FROM prestations\n        LEFT JOIN factures ON factures.IDfacture = prestations.IDfacture\n        %s\n        GROUP BY prestations.IDfacture\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Portail_synchro.py",
+      "line": 819,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n        SELECT prestations.IDfacture, SUM(ventilation.montant)\n        FROM ventilation\n        LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = prestations.IDcompte_payeur\n        LEFT JOIN factures ON factures.IDfacture = prestations.IDfacture\n        %s\n        GROUP BY prestations.IDfacture\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Procedures.py",
+      "line": 1856,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "\n    SELECT prestations.IDfacture, SUM(prestations.montant)\n    FROM prestations\n    LEFT JOIN factures ON factures.IDfacture = prestations.IDfacture\n    GROUP BY prestations.IDfacture;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Procedures.py",
+      "line": 1865,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT prestations.IDfacture, SUM(ventilation.montant)\n    FROM ventilation\n    LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n    LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = prestations.IDcompte_payeur\n    LEFT JOIN factures ON factures.IDfacture = prestations.IDfacture\n    GROUP BY prestations.IDfacture;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Rappels.py",
+      "line": 130,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT prestations.IDcompte_payeur, prestations.IDfamille,\n        MIN(prestations.date),\n        MAX(prestations.date),\n        SUM(prestations.montant)\n        FROM prestations\n        WHERE (prestations.IDactivite IN %s OR prestations.IDactivite IS NULL)\n        AND prestations.date <= '%s' AND prestations.IDcompte_payeur NOT IN %s AND %s\n        GROUP BY prestations.IDcompte_payeur, prestations.IDfamille\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Rappels.py",
+      "line": 143,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT prestations.IDcompte_payeur, SUM(ventilation.montant)\n        FROM ventilation\n        LEFT JOIN prestations ON prestations.IDprestation = ventilation.IDprestation\n        WHERE (prestations.IDactivite IN %s OR prestations.IDactivite IS NULL)\n        AND prestations.date <= '%s' AND prestations.IDcompte_payeur NOT IN %s\n        GROUP BY prestations.IDcompte_payeur\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Stats_familles.py",
+      "line": 64,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT COUNT(IDfamille)\n        FROM consommations \n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = consommations.IDcompte_payeur\n        WHERE date>='%s' AND date<='%s' \n        AND consommations.etat IN ('reservation', 'present')\n        AND IDactivite IN %s\n        GROUP BY comptes_payeurs.IDfamille\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Stats_familles.py",
+      "line": 106,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcaisse, COUNT(familles.IDfamille)\n        FROM familles\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDfamille = familles.IDfamille\n        LEFT JOIN consommations ON consommations.IDcompte_payeur = comptes_payeurs.IDcompte_payeur\n        WHERE date>='%s' AND date<='%s' \n        AND consommations.etat IN ('reservation', 'present')\n        AND IDactivite IN %s\n        GROUP BY IDcaisse, familles.IDfamille\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Stats_familles.py",
+      "line": 116,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDcaisse, COUNT(familles.IDfamille)\n        FROM familles\n        LEFT JOIN comptes_payeurs ON comptes_payeurs.IDfamille = familles.IDfamille\n        LEFT JOIN inscriptions ON inscriptions.IDcompte_payeur = comptes_payeurs.IDcompte_payeur\n        WHERE inscriptions.statut='ok' AND IDactivite IN %s\n        GROUP BY IDcaisse, familles.IDfamille\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Stats_familles.py",
+      "line": 316,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT COUNT(IDfamille)\n            FROM consommations \n            LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = consommations.IDcompte_payeur\n            WHERE date>='%s' AND date<='%s' \n            AND consommations.etat IN ('reservation', 'present')\n            AND IDactivite IN %s\n            GROUP BY comptes_payeurs.IDfamille\n            ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Stats_familles.py",
+      "line": 325,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT COUNT(comptes_payeurs.IDfamille)\n            FROM inscriptions \n            LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = inscriptions.IDcompte_payeur\n            WHERE inscriptions.statut='ok' AND IDactivite IN %s\n            GROUP BY comptes_payeurs.IDfamille\n            ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Stats_familles.py",
+      "line": 366,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDactivite, COUNT(IDfamille)\n            FROM consommations \n            LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = consommations.IDcompte_payeur\n            WHERE date>='%s' AND date<='%s' \n            AND consommations.etat IN ('reservation', 'present')\n            AND IDactivite IN %s\n            GROUP BY IDactivite, IDfamille\n            ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Stats_familles.py",
+      "line": 375,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDactivite, COUNT(comptes_payeurs.IDfamille)\n            FROM inscriptions \n            LEFT JOIN comptes_payeurs ON comptes_payeurs.IDcompte_payeur = inscriptions.IDcompte_payeur\n            WHERE inscriptions.statut='ok' AND IDactivite IN %s\n            GROUP BY IDactivite, comptes_payeurs.IDfamille\n            ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 62,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT COUNT(IDindividu)\n        FROM consommations \n        WHERE date>='%s' AND date<='%s' \n        AND consommations.etat IN ('reservation', 'present')\n        AND IDactivite IN %s\n        GROUP BY IDindividu\n        ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 396,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDindividu, MIN(date), MAX(date)\n    FROM consommations\n    WHERE date<='%s' \n    AND consommations.etat IN ('reservation', 'present')\n    AND IDactivite IN %s\n    GROUP BY IDindividu\n    ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 602,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT COUNT(IDindividu)\n            FROM consommations \n            WHERE date>='%s' AND date<='%s' \n            AND consommations.etat IN ('reservation', 'present')\n            AND IDactivite IN %s\n            GROUP BY IDindividu\n            ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 610,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT COUNT(IDindividu)\n            FROM inscriptions \n            WHERE inscriptions.statut='ok' AND IDactivite IN %s\n            GROUP BY IDindividu\n            ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 648,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDactivite, COUNT(IDindividu)\n            FROM consommations \n            WHERE date>='%s' AND date<='%s' \n            AND consommations.etat IN ('reservation', 'present')\n            AND IDactivite IN %s\n            GROUP BY IDactivite, IDindividu\n            ;"
+    },
+    {
+      "classification": "SAFE",
+      "risk": "SAFE",
+      "file": "noethys/Utils/UTILS_Stats_individus.py",
+      "line": 656,
+      "reason": "Tous les GROUP BY analysés sont strict-compatibles",
+      "ungrouped_items": [],
+      "sql": "SELECT IDactivite, COUNT(IDindividu)\n            FROM inscriptions \n            WHERE inscriptions.statut='ok' AND IDactivite IN %s\n            GROUP BY IDactivite, IDindividu\n            ;"
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "count": 7,
+  "kinds": {
+    "mutable_default_qualified": 6,
+    "validation_save_mixed_api": 1
+  },
+  "priorities": {
+    "low": 7
+  },
+  "findings": [
+    {
+      "kind": "mutable_default_qualified",
+      "priority": "low",
+      "line": 70,
+      "detail": "empty_default_non_growing:sort",
+      "file": "Ctrl/CTRL_Etiquettes.py",
+      "function": "SetActivites",
+      "parameter": "listeActivites",
+      "default_type": "list"
+    },
+    {
+      "kind": "mutable_default_qualified",
+      "priority": "low",
+      "line": 52,
+      "detail": "empty_default_non_growing:sort",
+      "file": "Ctrl/CTRL_Evenements.py",
+      "function": "SetActivites",
+      "parameter": "listeActivites",
+      "default_type": "list"
+    },
+    {
+      "kind": "mutable_default_qualified",
+      "priority": "low",
+      "line": 459,
+      "detail": "empty_default_fails_before_mutation",
+      "file": "Dlg/DLG_Planning_transports.py",
+      "function": "AnalyseTransport",
+      "parameter": "dictTransport",
+      "default_type": "dict"
+    },
+    {
+      "kind": "mutable_default_qualified",
+      "priority": "low",
+      "line": 949,
+      "detail": "rebound_before_mutation",
+      "file": "Utils/UTILS_Facturation.py",
+      "function": "GetDonneesImpression",
+      "parameter": "listeFactures",
+      "default_type": "list"
+    },
+    {
+      "kind": "mutable_default_qualified",
+      "priority": "low",
+      "line": 162,
+      "detail": "empty_default_non_growing:sort",
+      "file": "Utils/UTILS_Impression_menu.py",
+      "function": "Dessine_legende",
+      "parameter": "liste_legendes",
+      "default_type": "list"
+    },
+    {
+      "kind": "mutable_default_qualified",
+      "priority": "low",
+      "line": 294,
+      "detail": "empty_default_non_growing:sort",
+      "file": "Utils/UTILS_Stats_familles.py",
+      "function": "TrierQF",
+      "parameter": "listeTranches",
+      "default_type": "list"
+    },
+    {
+      "kind": "validation_save_mixed_api",
+      "priority": "low",
+      "file": "Dlg/DLG_Saisie_reglement.py",
+      "function": "Sauvegarde",
+      "line": 1395,
+      "control": "ctrl_montant",
+      "detail": "contrôles hétérogènes : Validation() et Sauvegarde() ne prouvent pas un contrat de persistance commun"
+    }
+  ]
+}

@@ -331,7 +331,7 @@ class HTML():
             html += u"""</FONT></BODY></HTML>"""
 
         # Mode 'impression'
-        if mode == "impression" :
+        elif mode == "impression" :
             html = u"""<HTML><BODY>"""
             numRubrique = 1
             numPage = 0
@@ -384,6 +384,11 @@ class HTML():
                     numRubrique += 1
                     
             html += """</FONT></BODY></HTML>"""
+        
+        # Mode non supporté : contrat d'entrée ambigu, on refuse explicitement plutôt que de
+        # retourner une variable 'html' non définie (UnboundLocalError silencieux).
+        else :
+            raise ValueError(u"Mode GetHTML non supporté : %r (attendu 'affichage' ou 'impression')" % (mode,))
         
         return html
                     

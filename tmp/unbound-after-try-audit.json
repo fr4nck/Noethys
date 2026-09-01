@@ -1,0 +1,54 @@
+{
+  "count": 7,
+  "findings": [
+    {
+      "file": "Dlg/DLG_Utilisateurs_reseau.py",
+      "try_line": 156,
+      "read_line": 163,
+      "name": "topWindow",
+      "reason": "variable définie dans try, handler continuant sans définition garantie, puis lecture après le try"
+    },
+    {
+      "file": "FonctionsPerso.py",
+      "try_line": 1030,
+      "read_line": 1037,
+      "name": "topWindow",
+      "reason": "variable définie dans try, handler continuant sans définition garantie, puis lecture après le try"
+    },
+    {
+      "file": "GestionDB.py",
+      "try_line": 189,
+      "read_line": 196,
+      "name": "topWindow",
+      "reason": "variable définie dans try, handler continuant sans définition garantie, puis lecture après le try"
+    },
+    {
+      "file": "Utils/UTILS_Config.py",
+      "try_line": 178,
+      "read_line": 185,
+      "name": "topWindow",
+      "reason": "variable définie dans try, handler continuant sans définition garantie, puis lecture après le try"
+    },
+    {
+      "file": "Utils/UTILS_Config.py",
+      "try_line": 216,
+      "read_line": 224,
+      "name": "topWindow",
+      "reason": "variable définie dans try, handler continuant sans définition garantie, puis lecture après le try"
+    },
+    {
+      "file": "Utils/UTILS_Customize.py",
+      "try_line": 119,
+      "read_line": 125,
+      "name": "topWindow",
+      "reason": "variable définie dans try, handler continuant sans définition garantie, puis lecture après le try"
+    },
+    {
+      "file": "Utils/UTILS_Utilisateurs.py",
+      "try_line": 164,
+      "read_line": 171,
+      "name": "topWindow",
+      "reason": "variable définie dans try, handler continuant sans définition garantie, puis lecture après le try"
+    }
+  ]
+}
