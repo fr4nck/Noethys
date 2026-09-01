@@ -1,0 +1,45 @@
+name: tmp-badgeage-batch-20
+
+on:
+  push:
+    branches:
+      - fix/badgeage-open-consumption-batch-20
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/badgeage-open-consumption-batch-20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Apply badgeage fix
+        run: python scripts/tmp_patch_badgeage_batch_20.py
+      - name: Targeted tests
+        run: python -m unittest tests.test_badgeage_open_consumption_batch_20
+      - name: Audit exhaustive coverage
+        run: |
+          python scripts/audit_branch_assignment_gaps.py --json /tmp/gaps.json | tee /tmp/audit.txt
+          python - <<'PY'
+          import re
+          text=open('/tmp/audit.txt', encoding='utf-8').read()
+          m=re.search(r'trouvés=(\d+), lus=(\d+), parsés=(\d+)', text)
+          if not m:
+              raise SystemExit('coverage summary missing')
+          found, read, parsed=map(int,m.groups())
+          assert found == read == parsed, (found, read, parsed)
+          PY
+      - name: Commit batch 20
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Dlg/DLG_Badgeage_interface.py tests/test_badgeage_open_consumption_batch_20.py
+          git rm scripts/tmp_patch_badgeage_batch_20.py .github/workflows/tmp-badgeage-batch-20.yml
+          git commit -m "fix: utiliser la consommation ouverte sélectionnée au badgeage"
+          git push
