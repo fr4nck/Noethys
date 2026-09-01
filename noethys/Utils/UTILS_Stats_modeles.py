@@ -331,7 +331,7 @@ class HTML():
             html += u"""</FONT></BODY></HTML>"""
 
         # Mode 'impression'
-        if mode == "impression" :
+        elif mode == "impression" :
             html = u"""<HTML><BODY>"""
             numRubrique = 1
             numPage = 0
@@ -384,7 +384,10 @@ class HTML():
                     numRubrique += 1
                     
             html += """</FONT></BODY></HTML>"""
-        
+
+        else :
+            raise ValueError(u"Mode GetHTML non supporté : %s" % mode)
+
         return html
                     
     def GetFigure(self, code=""):

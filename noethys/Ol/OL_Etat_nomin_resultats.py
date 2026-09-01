@@ -289,7 +289,8 @@ class Track(object):
             if champ.type == "QUESTION" :
                 IDquestion = int(champ.code[len(champ.type):])
                 if champ.categorie == _(u"Individu") : IDtemp = IDindividu
-                if champ.categorie == _(u"Famille") : IDtemp = IDfamille
+                elif champ.categorie == _(u"Famille") : IDtemp = IDfamille
+                else : raise ValueError(u"Catégorie de champ questionnaire inconnue : %s" % champ.categorie)
                 setattr(self, champ.code, GetReponse(IDquestion, IDtemp))
 
         # Regroupement des conso par UNITE puis PERIODE
