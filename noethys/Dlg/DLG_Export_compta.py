@@ -59,7 +59,7 @@ def GetKeysDictTries(dictValeurs={}, key=""):
         listeKeys.append((dictTemp[key], ID))
     listeKeys.sort()
     listeResultats = []
-    for keyTemp, ID in listeKeys() :
+    for keyTemp, ID in listeKeys :
         listeResultats.append(ID)
     return listeResultats
     
@@ -420,7 +420,7 @@ class Donnees():
                     "IDmode" : dictMode["IDmode"],
                     "libelle" : libelle,
                     "nom_mode" : dictMode["label"],
-                    "code_compta" : code_compta,
+                    "code_compta" : dictMode["code_compta"],
                     "montant" : str(dictMode["montant"]),
                     "numeroCompte" : dictMode["numeroCompte"],
                     "nomCompte" : dictMode["nomCompte"],
