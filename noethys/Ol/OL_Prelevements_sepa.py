@@ -970,10 +970,11 @@ class ListView(FastObjectListView):
             else :
 
                 if track.IDreglement != None :
-                    if not DB.ReqDEL("ventilation", "IDreglement", track.IDreglement, commit=False):
+                    IDreglement = track.IDreglement
+                    if not DB.ReqDEL("ventilation", "IDreglement", IDreglement, commit=False):
                         ok = False
                         break
-                    if not DB.ReqDEL("reglements", "IDreglement", track.IDreglement, commit=False):
+                    if not DB.ReqDEL("reglements", "IDreglement", IDreglement, commit=False):
                         ok = False
                         break
                     listeHistoriqueAjouts.append(self.MemoriseReglementHistorique(mode="suppression", IDfamille=track.IDfamille, IDreglement=IDreglement, montant=track.montant))
