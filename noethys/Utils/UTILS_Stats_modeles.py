@@ -384,7 +384,10 @@ class HTML():
                     numRubrique += 1
                     
             html += """</FONT></BODY></HTML>"""
-        
+
+        if mode not in ("affichage", "impression") :
+            raise ValueError("Mode inconnu pour GetHTML : %r (valeurs supportées : 'affichage', 'impression')" % (mode,))
+
         return html
                     
     def GetFigure(self, code=""):
