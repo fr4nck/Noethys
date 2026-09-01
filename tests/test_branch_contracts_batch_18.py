@@ -69,6 +69,26 @@ class TestBatch18Questionnaire(unittest.TestCase):
         self.assertIn("self.type = ancien_type", block)
         self.assertIn("except Exception:", block)
 
+    def test_maj_rolls_back_model_and_tree_on_render_failure(self):
+        source = SOURCE_PATH.read_text(encoding="utf-8")
+        maj = source[source.index("    def MAJ("):source.index("    def Importation(")]
+        self.assertLess(maj.index("ancien_modele ="), maj.index("self.Importation()"))
+        self.assertIn("except Exception:", maj)
+        rollback = maj[maj.index("except Exception:"):]
+        self.assertIn("= ancien_modele", rollback)
+        self.assertIn("self.DeleteAllItems()", rollback)
+        self.assertIn("self.Remplissage(selection=selection)", rollback)
+
+    def test_dialog_type_choice_rolls_back_when_settype_fails(self):
+        dlg_path = ROOT / "noethys" / "Dlg" / "DLG_Questionnaires.py"
+        source = dlg_path.read_text(encoding="utf-8")
+        block = source[source.index("    def OnChoixType("):source.index("    def OnBoutonAjouter(")]
+        self.assertIn("ancien_type = self.type", block)
+        self.assertIn("nouveau_type = self.ctrl_type.GetID()", block)
+        self.assertIn("self.ctrl_questionnaire.SetType(nouveau_type)", block)
+        self.assertIn("self.ctrl_type.SetID(ancien_type)", block)
+        self.assertLess(block.index("self.ctrl_questionnaire.SetType(nouveau_type)"), block.rindex("self.type = nouveau_type"))
+
 
 if __name__ == "__main__":
     unittest.main()

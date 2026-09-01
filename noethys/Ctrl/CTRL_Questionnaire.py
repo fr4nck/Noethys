@@ -972,24 +972,20 @@ class CTRL(HTL.HyperTreeList):
 
     def MAJ(self, importation=True, selection=None):
         """ Met à jour (redessine) tout le contrôle """
+        ancien_modele = (self.dictCategories, self.listeIDcategorie, self.dictValeursInitiales, self.dictReponses)
         self.Freeze()
         try:
             if importation == True :
-                ancien_modele = (self.dictCategories, self.listeIDcategorie, self.dictValeursInitiales, self.dictReponses)
-                try:
-                    self.Importation()
-                    controles_valides = {
-                        None, "ligne_texte", "bloc_texte", "entier", "decimal", "montant",
-                        "liste_deroulante", "liste_coches", "case_coche", "date", "slider",
-                        "couleur", "documents", "codebarres", "rfid",
-                    }
-                    for IDcategorie in self.listeIDcategorie:
-                        for track in self.dictCategories[IDcategorie]["questions"]:
-                            if track.controle not in controles_valides:
-                                raise ValueError("Type de contrôle de questionnaire inconnu : %s" % track.controle)
-                except Exception:
-                    self.dictCategories, self.listeIDcategorie, self.dictValeursInitiales, self.dictReponses = ancien_modele
-                    raise
+                self.Importation()
+                controles_valides = {
+                    None, "ligne_texte", "bloc_texte", "entier", "decimal", "montant",
+                    "liste_deroulante", "liste_coches", "case_coche", "date", "slider",
+                    "couleur", "documents", "codebarres", "rfid",
+                }
+                for IDcategorie in self.listeIDcategorie:
+                    for track in self.dictCategories[IDcategorie]["questions"]:
+                        if track.controle not in controles_valides:
+                            raise ValueError("Type de contrôle de questionnaire inconnu : %s" % track.controle)
             self.DeleteAllItems()
             # Création de la racine
             self.root = self.AddRoot(_(u"Racine"))
@@ -998,6 +994,12 @@ class CTRL(HTL.HyperTreeList):
             # Mémorisation des valeurs initiales
             if importation == True :
                 self.dictValeursInitiales = self.GetValeurs()
+        except Exception:
+            self.dictCategories, self.listeIDcategorie, self.dictValeursInitiales, self.dictReponses = ancien_modele
+            self.DeleteAllItems()
+            self.root = self.AddRoot(_(u"Racine"))
+            self.Remplissage(selection=selection)
+            raise
         finally:
             self.Thaw()
 
