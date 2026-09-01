@@ -319,7 +319,10 @@ class HTML():
         
         if len(self.dictParametres["listeActivites"]) == 0 : 
             return ""
-        
+
+        if mode not in ("affichage", "impression") :
+            raise ValueError(u"Mode inconnu pour GetHTML : %r" % (mode,))
+
         # Mode 'affichage'
         if mode == "affichage" :
             html = u"""<HTML><BODY><FONT SIZE=-1>"""
