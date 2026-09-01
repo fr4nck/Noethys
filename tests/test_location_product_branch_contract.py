@@ -63,6 +63,7 @@ class LocationProductBranchContractTests(unittest.TestCase):
         self.assertEqual(owner.donnees, [])
         self.assertEqual(len(db.queries), 1)
         self.assertIn("FROM produits", db.queries[0])
+        self.assertIn("IDproduit=42", db.queries[0])
 
     def test_nom_produit_gap_is_gone(self):
         findings = scan_file(TARGET, NOETHYS)
