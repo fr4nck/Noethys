@@ -30,6 +30,15 @@ TABLES_062B_REFERENTIEL = TABLES_062A + (
     "structures_roles_contacts",
 )
 
+# Les relations contractuelles dépendent du tiers bénéficiaire et peuvent
+# cibler un groupe libre. Les rôles de contacts et les interventions restent
+# indépendants : leur activation ne doit pas être une conséquence implicite.
+TABLES_062_RELATIONS = TABLES_062A + (
+    "structures_groupes",
+    "structures_relations",
+    "structures_payeurs",
+)
+
 
 def _descriptions_attendues(nom_table):
     return tuple(DATA_Structures.DB_STRUCTURES[nom_table])
@@ -266,3 +275,13 @@ def InspecterSchema062BReferentiel(db):
 def AssurerSchema062BReferentiel(db, appliquer=False):
     """Active en une passe les groupes et rôles sur un socle tiers conforme."""
     return _assurer_schema(db, TABLES_062B_REFERENTIEL, appliquer=appliquer)
+
+
+def InspecterSchema062Relations(db):
+    """Inspecte tiers, groupes, relations contractuelles et prises en charge."""
+    return InspecterSchema(db, tables=TABLES_062_RELATIONS)
+
+
+def AssurerSchema062Relations(db, appliquer=False):
+    """Active explicitement le stockage des relations contractuelles/payeurs."""
+    return _assurer_schema(db, TABLES_062_RELATIONS, appliquer=appliquer)
