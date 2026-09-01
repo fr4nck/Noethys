@@ -448,6 +448,12 @@ class GestionnaireProgrammationsStructures(object):
         valeurs = NormaliserProgrammation(donnees, creation=True, date=date)
         if self.LireProgrammationParUID(valeurs["uid"]):
             raise ValueError("UID de programmation déjà utilisé")
+        if valeurs.get("IDprogrammation_parent"):
+            parent = self.LireProgrammation(valeurs["IDprogrammation_parent"])
+            if not parent:
+                raise ValueError("Programmation parente introuvable")
+            if parent["statut"] != STATUT_VALIDEE:
+                raise ValueError("Une programmation parente doit être validée")
         relation = self._source_existe(valeurs)
         self._verifier_periode_source(valeurs, relation=relation)
         if self._programmation_source_saison_existe(valeurs):
@@ -586,6 +592,9 @@ class GestionnaireProgrammationsStructures(object):
             source = self.LireCreneau(valeurs["IDcreneau_source"])
             if not source:
                 raise ValueError("Créneau source introuvable")
+            IDparent = programmation.get("IDprogrammation_parent")
+            if not IDparent or source["IDprogrammation_structure"] != IDparent:
+                raise ValueError("Le créneau source doit appartenir à la programmation parente")
         return self.db.ReqInsert(
             "structures_programmations_creneaux",
             _liste_pairs(valeurs, CHAMPS_CRENEAU),
