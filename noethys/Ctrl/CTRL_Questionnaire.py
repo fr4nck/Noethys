@@ -955,9 +955,13 @@ class CTRL(HTL.HyperTreeList):
         if type == "famille" and UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("familles_questionnaires", "modifier", afficheMessage=False) == False : self.Enable(False)
 
     def SetType(self, type="individu"):
+        ancien_type = self.type
         self.type = type
-        self.Importation()
-        self.MAJ()
+        try:
+            self.MAJ()
+        except Exception:
+            self.type = ancien_type
+            raise
 
     def RAZ(self):
         self.DeleteAllItems()
