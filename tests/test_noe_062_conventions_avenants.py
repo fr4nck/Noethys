@@ -321,7 +321,7 @@ def test_snapshot_altere_bloque_signature():
     gestion.ValiderConvention(IDconv, date="2026-09-03")
     db.conn.execute(
         "UPDATE structures_conventions SET snapshot_contractuel=? WHERE IDconvention_structure=?",
-        (b'{"altération":true}', IDconv),
+        (b'{"alteration":true}', IDconv),
     )
     db.conn.commit()
     assert gestion.VerifierIntegrite(IDconv) is False
