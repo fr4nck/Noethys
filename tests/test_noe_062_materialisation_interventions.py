@@ -5,7 +5,11 @@ import sqlite3
 import sys
 from pathlib import Path
 
-import pytest
+import unittest
+
+
+def _raises(exception, match=None):
+    return unittest.TestCase().assertRaisesRegex(exception, match or ".*")
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -202,7 +206,7 @@ def test_preview_programme_non_valide_refuse():
     db = _base()
     IDprog = _programme(db)
     db.conn.execute("UPDATE structures_programmations SET statut='brouillon' WHERE IDprogrammation_structure=?", (IDprog,))
-    with pytest.raises(ValueError, match="validée"):
+    with _raises(ValueError, match="validée"):
         MAT.GestionnaireMaterialisationProgrammations(db).Previsualiser(IDprog, calendrier=_calendrier())
 
 
@@ -285,7 +289,7 @@ def test_derivation_manuelle_sur_planifiee_est_conflit_et_bloque_tout_apply():
     preview = service.Previsualiser(IDprog, calendrier=_calendrier())
     assert preview["applicable"] is False
     assert any(x["raison"] == "seance_planifiee_divergente" for x in preview["lignes"])
-    with pytest.raises(ValueError, match="conflits"):
+    with _raises(ValueError, match="conflits"):
         service.Appliquer(IDprog, calendrier=_calendrier())
 
 
@@ -311,7 +315,7 @@ def test_rollback_atomique_si_lien_echoue():
     IDprog = _programme(db)
     db.echec_table = "interventions_programmations"
     service = MAT.GestionnaireMaterialisationProgrammations(db)
-    with pytest.raises(RuntimeError, match="échec injecté"):
+    with _raises(RuntimeError, match="échec injecté"):
         service.Appliquer(IDprog, calendrier=_calendrier())
     assert db.rollbacks == 1
     assert _compter(db, "interventions") == 0
@@ -332,3 +336,11 @@ def test_occurrence_obsolete_est_signalee_sans_suppression():
     preview = service.Previsualiser(IDprog, calendrier=_calendrier())
     assert preview["compteurs"].get("obsolete") == 1
     assert _compter(db, "interventions") == 3
+
+
+def load_tests(loader, tests, pattern):
+    suite = unittest.TestSuite()
+    for nom, fonction in sorted(globals().items()):
+        if nom.startswith("test_") and callable(fonction):
+            suite.addTest(unittest.FunctionTestCase(fonction, description=nom))
+    return suite
