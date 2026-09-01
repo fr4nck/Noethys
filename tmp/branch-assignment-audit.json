@@ -1,0 +1,1611 @@
+{
+  "count": 160,
+  "kinds": {
+    "branch_assignment_gap": 160
+  },
+  "priorities": {
+    "high": 160
+  },
+  "findings": [
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "__init__",
+      "if_line": 332,
+      "line": 335,
+      "name": "nomIndividu",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "__init__",
+      "if_line": 444,
+      "line": 447,
+      "name": "case",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "SetModeIndividu",
+      "if_line": 755,
+      "line": 770,
+      "name": "attente",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "SetModeDate",
+      "if_line": 773,
+      "line": 789,
+      "name": "attente",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "InitGrid",
+      "if_line": 1066,
+      "line": 1068,
+      "name": "nomIndividu",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "OnMouseOver",
+      "if_line": 2332,
+      "line": 2339,
+      "name": "heure_debut",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "OnMouseOver",
+      "if_line": 2332,
+      "line": 2339,
+      "name": "heure_fin",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "OnMouseOver",
+      "if_line": 2339,
+      "line": 2343,
+      "name": "heure_debut",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "OnMouseOver",
+      "if_line": 2339,
+      "line": 2343,
+      "name": "heure_fin",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "Facturation",
+      "if_line": 2622,
+      "line": 2631,
+      "name": "IDprestationTemp",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "Facturation",
+      "if_line": 2907,
+      "line": 2958,
+      "name": "montant_enfant_1",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "Facturation",
+      "if_line": 2907,
+      "line": 2959,
+      "name": "montant_enfant_2",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "Facturation",
+      "if_line": 2907,
+      "line": 2960,
+      "name": "montant_enfant_3",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "Facturation",
+      "if_line": 2907,
+      "line": 2961,
+      "name": "montant_enfant_4",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "Facturation",
+      "if_line": 2907,
+      "line": 2962,
+      "name": "montant_enfant_5",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "Facturation",
+      "if_line": 2907,
+      "line": 2963,
+      "name": "montant_enfant_6",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "Facturation",
+      "if_line": 2955,
+      "line": 2984,
+      "name": "tarifsDegr",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "Facturation",
+      "if_line": 2955,
+      "line": 2989,
+      "name": "montant_tarif_tmp",
+      "detail": "else_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "CalculeTarif",
+      "if_line": 3896,
+      "line": 3977,
+      "name": "montant_enfant_1",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "CalculeTarif",
+      "if_line": 3896,
+      "line": 3978,
+      "name": "montant_enfant_2",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "CalculeTarif",
+      "if_line": 3896,
+      "line": 3979,
+      "name": "montant_enfant_3",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "CalculeTarif",
+      "if_line": 3896,
+      "line": 3980,
+      "name": "montant_enfant_4",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "CalculeTarif",
+      "if_line": 3896,
+      "line": 3981,
+      "name": "montant_enfant_5",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "CalculeTarif",
+      "if_line": 3896,
+      "line": 3982,
+      "name": "montant_enfant_6",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "CalculeTarif",
+      "if_line": 3974,
+      "line": 4003,
+      "name": "tarifsDegr",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille.py",
+      "function": "Sauvegarde",
+      "if_line": 5637,
+      "line": 5642,
+      "name": "IDcategorie",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille_cases.py",
+      "function": "__init__",
+      "if_line": 196,
+      "line": 198,
+      "name": "labelActivite",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille_cases.py",
+      "function": "OnClick",
+      "if_line": 1299,
+      "line": 1338,
+      "name": "heure_debut",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille_cases.py",
+      "function": "OnClick",
+      "if_line": 1299,
+      "line": 1339,
+      "name": "heure_fin",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille_cases.py",
+      "function": "OnClick",
+      "if_line": 1364,
+      "line": 1393,
+      "name": "quantite",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille_cases.py",
+      "function": "OnClick",
+      "if_line": 1473,
+      "line": 1495,
+      "name": "reponse",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille_cases.py",
+      "function": "OnClick",
+      "if_line": 1473,
+      "line": 1496,
+      "name": "heure_debut",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille_cases.py",
+      "function": "OnClick",
+      "if_line": 1473,
+      "line": 1497,
+      "name": "heure_fin",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille_cases.py",
+      "function": "OnClick",
+      "if_line": 1507,
+      "line": 1526,
+      "name": "reponse",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Grille_cases.py",
+      "function": "OnClick",
+      "if_line": 1507,
+      "line": 1527,
+      "name": "quantite",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Informations.py",
+      "function": "GetRenseignements",
+      "if_line": 610,
+      "line": 715,
+      "name": "dictDonneesFamille",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Locations_tableau.py",
+      "function": "Draw",
+      "if_line": 471,
+      "line": 488,
+      "name": "hauteurTrait",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Questionnaire.py",
+      "function": "Remplissage",
+      "if_line": 1125,
+      "line": 1128,
+      "name": "ctrl",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Synthese_conso.py",
+      "function": "Importation",
+      "if_line": 327,
+      "line": 374,
+      "name": "regroupement",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Synthese_conso.py",
+      "function": "Importation",
+      "if_line": 367,
+      "line": 386,
+      "name": "valeur",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Synthese_deductions.py",
+      "function": "Importation",
+      "if_line": 270,
+      "line": 278,
+      "name": "regroupement",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Synthese_impayes.py",
+      "function": "MAJ",
+      "if_line": 388,
+      "line": 409,
+      "name": "niveau2",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Synthese_locations.py",
+      "function": "Importation",
+      "if_line": 213,
+      "line": 229,
+      "name": "regroupement",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Synthese_modes_reglements.py",
+      "function": "Importation",
+      "if_line": 137,
+      "line": 173,
+      "name": "condition",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Synthese_prestations.py",
+      "function": "MAJ",
+      "if_line": 520,
+      "line": 539,
+      "name": "niveau2",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Synthese_ventilation.py",
+      "function": "MAJ",
+      "if_line": 414,
+      "line": 436,
+      "name": "niveauPrestation",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Tarification_calcul.py",
+      "function": "Sauvegarde",
+      "if_line": 849,
+      "line": 906,
+      "name": "DB",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ctrl/CTRL_Tarification_forfait.py",
+      "function": "Sauvegarde",
+      "if_line": 504,
+      "line": 520,
+      "name": "options",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Activite_portail.py",
+      "function": "Sauvegarde",
+      "if_line": 536,
+      "line": 560,
+      "name": "portail_inscriptions_affichage",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Activite_portail.py",
+      "function": "Sauvegarde",
+      "if_line": 548,
+      "line": 563,
+      "name": "portail_reservations_affichage",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Appliquer_forfait.py",
+      "function": "Applique_forfait",
+      "if_line": 273,
+      "line": 299,
+      "name": "IDgroupe",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Appliquer_forfait.py",
+      "function": "Applique_forfait",
+      "if_line": 273,
+      "line": 621,
+      "name": "IDinscription",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Badgeage_importation.py",
+      "function": "Connexion",
+      "if_line": 489,
+      "line": 499,
+      "name": "scanner",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Badgeage_interface.py",
+      "function": "VerificationConditionsAction",
+      "if_line": 634,
+      "line": 649,
+      "name": "listeReponses",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Badgeage_interface.py",
+      "function": "Procedure_enregistrer",
+      "if_line": 825,
+      "line": 841,
+      "name": "conso",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Badgeage_saisie_procedure.py",
+      "function": "Sauvegarde",
+      "if_line": 584,
+      "line": 599,
+      "name": "systeme",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Compta_graphiques.py",
+      "function": "Graphe_repartition_categories",
+      "if_line": 305,
+      "line": 336,
+      "name": "montant",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Compte_internet.py",
+      "function": "Importation",
+      "if_line": 209,
+      "line": 213,
+      "name": "req",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Conversion_etat.py",
+      "function": "GetDonnees",
+      "if_line": 194,
+      "line": 199,
+      "name": "option_lignes",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Etat_global.py",
+      "function": "Apercu",
+      "if_line": 581,
+      "line": 716,
+      "name": "liste_tranches_qf",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Etat_global.py",
+      "function": "Apercu",
+      "if_line": 735,
+      "line": 739,
+      "name": "regroupement",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Etat_global.py",
+      "function": "Apercu",
+      "if_line": 911,
+      "line": 933,
+      "name": "index_tranche_age",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Export_compta.py",
+      "function": "Export_ebp_compta",
+      "if_line": 153,
+      "line": 169,
+      "name": "ligneTemp",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Export_compta.py",
+      "function": "GetVentes",
+      "if_line": 253,
+      "line": 260,
+      "name": "intituleTemp",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Export_compta.py",
+      "function": "GetReglements_Modes",
+      "if_line": 390,
+      "line": 423,
+      "name": "code_compta",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Export_compta.py",
+      "function": "Remplissage",
+      "if_line": 622,
+      "line": 627,
+      "name": "propriete",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Export_compta.py",
+      "function": "Generation",
+      "if_line": 816,
+      "line": 819,
+      "name": "lignesTemp",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Export_compta.py",
+      "function": "__init__",
+      "if_line": 1548,
+      "line": 1549,
+      "name": "intitule",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Grille.py",
+      "function": "On_outils_lot_modif",
+      "if_line": 794,
+      "line": 799,
+      "name": "dictResultats",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Impression_attestation.py",
+      "function": "MAJ_CTRL_Donnees",
+      "if_line": 592,
+      "line": 598,
+      "name": "numero",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Impression_conso.py",
+      "function": "Impression",
+      "if_line": 1416,
+      "line": 1504,
+      "name": "listeEcoles",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Impression_conso.py",
+      "function": "Impression",
+      "if_line": 1416,
+      "line": 1506,
+      "name": "listeClasses",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Impression_conso.py",
+      "function": "Impression",
+      "if_line": 1432,
+      "line": 1511,
+      "name": "listeEvenements",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Impression_conso.py",
+      "function": "Impression",
+      "if_line": 1750,
+      "line": 1760,
+      "name": "tailleImageFinal",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Impression_conso.py",
+      "function": "Impression",
+      "if_line": 2173,
+      "line": 2178,
+      "name": "paramTri",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Impression_conso.py",
+      "function": "Impression",
+      "if_line": 1472,
+      "line": 2368,
+      "name": "dictInfosIndividus",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Impression_conso.py",
+      "function": "Impression",
+      "if_line": 1472,
+      "line": 2375,
+      "name": "dictInfosFamilles",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Impression_conso.py",
+      "function": "Impression",
+      "if_line": 2363,
+      "line": 2413,
+      "name": "donnee",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Impression_don_oeuvres.py",
+      "function": "SetListeDonnees",
+      "if_line": 95,
+      "line": 100,
+      "name": "nomTitulaires",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Impression_infos_medicales.py",
+      "function": "OnBoutonOk",
+      "if_line": 595,
+      "line": 621,
+      "name": "listeIndividus",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Impression_infos_medicales.py",
+      "function": "OnBoutonOk",
+      "if_line": 662,
+      "line": 672,
+      "name": "tailleImageFinal",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Impression_infos_medicales.py",
+      "function": "OnBoutonOk",
+      "if_line": 595,
+      "line": 717,
+      "name": "dictOuvertures",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Impression_infos_medicales.py",
+      "function": "OnBoutonOk",
+      "if_line": 788,
+      "line": 793,
+      "name": "paramTri",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Individu_coords.py",
+      "function": "EnvoyerEmail",
+      "if_line": 601,
+      "line": 603,
+      "name": "ctrl",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Liste_deductions.py",
+      "function": "GetActivites",
+      "if_line": 348,
+      "line": 350,
+      "name": "listeActivites",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Liste_envoi_email.py",
+      "function": "OnBoutonOk",
+      "if_line": 138,
+      "line": 156,
+      "name": "tracks",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Nbre_inscrits_2.py",
+      "function": "MAJ",
+      "if_line": 278,
+      "line": 333,
+      "name": "dictGroupeParActivite",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Noedoc.py",
+      "function": "DeplacerObjet",
+      "if_line": 3990,
+      "line": 3993,
+      "name": "delta",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Noedoc.py",
+      "function": "ImportationObjets",
+      "if_line": 5635,
+      "line": 5667,
+      "name": "exists",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Noedoc.py",
+      "function": "ImportationObjets",
+      "if_line": 5717,
+      "line": 5743,
+      "name": "objetCanvas",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Ouvertures.py",
+      "function": "Sauvegarde",
+      "if_line": 675,
+      "line": 741,
+      "name": "prochainIDligne",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Ouvertures.py",
+      "function": "TraitementLot",
+      "if_line": 1267,
+      "line": 1294,
+      "name": "etat",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Ouvertures.py",
+      "function": "TraitementLot",
+      "if_line": 1317,
+      "line": 1320,
+      "name": "liste_temp",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Ouvertures.py",
+      "function": "TraitementLot",
+      "if_line": 1376,
+      "line": 1396,
+      "name": "nbrePlaces",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Recopiage_conso.py",
+      "function": "GetDonnees",
+      "if_line": 279,
+      "line": 287,
+      "name": "option_lignes",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Releve_prestations.py",
+      "function": "CreationPDF",
+      "if_line": 540,
+      "line": 572,
+      "name": "labelRegroupement",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Releve_prestations.py",
+      "function": "CreationPDF",
+      "if_line": 612,
+      "line": 616,
+      "name": "key",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Releve_prestations.py",
+      "function": "CreationPDF",
+      "if_line": 631,
+      "line": 632,
+      "name": "labelKey",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Releve_prestations_saisie.py",
+      "function": "GetOptions",
+      "if_line": 285,
+      "line": 293,
+      "name": "regroupement",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Releve_prestations_saisie.py",
+      "function": "GetOptions",
+      "if_line": 297,
+      "line": 302,
+      "name": "dictOptions",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Releve_prestations_saisie.py",
+      "function": "GetPeriode",
+      "if_line": 348,
+      "line": 355,
+      "name": "parametres",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_commande.py",
+      "function": "CreationPDF",
+      "if_line": 637,
+      "line": 661,
+      "name": "style",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_contrat_periode_auto.py",
+      "function": "Generation",
+      "if_line": 206,
+      "line": 211,
+      "name": "listeDates",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_contrat_periode_auto.py",
+      "function": "Generation",
+      "if_line": 235,
+      "line": 238,
+      "name": "nom_auto",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_cotisation.py",
+      "function": "SetListeDonnees",
+      "if_line": 246,
+      "line": 251,
+      "name": "nomTitulaires",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_cotisation.py",
+      "function": "MAJ",
+      "if_line": 334,
+      "line": 339,
+      "name": "nomTitulaires",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_cotisation.py",
+      "function": "MAJ",
+      "if_line": 327,
+      "line": 340,
+      "name": "IDcompte_payeur",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_cotisation.py",
+      "function": "OnChoixUnite",
+      "if_line": 703,
+      "line": 745,
+      "name": "nomType",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_cotisation.py",
+      "function": "OnChoixUnite",
+      "if_line": 703,
+      "line": 751,
+      "name": "type",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_location_prestation.py",
+      "function": "InitModel",
+      "if_line": 58,
+      "line": 121,
+      "name": "nom_produit",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_lot_deductions.py",
+      "function": "OnBoutonOk",
+      "if_line": 217,
+      "line": 299,
+      "name": "montant",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_lot_deductions.py",
+      "function": "OnBoutonOk",
+      "if_line": 217,
+      "line": 301,
+      "name": "pourcent",
+      "detail": "else_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_lot_deductions.py",
+      "function": "OnBoutonOk",
+      "if_line": 300,
+      "line": 303,
+      "name": "montantDeduction",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_lot_ouvertures2.py",
+      "function": "Validation",
+      "if_line": 540,
+      "line": 557,
+      "name": "expression",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_lot_tresor_public_magnus.py",
+      "function": "Generer_fichier",
+      "if_line": 786,
+      "line": 1136,
+      "name": "ligne",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_portail_demande.py",
+      "function": "MAJ_informations",
+      "if_line": 923,
+      "line": 951,
+      "name": "dict_periodes",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_portail_demande.py",
+      "function": "MAJ_informations",
+      "if_line": 934,
+      "line": 956,
+      "name": "dict_factures",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_portail_demande.py",
+      "function": "Traitement_recus",
+      "if_line": 1242,
+      "line": 1250,
+      "name": "reponse",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_portail_demande.py",
+      "function": "Traitement_factures",
+      "if_line": 1432,
+      "line": 1444,
+      "name": "reponse",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_portail_periode.py",
+      "function": "OnBoutonOk",
+      "if_line": 381,
+      "line": 451,
+      "name": "affichage",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_prelevement_lot.py",
+      "function": "GetLabelParametres",
+      "if_line": 921,
+      "line": 923,
+      "name": "date",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_produit.py",
+      "function": "OnBoutonOk",
+      "if_line": 547,
+      "line": 593,
+      "name": "prochainIDligne",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_reglement.py",
+      "function": "MAJ",
+      "if_line": 471,
+      "line": 472,
+      "name": "typeArrondi",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_tarification.py",
+      "function": "Sauvegarde",
+      "if_line": 399,
+      "line": 426,
+      "name": "DB",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_texte_html.py",
+      "function": "Importation",
+      "if_line": 122,
+      "line": 127,
+      "name": "condition",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_utilisateur.py",
+      "function": "Sauvegarde",
+      "if_line": 633,
+      "line": 650,
+      "name": "profil",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_utilisateur_reseau.py",
+      "function": "RechercheAutorisation",
+      "if_line": 168,
+      "line": 171,
+      "name": "hote",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Saisie_utilisateur_reseau.py",
+      "function": "Sauvegarde",
+      "if_line": 300,
+      "line": 303,
+      "name": "hote",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Stats.py",
+      "function": "Imprimer",
+      "if_line": 397,
+      "line": 401,
+      "name": "html",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Dlg/DLG_Synthese_modes_reglements.py",
+      "function": "GetActivites",
+      "if_line": 397,
+      "line": 399,
+      "name": "listeActivites",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ol/OL_Archivage.py",
+      "function": "OuvrirFicheFamille",
+      "if_line": 304,
+      "line": 305,
+      "name": "nomCategorie",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ol/OL_Etat_nomin_champs.py",
+      "function": "GetTracks",
+      "if_line": 116,
+      "line": 117,
+      "name": "categorie",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ol/OL_Etat_nomin_resultats.py",
+      "function": "__init__",
+      "if_line": 292,
+      "line": 293,
+      "name": "IDtemp",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ol/OL_Etat_nomin_resultats.py",
+      "function": "__init__",
+      "if_line": 350,
+      "line": 357,
+      "name": "valeur",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ol/OL_Etiquettes.py",
+      "function": "GetListeFamilles",
+      "if_line": 381,
+      "line": 396,
+      "name": "secteur",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ol/OL_Liste_factures_detail.py",
+      "function": "__init__",
+      "if_line": 71,
+      "line": 73,
+      "name": "label_key",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ol/OL_Liste_factures_detail.py",
+      "function": "InitObjectListView",
+      "if_line": 191,
+      "line": 194,
+      "name": "label_colonne",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ol/OL_PES_pieces.py",
+      "function": "GetTracks",
+      "if_line": 228,
+      "line": 249,
+      "name": "criteres",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ol/OL_Prelevements_sepa.py",
+      "function": "MemoriseReglementHistorique",
+      "if_line": 1015,
+      "line": 1022,
+      "name": "IDcategorie",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Ol/OL_Prelevements_sepa.py",
+      "function": "MemoriseReglementHistorique",
+      "if_line": 1015,
+      "line": 1023,
+      "name": "categorie",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Cotisations_manquantes.py",
+      "function": "GetListeCotisationsManquantes",
+      "if_line": 118,
+      "line": 120,
+      "name": "date_fin",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Cryptage_fichier.py",
+      "function": "DecrypterFichier",
+      "if_line": 162,
+      "line": 177,
+      "name": "dec",
+      "detail": "partial_branches"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Export_nomade.py",
+      "function": "Run",
+      "if_line": 141,
+      "line": 261,
+      "name": "dlgAttente",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Html2text.py",
+      "function": "handle_tag",
+      "if_line": 410,
+      "line": 437,
+      "name": "tag_style",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Html2text.py",
+      "function": "handle_tag",
+      "if_line": 410,
+      "line": 481,
+      "name": "parent_style",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Icalendar.py",
+      "function": "__init__",
+      "if_line": 28,
+      "line": 31,
+      "name": "fichier",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Impression_facture.py",
+      "function": "__init__",
+      "if_line": 451,
+      "line": 459,
+      "name": "labelkey",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Impression_inscription.py",
+      "function": "__init__",
+      "if_line": 138,
+      "line": 170,
+      "name": "paraStyleIntro",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Portail_installation.py",
+      "function": "Upload",
+      "if_line": 335,
+      "line": 406,
+      "name": "ftp",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Portail_synchro.py",
+      "function": "Upload_data",
+      "if_line": 712,
+      "line": 718,
+      "name": "IDfamille",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Portail_synchro.py",
+      "function": "Upload_data",
+      "if_line": 712,
+      "line": 769,
+      "name": "IDutilisateur",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Portail_synchro.py",
+      "function": "Upload_data",
+      "if_line": 762,
+      "line": 769,
+      "name": "nomDossier",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Portail_synchro.py",
+      "function": "Download_data",
+      "if_line": 1585,
+      "line": 1662,
+      "name": "listeRefExistantes",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Prelevements.py",
+      "function": "GetXMLSepa",
+      "if_line": 423,
+      "line": 440,
+      "name": "detail_creancier",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Prelevements.py",
+      "function": "ValidationXSD",
+      "if_line": 796,
+      "line": 798,
+      "name": "nom_xsd",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Sauvegarde.py",
+      "function": "Sauvegarde",
+      "if_line": 67,
+      "line": 195,
+      "name": "fichierDest",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Sauvegarde.py",
+      "function": "Sauvegarde",
+      "if_line": 108,
+      "line": 198,
+      "name": "err",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Sauvegarde.py",
+      "function": "Sauvegarde",
+      "if_line": 77,
+      "line": 213,
+      "name": "dictAdresse",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Sauvegarde.py",
+      "function": "Restauration",
+      "if_line": 307,
+      "line": 399,
+      "name": "dlgprogress",
+      "detail": "body_only"
+    },
+    {
+      "kind": "branch_assignment_gap",
+      "priority": "high",
+      "file": "Utils/UTILS_Titulaires.py",
+      "function": "GetTitulaires",
+      "if_line": 142,
+      "line": 180,
+      "name": "nomsTitulaires",
+      "detail": "body_only"
+    }
+  ]
+}
