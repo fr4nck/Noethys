@@ -2,20 +2,16 @@
 # -*- coding: utf-8 -*-
 """Diagnostic temporaire du lot 23 branch_assignment_gap.
 
-Ce test est volontairement supprimé du diff final : il permet d'exécuter
-l'inventaire exhaustif dans l'environnement GitHub Actions déjà utilisé par la
-CI, puis d'en lire la sortie exacte dans les logs.
+Ce fichier est volontairement supprimé du diff final. Pendant le rebaselining,
+il exécute l'inventaire dès sa découverte par unittest puis interrompt la suite
+pour rendre immédiatement le diagnostic disponible dans les logs CI.
 """
 
-import unittest
+import sys
 
 from scripts import audit_branch_assignment_gaps
 
 
-class BranchAssignmentGapBatch23InventoryTest(unittest.TestCase):
-    def test_inventory_current_master(self):
-        self.assertEqual(audit_branch_assignment_gaps.main([]), 0)
-
-
-if __name__ == "__main__":
-    unittest.main()
+audit_branch_assignment_gaps.main([])
+sys.stdout.flush()
+raise SystemExit("diagnostic temporaire lot 23 terminé")
