@@ -1,30 +1,26 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Activation additive contrôlée du schéma des programmations Noe-062E."""
+"""Activation additive contrôlée du schéma des programmations Noe-062E.
+
+Le stockage de programmation est commun aux relations contractuelles et aux
+activités internes Noethys. Son activation ne dépend donc d'aucune table de
+relation : les prérequis propres à chaque ``type_source`` sont contrôlés par
+le service métier au moment de créer une programmation.
+"""
 from __future__ import unicode_literals
 
 import re
 
 from Data import DATA_Programmations_Structures
-from Data import DATA_Structures
 
 
-TABLE_RELATIONS = "structures_relations"
 TABLE_PROGRAMMATIONS = "structures_programmations"
 TABLE_CRENEAUX = "structures_programmations_creneaux"
 TABLES_CIBLES = (TABLE_PROGRAMMATIONS, TABLE_CRENEAUX)
 
 
 def _description(nom_table):
-    if nom_table == TABLE_RELATIONS:
-        return tuple(DATA_Structures.DB_STRUCTURES[nom_table])
     return tuple(DATA_Programmations_Structures.DB_PROGRAMMATIONS_STRUCTURES[nom_table])
-
-
-def _dictionnaire_creation(nom_table):
-    if nom_table == TABLE_RELATIONS:
-        return DATA_Structures.DB_STRUCTURES
-    return DATA_Programmations_Structures.DB_PROGRAMMATIONS_STRUCTURES
 
 
 def _chaine(valeur):
@@ -150,19 +146,17 @@ def _inspecter_table(db, nom_table):
 
 
 def InspecterSchemaProgrammations(db):
-    noms = (TABLE_RELATIONS,) + TABLES_CIBLES
-    return dict((nom, _inspecter_table(db, nom)) for nom in noms)
+    return dict((nom, _inspecter_table(db, nom)) for nom in TABLES_CIBLES)
 
 
 def AssurerSchemaProgrammations(db, appliquer=False):
     """Crée uniquement les deux tables 062E après préflight complet."""
     avant = InspecterSchemaProgrammations(db)
-    relation = avant[TABLE_RELATIONS]
     incoherentes = tuple(
         nom for nom, rapport in avant.items()
         if rapport["existe"] and not rapport["conforme"]
     )
-    if not relation["existe"] or not relation["conforme"] or incoherentes:
+    if incoherentes:
         return {
             "ok": False,
             "appliquer": bool(appliquer),
@@ -171,7 +165,7 @@ def AssurerSchemaProgrammations(db, appliquer=False):
                 nom for nom, rapport in avant.items() if not rapport["existe"]
             ),
             "tables_incoherentes": incoherentes,
-            "prerequis_absents": () if relation["existe"] else (TABLE_RELATIONS,),
+            "prerequis_absents": (),
             "rapport": avant,
         }
 
@@ -179,7 +173,10 @@ def AssurerSchemaProgrammations(db, appliquer=False):
     if appliquer:
         for nom_table in TABLES_CIBLES:
             if not avant[nom_table]["existe"]:
-                db.CreationTable(nom_table, _dictionnaire_creation(nom_table))
+                db.CreationTable(
+                    nom_table,
+                    DATA_Programmations_Structures.DB_PROGRAMMATIONS_STRUCTURES,
+                )
                 creees.append(nom_table)
         if creees:
             db.Commit()
