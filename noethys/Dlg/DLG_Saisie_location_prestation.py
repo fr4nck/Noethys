@@ -55,13 +55,17 @@ class OL_Tarifs(FastObjectListView):
         WHERE IDproduit=%d;""" % self.dictInfosLocation["IDproduit"]
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
-        if len(listeDonnees) > 0 :
-            nom_produit, montant_produit = listeDonnees[0]
-            if montant_produit != None :
-                track = Track_tarif({"IDtarif": None})
-                track.label = nom_produit
-                track.montant = montant_produit
-                liste_tarifs.append(track)
+        if len(listeDonnees) == 0 :
+            DB.Close()
+            self.donnees = []
+            return
+
+        nom_produit, montant_produit = listeDonnees[0]
+        if montant_produit != None :
+            track = Track_tarif({"IDtarif": None})
+            track.label = nom_produit
+            track.montant = montant_produit
+            liste_tarifs.append(track)
 
         # Importation des tarifs
         req = """SELECT IDtarif, IDactivite, date_debut, date_fin, methode, type, categories_tarifs, groupes, etiquettes, cotisations, 
