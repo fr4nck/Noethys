@@ -1,0 +1,55 @@
+name: Noe-062 programmation lineage patch
+
+on:
+  push:
+    branches:
+      - noe-062-programmations-persistantes
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: noe-062-programmations-persistantes
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+      - name: Verrouiller les filiations
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import py_compile
+
+          path = Path('noethys/Utils/UTILS_Programmations_Structures.py')
+          source = path.read_text(encoding='utf-8')
+
+          old = '''        if self.LireProgrammationParUID(valeurs["uid"]):\n            raise ValueError("UID de programmation déjà utilisé")\n        relation = self._source_existe(valeurs)\n'''
+          new = '''        if self.LireProgrammationParUID(valeurs["uid"]):\n            raise ValueError("UID de programmation déjà utilisé")\n        if valeurs.get("IDprogrammation_parent"):\n            parent = self.LireProgrammation(valeurs["IDprogrammation_parent"])\n            if not parent:\n                raise ValueError("Programmation parente introuvable")\n            if parent["statut"] != STATUT_VALIDEE:\n                raise ValueError("Une programmation parente doit être validée")\n        relation = self._source_existe(valeurs)\n'''
+          if source.count(old) != 1:
+              raise SystemExit('bloc création programmation inattendu')
+          source = source.replace(old, new, 1)
+
+          old = '''        if valeurs.get("IDcreneau_source"):\n            source = self.LireCreneau(valeurs["IDcreneau_source"])\n            if not source:\n                raise ValueError("Créneau source introuvable")\n        return self.db.ReqInsert(\n'''
+          new = '''        if valeurs.get("IDcreneau_source"):\n            source = self.LireCreneau(valeurs["IDcreneau_source"])\n            if not source:\n                raise ValueError("Créneau source introuvable")\n            IDparent = programmation.get("IDprogrammation_parent")\n            if not IDparent or source["IDprogrammation_structure"] != IDparent:\n                raise ValueError("Le créneau source doit appartenir à la programmation parente")\n        return self.db.ReqInsert(\n'''
+          if source.count(old) != 1:
+              raise SystemExit('bloc filiation créneau inattendu')
+          source = source.replace(old, new, 1)
+
+          path.write_text(source, encoding='utf-8')
+          py_compile.compile(str(path), doraise=True)
+          PY
+      - name: Auto-nettoyer et pousser
+        run: |
+          rm .github/workflows/noe-062-programmation-lineage.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Utils/UTILS_Programmations_Structures.py .github/workflows/noe-062-programmation-lineage.yml
+          git diff --cached --check
+          git commit -m "fix: verrouiller filiation programmes et creneaux"
+          git push origin HEAD:noe-062-programmations-persistantes
