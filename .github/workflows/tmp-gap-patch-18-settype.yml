@@ -1,0 +1,45 @@
+name: tmp-gap-patch-18-settype
+
+on:
+  push:
+    branches:
+      - fix/branch-assignment-gap-batch-18
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/branch-assignment-gap-batch-18
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Apply SetType fix
+        run: python scripts/tmp_patch_gap_batch_18_settype.py
+      - name: Targeted tests
+        run: python -m pytest -q tests/test_branch_contracts_batch_18.py
+      - name: Audit exhaustive coverage
+        run: |
+          python scripts/audit_branch_assignment_gaps.py --json /tmp/gaps.json | tee /tmp/audit.txt
+          python - <<'PY'
+          import re
+          text=open('/tmp/audit.txt', encoding='utf-8').read()
+          m=re.search(r'trouvés=(\d+), lus=(\d+), parsés=(\d+)', text)
+          if not m:
+              raise SystemExit('coverage summary missing')
+          found, read, parsed=map(int,m.groups())
+          assert found == read == parsed, (found, read, parsed)
+          PY
+      - name: Commit final fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Ctrl/CTRL_Questionnaire.py tests/test_branch_contracts_batch_18.py
+          git rm scripts/tmp_patch_gap_batch_18_settype.py .github/workflows/tmp-gap-patch-18-settype.yml
+          git commit -m "fix: rendre SetType questionnaire transactionnel"
+          git push
