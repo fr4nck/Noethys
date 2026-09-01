@@ -19,6 +19,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Install test runner
+        run: python -m pip install pytest
       - name: Apply SetType fix
         run: python scripts/tmp_patch_gap_batch_18_settype.py
       - name: Targeted tests
