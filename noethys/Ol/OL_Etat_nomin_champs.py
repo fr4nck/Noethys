@@ -112,8 +112,13 @@ class Champs():
         # Champs QUESTIONNAIRES
         listeQuestions = self.ImportationQuestions() 
         for IDquestion, label, type, controle in listeQuestions :
-            if type == "individu" : categorie = _(u"Individu")
-            if type == "famille" : categorie = _(u"Famille")
+            if type == "individu" :
+                categorie = _(u"Individu")
+            elif type == "famille" :
+                categorie = _(u"Famille")
+            else :
+                # Un état nominatif ne sait résoudre les réponses que pour un individu ou une famille.
+                continue
             dictTemp = {"IDchamp":None, "code":"QUESTION%d" % IDquestion, "label":label, "type":"QUESTION", "categorie":categorie, "titre":label, "formule":None}
             listeListeView.append(Track(dictTemp))
             
