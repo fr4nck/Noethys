@@ -955,9 +955,13 @@ class CTRL(HTL.HyperTreeList):
         if type == "famille" and UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("familles_questionnaires", "modifier", afficheMessage=False) == False : self.Enable(False)
 
     def SetType(self, type="individu"):
+        ancien_type = self.type
         self.type = type
-        self.Importation()
-        self.MAJ()
+        try:
+            self.MAJ()
+        except Exception:
+            self.type = ancien_type
+            raise
 
     def RAZ(self):
         self.DeleteAllItems()
@@ -968,18 +972,36 @@ class CTRL(HTL.HyperTreeList):
 
     def MAJ(self, importation=True, selection=None):
         """ Met à jour (redessine) tout le contrôle """
+        ancien_modele = (self.dictCategories, self.listeIDcategorie, self.dictValeursInitiales, self.dictReponses)
         self.Freeze()
-        self.DeleteAllItems()
-        # Création de la racine
-        self.root = self.AddRoot(_(u"Racine"))
-        if importation == True :
-            self.Importation()
-        # Création des contrôles
-        self.Remplissage(selection=selection)
-        # Mémorisation des valeurs initiales
-        if importation == True :
-            self.dictValeursInitiales = self.GetValeurs()
-        self.Thaw()
+        try:
+            if importation == True :
+                self.Importation()
+                controles_valides = {
+                    None, "ligne_texte", "bloc_texte", "entier", "decimal", "montant",
+                    "liste_deroulante", "liste_coches", "case_coche", "date", "slider",
+                    "couleur", "documents", "codebarres", "rfid",
+                }
+                for IDcategorie in self.listeIDcategorie:
+                    for track in self.dictCategories[IDcategorie]["questions"]:
+                        if track.controle not in controles_valides:
+                            raise ValueError("Type de contrôle de questionnaire inconnu : %s" % track.controle)
+            self.DeleteAllItems()
+            # Création de la racine
+            self.root = self.AddRoot(_(u"Racine"))
+            # Création des contrôles
+            self.Remplissage(selection=selection)
+            # Mémorisation des valeurs initiales
+            if importation == True :
+                self.dictValeursInitiales = self.GetValeurs()
+        except Exception:
+            self.dictCategories, self.listeIDcategorie, self.dictValeursInitiales, self.dictReponses = ancien_modele
+            self.DeleteAllItems()
+            self.root = self.AddRoot(_(u"Racine"))
+            self.Remplissage(selection=selection)
+            raise
+        finally:
+            self.Thaw()
 
     def Importation(self):
         self.dictCategories = {}
@@ -1054,6 +1076,16 @@ class CTRL(HTL.HyperTreeList):
 
 
     def Remplissage(self, selection=None):
+        controles_valides = {
+            None, "ligne_texte", "bloc_texte", "entier", "decimal", "montant",
+            "liste_deroulante", "liste_coches", "case_coche", "date", "slider",
+            "couleur", "documents", "codebarres", "rfid",
+        }
+        for IDcategorie in self.listeIDcategorie:
+            for track in self.dictCategories[IDcategorie]["questions"]:
+                if track.controle not in controles_valides:
+                    raise ValueError("Type de contrôle de questionnaire inconnu : %s" % track.controle)
+
         # Création des branches
         self.dictBranches = {}
         indexCategorie = 0
@@ -1108,6 +1140,7 @@ class CTRL(HTL.HyperTreeList):
                         track.largeur = self.largeurReponse - 7
 
                         # CTRL du type de calcul
+                        ctrl = None
                         if track.controle == "ligne_texte" : ctrl = CTRL_ligne_texte(self.GetMainWindow(), item=brancheQuestion, track=track) # size=(largeurControle, -1) )
                         if track.controle == "bloc_texte" : ctrl = CTRL_bloc_texte(self.GetMainWindow(), item=brancheQuestion, track=track) # size=(largeurControle, 60) )
                         if track.controle == "entier" : ctrl = CTRL_entier(self.GetMainWindow(), item=brancheQuestion, track=track) # size=(largeurControle, -1) )
@@ -1128,12 +1161,12 @@ class CTRL(HTL.HyperTreeList):
                             self.SetItemWindow(brancheQuestion, ctrl, 1)
                             track.ctrl = ctrl
 
-                        # Insère la valeur
-                        if IDquestion in self.dictReponses :
-                            valeur = self.dictReponses[IDquestion]["reponse"]
-                        else:
-                            valeur = track.defaut
-                        track.SetValeurStr(valeur)
+                            # Insère la valeur uniquement lorsqu'un contrôle existe
+                            if IDquestion in self.dictReponses :
+                                valeur = self.dictReponses[IDquestion]["reponse"]
+                            else:
+                                valeur = track.defaut
+                            track.SetValeurStr(valeur)
 
                         indexQuestion += 1
 

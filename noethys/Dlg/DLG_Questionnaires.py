@@ -155,8 +155,15 @@ class Dialog(wx.Dialog):
         self.CenterOnScreen() 
 
     def OnChoixType(self, event): 
-        self.type = self.ctrl_type.GetID()
-        self.ctrl_questionnaire.SetType(self.type)
+        ancien_type = self.type
+        nouveau_type = self.ctrl_type.GetID()
+        try:
+            self.ctrl_questionnaire.SetType(nouveau_type)
+        except Exception:
+            self.type = ancien_type
+            self.ctrl_type.SetID(ancien_type)
+            raise
+        self.type = nouveau_type
 
     def OnBoutonAjouter(self, event): 
         self.ctrl_questionnaire.Ajouter()
