@@ -70,7 +70,10 @@ datas += collect_data_files("pytz")
 datas += collect_data_files("reportlab")
 
 runtime_hooks = [
-    # Installer d'abord le journal d'erreurs : si un hook de compatibilité casse,
+    # Précharge d'abord la stdlib avant que les hooks wx n'exposent leurs
+    # sous-modules dans le layout historique plat du bundle.
+    str(ROOT / "packaging" / "runtime_stdlib_preload.py"),
+    # Installer ensuite le journal d'erreurs : si un hook de compatibilité casse,
     # le diagnostic est persisté au lieu de disparaître dans l'EXE sans console.
     str(ROOT / "packaging" / "runtime_crashlog.py"),
     # Mesure localement les délais d'ouverture des fenêtres et les allers-retours
