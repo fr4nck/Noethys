@@ -137,14 +137,17 @@ class InstallableConfigPathsTests(unittest.TestCase):
             self.assertEqual(foreign_config.read_text(encoding="utf-8"), '{"source":"foreign"}')
             self.assertFalse((profile / "noethys" / "Config.json").exists())
 
-    def test_migration_never_overwrites_existing_user_config(self):
+    def test_migration_never_overwrites_existing_user_config_or_imports_stale_backup(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             profile = root / "profile-roaming"
             module = _load_utils_files(root, config_root=profile)
             legacy_config = root / "Config.json"
+            legacy_backup = root / "Config.json.bak"
             legacy_config.write_text('{"source":"legacy"}', encoding="utf-8")
+            legacy_backup.write_text('{"source":"legacy-backup"}', encoding="utf-8")
             active_config = Path(module.GetRepUtilisateur("Config.json"))
+            active_backup = Path(module.GetRepUtilisateur("Config.json.bak"))
             active_config.write_text('{"source":"active"}', encoding="utf-8")
             home = root / "home"
             home.mkdir()
@@ -153,7 +156,26 @@ class InstallableConfigPathsTests(unittest.TestCase):
                 module.DeplaceFichiers()
 
             self.assertEqual(active_config.read_text(encoding="utf-8"), '{"source":"active"}')
+            self.assertFalse(active_backup.exists())
             self.assertEqual(legacy_config.read_text(encoding="utf-8"), '{"source":"legacy"}')
+            self.assertEqual(legacy_backup.read_text(encoding="utf-8"), '{"source":"legacy-backup"}')
+
+    def test_migration_does_not_import_orphan_legacy_backup(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            profile = root / "profile-roaming"
+            module = _load_utils_files(root, config_root=profile)
+            legacy_backup = root / "Config.json.bak"
+            legacy_backup.write_text('{"source":"orphan-backup"}', encoding="utf-8")
+            home = root / "home"
+            home.mkdir()
+
+            with mock.patch.dict(os.environ, {"HOME": str(home)}, clear=False):
+                module.DeplaceFichiers()
+
+            self.assertFalse((profile / "noethys" / "Config.json").exists())
+            self.assertFalse((profile / "noethys" / "Config.json.bak").exists())
+            self.assertEqual(legacy_backup.read_text(encoding="utf-8"), '{"source":"orphan-backup"}')
 
     def test_migration_moves_application_config_and_backup_when_destination_is_empty(self):
         with tempfile.TemporaryDirectory() as temp:
