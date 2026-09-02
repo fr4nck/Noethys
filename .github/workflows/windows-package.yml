@@ -369,6 +369,65 @@ jobs:
             $env:LOCALAPPDATA = $savedLocalAppData
           }
 
+      - name: Collecter les diagnostics du smoke portable
+        if: failure()
+        shell: pwsh
+        run: |
+          $diag = Join-Path $PWD "artifacts/windows-portable-smoke-diagnostics"
+          $testRoot = Join-Path $env:RUNNER_TEMP "noethys-frozen-smoke"
+          $profileRoot = Join-Path $env:RUNNER_TEMP "noethys-frozen-profile"
+          New-Item -ItemType Directory -Path $diag -Force | Out-Null
+
+          @(
+            "GITHUB_SHA=$env:GITHUB_SHA"
+            "GITHUB_RUN_ID=$env:GITHUB_RUN_ID"
+            "RUNNER_TEMP=$env:RUNNER_TEMP"
+            "testRoot=$testRoot"
+            "profileRoot=$profileRoot"
+            "archive.exists=$(Test-Path 'Noethys-Windows-portable.zip')"
+            "exe.exists=$(Test-Path (Join-Path $testRoot 'Noethys.exe'))"
+            "portableMarker.exists=$(Test-Path (Join-Path $testRoot 'Portable/README.txt'))"
+            "errorMarker.exists=$(Test-Path (Join-Path $testRoot 'FROZEN-SMOKE-ERROR.txt'))"
+            "okMarker.exists=$(Test-Path (Join-Path $testRoot 'FROZEN-SMOKE-OK.txt'))"
+          ) | Set-Content -Path (Join-Path $diag "context.txt") -Encoding UTF8
+
+          foreach ($name in @("FROZEN-SMOKE-ERROR.txt", "FROZEN-SMOKE-OK.txt", "journal.log", "Config.json", "Config.json.bak")) {
+            $source = Join-Path $testRoot $name
+            if (Test-Path $source) {
+              Copy-Item $source (Join-Path $diag $name) -Force
+            }
+          }
+
+          if (Test-Path $testRoot) {
+            Get-ChildItem $testRoot -Force -ErrorAction SilentlyContinue |
+              Select-Object Name, Length, LastWriteTime |
+              Format-Table -AutoSize |
+              Out-String -Width 240 |
+              Set-Content -Path (Join-Path $diag "portable-root.txt") -Encoding UTF8
+          }
+          if (Test-Path $profileRoot) {
+            Get-ChildItem $profileRoot -Force -Recurse -ErrorAction SilentlyContinue |
+              Select-Object FullName, Length, LastWriteTime |
+              Format-Table -AutoSize |
+              Out-String -Width 240 |
+              Set-Content -Path (Join-Path $diag "profile-tree.txt") -Encoding UTF8
+          }
+
+          Get-Content (Join-Path $diag "context.txt")
+          if (Test-Path (Join-Path $diag "FROZEN-SMOKE-ERROR.txt")) {
+            Write-Host "--- FROZEN-SMOKE-ERROR.txt ---"
+            Get-Content (Join-Path $diag "FROZEN-SMOKE-ERROR.txt")
+          }
+
+      - name: Publier les diagnostics du smoke portable
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-portable-smoke-diagnostics
+          path: artifacts/windows-portable-smoke-diagnostics
+          if-no-files-found: error
+          retention-days: 14
+
       - uses: actions/upload-artifact@v7
         with:
           name: Noethys-Windows-installer
