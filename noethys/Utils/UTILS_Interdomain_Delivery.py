@@ -26,18 +26,13 @@ CONTRACT_VERSION = "session-actual/1"
 EVENT_TYPE = "session_actual_validated"
 ACK_STATUSES = ("accepted", "replayed", "rejected", "retryable")
 
-try:
-    string_types = (basestring,)  # noqa: F821 - Python 2 historique
-except NameError:
-    string_types = (str,)
-
 
 class DeliveryEnvelopeError(ValueError):
     """Enveloppe absente, mal formée, non authentifiée ou mal adressée."""
 
 
 def _text(value, field, maximum):
-    if not isinstance(value, string_types):
+    if not isinstance(value, str):
         raise DeliveryEnvelopeError("%s obligatoire" % field)
     value = value.strip()
     if not value:
@@ -96,19 +91,9 @@ def _signature(envelope, secret):
 
 
 def _compare_digest(expected, received):
-    comparer = getattr(hmac, "compare_digest", None)
-    if callable(comparer):
-        return comparer(expected, received)
-    # Repli constant-time pour les environnements Python historiques où
-    # ``hmac.compare_digest`` n'existe pas encore.
-    if not isinstance(expected, string_types) or not isinstance(received, string_types):
+    if not isinstance(expected, str) or not isinstance(received, str):
         return False
-    if len(expected) != len(received):
-        return False
-    result = 0
-    for left, right in zip(bytearray(expected.encode("ascii")), bytearray(received.encode("ascii"))):
-        result |= left ^ right
-    return result == 0
+    return hmac.compare_digest(expected, received)
 
 
 def VerifierEnveloppe(livraison, keyring, target_domain=TARGET_DOMAIN, source_domain=SOURCE_DOMAIN):
@@ -170,7 +155,7 @@ def ConstruireAccuse(status, idempotence_key, correlation_id, detail=""):
     correlation_id = _text(correlation_id, "correlation_id", 128)
     if detail is None:
         detail = ""
-    if not isinstance(detail, string_types) or len(detail) > 500:
+    if not isinstance(detail, str) or len(detail) > 500:
         raise DeliveryEnvelopeError("detail invalide")
     return {
         "status": status,
