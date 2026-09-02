@@ -10,6 +10,31 @@ from pathlib import Path
 SOURCE = Path("noethys/Dlg/DLG_Noedoc.py")
 
 
+class Vector:
+    """Petit vecteur suffisant pour exercer DeplacerObjet sans dépendance numpy."""
+
+    def __init__(self, values):
+        self.values = list(values)
+
+    def __add__(self, other):
+        return Vector(a + b for a, b in zip(self.values, other.values))
+
+    def __sub__(self, other):
+        return Vector(a - b for a, b in zip(self.values, other.values))
+
+    def __iter__(self):
+        return iter(self.values)
+
+    def __getitem__(self, index):
+        return self.values[index]
+
+
+class FakeNumpy:
+    @staticmethod
+    def array(values):
+        return Vector(values)
+
+
 def load_deplacer_objet():
     tree = ast.parse(SOURCE.read_text(encoding="utf-8"))
     fonction = next(
@@ -21,7 +46,7 @@ def load_deplacer_objet():
     module = ast.Module(body=[fonction], type_ignores=[])
     ast.fix_missing_locations(module)
 
-    namespace = {"numpy": __import__("numpy")}
+    namespace = {"numpy": FakeNumpy}
     exec(compile(module, str(SOURCE), "exec"), namespace)
     return namespace["DeplacerObjet"]
 
@@ -74,25 +99,24 @@ class FakeSelf:
 class NoedocDeplacerObjetContractTests(unittest.TestCase):
     def setUp(self):
         self.fonction = load_deplacer_objet()
-        self.numpy = __import__("numpy")
 
     def test_deplacement_avec_sens_reconnu(self):
-        objet = FakeObjet(self.numpy.array([0, 0]))
+        objet = FakeObjet(Vector([0, 0]))
         self.fonction(FakeSelf(), objet, sens="haut")
         self.assertEqual(list(objet.GetXY()), [0, 1])
 
     def test_deplacement_avec_nouvelle_position(self):
-        objet = FakeObjet(self.numpy.array([0, 0]))
-        self.fonction(FakeSelf(), objet, newPosition=self.numpy.array([5, 5]))
+        objet = FakeObjet(Vector([0, 0]))
+        self.fonction(FakeSelf(), objet, newPosition=Vector([5, 5]))
         self.assertEqual(list(objet.GetXY()), [5, 5])
 
     def test_contrat_ambigu_sans_sens_ni_position_leve_une_erreur_explicite(self):
-        objet = FakeObjet(self.numpy.array([0, 0]))
+        objet = FakeObjet(Vector([0, 0]))
         with self.assertRaises(ValueError):
             self.fonction(FakeSelf(), objet)
 
     def test_sens_non_reconnu_leve_une_erreur_explicite(self):
-        objet = FakeObjet(self.numpy.array([0, 0]))
+        objet = FakeObjet(Vector([0, 0]))
         with self.assertRaises(ValueError):
             self.fonction(FakeSelf(), objet, sens="diagonale")
 
