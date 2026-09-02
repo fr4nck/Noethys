@@ -4,6 +4,7 @@ import json
 import sys
 import unittest
 from unittest.mock import patch
+from urllib import error as urllib_error
 
 ROOT = Path(__file__).resolve().parents[1]
 NOETHYS = ROOT / "noethys"
@@ -78,6 +79,36 @@ class MailboxClientTests(unittest.TestCase):
         self.assertEqual(transport.acks[0][1]["status"], "retryable")
         self.assertNotIn("Bearer", transport.acks[0][1].get("detail", ""))
 
+    def test_malformed_signed_delivery_is_acked_rejected_with_outer_ids(self):
+        transport = FakeTransport([delivery()])
+        rejected = {
+            "status": "rejected",
+            "idempotence_key": "invalid",
+            "correlation_id": "invalid",
+            "detail": "signature HMAC invalide",
+        }
+        with patch.object(client.UTILS_Interdomain_Delivery, "RecevoirLivraisonSignee", return_value=rejected):
+            summary = client.SynchroniserMailbox(object(), transport, {"kid": b"x" * 32})
+        self.assertEqual(summary["rejected"], 1)
+        self.assertEqual(summary["acked"], 1)
+        ack = transport.acks[0][1]
+        self.assertEqual(ack["status"], "rejected")
+        self.assertEqual(ack["idempotence_key"], IDEMPOTENCE)
+        self.assertEqual(ack["correlation_id"], CORRELATION)
+
+    def test_non_rejected_identifier_mismatch_still_fails_closed(self):
+        transport = FakeTransport([delivery()])
+        inconsistent = {
+            "status": "accepted",
+            "idempotence_key": "wrong",
+            "correlation_id": CORRELATION,
+            "detail": "",
+        }
+        with patch.object(client.UTILS_Interdomain_Delivery, "RecevoirLivraisonSignee", return_value=inconsistent):
+            with self.assertRaises(client.MailboxPullError):
+                client.SynchroniserMailbox(object(), transport, {"kid": b"x" * 32})
+        self.assertEqual(transport.acks, [])
+
     def test_ack_failure_is_not_swallowed_after_local_apply(self):
         transport = FakeTransport([delivery()], ack_error=client.MailboxTransportError("offline"))
         receipt = {
@@ -115,6 +146,48 @@ class MailboxClientTests(unittest.TestCase):
         self.assertEqual(seen["auth"], "Bearer mbx1.token.secret-value-long-enough-for-test")
         self.assertNotIn(b"secret-value", seen["body"])
         self.assertTrue(seen["url"].endswith(client.CLAIM_PATH))
+
+    def test_default_http_opener_refuses_redirects(self):
+        transport = client.TransportMailboxHTTP(
+            "https://portal.example.test",
+            "mbx1.token.secret-value-long-enough-for-test",
+        )
+        request = __import__("urllib.request", fromlist=["Request"]).Request(
+            "https://portal.example.test" + client.CLAIM_PATH,
+            data=b"{}",
+            headers={"Authorization": "Bearer secret"},
+            method="POST",
+        )
+        handler = client._NoRedirectHandler()
+        self.assertIsNone(
+            handler.redirect_request(
+                request,
+                None,
+                302,
+                "Found",
+                {"Location": "http://attacker.invalid/steal"},
+                "http://attacker.invalid/steal",
+            )
+        )
+
+    def test_redirect_http_error_is_sanitized(self):
+        def redirecting(request, timeout):
+            raise urllib_error.HTTPError(
+                request.full_url,
+                302,
+                "Found",
+                {"Location": "http://attacker.invalid/steal"},
+                None,
+            )
+        transport = client.TransportMailboxHTTP(
+            "https://portal.example.test",
+            "mbx1.token.secret-value-long-enough-for-test",
+            opener=redirecting,
+        )
+        with self.assertRaises(client.MailboxTransportError) as error:
+            transport.Reclamer()
+        self.assertIn("302", str(error.exception))
+        self.assertNotIn("attacker.invalid", str(error.exception))
 
 
 if __name__ == "__main__":
