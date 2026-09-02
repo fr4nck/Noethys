@@ -28,6 +28,10 @@ class Vector:
     def __getitem__(self, index):
         return self.values[index]
 
+    def all(self):
+        """Expose le marqueur historique utilisé pour reconnaître un ndarray."""
+        return all(self.values)
+
 
 class FakeNumpy:
     @staticmethod
