@@ -16,6 +16,8 @@ TARGETS = {
     ("Utils/UTILS_Cotisations_manquantes.py", "GetListeCotisationsManquantes", "date_fin"),
     ("Utils/UTILS_Cryptage_fichier.py", "DecrypterFichier", "dec"),
     ("Utils/UTILS_Export_nomade.py", "Run", "dlgAttente"),
+    ("Utils/UTILS_Sauvegarde.py", "Sauvegarde", "fichierDest"),
+    ("Utils/UTILS_Sauvegarde.py", "Sauvegarde", "dictAdresse"),
 }
 
 

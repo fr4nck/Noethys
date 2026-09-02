@@ -106,6 +106,22 @@ def _load_module(data_dir, temp_dir):
 
 
 class RestoreFlowTests(unittest.TestCase):
+    def test_restore_with_no_selected_files_returns_empty_list(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            data_dir = root / "data"
+            temp_dir = root / "temp"
+            data_dir.mkdir()
+            temp_dir.mkdir()
+            archive = root / "backup.nod"
+            with zipfile.ZipFile(str(archive), "w"):
+                pass
+
+            module = _load_module(data_dir, temp_dir)
+            result = module.Restauration(fichier=str(archive))
+
+            self.assertEqual(result, [])
+
     def test_local_restore_extracts_and_reports_restored_file(self):
         with tempfile.TemporaryDirectory() as root:
             root = Path(root)
