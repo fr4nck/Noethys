@@ -33,6 +33,13 @@ class MailboxTransportError(MailboxPullError):
     pass
 
 
+class _NoRedirectHandler(urllib_request.HTTPRedirectHandler):
+    """Refuse toute redirection pour ne jamais retransmettre le bearer ailleurs."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def _text(value, field, maximum):
     if not isinstance(value, str):
         raise MailboxPullError("%s obligatoire" % field)
@@ -95,7 +102,10 @@ class TransportMailboxHTTP(object):
         if timeout < 1 or timeout > 300:
             raise MailboxTransportError("timeout invalide")
         self.timeout = timeout
-        self.opener = opener or urllib_request.urlopen
+        # urllib suit normalement les 30x et peut recopier Authorization vers la
+        # nouvelle requête. Le client de mailbox refuse donc tout redirect :
+        # l'URL d'exploitation doit être canonique et HTTPS dès le départ.
+        self.opener = opener or urllib_request.build_opener(_NoRedirectHandler()).open
 
     def _post_json(self, path, payload):
         if not isinstance(payload, dict):
@@ -117,8 +127,8 @@ class TransportMailboxHTTP(object):
             raw = response.read()
             status = getattr(response, "status", getattr(response, "code", 200))
         except urllib_error.HTTPError as error:
-            # Ne jamais recopier le corps d'une erreur distante : il peut contenir
-            # des détails d'infrastructure inutiles au journal local.
+            # Inclut volontairement les redirections refusées. Ne jamais recopier
+            # Location ni le corps distant : ils peuvent contenir de l'infra.
             raise MailboxTransportError("mailbox HTTP refusée (%s)" % error.code)
         except (urllib_error.URLError, socket.timeout, OSError) as error:
             raise MailboxTransportError("mailbox HTTPS indisponible: %s" % error.__class__.__name__)
@@ -195,13 +205,32 @@ def SynchroniserMailbox(db, transport, keyring, limit=20, date_reception=None):
                 item["correlation_id"],
                 _safe_detail(error),
             )
-        if receipt.get("idempotence_key") != item["idempotence_key"]:
-            raise MailboxPullError("idempotence_key de l'accusé local incohérente")
-        if receipt.get("correlation_id") != item["correlation_id"]:
-            raise MailboxPullError("correlation_id de l'accusé local incohérente")
+
         status = receipt.get("status")
         if status not in UTILS_Interdomain_Delivery.ACK_STATUSES:
             raise MailboxPullError("statut d'accusé local invalide")
+
+        # Pour une enveloppe déterministement invalide, l'adaptateur ADR-012 peut
+        # légitimement ne pas pouvoir faire confiance aux identifiants internes et
+        # renvoyer ``invalid``. La mailbox externe, elle, a déjà fourni des
+        # identifiants de livraison validés : on les utilise pour acquitter le
+        # poison message comme ``rejected`` et empêcher une boucle sans fin.
+        if status == "rejected" and (
+            receipt.get("idempotence_key") != item["idempotence_key"]
+            or receipt.get("correlation_id") != item["correlation_id"]
+        ):
+            receipt = UTILS_Interdomain_Delivery.ConstruireAccuse(
+                "rejected",
+                item["idempotence_key"],
+                item["correlation_id"],
+                str(receipt.get("detail") or "")[:500],
+            )
+        else:
+            if receipt.get("idempotence_key") != item["idempotence_key"]:
+                raise MailboxPullError("idempotence_key de l'accusé local incohérente")
+            if receipt.get("correlation_id") != item["correlation_id"]:
+                raise MailboxPullError("correlation_id de l'accusé local incohérente")
+
         summary[status] += 1
         transport.Acquitter(item["delivery_id"], receipt)
         summary["acked"] += 1
