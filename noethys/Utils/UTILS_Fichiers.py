@@ -130,6 +130,34 @@ def _MigreFichierLocal(source, destination):
     return True
 
 
+def _MigreConfigurationLocale(repertoires_historiques):
+    """Migre Config.json et uniquement la sauvegarde qui lui correspond."""
+    destination_config = GetRepUtilisateur("Config.json")
+    destination_backup = GetRepUtilisateur("Config.json.bak")
+
+    # Si le profil possède déjà sa configuration active, elle est autoritaire.
+    # Importer séparément une ancienne sauvegarde créerait un couple incohérent
+    # et pourrait restaurer plus tard des réglages obsolètes.
+    if os.path.exists(destination_config):
+        return False
+
+    for rep in repertoires_historiques:
+        source_config = os.path.join(rep, "Config.json")
+        if not os.path.isfile(source_config):
+            continue
+
+        if not _MigreFichierLocal(source_config, destination_config):
+            return False
+
+        # La sauvegarde ne voyage qu'avec le Config.json choisi et depuis le
+        # même répertoire historique. Une sauvegarde orpheline est ignorée.
+        source_backup = os.path.join(rep, "Config.json.bak")
+        _MigreFichierLocal(source_backup, destination_backup)
+        return True
+
+    return False
+
+
 def DeplaceFichiers():
     """ Vérifie si des fichiers du répertoire Data ou du répertoire Utilisateur sont à déplacer vers le répertoire Utilisateur>AppData>Roaming """
 
@@ -142,11 +170,14 @@ def DeplaceFichiers():
         Chemins.GetMainPath("Data"),
         os.path.join(os.path.expanduser("~"), "noethys"),
     )
-    for nom in ("journal.log", "Config.json", "Config.json.bak", "Customize.ini") :
+    for nom in ("journal.log", "Customize.ini") :
         destination = GetRepUtilisateur(nom)
         for rep in repertoires_historiques :
             source = os.path.join(rep, nom)
-            _MigreFichierLocal(source, destination)
+            if _MigreFichierLocal(source, destination):
+                break
+
+    _MigreConfigurationLocale(repertoires_historiques)
 
     # Déplace les fichiers xlang
     if os.path.isdir(Chemins.GetMainPath("Lang")) :
