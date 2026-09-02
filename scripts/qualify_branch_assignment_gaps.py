@@ -85,6 +85,21 @@ EXPLICIT_SAFE = {
     ('Utils/UTILS_Titulaires.py', 'GetTitulaires', 'nomsTitulaires', 'body_only', 'cd35c15e3510275978436eb40410f2403477fb4306c3dfd6db9330ae75be0084'): (
         "la lecture de nomsTitulaires est sous nbreTitulaires > 0 ; les cas 1, 2 et > 2, exhaustifs pour tout entier strictement positif, l'affectent auparavant"
     ),
+    ('Dlg/DLG_Compte_internet.py', 'Importation', 'req', 'body_only', '8ef75e142a48792080feb6b65fe80cc44b1a56f5475a93eacf874b789364b419'): (
+        'le retour initial exclut le seul cas où IDfamille et IDutilisateur sont tous deux nuls ; sur tout chemin continuant, au moins un des deux if suivants affecte req avant son exécution'
+    ),
+    ('Dlg/DLG_Saisie_lot_deductions.py', 'OnBoutonOk', 'montant', 'body_only', 'eab650102180c8b03a02c292191e12284307cf211ebcd4051d6c574c877444d6'): (
+        "montant est affecté dans la branche qui fixe typeValeur à 'montant' et sa lecture ultérieure est gardée par exactement cette valeur de typeValeur"
+    ),
+    ('Dlg/DLG_Saisie_lot_deductions.py', 'OnBoutonOk', 'pourcent', 'else_only', '206f4f879ed45020225fe1bcbbcad100e089c7844b2e797aef70d31ef8810ea7'): (
+        "pourcent est affecté dans le else qui fixe typeValeur à 'pourcent' et sa lecture ultérieure est gardée par exactement cette valeur de typeValeur"
+    ),
+    ('Dlg/DLG_Saisie_lot_deductions.py', 'OnBoutonOk', 'montantDeduction', 'body_only', '454c1378e63735132f7a506b88e0605cd7a59a6a87ed70267bf441d30bdbc7da'): (
+        "l'if/else initial fixe toujours typeValeur à 'montant' ou 'pourcent' ; les deux gardes correspondants affectent donc montantDeduction avant sa première lecture"
+    ),
+    ('Dlg/DLG_Saisie_produit.py', 'OnBoutonOk', 'prochainIDligne', 'body_only', 'c5617cf6777451edb437c0626035e0717d96d3b98ff1ffc9ef8e4ef37a951dee'): (
+        'prochainIDligne est initialisé lorsque DB.isNetwork est faux et toutes ses lectures/incréments restent sous le même garde DB.isNetwork == False'
+    ),
 }
 
 def _candidate_fingerprint(root, item):

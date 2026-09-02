@@ -3,6 +3,11 @@ import unittest
 from scripts import qualify_branch_assignment_gaps as qualification
 
 TARGETS = {
+    ("Dlg/DLG_Compte_internet.py", "Importation", "req"),
+    ("Dlg/DLG_Saisie_lot_deductions.py", "OnBoutonOk", "montant"),
+    ("Dlg/DLG_Saisie_lot_deductions.py", "OnBoutonOk", "pourcent"),
+    ("Dlg/DLG_Saisie_lot_deductions.py", "OnBoutonOk", "montantDeduction"),
+    ("Dlg/DLG_Saisie_produit.py", "OnBoutonOk", "prochainIDligne"),
     ("Utils/UTILS_Icalendar.py", "__init__", "fichier"),
     ("Utils/UTILS_Impression_inscription.py", "__init__", "paraStyleIntro"),
     ("Utils/UTILS_Html2text.py", "handle_tag", "tag_style"),
