@@ -100,6 +100,12 @@ EXPLICIT_SAFE = {
     ('Dlg/DLG_Saisie_produit.py', 'OnBoutonOk', 'prochainIDligne', 'body_only', 'c5617cf6777451edb437c0626035e0717d96d3b98ff1ffc9ef8e4ef37a951dee'): (
         'prochainIDligne est initialisé lorsque DB.isNetwork est faux et toutes ses lectures/incréments restent sous le même garde DB.isNetwork == False'
     ),
+    ('Utils/UTILS_Sauvegarde.py', 'Sauvegarde', 'fichierDest', 'body_only', '3b24366cca3b4d4a379d85dd9333e1a1d0cb8fcf4d01f98f2ac29adffe10dce7'): (
+        "fichierDest est créé sous repertoire != None et sa seule lecture ultérieure reste protégée par exactement le même garde"
+    ),
+    ('Utils/UTILS_Sauvegarde.py', 'Sauvegarde', 'dictAdresse', 'body_only', '33937cd6d25d5a168393d05a014cc8bedc5c70d18209cf655018319cbfbac628'): (
+        "dictAdresse est créé sous listeEmails != None ; l'absence d'adresse quitte la fonction et sa lecture ultérieure reste sous exactement le même garde"
+    ),
 }
 
 def _candidate_fingerprint(root, item):
