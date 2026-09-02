@@ -3,8 +3,8 @@
 """Extension opérationnelle 1:1 des séances Noe-062C.
 
 La séance canonique reste dans ``interventions``. Ce module ne duplique ni le
-référentiel RH (Teamworks reste source de vérité), ni les lieux : il conserve
-uniquement leurs UID/IDs de référence et les écarts entre prévu et réalisé.
+référentiel RH, ni les lieux : il conserve uniquement leurs UID/IDs de
+référence et les écarts entre prévu et réalisé.
 """
 from __future__ import unicode_literals
 
@@ -96,8 +96,13 @@ class GestionnaireExecutionInterventions(object):
             raise RuntimeError("Plusieurs exécutions existent pour une même séance canonique")
         return dict(zip(("IDexecution_intervention",) + CHAMPS_EXECUTION, lignes[0]))
 
-    def EnregistrerExecution(self, IDintervention, donnees, date=None):
-        """Crée ou met à jour l'unique extension opérationnelle d'une séance."""
+    def EnregistrerExecution(self, IDintervention, donnees, date=None, commit=True):
+        """Crée ou met à jour l'unique extension opérationnelle d'une séance.
+
+        ``commit`` vaut ``True`` par défaut pour préserver le comportement
+        historique. Les orchestrateurs multi-écritures peuvent demander
+        ``commit=False`` puis gérer eux-mêmes commit/rollback atomique.
+        """
         self._verifier_intervention(IDintervention)
         donnees = dict(donnees or {})
         if not donnees:
@@ -142,12 +147,17 @@ class GestionnaireExecutionInterventions(object):
         )
 
         if courant is None:
-            return self.db.ReqInsert("interventions_execution", _liste_pairs(valeurs))
+            return self.db.ReqInsert(
+                "interventions_execution",
+                _liste_pairs(valeurs),
+                commit=bool(commit),
+            )
         self.db.ReqMAJ(
             "interventions_execution",
             _liste_pairs(valeurs),
             "IDexecution_intervention",
             int(courant["IDexecution_intervention"]),
+            commit=bool(commit),
         )
         return courant["IDexecution_intervention"]
 
