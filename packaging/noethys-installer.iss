@@ -2,14 +2,10 @@
 ; Les données et la configuration utilisateur ne sont jamais embarquées ici :
 ; elles restent gérées par UTILS_Fichiers dans le profil utilisateur.
 
-#ifndef MyAppVersion
-  #define MyAppVersion "1.3.4.2-upgrade"
-#endif
-
 [Setup]
 AppId=Noethys
 AppName=Noethys
-AppVersion={#MyAppVersion}
+AppVersion=1.3.4.2-upgrade
 AppPublisher=Noethys
 DefaultDirName={autopf}\Noethys
 DefaultGroupName=Noethys
