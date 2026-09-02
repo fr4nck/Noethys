@@ -425,7 +425,7 @@ class GestionnaireProgrammationsStructures(object):
             if fin_relation and fin > fin_relation:
                 raise ValueError("La programmation se termine après la relation")
 
-    def _programmation_source_saison_existe(self, valeurs):
+    def _programmation_source_saison_existe(self, valeurs, IDprogrammation_exclue=None):
         conditions = [
             "type_source='%s'" % _sql_texte(valeurs["type_source"]),
             "saison='%s'" % _sql_texte(valeurs["saison"]),
@@ -439,6 +439,10 @@ class GestionnaireProgrammationsStructures(object):
                 conditions.append("IDgroupe_activite=%d" % int(valeurs["IDgroupe_activite"]))
             else:
                 conditions.append("IDgroupe_activite IS NULL")
+        if IDprogrammation_exclue:
+            conditions.append(
+                "IDprogrammation_structure<>%d" % int(IDprogrammation_exclue)
+            )
         req = "SELECT IDprogrammation_structure FROM structures_programmations WHERE %s;" % " AND ".join(conditions)
         if self.db.ExecuterReq(req) != 1:
             return False
@@ -478,6 +482,16 @@ class GestionnaireProgrammationsStructures(object):
         controle.update(changements)
         relation = self._source_existe(controle)
         self._verifier_periode_source(controle, relation=relation)
+        if self._programmation_source_saison_existe(
+            controle, IDprogrammation_exclue=IDprogrammation_structure
+        ):
+            raise ValueError("Une programmation active existe déjà pour cette source et cette saison")
+        for creneau in self.ListerCreneaux(
+            IDprogrammation_structure,
+            actifs_seulement=True,
+            conserves_seulement=True,
+        ):
+            self._verifier_creneau_dans_programmation(controle, creneau)
         return self.db.ReqMAJ(
             "structures_programmations",
             _liste_pairs(changements, CHAMPS_PROGRAMMATION),
