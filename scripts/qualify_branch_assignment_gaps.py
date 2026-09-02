@@ -61,6 +61,30 @@ EXPLICIT_SAFE = {
     ('Dlg/DLG_Ouvertures.py', 'TraitementLot', 'nbrePlaces', 'partial_branches', 'c3c4355421b4b54d0daa627449f414c23ad2d33240c8ae5e1c2c7957976a2fe9'): (
         "le bloc extérieur limite action à date, schema ou reinit ; date/schema affectent nbrePlaces ou passent par l'except qui le replie à 0, tandis que reinit passe par le else qui l'affecte à 0"
     ),
+    ('Utils/UTILS_Cotisations_manquantes.py', 'GetListeCotisationsManquantes', 'date_fin', 'body_only', '52833ac4673ab36cac3451e073e6f972df167f8e77634102bb530990f98fa4d0'): (
+        'la lecture de date_fin est dans le bloc gardé par A or B ; chacun des deux termes vrais affecte date_fin avant son utilisation'
+    ),
+    ('Utils/UTILS_Cryptage_fichier.py', 'DecrypterFichier', 'dec', 'partial_branches', 'c4ec08d2c16ced4dc3e072a66f32cdd872014748db4af9851753658dd310fe3e'): (
+        'le format SV2 affecte dec dans la première branche et tout autre contenu passe par le else qui affecte dec après le chargement compatible Python 2/3'
+    ),
+    ('Utils/UTILS_Export_nomade.py', 'Run', 'dlgAttente', 'body_only', '0c366c92222727bc372dfac57ab219a3967d2725a9dac613a0366037bfdf1803'): (
+        "dlgAttente n'est créé que si afficherDlgAttente est vrai et ses deux suppressions, en succès comme en exception, sont protégées par exactement le même garde"
+    ),
+    ('Utils/UTILS_Icalendar.py', '__init__', 'fichier', 'body_only', '4b3769dbe504b542a423a645cca1c8f940c592643482fcfee26964d061102c06'): (
+        "fichier est lu uniquement dans le try englobant ; toute absence d'affectation ou erreur d'ouverture est capturée par l'except qui replie explicitement self.cal à None"
+    ),
+    ('Utils/UTILS_Impression_inscription.py', '__init__', 'paraStyleIntro', 'body_only', '3ed758b70f477a71a17f646ccb62f5f44c946ffba4702e5ca1a03a18ec89d6b5'): (
+        'la lecture est sous le garde intro présent/non nul, qui implique nécessairement le premier terme du garde OR ayant créé paraStyleIntro juste avant'
+    ),
+    ('Utils/UTILS_Html2text.py', 'handle_tag', 'tag_style', 'body_only', '92dfcabc32019e8f2e8b08967afb57e88854c05f0a37329675fe74b201dcf8ce'): (
+        "tag_style n'est lu que sous options.google_doc ; dans ce même bloc start l'affecte via element_style et le else l'affecte via le pop de tag_stack"
+    ),
+    ('Utils/UTILS_Html2text.py', 'handle_tag', 'parent_style', 'body_only', '9cbe4485113ef2f67dad45e6ecac66f2666c8a3a05e5e0622644ddc46fa523f3'): (
+        "parent_style est initialisé à un dictionnaire vide dès l'entrée dans options.google_doc et toutes ses lectures ultérieures restent sous ce même garde"
+    ),
+    ('Utils/UTILS_Titulaires.py', 'GetTitulaires', 'nomsTitulaires', 'body_only', 'cd35c15e3510275978436eb40410f2403477fb4306c3dfd6db9330ae75be0084'): (
+        "la lecture de nomsTitulaires est sous nbreTitulaires > 0 ; les cas 1, 2 et > 2, exhaustifs pour tout entier strictement positif, l'affectent auparavant"
+    ),
 }
 
 def _candidate_fingerprint(root, item):
