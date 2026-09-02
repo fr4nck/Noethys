@@ -14,7 +14,8 @@ TABLE_INBOX = "interventions_execution_inbox"
 DB_INTERVENTIONS_ACTUAL_INBOX = {
     TABLE_INBOX: [
         ("IDinbox_execution", "INTEGER PRIMARY KEY AUTOINCREMENT", u"ID local de réception"),
-        ("idempotence_key", "VARCHAR(255)", u"Clé stable du message reçu"),
+        ("idempotence_key", "VARCHAR(255) UNIQUE", u"Clé stable du message reçu"),
+        ("revision_key", "VARCHAR(255) UNIQUE", u"Clé unique domaine + séance + révision"),
         ("source_domain", "VARCHAR(64)", u"Domaine émetteur stable, indépendant du nom du produit"),
         ("contract_version", "VARCHAR(64)", u"Version du contrat métier reçu"),
         ("event_type", "VARCHAR(64)", u"Type d'événement métier reçu"),
