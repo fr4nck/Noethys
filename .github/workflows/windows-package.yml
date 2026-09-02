@@ -124,54 +124,55 @@ jobs:
         run: |
           $setup = (Resolve-Path "installer-output/Noethys-Upgrade-Setup.exe").Path
           $installRoot = Join-Path $env:RUNNER_TEMP "noethys-installed"
-          $profileRoot = Join-Path $env:RUNNER_TEMP "noethys-installed-profile"
           $workRoot = Join-Path $env:RUNNER_TEMP "noethys-foreign-cwd"
-          Remove-Item $installRoot -Recurse -Force -ErrorAction SilentlyContinue
-          Remove-Item $profileRoot -Recurse -Force -ErrorAction SilentlyContinue
-          Remove-Item $workRoot -Recurse -Force -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Path $installRoot -Force | Out-Null
-          New-Item -ItemType Directory -Path $profileRoot -Force | Out-Null
-          New-Item -ItemType Directory -Path $workRoot -Force | Out-Null
-
-          $roaming = Join-Path $profileRoot "Roaming"
-          $local = Join-Path $profileRoot "Local"
-          $configDir = Join-Path $roaming "noethys"
-          New-Item -ItemType Directory -Path $configDir -Force | Out-Null
-          New-Item -ItemType Directory -Path $local -Force | Out-Null
+          $roaming = [Environment]::GetFolderPath([Environment+SpecialFolder]::ApplicationData)
+          if (-not $roaming) {
+            throw "Impossible de résoudre le dossier AppData itinérant Windows"
+          }
+          $configDir = Join-Path $roaming "Noethys"
           $config = Join-Path $configDir "Config.json"
           $trap = Join-Path $workRoot "Config.json"
-          '{"nomFichier":"SENTINEL_EXISTANT","derniersFichiers":[],"interface_mysql":"mysqldb","pool_mysql":5}' | Set-Content -Path $config -Encoding UTF8
-          '{"nomFichier":"NE_DOIT_JAMAIS_ETRE_MIGRE"}' | Set-Content -Path $trap -Encoding UTF8
-          $configHashBefore = (Get-FileHash $config -Algorithm SHA256).Hash
-          $trapHashBefore = (Get-FileHash $trap -Algorithm SHA256).Hash
 
-          $installer = Start-Process -FilePath $setup -ArgumentList @(
-            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$installRoot"
-          ) -PassThru -Wait
-          if ($installer.ExitCode -ne 0) {
-            throw "Installation silencieuse en échec (code $($installer.ExitCode))"
-          }
+          Remove-Item $installRoot -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $workRoot -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $installRoot -Force | Out-Null
+          New-Item -ItemType Directory -Path $workRoot -Force | Out-Null
+          New-Item -ItemType Directory -Path $configDir -Force | Out-Null
 
-          $exe = Join-Path $installRoot "Noethys.exe"
-          if (-not (Test-Path $exe)) {
-            throw "Noethys.exe absent après installation"
-          }
-          if (Test-Path (Join-Path $installRoot "Portable")) {
-            throw "L'installateur a créé un mode Portable : la configuration existante serait ignorée"
+          $hadConfig = Test-Path $config
+          $originalConfig = $null
+          if ($hadConfig) {
+            $originalConfig = [IO.File]::ReadAllBytes($config)
           }
 
           $savedPath = $env:PATH
           $savedPythonHome = $env:PYTHONHOME
           $savedPythonPath = $env:PYTHONPATH
-          $savedAppData = $env:APPDATA
-          $savedLocalAppData = $env:LOCALAPPDATA
           try {
+            '{"nomFichier":"SENTINEL_EXISTANT","derniersFichiers":[],"interface_mysql":"mysqldb","pool_mysql":5}' | Set-Content -Path $config -Encoding UTF8
+            '{"nomFichier":"NE_DOIT_JAMAIS_ETRE_MIGRE"}' | Set-Content -Path $trap -Encoding UTF8
+            $configHashBefore = (Get-FileHash $config -Algorithm SHA256).Hash
+            $trapHashBefore = (Get-FileHash $trap -Algorithm SHA256).Hash
+
+            $installer = Start-Process -FilePath $setup -ArgumentList @(
+              '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$installRoot"
+            ) -PassThru -Wait
+            if ($installer.ExitCode -ne 0) {
+              throw "Installation silencieuse en échec (code $($installer.ExitCode))"
+            }
+
+            $exe = Join-Path $installRoot "Noethys.exe"
+            if (-not (Test-Path $exe)) {
+              throw "Noethys.exe absent après installation"
+            }
+            if (Test-Path (Join-Path $installRoot "Portable")) {
+              throw "L'installateur a créé un mode Portable : la configuration existante serait ignorée"
+            }
+
             $env:NOETHYS_INSTALL_CONFIG_SMOKE = "1"
             $env:NOETHYS_EXPECT_CONFIG_PATH = $config
             $env:PYTHONHOME = ""
             $env:PYTHONPATH = ""
-            $env:APPDATA = $roaming
-            $env:LOCALAPPDATA = $local
             $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
 
             $process = Start-Process -FilePath $exe -WorkingDirectory $workRoot -PassThru
@@ -190,6 +191,15 @@ jobs:
               throw "Le smoke installable a quitté sans produire son marqueur de validation"
             }
             Get-Content $okMarker
+
+            $configHashAfter = (Get-FileHash $config -Algorithm SHA256).Hash
+            $trapHashAfter = (Get-FileHash $trap -Algorithm SHA256).Hash
+            if ($configHashAfter -ne $configHashBefore) {
+              throw "Config.json existant a été modifié par l'installation ou le démarrage"
+            }
+            if ($trapHashAfter -ne $trapHashBefore) {
+              throw "Un Config.json du répertoire courant a été déplacé ou modifié"
+            }
           }
           finally {
             Remove-Item Env:NOETHYS_INSTALL_CONFIG_SMOKE -ErrorAction SilentlyContinue
@@ -197,17 +207,12 @@ jobs:
             $env:PATH = $savedPath
             $env:PYTHONHOME = $savedPythonHome
             $env:PYTHONPATH = $savedPythonPath
-            $env:APPDATA = $savedAppData
-            $env:LOCALAPPDATA = $savedLocalAppData
-          }
-
-          $configHashAfter = (Get-FileHash $config -Algorithm SHA256).Hash
-          $trapHashAfter = (Get-FileHash $trap -Algorithm SHA256).Hash
-          if ($configHashAfter -ne $configHashBefore) {
-            throw "Config.json existant a été modifié par l'installation ou le démarrage"
-          }
-          if ($trapHashAfter -ne $trapHashBefore) {
-            throw "Un Config.json du répertoire courant a été déplacé ou modifié"
+            if ($hadConfig) {
+              [IO.File]::WriteAllBytes($config, $originalConfig)
+            }
+            elseif (Test-Path $config) {
+              Remove-Item $config -Force
+            }
           }
 
       - name: Collecter les diagnostics du smoke installable
@@ -216,9 +221,8 @@ jobs:
         run: |
           $diag = Join-Path $PWD "artifacts/windows-install-smoke-diagnostics"
           $installRoot = Join-Path $env:RUNNER_TEMP "noethys-installed"
-          $profileRoot = Join-Path $env:RUNNER_TEMP "noethys-installed-profile"
           $workRoot = Join-Path $env:RUNNER_TEMP "noethys-foreign-cwd"
-          $roaming = Join-Path $profileRoot "Roaming"
+          $roaming = [Environment]::GetFolderPath([Environment+SpecialFolder]::ApplicationData)
           New-Item -ItemType Directory -Path $diag -Force | Out-Null
 
           @(
@@ -226,11 +230,9 @@ jobs:
             "GITHUB_RUN_ID=$env:GITHUB_RUN_ID"
             "RUNNER_TEMP=$env:RUNNER_TEMP"
             "installRoot=$installRoot"
-            "profileRoot=$profileRoot"
             "workRoot=$workRoot"
             "roaming=$roaming"
             "installRoot.exists=$(Test-Path $installRoot)"
-            "profileRoot.exists=$(Test-Path $profileRoot)"
             "workRoot.exists=$(Test-Path $workRoot)"
             "exe.exists=$(Test-Path (Join-Path $installRoot 'Noethys.exe'))"
             "errorMarker.exists=$(Test-Path (Join-Path $installRoot 'INSTALL-CONFIG-SMOKE-ERROR.txt'))"
@@ -240,8 +242,8 @@ jobs:
           $copies = @{
             "INSTALL-CONFIG-SMOKE-ERROR.txt" = (Join-Path $installRoot "INSTALL-CONFIG-SMOKE-ERROR.txt")
             "INSTALL-CONFIG-SMOKE-OK.txt" = (Join-Path $installRoot "INSTALL-CONFIG-SMOKE-OK.txt")
-            "profile-Config.json" = (Join-Path $roaming "noethys/Config.json")
-            "profile-journal.log" = (Join-Path $roaming "noethys/journal.log")
+            "profile-Config.json" = (Join-Path $roaming "Noethys/Config.json")
+            "profile-journal.log" = (Join-Path $roaming "Noethys/journal.log")
             "foreign-cwd-Config.json" = (Join-Path $workRoot "Config.json")
           }
           foreach ($name in $copies.Keys) {
@@ -253,7 +255,7 @@ jobs:
 
           foreach ($entry in @(
             @{ Name = "install-root.txt"; Path = $installRoot; Recurse = $false },
-            @{ Name = "profile-tree.txt"; Path = $profileRoot; Recurse = $true },
+            @{ Name = "profile-tree.txt"; Path = (Join-Path $roaming "Noethys"); Recurse = $true },
             @{ Name = "foreign-cwd.txt"; Path = $workRoot; Recurse = $true }
           )) {
             if (Test-Path $entry.Path) {
