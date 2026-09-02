@@ -1,18 +1,26 @@
 name: Package Windows
 
-# Workflow réutilisable uniquement. La porte d'entrée humaine et automatique
-# est désormais ci.yml afin d'éviter les demandes concurrentes dans Actions.
+# Workflow réutilisable pour la qualification complète. Les PR qui touchent
+# directement au packaging ou à la migration de configuration déclenchent aussi
+# ce job : ce sont précisément les changements pour lesquels un vrai artefact
+# Windows est nécessaire avant fusion.
 on:
   workflow_call:
+  pull_request:
+    paths:
+      - 'noethys/Utils/UTILS_Fichiers.py'
+      - 'packaging/**'
+      - 'tests/test_noe_041_portable_paths.py'
+      - '.github/workflows/windows-package.yml'
 
 permissions:
   contents: read
 
 jobs:
   package:
-    name: Construire et exécuter Noethys portable
+    name: Construire et tester Noethys portable + installateur
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 55
 
     steps:
       - uses: actions/checkout@v7
@@ -46,7 +54,7 @@ jobs:
       - name: Valider les ressources PyInstaller essentielles
         run: python scripts/smoke_packaged_resources.py
 
-      - name: Construire le dossier portable
+      - name: Construire le dossier PyInstaller
         run: pyinstaller --noconfirm --clean packaging/noethys.spec
 
       - name: Vérifier l'exécutable et le layout historique
@@ -66,25 +74,149 @@ jobs:
           }
           Get-ChildItem "dist/Noethys" -Recurse | Measure-Object | Format-List
 
+      - name: Écrire les informations de build communes
+        shell: pwsh
+        run: |
+          $pythonVersion = (python --version 2>&1)
+          @(
+            "Noethys Windows"
+            "Commit: $env:GITHUB_SHA"
+            "Python: $pythonVersion"
+            "Workflow run: $env:GITHUB_RUN_ID"
+            "Python 3 source fixes: applied before PyInstaller"
+            "Build UTC: $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
+          ) | Set-Content -Path "dist/Noethys/BUILD-INFO.txt" -Encoding UTF8
+
+      - name: Préparer le dossier installable sans mode Portable
+        shell: pwsh
+        run: |
+          Remove-Item "dist/Noethys-installable" -Recurse -Force -ErrorAction SilentlyContinue
+          Copy-Item "dist/Noethys" "dist/Noethys-installable" -Recurse
+          if (Test-Path "dist/Noethys-installable/Portable") {
+            throw "Le dossier installable ne doit jamais contenir le marqueur Portable"
+          }
+
+      - name: Installer Inno Setup si nécessaire
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+          }
+          if (-not (Test-Path $iscc)) {
+            throw "ISCC.exe introuvable après installation d'Inno Setup"
+          }
+
+      - name: Construire l'installateur Windows
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          $version = "1.3.4.2-upgrade.$env:GITHUB_RUN_NUMBER"
+          & $iscc "/DMyAppVersion=$version" "packaging/noethys-installer.iss"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup a échoué avec le code $LASTEXITCODE"
+          }
+          if (-not (Test-Path "installer-output/Noethys-Upgrade-Setup.exe")) {
+            throw "Installateur Noethys-Upgrade-Setup.exe absent"
+          }
+
+      - name: Tester une mise à niveau sans perdre la configuration
+        shell: pwsh
+        run: |
+          $setup = (Resolve-Path "installer-output/Noethys-Upgrade-Setup.exe").Path
+          $installRoot = Join-Path $env:RUNNER_TEMP "noethys-installed"
+          $profileRoot = Join-Path $env:RUNNER_TEMP "noethys-installed-profile"
+          $workRoot = Join-Path $env:RUNNER_TEMP "noethys-foreign-cwd"
+          Remove-Item $installRoot -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $profileRoot -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $workRoot -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $installRoot -Force | Out-Null
+          New-Item -ItemType Directory -Path $profileRoot -Force | Out-Null
+          New-Item -ItemType Directory -Path $workRoot -Force | Out-Null
+
+          $roaming = Join-Path $profileRoot "Roaming"
+          $local = Join-Path $profileRoot "Local"
+          $configDir = Join-Path $roaming "noethys"
+          New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+          New-Item -ItemType Directory -Path $local -Force | Out-Null
+          $config = Join-Path $configDir "Config.json"
+          $trap = Join-Path $workRoot "Config.json"
+          '{"nomFichier":"SENTINEL_EXISTANT","derniersFichiers":[],"interface_mysql":"mysqldb","pool_mysql":5}' | Set-Content -Path $config -Encoding UTF8
+          '{"nomFichier":"NE_DOIT_JAMAIS_ETRE_MIGRE"}' | Set-Content -Path $trap -Encoding UTF8
+          $configHashBefore = (Get-FileHash $config -Algorithm SHA256).Hash
+          $trapHashBefore = (Get-FileHash $trap -Algorithm SHA256).Hash
+
+          $installer = Start-Process -FilePath $setup -ArgumentList @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$installRoot"
+          ) -PassThru -Wait
+          if ($installer.ExitCode -ne 0) {
+            throw "Installation silencieuse en échec (code $($installer.ExitCode))"
+          }
+
+          $exe = Join-Path $installRoot "Noethys.exe"
+          if (-not (Test-Path $exe)) {
+            throw "Noethys.exe absent après installation"
+          }
+          if (Test-Path (Join-Path $installRoot "Portable")) {
+            throw "L'installateur a créé un mode Portable : la configuration existante serait ignorée"
+          }
+
+          $savedPath = $env:PATH
+          $savedPythonHome = $env:PYTHONHOME
+          $savedPythonPath = $env:PYTHONPATH
+          $savedAppData = $env:APPDATA
+          $savedLocalAppData = $env:LOCALAPPDATA
+          try {
+            $env:NOETHYS_INSTALL_CONFIG_SMOKE = "1"
+            $env:NOETHYS_EXPECT_CONFIG_PATH = $config
+            $env:PYTHONHOME = ""
+            $env:PYTHONPATH = ""
+            $env:APPDATA = $roaming
+            $env:LOCALAPPDATA = $local
+            $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+
+            $process = Start-Process -FilePath $exe -WorkingDirectory $workRoot -PassThru
+            if (-not $process.WaitForExit(30000)) {
+              $process.Kill()
+              throw "Le smoke de configuration installée n'a pas quitté sous 30 secondes"
+            }
+
+            $errorMarker = Join-Path $installRoot "INSTALL-CONFIG-SMOKE-ERROR.txt"
+            $okMarker = Join-Path $installRoot "INSTALL-CONFIG-SMOKE-OK.txt"
+            if ($process.ExitCode -ne 0) {
+              if (Test-Path $errorMarker) { Get-Content $errorMarker | Write-Error }
+              throw "Smoke de configuration installée en échec (code $($process.ExitCode))"
+            }
+            if (-not (Test-Path $okMarker)) {
+              throw "Le smoke installable a quitté sans produire son marqueur de validation"
+            }
+            Get-Content $okMarker
+          }
+          finally {
+            Remove-Item Env:NOETHYS_INSTALL_CONFIG_SMOKE -ErrorAction SilentlyContinue
+            Remove-Item Env:NOETHYS_EXPECT_CONFIG_PATH -ErrorAction SilentlyContinue
+            $env:PATH = $savedPath
+            $env:PYTHONHOME = $savedPythonHome
+            $env:PYTHONPATH = $savedPythonPath
+            $env:APPDATA = $savedAppData
+            $env:LOCALAPPDATA = $savedLocalAppData
+          }
+
+          $configHashAfter = (Get-FileHash $config -Algorithm SHA256).Hash
+          $trapHashAfter = (Get-FileHash $trap -Algorithm SHA256).Hash
+          if ($configHashAfter -ne $configHashBefore) {
+            throw "Config.json existant a été modifié par l'installation ou le démarrage"
+          }
+          if ($trapHashAfter -ne $trapHashBefore) {
+            throw "Un Config.json du répertoire courant a été déplacé ou modifié"
+          }
+
       - name: Activer l'isolation portable
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path "dist/Noethys/Portable" -Force | Out-Null
           Copy-Item "packaging/portable/README.txt" "dist/Noethys/Portable/README.txt"
-
-      - name: Écrire les informations de build
-        shell: pwsh
-        run: |
-          $pythonVersion = (python --version 2>&1)
-          @(
-            "Noethys portable Windows"
-            "Commit: $env:GITHUB_SHA"
-            "Python: $pythonVersion"
-            "Workflow run: $env:GITHUB_RUN_ID"
-            "Portable mode: enabled (Portable/)"
-            "Python 3 source fixes: applied before PyInstaller"
-            "Build UTC: $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
-          ) | Set-Content -Path "dist/Noethys/BUILD-INFO.txt" -Encoding UTF8
+          Add-Content -Path "dist/Noethys/BUILD-INFO.txt" -Value "Portable mode: enabled (Portable/)"
 
       - name: Créer l'archive portable
         shell: pwsh
@@ -156,6 +288,13 @@ jobs:
             $env:APPDATA = $savedAppData
             $env:LOCALAPPDATA = $savedLocalAppData
           }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Noethys-Windows-installer
+          path: installer-output/Noethys-Upgrade-Setup.exe
+          if-no-files-found: error
+          retention-days: 14
 
       - uses: actions/upload-artifact@v7
         with:
