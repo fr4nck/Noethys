@@ -111,8 +111,7 @@ jobs:
         shell: pwsh
         run: |
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          $version = "1.3.4.2-upgrade.$env:GITHUB_RUN_NUMBER"
-          & $iscc "/DMyAppVersion=$version" "packaging/noethys-installer.iss"
+          & $iscc "packaging/noethys-installer.iss"
           if ($LASTEXITCODE -ne 0) {
             throw "Inno Setup a échoué avec le code $LASTEXITCODE"
           }
