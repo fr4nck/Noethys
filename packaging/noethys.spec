@@ -25,6 +25,12 @@ def collect_runtime_submodules(package):
 
 
 hiddenimports = [
+    # CTRL_Bandeau utilise le paquet ``html`` de la stdlib. Dans le bundle plat,
+    # l'absence de ce paquet peut faire résoudre ce nom vers ``wx/html.py`` comme
+    # module de premier niveau ; son import relatif ``from . import _html`` échoue
+    # alors sans package parent. On fige explicitement le paquet stdlib attendu.
+    "html",
+    "html.entities",
     # wx.richtext charge wx._xml au runtime. PyInstaller ne détecte pas toujours
     # ce module natif via le graphe d'import ; sans lui le portable plante dès
     # l'import de DLG_Portail_config.
@@ -64,7 +70,10 @@ datas += collect_data_files("pytz")
 datas += collect_data_files("reportlab")
 
 runtime_hooks = [
-    # Installer d'abord le journal d'erreurs : si un hook de compatibilité casse,
+    # Précharge d'abord la stdlib avant que les hooks wx n'exposent leurs
+    # sous-modules dans le layout historique plat du bundle.
+    str(ROOT / "packaging" / "runtime_stdlib_preload.py"),
+    # Installer ensuite le journal d'erreurs : si un hook de compatibilité casse,
     # le diagnostic est persisté au lieu de disparaître dans l'EXE sans console.
     str(ROOT / "packaging" / "runtime_crashlog.py"),
     # Mesure localement les délais d'ouverture des fenêtres et les allers-retours

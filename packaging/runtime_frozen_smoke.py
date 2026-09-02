@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Smoke test du bundle PyInstaller avant l'exécution de Noethys.py.
+"""Smoke tests du bundle PyInstaller avant l'exécution de Noethys.py.
 
-Ce runtime hook ne fait strictement rien en usage normal. Quand
-``NOETHYS_FROZEN_SMOKE=1`` est défini, il valide que l'exécutable est réellement
-figé, que ses ressources essentielles sont présentes et que plusieurs piles
-runtime critiques sont importables depuis le bundle. Il quitte ensuite avant
-que Noethys n'ouvre une configuration ou une base utilisateur.
+Ce runtime hook ne fait strictement rien en usage normal.
+
+``NOETHYS_FROZEN_SMOKE=1`` valide le bundle portable sans ouvrir la
+configuration ni une base utilisateur.
+
+``NOETHYS_INSTALL_CONFIG_SMOKE=1`` valide le contrat de l'installable : la
+configuration doit rester dans le profil utilisateur, ne jamais dépendre du
+répertoire courant et ne pas être remplacée par la migration historique.
 
 Le hook utilise ``os._exit`` en mode smoke afin qu'un échec dans une application
 PyInstaller ``console=False`` ne puisse pas ouvrir une boîte de dialogue fatale
@@ -16,22 +19,100 @@ from __future__ import annotations
 import importlib
 import os
 import sys
+import traceback
 from pathlib import Path
 
 
-def _finish(root: Path, code: int, message: str) -> None:
-    marker = root / ("FROZEN-SMOKE-OK.txt" if code == 0 else "FROZEN-SMOKE-ERROR.txt")
+def _finish(root: Path, code: int, message: str, marker_prefix: str = "FROZEN-SMOKE") -> None:
+    marker = root / (
+        "%s-OK.txt" % marker_prefix if code == 0 else "%s-ERROR.txt" % marker_prefix
+    )
     try:
         marker.write_text(message + "\n", encoding="utf-8")
     finally:
         os._exit(code)
 
 
+def _require_frozen(root: Path, marker_prefix: str) -> None:
+    if not getattr(sys, "frozen", False):
+        _finish(root, 2, "Le smoke exige un exécutable figé", marker_prefix)
+
+
+if os.environ.get("NOETHYS_INSTALL_CONFIG_SMOKE") == "1":
+    root = Path(sys.executable).resolve().parent
+    marker_prefix = "INSTALL-CONFIG-SMOKE"
+    _require_frozen(root, marker_prefix)
+
+    if (root / "Portable").exists():
+        _finish(
+            root,
+            5,
+            "L'installable contient un marqueur Portable et isolerait la configuration utilisateur",
+            marker_prefix,
+        )
+
+    expected_raw = os.environ.get("NOETHYS_EXPECT_CONFIG_PATH", "")
+    if not expected_raw:
+        _finish(root, 6, "NOETHYS_EXPECT_CONFIG_PATH est absent", marker_prefix)
+
+    expected = Path(expected_raw).resolve()
+    if not expected.is_file():
+        _finish(
+            root,
+            7,
+            "La configuration sentinelle attendue est absente: %s" % expected,
+            marker_prefix,
+        )
+
+    before = expected.read_bytes()
+    try:
+        import Chemins
+        from Utils import UTILS_Fichiers
+
+        actual = Path(UTILS_Fichiers.GetRepUtilisateur("Config.json")).resolve()
+        if actual != expected:
+            _finish(
+                root,
+                8,
+                "Mauvais chemin de configuration: %s (attendu: %s)" % (actual, expected),
+                marker_prefix,
+            )
+
+        application_root = Path(Chemins.GetMainPath("")).resolve()
+        if application_root != root:
+            _finish(
+                root,
+                9,
+                "Le chemin applicatif figé n'est pas ancré sur Noethys.exe: %s" % application_root,
+                marker_prefix,
+            )
+
+        # Rejoue la migration réellement exécutée au démarrage. Avec une
+        # configuration déjà existante, elle doit être strictement sans effet.
+        UTILS_Fichiers.DeplaceFichiers()
+    except Exception as exc:
+        _finish(
+            root,
+            10,
+            "Smoke configuration installée en échec: %s: %s"
+            % (type(exc).__name__, exc),
+            marker_prefix,
+        )
+
+    if not expected.is_file() or expected.read_bytes() != before:
+        _finish(
+            root,
+            11,
+            "La configuration utilisateur a été modifiée pendant la migration",
+            marker_prefix,
+        )
+
+    _finish(root, 0, "Configuration installable Noethys préservée", marker_prefix)
+
+
 if os.environ.get("NOETHYS_FROZEN_SMOKE") == "1":
     root = Path(sys.executable).resolve().parent
-
-    if not getattr(sys, "frozen", False):
-        _finish(root, 2, "Le smoke NOETHYS_FROZEN_SMOKE exige un exécutable figé")
+    _require_frozen(root, "FROZEN-SMOKE")
 
     required = (
         root / "Static",
@@ -77,8 +158,8 @@ if os.environ.get("NOETHYS_FROZEN_SMOKE") == "1":
             _finish(
                 root,
                 4,
-                "Import figé en échec pour %s: %s: %s"
-                % (module_name, type(exc).__name__, exc),
+                "Import figé en échec pour %s: %s: %s\n\n%s"
+                % (module_name, type(exc).__name__, exc, traceback.format_exc()),
             )
 
     _finish(root, 0, "Bundle figé Noethys validé")
