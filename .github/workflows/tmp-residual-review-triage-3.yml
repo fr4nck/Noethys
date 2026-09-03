@@ -52,7 +52,7 @@ jobs:
                   continue
               blocks.append(f"    {key!r}: (\n        {reason!r}\n    ),\n")
           if blocks:
-              marker = "\n}\n\n\ndef _candidate_fingerprint"
+              marker = "\n}\n\ndef _candidate_fingerprint"
               assert marker in text
               text = text.replace(marker, "\n" + "".join(blocks) + marker, 1)
               path.write_text(text, encoding='utf-8')
