@@ -7,6 +7,7 @@ locale, soit la base MySQL réseau avec mysql.connector.
 
 from __future__ import annotations
 
+import base64
 import configparser
 import datetime as dt
 import json
@@ -84,13 +85,24 @@ def _local_database_path(name: str) -> Path:
     if program_data.is_file():
         return program_data
 
-    # Message de diagnostic utile : aucune écriture, aucune création de dossier.
     raise RuntimeError(
         "Base locale Noethys introuvable. Chemins testés :\n"
         f"- {portable_data}\n"
         f"- {custom / filename if custom else '(aucun répertoire personnalisé)'}\n"
         f"- {program_data}"
     )
+
+
+def _decode_network_password(password: str) -> str:
+    """Reproduit DecodeMdpReseau sans importer GestionDB/wx."""
+    if not password.startswith("#64#"):
+        return password
+    try:
+        return base64.b64decode(password[4:]).decode("utf-8")
+    except Exception as exc:
+        raise RuntimeError(
+            "Le mot de passe réseau enregistré par Noethys est illisible."
+        ) from exc
 
 
 def _query(only_open: bool, placeholder: str) -> tuple[str, tuple[object, ...]]:
@@ -135,18 +147,26 @@ class NativeConfiguredActivityRepository(ActivityRepository):
 
         before, database = descriptor.split("[RESEAU]", 1)
         try:
-            port, host, user, password = before.split(";", 3)
+            port, host, user, encoded_password = before.split(";", 3)
         except ValueError as exc:
             raise RuntimeError("Descripteur réseau Noethys invalide dans Config.json.") from exc
 
+        password = _decode_network_password(encoded_password)
         sql, params = _query(only_open, "%s")
-        connection = mysql.connector.connect(
-            host=host,
-            port=int(port),
-            user=user,
-            password=password,
-            database=database.lower(),
-        )
+        connect_params = {
+            "host": host,
+            "port": int(port),
+            "user": user,
+            "password": password,
+            "database": database.lower(),
+            "use_unicode": True,
+        }
+
+        ca_path = _user_config_dir() / "ca-cert.pem"
+        if ca_path.is_file():
+            connect_params["ssl_ca"] = str(ca_path)
+
+        connection = mysql.connector.connect(**connect_params)
         try:
             cursor = connection.cursor()
             try:
@@ -164,7 +184,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     app.setApplicationName("Noethys Qt — Activités")
     app.setOrganizationName("Noethys")
 
-    # --sqlite reste disponible pour une recette explicite sur une copie locale.
     if args.sqlite:
         from .activities_prototype import SqliteActivityRepository
         repository: ActivityRepository = SqliteActivityRepository(args.sqlite)
