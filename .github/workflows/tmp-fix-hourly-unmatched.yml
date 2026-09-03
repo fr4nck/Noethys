@@ -67,8 +67,6 @@ jobs:
             tests.test_ctrl_grille_family_hourly_unmatched_range \
             tests.test_ctrl_grille_family_hourly_recalculation \
             tests.test_ctrl_grille_family_count_tariffs -v
-          python scripts/audit_branch_assignment_gaps.py --summary
-          python scripts/qualify_branch_assignment_gaps.py --summary
       - name: Commit targeted correction
         shell: bash
         run: |
