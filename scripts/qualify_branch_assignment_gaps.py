@@ -280,6 +280,28 @@ EXPLICIT_SAFE = {
         'après la correction #347, DB est créé uniquement sous self.track_tarif == None et chaque opération base restante, suppression de filtres et fermeture comprises, est protégée par ce même mode non-track'
     ),
 
+    ('Dlg/DLG_Impression_attestation.py', 'MAJ_CTRL_Donnees', 'numero', 'body_only', 'c717e5b1eaa2a3189cbe150a81d1e29b18be32062ba979d8ba06f801d7332a96'): (
+        'SELECT MAX(numero) est une requête agrégée sans GROUP BY : après une exécution réussie elle retourne toujours une ligne, avec NULL sur table vide ; la branche affecte donc toujours numero avant formatage'
+    ),
+    ('Dlg/DLG_Saisie_cotisation.py', 'OnChoixUnite', 'nomType', 'body_only', '4cd4d11c529c17e670f6551475a472fea1c7bcc61a291b0bc9088ba42392741b'): (
+        "une unité ne peut être sélectionnée qu'après OnChoixType, qui alimente Choix_unite avec l'ID du type ; Choix_unite refuse de charger des unités sans IDtype_cotisation, donc une unité présente implique un type présent et nomType défini"
+    ),
+    ('Dlg/DLG_Saisie_cotisation.py', 'OnChoixUnite', 'type', 'body_only', 'ec7f5bd01a9469d07699b854e35a3c12c963a361f82ccf7ceb1e02b50cc0a927'): (
+        "une unité ne peut être sélectionnée qu'après OnChoixType, qui alimente Choix_unite avec l'ID du type ; Choix_unite refuse de charger des unités sans IDtype_cotisation, donc une unité présente implique un type présent et type défini"
+    ),
+    ('Dlg/DLG_Saisie_commande.py', 'CreationPDF', 'style', 'body_only', 'aeb62959da97b521158eaaad9934aa6b787f1b45bc17c5be8d51cb16f747a8c1'): (
+        "CTRL_Commande_repas construit une Case pour chaque couple liste_dates/liste_colonnes : les dates réelles sont datetime.date et la ligne Total est du texte ; les deux formes créent systématiquement la clé de case avant l'impression"
+    ),
+    ('Dlg/DLG_Releve_prestations.py', 'CreationPDF', 'labelRegroupement', 'body_only', 'e23938eb392f8836deec9e570982a6b3f6a6bdb34caa56451d556269a73ea571'): (
+        'GetOptions de DLG_Releve_prestations_saisie borne regroupement à date/mois/annee ou None ; CreationPDF normalise None vers date, donc les trois branches couvrent exhaustivement le domaine'
+    ),
+    ('Dlg/DLG_Releve_prestations.py', 'CreationPDF', 'key', 'body_only', '5d2650ef9c1fab5411abb5779679241ad08259808efe2dcda7f21960076e3e80'): (
+        'GetOptions de DLG_Releve_prestations_saisie borne regroupement à date/mois/annee ou None ; CreationPDF normalise None vers date, donc chaque prestation valide reçoit toujours une key'
+    ),
+    ('Dlg/DLG_Releve_prestations.py', 'CreationPDF', 'labelKey', 'body_only', '3a67312f9988302a829d7f22fca5275efda89e5b32230bae01ebfd8730715ce1'): (
+        'les trois modes de regroupement produisent respectivement datetime.date, tuple (annee, mois) ou int année ; les trois branches de formatage couvrent donc exhaustivement le type de key'
+    ),
+
 }
 
 def _candidate_fingerprint(root, item):
