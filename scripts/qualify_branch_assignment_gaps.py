@@ -112,6 +112,15 @@ EXPLICIT_SAFE = {
     ('Dlg/DLG_Recopiage_conso.py', 'GetDonnees', 'option_lignes', 'body_only', '6a08b6aab02ca8987b4de02a7971e297230281a2399c42fb450f2e761140c71b'): (
         "les deux contrôles appartiennent au même groupe wx.RadioButton (RB_GROUP sur le premier) ; le premier est sélectionné par défaut et l'initialisation restaure explicitement l'une des deux valeurs, donc GetDonnees rencontre toujours un choix actif avant de lire option_lignes"
     ),
+    ('Dlg/DLG_Saisie_portail_periode.py', 'OnBoutonOk', 'affichage', 'body_only', '52ac485d1f64da32d9e253f6179ae32909bd671beef50cca0b96db1ef9a7aa44'): (
+        "radio_oui ouvre un groupe wx.RadioButton et radio_dates/radio_non appartiennent au même groupe ; wx conserve exactement un membre actif, le premier est sélectionné par défaut et Importation positionne explicitement l'un des trois états, donc OnBoutonOk affecte toujours affichage avant son enregistrement"
+    ),
+    ('Dlg/DLG_Activite_portail.py', 'Sauvegarde', 'portail_inscriptions_affichage', 'body_only', 'fa33b4b2ab34dbf9feaf6ca02f71bbef1ca54fb0e83d55a80d740314a8d17314'): (
+        "radio_inscriptions_non ouvre un groupe wx.RadioButton et les variantes oui/dates appartiennent au même groupe ; un membre est actif par défaut et Importation restaure explicitement l'un des trois états, donc Sauvegarde affecte toujours portail_inscriptions_affichage avant son utilisation"
+    ),
+    ('Dlg/DLG_Activite_portail.py', 'Sauvegarde', 'portail_reservations_affichage', 'body_only', 'bd4a9365546bf46fa47623bbac514e590441890210824dd17c47d5fc1e3c2cac'): (
+        "radio_reservations_non ouvre un groupe wx.RadioButton avec radio_reservations_oui ; un membre est actif par défaut et Importation restaure explicitement l'état, donc Sauvegarde affecte toujours portail_reservations_affichage avant son utilisation"
+    ),
 }
 
 def _candidate_fingerprint(root, item):
