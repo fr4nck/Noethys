@@ -22,23 +22,69 @@ jobs:
           python-version: '3.10'
       - name: Qualifier les invariants radio option_lignes
         shell: bash
+        env:
+          PYTHONPATH: ${{ github.workspace }}/noethys:${{ github.workspace }}
         run: |
           python - <<'PY'
           from pathlib import Path
+          from scripts import audit_branch_assignment_gaps as audit
+          from scripts import qualify_branch_assignment_gaps as qualify
+
+          root = Path('noethys')
+          specs = (
+              ('Dlg/DLG_Conversion_etat.py', 'GetDonnees', 'option_lignes', 'body_only'),
+              ('Dlg/DLG_Recopiage_conso.py', 'GetDonnees', 'option_lignes', 'body_only'),
+          )
+          reason = (
+              "les deux contrôles appartiennent au même groupe wx.RadioButton "
+              "(RB_GROUP sur le premier) ; le premier est sélectionné par défaut "
+              "et l'initialisation restaure explicitement l'une des deux valeurs, "
+              "donc GetDonnees rencontre toujours un choix actif avant de lire option_lignes"
+          )
+
+          keys = []
+          for relative, function, name, detail in specs:
+              path = root / relative
+              text = path.read_text(encoding='utf-8')
+              radio_line = next(
+                  line for line in text.splitlines()
+                  if 'self.radio_lignes_affichees = wx.RadioButton' in line
+              )
+              if 'style=wx.RB_GROUP' not in radio_line:
+                  raise SystemExit(f'{relative}: le groupe radio attendu n’est plus établi')
+              if 'self.radio_lignes_selectionnees = wx.RadioButton' not in text:
+                  raise SystemExit(f'{relative}: second bouton radio absent')
+              if 'valeur="lignes_affichees"' not in text:
+                  raise SystemExit(f'{relative}: repli de configuration attendu absent')
+
+              findings = audit.scan_file(path, root)
+              matches = [
+                  item for item in findings
+                  if item['function'] == function
+                  and item['name'] == name
+                  and item['detail'] == detail
+              ]
+              if len(matches) != 1:
+                  raise SystemExit(f'{relative}: {len(matches)} candidat(s) ciblé(s), attendu 1')
+              keys.append(qualify.qualification_key(matches[0], root))
 
           qualifier = Path('scripts/qualify_branch_assignment_gaps.py')
           source = qualifier.read_text(encoding='utf-8')
           marker = '\n}\n\ndef _candidate_fingerprint'
           if source.count(marker) != 1:
               raise SystemExit('Structure du registre EXPLICIT_SAFE inattendue')
+          if any(key in qualify.EXPLICIT_SAFE for key in keys):
+              raise SystemExit('Une qualification radio ciblée existe déjà')
 
-          entries = '''    ('Dlg/DLG_Conversion_etat.py', 'GetDonnees', 'option_lignes', 'body_only', '8a7c170760adcb1deee4d488e25063f1686a638a5beda52ae2d22bd6fcfb181e'): (\n        "les deux contrôles appartiennent au même groupe wx.RadioButton (RB_GROUP sur le premier) ; le premier est sélectionné par défaut et l'initialisation restaure explicitement l'une des deux valeurs, donc GetDonnees rencontre toujours un choix actif avant de lire option_lignes"\n    ),\n    ('Dlg/DLG_Recopiage_conso.py', 'GetDonnees', 'option_lignes', 'body_only', '34e62165419030130958197229583c639ad268d8a29463dcc8febd8c88acdd30'): (\n        "les deux contrôles appartiennent au même groupe wx.RadioButton (RB_GROUP sur le premier) ; le premier est sélectionné par défaut et l'initialisation restaure explicitement l'une des deux valeurs, donc GetDonnees rencontre toujours un choix actif avant de lire option_lignes"\n    ),\n'''
-          if '8a7c170760adcb1deee4d488e25063f1686a638a5beda52ae2d22bd6fcfb181e' not in source:
-              source = source.replace(marker, '\n' + entries + '}\n\ndef _candidate_fingerprint', 1)
-              qualifier.write_text(source, encoding='utf-8')
+          entries = ''.join(
+              f'    {key!r}: (\n        {reason!r}\n    ),\n'
+              for key in keys
+          )
+          source = source.replace(marker, '\n' + entries + '}\n\ndef _candidate_fingerprint', 1)
+          qualifier.write_text(source, encoding='utf-8')
 
           test = Path('tests/test_radio_option_lines_safe_invariants.py')
-          test.write_text('''import unittest\nfrom pathlib import Path\n\nfrom scripts import audit_branch_assignment_gaps as audit\nfrom scripts import qualify_branch_assignment_gaps as qualify\n\nROOT = Path(__file__).resolve().parents[1]\nNOETHYS = ROOT / "noethys"\n\nEXPECTED = {\n    "Dlg/DLG_Conversion_etat.py": ("GetDonnees", "option_lignes", "body_only", "8a7c170760adcb1deee4d488e25063f1686a638a5beda52ae2d22bd6fcfb181e"),\n    "Dlg/DLG_Recopiage_conso.py": ("GetDonnees", "option_lignes", "body_only", "34e62165419030130958197229583c639ad268d8a29463dcc8febd8c88acdd30"),\n}\n\n\nclass RadioOptionLinesSafeInvariantTests(unittest.TestCase):\n    def test_radio_group_candidates_are_exactly_qualified(self):\n        for relative, expected in EXPECTED.items():\n            function, name, detail, fingerprint = expected\n            findings = audit.scan_file(NOETHYS / relative, NOETHYS)\n            matches = [\n                item for item in findings\n                if item["function"] == function\n                and item["name"] == name\n                and item["detail"] == detail\n            ]\n            self.assertEqual(len(matches), 1, relative)\n            key = qualify.qualification_key(matches[0], NOETHYS)\n            self.assertEqual(key, (relative, function, name, detail, fingerprint))\n            self.assertIn(key, qualify.EXPLICIT_SAFE)\n\n    def test_each_option_lines_pair_is_a_single_wx_radio_group(self):\n        for relative in EXPECTED:\n            text = (NOETHYS / relative).read_text(encoding="utf-8")\n            radio_line = next(\n                line for line in text.splitlines()\n                if "self.radio_lignes_affichees = wx.RadioButton" in line\n            )\n            self.assertIn("style=wx.RB_GROUP", radio_line)\n            self.assertIn("self.radio_lignes_selectionnees = wx.RadioButton", text)\n            self.assertIn('valeur="lignes_affichees"', text)\n\n\nif __name__ == "__main__":\n    unittest.main()\n''', encoding='utf-8')
+          test.write_text('''import unittest\nfrom pathlib import Path\n\nfrom scripts import audit_branch_assignment_gaps as audit\nfrom scripts import qualify_branch_assignment_gaps as qualify\n\nROOT = Path(__file__).resolve().parents[1]\nNOETHYS = ROOT / "noethys"\n\nSPECS = (\n    ("Dlg/DLG_Conversion_etat.py", "GetDonnees", "option_lignes", "body_only"),\n    ("Dlg/DLG_Recopiage_conso.py", "GetDonnees", "option_lignes", "body_only"),\n)\n\n\nclass RadioOptionLinesSafeInvariantTests(unittest.TestCase):\n    def test_radio_group_candidates_are_exactly_qualified(self):\n        for relative, function, name, detail in SPECS:\n            findings = audit.scan_file(NOETHYS / relative, NOETHYS)\n            matches = [\n                item for item in findings\n                if item["function"] == function\n                and item["name"] == name\n                and item["detail"] == detail\n            ]\n            self.assertEqual(len(matches), 1, relative)\n            key = qualify.qualification_key(matches[0], NOETHYS)\n            self.assertIn(key, qualify.EXPLICIT_SAFE)\n\n    def test_each_option_lines_pair_is_a_single_wx_radio_group(self):\n        for relative, _, _, _ in SPECS:\n            text = (NOETHYS / relative).read_text(encoding="utf-8")\n            radio_line = next(\n                line for line in text.splitlines()\n                if "self.radio_lignes_affichees = wx.RadioButton" in line\n            )\n            self.assertIn("style=wx.RB_GROUP", radio_line)\n            self.assertIn("self.radio_lignes_selectionnees = wx.RadioButton", text)\n            self.assertIn('valeur="lignes_affichees"', text)\n\n\nif __name__ == "__main__":\n    unittest.main()\n''', encoding='utf-8')
 
           temporary = Path('.github/workflows/tmp-qualify-radio-option-lines.yml')
           if temporary.exists():
