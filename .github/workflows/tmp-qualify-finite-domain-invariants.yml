@@ -1,0 +1,83 @@
+name: Temporary qualify finite-domain invariants
+
+on:
+  push:
+    branches: [audit/finite-domain-safe-invariants]
+
+permissions:
+  contents: write
+
+jobs:
+  qualify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: audit/finite-domain-safe-invariants
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Qualifier les invariants de domaine fini
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from scripts import audit_branch_assignment_gaps as audit
+          from scripts import qualify_branch_assignment_gaps as qualify
+
+          root = Path('noethys')
+          specs = (
+              ('Dlg/DLG_Impression_don_oeuvres.py', 'SetListeDonnees', 'nomTitulaires', 'body_only', "nbreTitulaires vient de len(listeTitulaires) ; les cas 0, 1, 2 et > 2 sont exhaustifs et affectent nomTitulaires"),
+              ('Dlg/DLG_Saisie_cotisation.py', 'SetListeDonnees', 'nomTitulaires', 'body_only', "nbreTitulaires vient de len(listeTitulaires) ; les cas 0, 1, 2 et > 2 sont exhaustifs et affectent nomTitulaires"),
+              ('Dlg/DLG_Saisie_cotisation.py', 'MAJ', 'nomTitulaires', 'body_only', "nbreTitulaires vient de len(listeTitulaires) ; les cas 0, 1, 2 et > 2 sont exhaustifs et affectent nomTitulaires"),
+              ('Dlg/DLG_Saisie_cotisation.py', 'MAJ', 'IDcompte_payeur', 'body_only', "si listeTitulaires est vide IDcompte_payeur est mis à None ; sinon la boucle qui a rempli la liste l'a déjà affecté"),
+              ('Ol/OL_Etat_nomin_resultats.py', '__init__', 'valeur', 'partial_branches', "prefixe parcourt uniquement NBRE, TEMPS et TEMPS_FACTURE ; le cas NBRE et le couple TEMPS/TEMPS_FACTURE affectent valeur avant setattr"),
+              ('Utils/UTILS_Sauvegarde.py', 'Sauvegarde', 'err', 'body_only', "err est lié par le except Exception as err externe ; le try/except interne n'a pas de cible d'exception et ne supprime pas cette liaison"),
+              ('Dlg/DLG_Releve_prestations_saisie.py', 'GetOptions', 'regroupement', 'partial_branches', "le wx.Choice contient exactement Date, Mois, Année et démarre à l'index 0 ; les index 0, 1, 2 couvrent donc le domaine lorsque le regroupement est actif"),
+              ('Dlg/DLG_Saisie_texte_html.py', 'Importation', 'condition', 'body_only', "le constructeur n'appelle Importation que si IDelement ou categorie est non nul ; chacun de ces gardes affecte condition avant la requête"),
+              ('Dlg/DLG_Stats.py', 'Imprimer', 'html', 'body_only', "Imprimer n'est relié qu'aux commandes 10, 20 et 30 ; chacune affecte html avant son utilisation"),
+              ('Utils/UTILS_Stats_modeles.py', 'GetHTML', 'html', 'body_only', "le garde initial rejette tout mode autre que affichage/impression ; chacun des deux modes autorisés affecte html avant le retour"),
+          )
+
+          entries = []
+          for relative, function, name, detail, reason in specs:
+              matches = [x for x in audit.scan_file(root / relative, root)
+                         if x['function'] == function and x['name'] == name and x['detail'] == detail]
+              if len(matches) != 1:
+                  raise SystemExit(f'{relative}::{function}::{name}/{detail}: {len(matches)} candidat(s), attendu 1')
+              key = qualify.qualification_key(matches[0], root)
+              if key is None:
+                  raise SystemExit(f'Empreinte impossible: {relative}::{function}::{name}')
+              entries.append((key, reason))
+
+          path = Path('scripts/qualify_branch_assignment_gaps.py')
+          source = path.read_text(encoding='utf-8')
+          marker = '\n}\n\ndef _candidate_fingerprint'
+          if source.count(marker) != 1:
+              raise SystemExit('Registre EXPLICIT_SAFE inattendu')
+          additions = []
+          for key, reason in entries:
+              if key[-1] not in source:
+                  additions.append(f'    {key!r}: (\n        {reason!r}\n    ),\n')
+          if additions:
+              source = source.replace(marker, '\n' + ''.join(additions) + '}\n\ndef _candidate_fingerprint', 1)
+              path.write_text(source, encoding='utf-8')
+
+          Path('tests/test_finite_domain_safe_invariants.py').write_text('''import unittest\nfrom pathlib import Path\nfrom scripts import audit_branch_assignment_gaps as audit\nfrom scripts import qualify_branch_assignment_gaps as qualify\n\nROOT = Path(__file__).resolve().parents[1]\nNOETHYS = ROOT / "noethys"\nSPECS = (\n    ("Dlg/DLG_Impression_don_oeuvres.py", "SetListeDonnees", "nomTitulaires", "body_only"),\n    ("Dlg/DLG_Saisie_cotisation.py", "SetListeDonnees", "nomTitulaires", "body_only"),\n    ("Dlg/DLG_Saisie_cotisation.py", "MAJ", "nomTitulaires", "body_only"),\n    ("Dlg/DLG_Saisie_cotisation.py", "MAJ", "IDcompte_payeur", "body_only"),\n    ("Ol/OL_Etat_nomin_resultats.py", "__init__", "valeur", "partial_branches"),\n    ("Utils/UTILS_Sauvegarde.py", "Sauvegarde", "err", "body_only"),\n    ("Dlg/DLG_Releve_prestations_saisie.py", "GetOptions", "regroupement", "partial_branches"),\n    ("Dlg/DLG_Saisie_texte_html.py", "Importation", "condition", "body_only"),\n    ("Dlg/DLG_Stats.py", "Imprimer", "html", "body_only"),\n    ("Utils/UTILS_Stats_modeles.py", "GetHTML", "html", "body_only"),\n)\n\nclass FiniteDomainSafeInvariantTests(unittest.TestCase):\n    def test_candidates_are_exactly_qualified(self):\n        for relative, function, name, detail in SPECS:\n            matches = [x for x in audit.scan_file(NOETHYS / relative, NOETHYS)\n                       if x["function"] == function and x["name"] == name and x["detail"] == detail]\n            self.assertEqual(len(matches), 1, (relative, function, name, detail))\n            self.assertIn(qualify.qualification_key(matches[0], NOETHYS), qualify.EXPLICIT_SAFE)\n\n    def test_domain_contracts_are_still_present(self):\n        holders = ((NOETHYS / "Dlg/DLG_Impression_don_oeuvres.py").read_text(encoding="utf-8") +\n                   (NOETHYS / "Dlg/DLG_Saisie_cotisation.py").read_text(encoding="utf-8"))\n        for condition in ("nbreTitulaires == 0", "nbreTitulaires == 1", "nbreTitulaires == 2", "nbreTitulaires > 2"):\n            self.assertIn(condition, holders)\n        releve = (NOETHYS / "Dlg/DLG_Releve_prestations_saisie.py").read_text(encoding="utf-8")\n        self.assertIn('choices=["Date", _(u"Mois"), _(u"Année")]', releve)\n        self.assertIn("self.ctrl_regroupement_date.SetSelection(0)", releve)\n        modeles = (NOETHYS / "Utils/UTILS_Stats_modeles.py").read_text(encoding="utf-8")\n        self.assertIn('if mode not in ("affichage", "impression")', modeles)\n\nif __name__ == "__main__":\n    unittest.main()\n''', encoding='utf-8')
+
+          Path('.github/workflows/tmp-qualify-finite-domain-invariants.yml').unlink()
+          PY
+      - name: Vérifier les qualifications ciblées
+        env:
+          PYTHONPATH: ${{ github.workspace }}/noethys:${{ github.workspace }}
+        run: python -m unittest tests.test_finite_domain_safe_invariants -v
+      - name: Commit du lot qualifié
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m 'Audit: qualifier les invariants de domaine fini'
+          git push origin HEAD:audit/finite-domain-safe-invariants
