@@ -183,7 +183,7 @@ class CTRL_Analytique(wx.Choice):
             label = nom
             listeItems.append(label)
             if defaut == 1 :
-                self.IDdefaut = IDexercice
+                self.IDdefaut = IDanalytique
             index += 1
         return listeItems
 
