@@ -175,6 +175,30 @@ EXPLICIT_SAFE = {
     ('Utils/UTILS_Stats_modeles.py', 'GetHTML', 'html', 'body_only', 'ab5adc57bb82b744f682a74ae2e913119a6c854d0e1807af3366f759b0cae858'): (
         'le garde initial rejette tout mode autre que affichage/impression ; chacun des deux modes autorisés affecte html avant le retour'
     ),
+    ('Dlg/DLG_Badgeage_importation.py', 'Connexion', 'scanner', 'body_only', 'c961c43ad211675335a7a6c372aa26f76751b18a04c8477201c2a421cf7a67ae'): (
+        'appareil provient du wx.Choice CTRL_Choix_appareil, dont le domaine est exactement cs1504/opn-2001 ; None est rejeté avant la branche et chacune des deux valeurs crée scanner avant le retour'
+    ),
+    ('Dlg/DLG_Saisie_contrat_periode_auto.py', 'Generation', 'listeDates', 'body_only', 'ecf9289c9c12f3152763f341c99b14a263093b8f8151e0b7814374cc735c8071'): (
+        "ctrl_periodicite est un wx.Choice à trois valeurs initialisé sur l'index 1 ; son domaine 0/1/2 est exhaustivement traité et affecte listeDates avant lecture"
+    ),
+    ('Dlg/DLG_Saisie_contrat_periode_auto.py', 'Generation', 'nom_auto', 'body_only', '4ea0d677dcb071f557c305a7bcbcaf3548e8e4665757c544892cfab1b1fc50e2'): (
+        "la même sélection de périodicité 0/1/2, issue d'un wx.Choice à trois valeurs initialisé, affecte exhaustivement nom_auto avant son utilisation"
+    ),
+    ('Dlg/DLG_Saisie_lot_ouvertures2.py', 'Validation', 'expression', 'body_only', '047d8f897bb49d93846132df9f41a70c3afb196375ed6df6ef6a8cf051df70a8'): (
+        'radio_ajouter, radio_supprimer_expression et radio_supprimer_tout forment un seul groupe wx ; dans la branche de suppression, les deux états possibles affectent expression avant la recherche'
+    ),
+    ('Dlg/DLG_Liste_envoi_email.py', 'OnBoutonOk', 'tracks', 'body_only', '9ab82f3d7367f276e62350f1259aaf7b30a211359fc042b6ef76ed4975172f6d'): (
+        'les trois radios de sélection de lignes forment un groupe wx unique initialisé par radio_lignes_affichees ; chacune des trois valeurs affecte tracks avant son parcours'
+    ),
+    ('Dlg/DLG_Individu_coords.py', 'EnvoyerEmail', 'ctrl', 'body_only', '01508690582815411acf4bc16442087272a30c3b6c5bdf3ad505dd71616e45e1'): (
+        "EnvoyerEmail n'est lié par OnEnvoiEmail qu'aux quatre identifiants 801/802/901/902 ; 801/802 sélectionnent ctrl_travail_mail et 901/902 ctrl_mail avant toute lecture"
+    ),
+    ('Ol/OL_Prelevements_sepa.py', 'MemoriseReglementHistorique', 'IDcategorie', 'body_only', '42e119479de7d50c9e564fc20bb61b3bc5e5fc43b7678955f8b86cbb2d41c7fb'): (
+        "la méthode interne est appelée avec les modes historiques saisie/modification/suppression, son défaut est saisie, et chacun de ces trois modes affecte IDcategorie avant construction de l'action"
+    ),
+    ('Ol/OL_Prelevements_sepa.py', 'MemoriseReglementHistorique', 'categorie', 'body_only', '8bbc415dfdabcba25908c5170bcde6c9500349e55b9bb4c153c46f6db839c184'): (
+        "la méthode interne est appelée avec les modes historiques saisie/modification/suppression, son défaut est saisie, et chacun de ces trois modes affecte categorie avant construction de l'action"
+    ),
 }
 
 def _candidate_fingerprint(root, item):
