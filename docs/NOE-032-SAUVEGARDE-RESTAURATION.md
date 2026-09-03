@@ -21,13 +21,13 @@ Le peigne fin du flux de création de sauvegarde a confirmé plusieurs défauts 
 - une erreur d'envoi de courriel ne garantissait pas la fermeture du transport ;
 - les archives temporaires `.nod` / `.noc` pouvaient subsister après certains échecs de copie ou d'envoi.
 
-Le correctif Noe-032b conserve les formats, les commandes MySQL et la logique métier existants. Il ajoute uniquement des gardes et des nettoyages déterministes :
+Le correctif Noe-032b conserve les formats, les commandes MySQL et la logique métier existants. Il ajoute uniquement des gardes et des nettoyages ciblés :
 
 - refus d'une sauvegarde ou restauration réseau sans paramètres de connexion ;
-- fermeture du ZIP par `finally` pendant la création ;
-- suppression systématique de `savetemp` et `restoretemp`, y compris après erreur ;
+- fermeture explicite du ZIP avant les retours anticipés de création couverts ;
+- suppression de `savetemp` et `restoretemp` sur le chemin nominal et sur les retours d'erreur MySQL couverts ;
 - tentative de fermeture du transport de messagerie après exception ;
-- suppression des archives temporaires de travail sur les chemins de succès comme d'échec.
+- suppression des archives temporaires de travail sur les chemins de succès et d'échec explicitement gérés.
 
 ## Précautions obligatoires
 
