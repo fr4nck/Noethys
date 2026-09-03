@@ -69,8 +69,21 @@ def _custom_data_dir() -> Path | None:
     return None
 
 
+def _data_database_name(name: str) -> str:
+    """Reproduit le suffixe ``DATA`` ajouté par ``GestionDB.DB()``.
+
+    ``Config.json`` stocke le nom logique de la base. Le runtime historique
+    ajoute ensuite ``_DATA`` lorsqu'il ouvre la base principale. Le prototype
+    natif doit conserver exactement ce contrat, notamment pour MySQL.
+    """
+    normalized = name.strip()
+    if normalized.lower().endswith("_data"):
+        return normalized
+    return f"{normalized}_DATA"
+
+
 def _local_database_path(name: str) -> Path:
-    filename = f"{name}_DATA.dat"
+    filename = f"{_data_database_name(name)}.dat"
     portable_data = NOETHYS_DIR / "Portable" / "Data" / filename
     if portable_data.is_file():
         return portable_data
@@ -142,7 +155,7 @@ class NativeConfiguredActivityRepository(ActivityRepository):
         except ImportError as exc:
             raise RuntimeError(
                 "mysql-connector-python manque dans l'environnement Qt. "
-                "Relancez : py -3.11 -m pip install -r requirements-qt.txt"
+                "Relancez : .\\.venv\\Scripts\\python.exe -m pip install -r requirements-qt.txt"
             ) from exc
 
         before, database = descriptor.split("[RESEAU]", 1)
@@ -158,7 +171,7 @@ class NativeConfiguredActivityRepository(ActivityRepository):
             "port": int(port),
             "user": user,
             "password": password,
-            "database": database.lower(),
+            "database": _data_database_name(database).lower(),
             "use_unicode": True,
         }
 
