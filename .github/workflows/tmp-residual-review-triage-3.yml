@@ -6,44 +6,73 @@ on:
       - audit/residual-review-triage-3
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  triage:
+  qualify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: '3.10'
-      - name: Inspecter les contextes ciblés
+      - name: Ajouter les qualifications démontrées
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          targets = {
-              'Ctrl/CTRL_Locations_tableau.py': [488],
-              'Ctrl/CTRL_Synthese_conso.py': [374, 386],
-              'Ctrl/CTRL_Synthese_deductions.py': [278],
-              'Ctrl/CTRL_Synthese_impayes.py': [409],
-              'Ctrl/CTRL_Synthese_locations.py': [229],
-              'Ctrl/CTRL_Synthese_modes_reglements.py': [173],
-              'Ctrl/CTRL_Synthese_prestations.py': [539],
-              'Ctrl/CTRL_Synthese_ventilation.py': [436],
-              'Dlg/DLG_Saisie_reglement.py': [472],
-              'Ol/OL_Liste_factures_detail.py': [73, 194],
-              'Ol/OL_PES_pieces.py': [249],
-              'Utils/UTILS_Impression_facture.py': [459],
-          }
-          root = Path('noethys')
-          for rel, lines in targets.items():
-              text = (root / rel).read_text(encoding='utf-8').splitlines()
-              print('\n' + '=' * 100)
-              print(rel)
-              for line in lines:
-                  start = max(1, line - 18)
-                  end = min(len(text), line + 18)
-                  print(f'--- context {line} ({start}-{end}) ---')
-                  for n in range(start, end + 1):
-                      print(f'{n:5d}: {text[n-1]}')
+          from scripts import qualify_branch_assignment_gaps as qualify
+
+          targets = [
+              ('Ctrl/CTRL_Grille.py', 'SetModeIndividu', 'attente', 'body_only', "attente est créée et supprimée sous exactement le même garde modeSilencieux == False ; si le mode est silencieux, aucune lecture de la variable n'est atteinte"),
+              ('Ctrl/CTRL_Grille.py', 'SetModeDate', 'attente', 'body_only', "attente est créée et supprimée sous exactement le même garde modeSilencieux == False ; si le mode est silencieux, aucune lecture de la variable n'est atteinte"),
+              ('Ctrl/CTRL_Grille.py', 'Sauvegarde', 'IDcategorie', 'body_only', "la boucle parcourt le domaine littéral suppr/modif/ajout et chacun de ces trois codes affecte IDcategorie avant son ajout à l'historique"),
+              ('Ctrl/CTRL_Locations_tableau.py', 'Draw', 'hauteurTrait', 'partial_branches', "listeGraduations est produite par rrule avec byminute=(0, 15, 30, 45) ; les branches 0, 15/45 et 30 couvrent donc chaque valeur de minute avant le tracé"),
+              ('Ctrl/CTRL_Synthese_impayes.py', 'MAJ', 'niveau2', 'body_only', "dans chaque itération, niveau2 est créé sous affichage_details == True et toutes ses lectures ultérieures sont protégées par ce même garde"),
+              ('Ctrl/CTRL_Synthese_prestations.py', 'MAJ', 'niveau2', 'body_only', "dans chaque itération, niveau2 est créé sous key_ligne2 != '' et toutes ses lectures ultérieures sont protégées par ce même garde"),
+              ('Ctrl/CTRL_Synthese_ventilation.py', 'MAJ', 'niveauPrestation', 'body_only', "dans chaque itération, niveauPrestation est créé sous affichage_details == True et toutes ses lectures ultérieures sont protégées par ce même garde"),
+          ]
+
+          report = qualify.build_report()
+          review = [item for item in report['findings'] if item['classification'] == 'review']
+          entries = []
+          for file, function, name, detail, reason in targets:
+              matches = [item for item in review if (item['file'], item['function'], item['name'], item['detail']) == (file, function, name, detail)]
+              assert len(matches) == 1, (file, function, name, detail, matches)
+              key = qualify.qualification_key(matches[0])
+              assert key[-1], key
+              entries.append((key, reason))
+
+          path = Path('scripts/qualify_branch_assignment_gaps.py')
+          text = path.read_text(encoding='utf-8')
+          existing_prefixes = {key[:4] for key in qualify.EXPLICIT_SAFE}
+          blocks = []
+          for key, reason in entries:
+              if key[:4] in existing_prefixes:
+                  continue
+              blocks.append(f"    {key!r}: (\n        {reason!r}\n    ),\n")
+          if blocks:
+              marker = "\n}\n\n\ndef _candidate_fingerprint"
+              assert marker in text
+              text = text.replace(marker, "\n" + "".join(blocks) + marker, 1)
+              path.write_text(text, encoding='utf-8')
+
+          test = Path('tests/test_residual_safe_invariants_3.py')
+          test.write_text('''from pathlib import Path\n\nfrom scripts import qualify_branch_assignment_gaps as qualify\n\nTARGETS = {\n    ("Ctrl/CTRL_Grille.py", "SetModeIndividu", "attente", "body_only"),\n    ("Ctrl/CTRL_Grille.py", "SetModeDate", "attente", "body_only"),\n    ("Ctrl/CTRL_Grille.py", "Sauvegarde", "IDcategorie", "body_only"),\n    ("Ctrl/CTRL_Locations_tableau.py", "Draw", "hauteurTrait", "partial_branches"),\n    ("Ctrl/CTRL_Synthese_impayes.py", "MAJ", "niveau2", "body_only"),\n    ("Ctrl/CTRL_Synthese_prestations.py", "MAJ", "niveau2", "body_only"),\n    ("Ctrl/CTRL_Synthese_ventilation.py", "MAJ", "niveauPrestation", "body_only"),\n}\n\n\ndef test_residual_safe_invariants_are_exactly_qualified():\n    report = qualify.build_report()\n    registry = report["explicit_safe_registry"]\n    assert registry["unmatched"] == []\n    assert registry["ambiguous"] == []\n    for target in TARGETS:\n        matches = [\n            item for item in report["findings"]\n            if (item["file"], item["function"], item["name"], item["detail"]) == target\n        ]\n        assert len(matches) == 1\n        assert matches[0]["classification"] == "explicit_safe"\n\n\ndef test_source_contracts_support_the_qualifications():\n    root = Path("noethys")\n    grille = (root / "Ctrl/CTRL_Grille.py").read_text(encoding="utf-8")\n    assert grille.count("if modeSilencieux == False :") >= 4\n    assert 'for codeCategorie in ("suppr", "modif", "ajout") :' in grille\n    assert 'if codeCategorie == "ajout" : IDcategorie = 9' in grille\n    assert 'if codeCategorie == "modif" : IDcategorie = 29' in grille\n    assert 'if codeCategorie == "suppr" : IDcategorie = 10' in grille\n\n    locations = (root / "Ctrl/CTRL_Locations_tableau.py").read_text(encoding="utf-8")\n    assert "byminute=(0, 15, 30, 45)" in locations\n    assert "if dt.minute == 0:" in locations\n    assert "elif dt.minute in (15, 45):" in locations\n    assert "elif dt.minute == 30:" in locations\n\n    impayes = (root / "Ctrl/CTRL_Synthese_impayes.py").read_text(encoding="utf-8")\n    assert "if self.affichage_details == True :\\n                    niveau2 = self.AppendItem" in impayes\n\n    prestations = (root / "Ctrl/CTRL_Synthese_prestations.py").read_text(encoding="utf-8")\n    assert 'if self.key_ligne2 != "" :\\n                    niveau2 = self.AppendItem' in prestations\n\n    ventilation = (root / "Ctrl/CTRL_Synthese_ventilation.py").read_text(encoding="utf-8")\n    assert "if self.affichage_details == True :\\n                    niveauPrestation = self.AppendItem" in ventilation\n''', encoding='utf-8')
           PY
+      - name: Vérifier la qualification ciblée
+        run: |
+          python -m unittest tests.test_residual_safe_invariants_3
+          python scripts/qualify_branch_assignment_gaps.py
+      - name: Commit du lot
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "Aucun changement à committer"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/qualify_branch_assignment_gaps.py tests/test_residual_safe_invariants_3.py
+          git commit -m "Audit: qualifier sept invariants structurels sûrs"
+          git push
