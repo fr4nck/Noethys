@@ -1,9 +1,8 @@
-"""Lance le prototype Activités Qt sans importer wx/GestionDB.
+"""Lance la ligne Qt Activités sans importer wx/GestionDB.
 
-Ce pont de lecture est volontairement minimal. Il lit la configuration Noethys
-historique directement puis ouvre soit la base SQLite locale, soit la base
-MySQL réseau avec mysql.connector. La liste reste indépendante de wx et la
-modification progressive d'une activité passe désormais par une fenêtre Qt.
+Le pont lit la configuration Noethys historique, ouvre SQLite ou MySQL avec
+les pilotes Python modernes puis présente la liste et les pages Qt déjà
+migrées de la fiche activité.
 """
 
 from __future__ import annotations
@@ -110,9 +109,7 @@ def _decode_network_password(password: str) -> str:
     try:
         return base64.b64decode(password[4:]).decode("utf-8")
     except Exception as exc:
-        raise RuntimeError(
-            "Le mot de passe réseau enregistré par Noethys est illisible."
-        ) from exc
+        raise RuntimeError("Le mot de passe réseau enregistré par Noethys est illisible.") from exc
 
 
 def _query(only_open: bool, placeholder: str) -> tuple[str, tuple[object, ...]]:
@@ -161,17 +158,15 @@ class NativeConfiguredActivityRepository(ActivityRepository):
         except ValueError as exc:
             raise RuntimeError("Descripteur réseau Noethys invalide dans Config.json.") from exc
 
-        password = _decode_network_password(encoded_password)
         sql, params = _query(only_open, "%s")
         connect_params = {
             "host": host,
             "port": int(port),
             "user": user,
-            "password": password,
+            "password": _decode_network_password(encoded_password),
             "database": _data_database_name(database).lower(),
             "use_unicode": True,
         }
-
         ca_path = _user_config_dir() / "ca-cert.pem"
         if ca_path.is_file():
             connect_params["ssl_ca"] = str(ca_path)
@@ -189,7 +184,7 @@ class NativeConfiguredActivityRepository(ActivityRepository):
 
 
 class NativeActivitiesWindow(ActivitiesWindow):
-    """Liste Qt enrichie du premier dialogue de modification réel."""
+    """Liste Qt enrichie des pages déjà migrées de la fiche activité."""
 
     def __init__(
         self,
@@ -243,7 +238,8 @@ class NativeActivitiesWindow(ActivitiesWindow):
             return
 
         try:
-            from .activity_editor import ActivityEditorDialog, NativeActivityEditorRepository
+            from .activity_editor import NativeActivityEditorRepository
+            from .activity_groups import ActivityEditorDialog
 
             editor_repository = NativeActivityEditorRepository(self.editor_sqlite_path)
             dialog = ActivityEditorDialog(editor_repository, activity_id, self)
@@ -264,6 +260,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.sqlite:
         from .activities_prototype import SqliteActivityRepository
+
         repository: ActivityRepository = SqliteActivityRepository(args.sqlite)
     else:
         repository = NativeConfiguredActivityRepository()
