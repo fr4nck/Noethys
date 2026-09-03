@@ -1,0 +1,36 @@
+name: Temporary residual review triage 3
+
+on:
+  push:
+    branches:
+      - audit/residual-review-triage-3
+
+permissions:
+  contents: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Inventorier les review résiduels
+        shell: bash
+        run: |
+          python - <<'PY'
+          from collections import defaultdict
+          from scripts import qualify_branch_assignment_gaps as qualify
+
+          report = qualify.build_report()
+          review = [item for item in report['findings'] if item['classification'] == 'review']
+          print('TOTAL_REVIEW=', len(review))
+          grouped = defaultdict(list)
+          for item in review:
+              grouped[item['file']].append(item)
+          for path in sorted(grouped):
+              print(f'\n### {path} ({len(grouped[path])})')
+              for item in grouped[path]:
+                  print(f"{item['line']} | {item['function']} | {item['name']} | {item['detail']}")
+          PY
