@@ -199,6 +199,28 @@ EXPLICIT_SAFE = {
     ('Ol/OL_Prelevements_sepa.py', 'MemoriseReglementHistorique', 'categorie', 'body_only', '8bbc415dfdabcba25908c5170bcde6c9500349e55b9bb4c153c46f6db839c184'): (
         "la méthode interne est appelée avec les modes historiques saisie/modification/suppression, son défaut est saisie, et chacun de ces trois modes affecte categorie avant construction de l'action"
     ),
+    ('Ctrl/CTRL_Grille.py', 'SetModeIndividu', 'attente', 'body_only', '70f5456a75d70afc53914fbe8d33c87be6bda0a2e9c3f7dc4f3f9862ff909a0c'): (
+        "attente est créée et supprimée sous exactement le même garde modeSilencieux == False ; si le mode est silencieux, aucune lecture de la variable n'est atteinte"
+    ),
+    ('Ctrl/CTRL_Grille.py', 'SetModeDate', 'attente', 'body_only', 'dcce2fc03cd1af61b13c16e44070fbaa8a427798d53735418043fddc8b8ff3dc'): (
+        "attente est créée et supprimée sous exactement le même garde modeSilencieux == False ; si le mode est silencieux, aucune lecture de la variable n'est atteinte"
+    ),
+    ('Ctrl/CTRL_Grille.py', 'Sauvegarde', 'IDcategorie', 'body_only', '93d18d8877ff7608822da94438fe472aa6871233dccba623f756b1ed60185c51'): (
+        "la boucle parcourt le domaine littéral suppr/modif/ajout et chacun de ces trois codes affecte IDcategorie avant son ajout à l'historique"
+    ),
+    ('Ctrl/CTRL_Locations_tableau.py', 'Draw', 'hauteurTrait', 'partial_branches', 'd8a2510a4cd8d0e38467865a16a60521ba4b24af7c00ffbfc4cc2aa89dab0f14'): (
+        'listeGraduations est produite par rrule avec byminute=(0, 15, 30, 45) ; les branches 0, 15/45 et 30 couvrent donc chaque valeur de minute avant le tracé'
+    ),
+    ('Ctrl/CTRL_Synthese_impayes.py', 'MAJ', 'niveau2', 'body_only', '1d28288079518cfbc6d43b82de7a62a3c311b9d1b9702eebad61dae403ddd913'): (
+        'dans chaque itération, niveau2 est créé sous affichage_details == True et toutes ses lectures ultérieures sont protégées par ce même garde'
+    ),
+    ('Ctrl/CTRL_Synthese_prestations.py', 'MAJ', 'niveau2', 'body_only', 'cd37c1069d3b103f3b89dcbf3d565583c4e6765d75f3d16f3f65d3aa82f1b50b'): (
+        "dans chaque itération, niveau2 est créé sous key_ligne2 != '' et toutes ses lectures ultérieures sont protégées par ce même garde"
+    ),
+    ('Ctrl/CTRL_Synthese_ventilation.py', 'MAJ', 'niveauPrestation', 'body_only', 'cf657a4d335fa481d47247e788a545469e352e64db8e605bbbd7af2e0ac07aad'): (
+        'dans chaque itération, niveauPrestation est créé sous affichage_details == True et toutes ses lectures ultérieures sont protégées par ce même garde'
+    ),
+
 }
 
 def _candidate_fingerprint(root, item):
