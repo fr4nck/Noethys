@@ -30,6 +30,7 @@ if source.count(old) != 1 or source.count(old_else) != 1:
     raise SystemExit("Structure CTRL_Grille inattendue")
 source = source.replace(old, new, 1).replace(old_else, new_else, 1)
 source_path.write_text(source, encoding="utf-8")
+print("montant_tarif_tmp déplacé avant le branchement degr/non-degr")
 
 for temporary in (
     Path("scripts/tmp_move_grid_family_count_default.py"),
