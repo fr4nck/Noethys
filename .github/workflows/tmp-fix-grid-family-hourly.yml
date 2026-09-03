@@ -1,0 +1,33 @@
+name: Temporary fix grid family hourly
+
+on:
+  push:
+    branches:
+      - audit/grid-family-hourly-recalculation-contract
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Apply targeted fix
+        run: python scripts/tmp_fix_grid_family_hourly_recalculation.py
+      - name: Verify targeted regression
+        run: |
+          PYTHONPATH="$PWD/noethys:$PWD" python -m unittest tests.test_ctrl_grille_family_hourly_recalculation tests.test_ctrl_grille_family_count_tariffs -v
+          python scripts/audit_branch_assignment_gaps.py > /tmp/branch-gaps.txt
+      - name: Commit targeted fix
+        shell: bash
+        run: |
+          rm scripts/tmp_fix_grid_family_hourly_recalculation.py .github/workflows/tmp-fix-grid-family-hourly.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix: conserver la tranche horaire lors du recalcul famille"
+          git push
