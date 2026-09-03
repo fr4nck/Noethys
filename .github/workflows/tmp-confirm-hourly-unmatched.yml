@@ -1,0 +1,35 @@
+name: Temporary confirm hourly unmatched range
+
+on:
+  push:
+    branches:
+      - audit/grid-family-hourly-unmatched-range
+
+permissions:
+  contents: write
+
+jobs:
+  confirm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: audit/grid-family-hourly-unmatched-range
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Confirm diagnostic and self-clean
+        shell: bash
+        run: |
+          set +e
+          python -m unittest tests.test_ctrl_grille_family_hourly_unmatched_range -v
+          status=$?
+          set -e
+          rm -f .github/workflows/tmp-confirm-hourly-unmatched.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Audit: retirer le workflow temporaire de confirmation"
+          git push origin HEAD:audit/grid-family-hourly-unmatched-range
+          exit "$status"
