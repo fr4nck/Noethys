@@ -22,6 +22,7 @@ def _load_facturation():
         "copy": copy,
         "functools": functools,
         "six": types.SimpleNamespace(PY2=False),
+        "HeureStrEnTime": lambda value: datetime.datetime.strptime(value, "%H:%M").time(),
     }
     exec(compile(module, str(SOURCE), "exec"), namespace)
     return namespace["Facturation"]
