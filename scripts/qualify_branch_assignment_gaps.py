@@ -106,9 +106,6 @@ EXPLICIT_SAFE = {
     ('Utils/UTILS_Sauvegarde.py', 'Sauvegarde', 'dictAdresse', 'body_only', '7bad752c10292daba9b617a1ee491bd3615f296533ef7fe9af66593ae8c830e5'): (
         "dictAdresse est créé sous listeEmails != None ; l'absence d'adresse quitte la fonction et sa lecture ultérieure reste sous exactement le même garde"
     ),
-    ('Utils/UTILS_Stats_modeles.py', 'GetHTML', 'html', 'body_only', '745acb7562aa4b05fb489cbff87168fb647d7092aa6c0363315113bc12794ed8'): (
-        "le garde initial rejette tout mode autre que affichage/impression ; chacun des deux modes autorisés affecte html avant le retour final"
-    ),
 }
 
 def _candidate_fingerprint(root, item):
