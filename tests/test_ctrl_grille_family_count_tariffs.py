@@ -99,6 +99,14 @@ class CtrlGrilleFamilyCountTariffTests(unittest.TestCase):
         self.assertNotIn(100, state.dictPrestations)
         self.assertIn(100, state.listePrestationsSupprimees)
 
+    def test_zero_default_is_defined_before_degressive_branch(self):
+        source = SOURCE.read_text(encoding="utf-8")
+        anchor = "nbreIndividus = len(listeIndividusPresents)"
+        branch = 'if "degr" in methode_calcul :'
+        after_anchor = source.split(anchor, 1)[1]
+        before_branch = after_anchor.split(branch, 1)[0]
+        self.assertIn("montant_tarif_tmp = 0.0", before_branch)
+
     def test_montant_tarif_tmp_branch_gap_disappears(self):
         findings = audit.scan_file(SOURCE, NOETHYS)
         targeted = [
