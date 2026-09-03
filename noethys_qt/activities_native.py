@@ -239,7 +239,7 @@ class NativeActivitiesWindow(ActivitiesWindow):
 
         try:
             from .activity_editor import NativeActivityEditorRepository
-            from .activity_groups import ActivityEditorDialog
+            from .activity_units import ActivityEditorDialog
 
             editor_repository = NativeActivityEditorRepository(self.editor_sqlite_path)
             dialog = ActivityEditorDialog(editor_repository, activity_id, self)
