@@ -11,6 +11,24 @@ Le format de sauvegarde historique est conservé :
 
 L'audit a mis en évidence plusieurs `return False` mal indentés dans `UTILS_Sauvegarde.Restauration`. Ils provoquaient un arrêt inconditionnel après la confirmation de remplacement, après la première restauration SQLite et dans la restauration MySQL. Ces chemins sont maintenant couverts par des tests de non-régression.
 
+## Complément Noe-032b — intégrité des chemins d'échec
+
+Le peigne fin du flux de création de sauvegarde a confirmé plusieurs défauts indépendants du format historique :
+
+- une liste de bases réseau pouvait être demandée sans contexte de connexion et être silencieusement ignorée, avec un succès final potentiellement incomplet ;
+- le ZIP temporaire pouvait rester ouvert sur certains retours anticipés ;
+- `savetemp` et `restoretemp`, qui contiennent notamment `logintemp.cnf` avec les identifiants MySQL nécessaires aux outils en ligne de commande, n'étaient supprimés que sur le chemin nominal ;
+- une erreur d'envoi de courriel ne garantissait pas la fermeture du transport ;
+- les archives temporaires `.nod` / `.noc` pouvaient subsister après certains échecs de copie ou d'envoi.
+
+Le correctif Noe-032b conserve les formats, les commandes MySQL et la logique métier existants. Il ajoute uniquement des gardes et des nettoyages déterministes :
+
+- refus d'une sauvegarde ou restauration réseau sans paramètres de connexion ;
+- fermeture du ZIP par `finally` pendant la création ;
+- suppression systématique de `savetemp` et `restoretemp`, y compris après erreur ;
+- tentative de fermeture du transport de messagerie après exception ;
+- suppression des archives temporaires de travail sur les chemins de succès comme d'échec.
+
 ## Précautions obligatoires
 
 1. Ne jamais valider une restauration pour la première fois sur la base de production.
@@ -29,8 +47,16 @@ L'audit a mis en évidence plusieurs `return False` mal indentés dans `UTILS_Sa
 - chemin de restauration réseau avec import MySQL simulé réussi ;
 - valeur de retour listant correctement les fichiers restaurés.
 
+`tests/test_noe_032_backup_integrity.py` couvre les nouveaux invariants Noe-032b :
+
+- refus d'une sauvegarde réseau sans paramètres de connexion ;
+- fermeture du ZIP et suppression d'une archive partielle lorsqu'un fichier local manque ;
+- suppression de `savetemp` et de l'archive partielle après échec simulé de `mysqldump` ;
+- suppression de `restoretemp` après échec simulé du client `mysql` ;
+- fermeture du transport de messagerie et suppression de l'archive temporaire après échec d'envoi.
+
 Ces tests sont inclus automatiquement dans la suite métier Noe-031 (`tests/test_*.py`).
 
 ## Limites
 
-La CI ne lance pas un serveur MySQL/MariaDB 5.5 réel pour écraser une base de production. Le test réseau simule le client `mysql` et protège le contrôle de flux. La compatibilité serveur réelle reste couverte par la stratégie conservatrice du projet et doit être confirmée sur une copie avant RC.
+La CI ne lance pas un serveur MySQL/MariaDB 5.5 réel pour écraser une base de production. Les tests réseau simulent `mysqldump` et le client `mysql` afin de protéger le contrôle de flux et le nettoyage des ressources. La compatibilité serveur réelle reste couverte par la stratégie conservatrice du projet et doit être confirmée sur une copie avant RC.
