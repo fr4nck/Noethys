@@ -1,0 +1,168 @@
+name: Temporary grid family-count tariff patch
+
+on:
+  push:
+    branches:
+      - audit/grid-family-count-tariffs
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: audit/grid-family-count-tariffs
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Apply targeted source fix and regression
+        shell: python
+        run: |
+          from pathlib import Path
+
+          source_path = Path('noethys/Ctrl/CTRL_Grille.py')
+          source = source_path.read_text(encoding='utf-8')
+          marker = '''                                    else:
+                                        # Si tarif unique pour chacun des individus
+'''
+          replacement = '''                                    else:
+                                        # Un palier nul reste un tarif valide : le recalcul doit pouvoir ramener
+                                        # explicitement les prestations restantes à 0.0.
+                                        montant_tarif_tmp = 0.0
+                                        # Si tarif unique pour chacun des individus
+'''
+          if source.count(marker) < 2:
+              raise SystemExit('Structure CTRL_Grille inattendue : marqueur de tarif famille introuvable/ambigu')
+          source = source.replace(marker, replacement, 1)
+          source_path.write_text(source, encoding='utf-8')
+
+          test_path = Path('tests/test_ctrl_grille_family_count_tariffs.py')
+          test_path.write_text(r'''import ast
+import copy
+import functools
+import types
+import unittest
+from pathlib import Path
+
+from scripts import audit_branch_assignment_gaps as audit
+
+ROOT = Path(__file__).resolve().parents[1]
+NOETHYS = ROOT / "noethys"
+SOURCE = NOETHYS / "Ctrl" / "CTRL_Grille.py"
+
+
+def _load_facturation():
+    tree = ast.parse(SOURCE.read_text(encoding="utf-8"), filename=str(SOURCE))
+    function = next(
+        node for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name == "Facturation"
+    )
+    module = ast.Module(body=[copy.deepcopy(function)], type_ignores=[])
+    ast.fix_missing_locations(module)
+    namespace = {
+        "copy": copy,
+        "functools": functools,
+        "six": types.SimpleNamespace(PY2=False),
+    }
+    exec(compile(module, str(SOURCE), "exec"), namespace)
+    return namespace["Facturation"]
+
+
+class CtrlGrilleFamilyCountTariffTests(unittest.TestCase):
+    def test_zero_family_count_tariff_recalculates_remaining_sibling_to_zero(self):
+        facturation = _load_facturation()
+        date = __import__("datetime").date(2026, 9, 3)
+
+        conso = types.SimpleNamespace(
+            IDactivite=1,
+            forfait=None,
+            etat="reservation",
+            quantite=None,
+            IDprestation=100,
+            IDevenement=None,
+            case=None,
+        )
+        family_tariff = {
+            "IDtarif": 200,
+            "methode": "montant_unique_nbre_ind",
+            "lignes_calcul": [{
+                "montant_enfant_1": 0.0,
+                "montant_enfant_2": 0.0,
+                "montant_enfant_3": 0.0,
+                "montant_enfant_4": 0.0,
+                "montant_enfant_5": 0.0,
+                "montant_enfant_6": 0.0,
+            }],
+        }
+        state = types.SimpleNamespace(
+            dictConsoIndividus={1: {date: {10: [conso]}}},
+            dictActivites={1: {"tarifs": {50: [], 99: [family_tariff]}}},
+            dictForfaits={},
+            dictPrestations={
+                100: {"IDtarif": 200},
+                101: {
+                    "date": date,
+                    "IDfamille": 10,
+                    "IDtarif": 200,
+                    "IDindividu": 2,
+                    "montant_initial": 5.0,
+                    "montant": 5.0,
+                },
+            },
+            listePrestationsSupprimees=[],
+            listePrestationsModifiees=[],
+            dictDeductions={},
+            mode="date",
+            TriTarifs2=lambda left, right: 0,
+            TriTarifs=lambda left, right: 0,
+        )
+
+        facturation(
+            state,
+            IDactivite=1,
+            IDindividu=1,
+            IDfamille=10,
+            date=date,
+            IDcategorie_tarif=50,
+        )
+
+        self.assertEqual(state.dictPrestations[101]["montant_initial"], 0.0)
+        self.assertEqual(state.dictPrestations[101]["montant"], 0.0)
+        self.assertIn(101, state.listePrestationsModifiees)
+        self.assertNotIn(100, state.dictPrestations)
+        self.assertIn(100, state.listePrestationsSupprimees)
+
+    def test_montant_tarif_tmp_branch_gap_disappears(self):
+        findings = audit.scan_file(SOURCE, NOETHYS)
+        targeted = [
+            item for item in findings
+            if item["function"] == "Facturation" and item["name"] == "montant_tarif_tmp"
+        ]
+        self.assertEqual(targeted, [])
+
+
+if __name__ == "__main__":
+    unittest.main()
+''', encoding='utf-8')
+
+          temporary = Path('tests/test_tmp_grid_family_count_triage.py')
+          if temporary.exists():
+              temporary.unlink()
+
+          workflow = Path('.github/workflows/tmp-audit-grid-family-count-tariffs.yml')
+          workflow.unlink()
+      - name: Run targeted regression
+        run: python -m unittest tests.test_ctrl_grille_family_count_tariffs -v
+      - name: Commit final lot
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git diff --cached --check
+          git commit -m "Audit: sécuriser le tarif famille nul"
+          git push origin HEAD:audit/grid-family-count-tariffs
