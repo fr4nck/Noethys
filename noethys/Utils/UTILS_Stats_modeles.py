@@ -320,6 +320,9 @@ class HTML():
         if len(self.dictParametres["listeActivites"]) == 0 : 
             return ""
         
+        if mode not in ("affichage", "impression") :
+            raise ValueError("Mode GetHTML non supporté : %r (attendu 'affichage' ou 'impression')" % mode)
+        
         # Mode 'affichage'
         if mode == "affichage" :
             html = u"""<HTML><BODY><FONT SIZE=-1>"""
