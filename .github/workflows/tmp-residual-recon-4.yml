@@ -1,0 +1,50 @@
+name: Temporary residual recon 4
+
+on:
+  push:
+    branches:
+      - audit/residual-review-recon-4
+
+permissions:
+  contents: read
+
+jobs:
+  recon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Rechercher les contrats d'appel
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          root = Path('noethys')
+          needles = [
+              'CTRL_Synthese_conso',
+              'CTRL_Synthese_deductions',
+              'CTRL_Synthese_locations',
+              'CTRL_Synthese_modes_reglements',
+              'OL_Liste_factures_detail',
+              'UTILS_Impression_facture',
+              'track_tarif=',
+              'DLG_Saisie_tarification.Dialog',
+          ]
+          for needle in needles:
+              print('\n' + '=' * 100)
+              print('NEEDLE', needle)
+              count = 0
+              for path in root.rglob('*.py'):
+                  try:
+                      lines = path.read_text(encoding='utf-8').splitlines()
+                  except UnicodeDecodeError:
+                      continue
+                  for lineno, line in enumerate(lines, 1):
+                      if needle in line:
+                          print(f'{path.relative_to(root)}:{lineno}: {line.strip()}')
+                          count += 1
+              print('COUNT', count)
+          PY
