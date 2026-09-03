@@ -61,7 +61,12 @@ class CtrlGrilleFamilyCountTariffTests(unittest.TestCase):
             dictActivites={1: {"tarifs": {50: [], 99: [family_tariff]}}},
             dictForfaits={},
             dictPrestations={
-                100: {"IDtarif": 200},
+                100: {
+                    "date": date,
+                    "IDfamille": 10,
+                    "IDtarif": 200,
+                    "IDindividu": 1,
+                },
                 101: {
                     "date": date,
                     "IDfamille": 10,
