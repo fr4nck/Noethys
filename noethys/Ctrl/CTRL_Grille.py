@@ -3007,7 +3007,9 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                                                             break
 
                                             # Recherche du tarif à appliquer aux autres individus de la famille
-                                            if ligne_calcul_horaire != None :
+                                            if "horaire" in methode_calcul and ligne_calcul_horaire == None :
+                                                montantTmp = 0.0
+                                            elif ligne_calcul_horaire != None :
                                                 montants_horaire = [ligne_calcul_horaire["montant_enfant_%d" % rang] for rang in range(1, 7)]
                                                 if "degr" in methode_calcul :
                                                     tarifsDegrTmp = []
@@ -3909,6 +3911,12 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         if "nbre_ind" in methode_calcul :
             montant_tarif = 0.0
             lignes_calcul = dictTarif["lignes_calcul"]
+            montant_enfant_1 = None
+            montant_enfant_2 = None
+            montant_enfant_3 = None
+            montant_enfant_4 = None
+            montant_enfant_5 = None
+            montant_enfant_6 = None
             
             if "montant_unique" in methode_calcul  :
                 # Montant unique
@@ -3939,6 +3947,14 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
 
             if "horaire" in methode_calcul  :
                 tarifFound = False
+                # Les montants d'une ligne précédente ne doivent pas fuir si
+                # aucune tranche horaire ne correspond à la consommation.
+                montant_enfant_1 = None
+                montant_enfant_2 = None
+                montant_enfant_3 = None
+                montant_enfant_4 = None
+                montant_enfant_5 = None
+                montant_enfant_6 = None
 
                 # Recherche des heures debut et fin des unités cochées
                 heure_debut = None
