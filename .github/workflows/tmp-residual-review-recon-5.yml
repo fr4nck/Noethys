@@ -1,0 +1,36 @@
+name: Temporary residual review recon 5
+
+on:
+  push:
+    branches:
+      - audit/residual-review-recon-5
+
+permissions:
+  contents: read
+
+jobs:
+  recon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Inventorier les signaux review
+        shell: bash
+        run: |
+          python - <<'PY'
+          from collections import Counter
+          from scripts import qualify_branch_assignment_gaps as qualify
+
+          report = qualify.build_report()
+          review = [item for item in report['findings'] if item['classification'] == 'review']
+          print('REVIEW_COUNT', len(review))
+          print('EXPLICIT_SAFE_COUNT', sum(item['classification'] == 'explicit_safe' for item in report['findings']))
+          print('FILES')
+          for file, count in Counter(item['file'] for item in review).most_common():
+              print(f'{count:3d} {file}')
+          print('FINDINGS')
+          for item in review:
+              print((item['file'], item['function'], item['name'], item['detail'], item.get('if_line'), item.get('line'), qualify.qualification_key(item)[-1]))
+          PY
