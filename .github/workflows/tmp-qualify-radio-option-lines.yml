@@ -1,0 +1,59 @@
+name: Temporary qualify radio option lines
+
+on:
+  push:
+    branches:
+      - audit/radio-option-lines-invariants
+
+permissions:
+  contents: write
+
+jobs:
+  qualify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: audit/radio-option-lines-invariants
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Qualifier les invariants radio option_lignes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          qualifier = Path('scripts/qualify_branch_assignment_gaps.py')
+          source = qualifier.read_text(encoding='utf-8')
+          marker = '\n}\n\ndef _candidate_fingerprint'
+          if source.count(marker) != 1:
+              raise SystemExit('Structure du registre EXPLICIT_SAFE inattendue')
+
+          entries = '''    ('Dlg/DLG_Conversion_etat.py', 'GetDonnees', 'option_lignes', 'body_only', '8a7c170760adcb1deee4d488e25063f1686a638a5beda52ae2d22bd6fcfb181e'): (\n        "les deux contrôles appartiennent au même groupe wx.RadioButton (RB_GROUP sur le premier) ; le premier est sélectionné par défaut et l'initialisation restaure explicitement l'une des deux valeurs, donc GetDonnees rencontre toujours un choix actif avant de lire option_lignes"\n    ),\n    ('Dlg/DLG_Recopiage_conso.py', 'GetDonnees', 'option_lignes', 'body_only', '34e62165419030130958197229583c639ad268d8a29463dcc8febd8c88acdd30'): (\n        "les deux contrôles appartiennent au même groupe wx.RadioButton (RB_GROUP sur le premier) ; le premier est sélectionné par défaut et l'initialisation restaure explicitement l'une des deux valeurs, donc GetDonnees rencontre toujours un choix actif avant de lire option_lignes"\n    ),\n'''
+          if '8a7c170760adcb1deee4d488e25063f1686a638a5beda52ae2d22bd6fcfb181e' not in source:
+              source = source.replace(marker, '\n' + entries + '}\n\ndef _candidate_fingerprint', 1)
+              qualifier.write_text(source, encoding='utf-8')
+
+          test = Path('tests/test_radio_option_lines_safe_invariants.py')
+          test.write_text('''import unittest\nfrom pathlib import Path\n\nfrom scripts import audit_branch_assignment_gaps as audit\nfrom scripts import qualify_branch_assignment_gaps as qualify\n\nROOT = Path(__file__).resolve().parents[1]\nNOETHYS = ROOT / "noethys"\n\nEXPECTED = {\n    "Dlg/DLG_Conversion_etat.py": ("GetDonnees", "option_lignes", "body_only", "8a7c170760adcb1deee4d488e25063f1686a638a5beda52ae2d22bd6fcfb181e"),\n    "Dlg/DLG_Recopiage_conso.py": ("GetDonnees", "option_lignes", "body_only", "34e62165419030130958197229583c639ad268d8a29463dcc8febd8c88acdd30"),\n}\n\n\nclass RadioOptionLinesSafeInvariantTests(unittest.TestCase):\n    def test_radio_group_candidates_are_exactly_qualified(self):\n        for relative, expected in EXPECTED.items():\n            function, name, detail, fingerprint = expected\n            findings = audit.scan_file(NOETHYS / relative, NOETHYS)\n            matches = [\n                item for item in findings\n                if item["function"] == function\n                and item["name"] == name\n                and item["detail"] == detail\n            ]\n            self.assertEqual(len(matches), 1, relative)\n            key = qualify.qualification_key(matches[0], NOETHYS)\n            self.assertEqual(key, (relative, function, name, detail, fingerprint))\n            self.assertIn(key, qualify.EXPLICIT_SAFE)\n\n    def test_each_option_lines_pair_is_a_single_wx_radio_group(self):\n        for relative in EXPECTED:\n            text = (NOETHYS / relative).read_text(encoding="utf-8")\n            radio_line = next(\n                line for line in text.splitlines()\n                if "self.radio_lignes_affichees = wx.RadioButton" in line\n            )\n            self.assertIn("style=wx.RB_GROUP", radio_line)\n            self.assertIn("self.radio_lignes_selectionnees = wx.RadioButton", text)\n            self.assertIn('valeur="lignes_affichees"', text)\n\n\nif __name__ == "__main__":\n    unittest.main()\n''', encoding='utf-8')
+
+          temporary = Path('.github/workflows/tmp-qualify-radio-option-lines.yml')
+          if temporary.exists():
+              temporary.unlink()
+          PY
+      - name: Vérifier les deux qualifications ciblées
+        env:
+          PYTHONPATH: ${{ github.workspace }}/noethys:${{ github.workspace }}
+        run: python -m unittest tests.test_radio_option_lines_safe_invariants -v
+      - name: Commit du lot qualifié
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m 'Audit: qualifier les invariants radio option_lignes'
+          git push origin HEAD:audit/radio-option-lines-invariants
