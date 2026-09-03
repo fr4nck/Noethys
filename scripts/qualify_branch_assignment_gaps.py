@@ -121,6 +121,30 @@ EXPLICIT_SAFE = {
     ('Dlg/DLG_Activite_portail.py', 'Sauvegarde', 'portail_reservations_affichage', 'body_only', 'bd4a9365546bf46fa47623bbac514e590441890210824dd17c47d5fc1e3c2cac'): (
         "radio_reservations_non ouvre un groupe wx.RadioButton avec radio_reservations_oui ; un membre est actif par défaut et Importation restaure explicitement l'état, donc Sauvegarde affecte toujours portail_reservations_affichage avant son utilisation"
     ),
+    ('Dlg/DLG_Liste_deductions.py', 'GetActivites', 'listeActivites', 'body_only', '649580e66da7f0c4c8018ae65fac9b7187ff41809897f65b3de07aa0e0d3d455'): (
+        "les trois choix d'activité forment un unique groupe wx.RadioButton ouvert par wx.RB_GROUP ; un membre est donc actif avant le retour de listeActivites"
+    ),
+    ('Dlg/DLG_Synthese_modes_reglements.py', 'GetActivites', 'listeActivites', 'body_only', '649580e66da7f0c4c8018ae65fac9b7187ff41809897f65b3de07aa0e0d3d455'): (
+        "les trois choix d'activité forment un unique groupe wx.RadioButton ouvert par wx.RB_GROUP ; un membre est donc actif avant le retour de listeActivites"
+    ),
+    ('Dlg/DLG_Badgeage_saisie_procedure.py', 'Sauvegarde', 'systeme', 'body_only', 'f2e917298b08945fd006a54fed261a38ee71ea28fbe69bc55b4280306e713727'): (
+        "les trois systèmes d'identification appartiennent au même groupe wx.RadioButton ouvert par radio_barre avec wx.RB_GROUP ; un système est donc sélectionné avant la construction de listeDonnees"
+    ),
+    ('Dlg/DLG_Saisie_utilisateur.py', 'Sauvegarde', 'profil', 'body_only', 'bbc4d9d71862225ad4299bed30b3f5d2f00d67945b5632c7251f48e64c63a6e3'): (
+        'les trois profils de droits appartiennent au même groupe wx.RadioButton ouvert par radio_droits_admin avec wx.RB_GROUP ; un profil est donc sélectionné avant la sauvegarde'
+    ),
+    ('Dlg/DLG_Saisie_utilisateur_reseau.py', 'RechercheAutorisation', 'hote', 'body_only', '499543fa04fb742efa9d4adbb83f777db921f37517e97a0b38fc4ffc74df82d4'): (
+        "les trois hôtes appartiennent au même groupe wx.RadioButton ouvert par radio_1 avec wx.RB_GROUP et le constructeur restaure explicitement l'un d'eux ; hote est donc affecté avant la requête"
+    ),
+    ('Dlg/DLG_Saisie_utilisateur_reseau.py', 'Sauvegarde', 'hote', 'body_only', 'e45faa4b945b6cbfe393bf7a0bf3b00ea76a974cf550f6a327c8aa68c0e3ac97'): (
+        "les trois hôtes appartiennent au même groupe wx.RadioButton ouvert par radio_1 avec wx.RB_GROUP et le constructeur restaure explicitement l'un d'eux ; hote est donc affecté avant la requête"
+    ),
+    ('Dlg/DLG_Releve_prestations_saisie.py', 'GetOptions', 'dictOptions', 'body_only', '09a437989cf92599132b8a6da6e969fb26da5982ddac935aae7d301d55564a50'): (
+        "les deux types de relevé appartiennent au même groupe wx.RadioButton ouvert par radio_type_prestations avec wx.RB_GROUP ; GetType retourne donc prestations ou factures et l'une des deux branches affecte dictOptions"
+    ),
+    ('Dlg/DLG_Releve_prestations_saisie.py', 'GetPeriode', 'parametres', 'body_only', 'e4e498bf1ad21e688ae114bed74ab2c2938c18cceb08061764d1b6902c760e4c'): (
+        'les sept périodes appartiennent au même groupe wx.RadioButton ouvert par radio_tout avec wx.RB_GROUP ; un membre est donc actif et la branche correspondante affecte parametres avant le retour'
+    ),
 }
 
 def _candidate_fingerprint(root, item):
