@@ -1,4 +1,5 @@
 import datetime as dt
+import gc
 import os
 import sqlite3
 import tempfile
@@ -22,6 +23,14 @@ class ActivitiesPrototypeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
+
+    @staticmethod
+    def _remove_database(database: Path) -> None:
+        # ``sqlite3.Connection`` n'est pas fermé par son context manager : sur
+        # Windows le handle peut survivre jusqu'au prochain cycle GC, ce qui
+        # suffit à bloquer unlink(). Le test force ce cycle avant le nettoyage.
+        gc.collect()
+        database.unlink(missing_ok=True)
 
     def _make_database(self) -> Path:
         handle, filename = tempfile.mkstemp(suffix="_DATA.dat")
@@ -51,7 +60,7 @@ class ActivitiesPrototypeTests(unittest.TestCase):
             connection.commit()
         finally:
             connection.close()
-        self.addCleanup(database.unlink, missing_ok=True)
+        self.addCleanup(self._remove_database, database)
         return database
 
     def test_sqlite_repository_reads_noethys_activity_shape(self):
