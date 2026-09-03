@@ -106,6 +106,12 @@ EXPLICIT_SAFE = {
     ('Utils/UTILS_Sauvegarde.py', 'Sauvegarde', 'dictAdresse', 'body_only', '7bad752c10292daba9b617a1ee491bd3615f296533ef7fe9af66593ae8c830e5'): (
         "dictAdresse est créé sous listeEmails != None ; l'absence d'adresse quitte la fonction et sa lecture ultérieure reste sous exactement le même garde"
     ),
+    ('Dlg/DLG_Conversion_etat.py', 'GetDonnees', 'option_lignes', 'body_only', '3f4e12d4bbddaa5622c402f57190e4b516d1a75dcdf1ec5cb0ade3262aa5fe98'): (
+        "les deux contrôles appartiennent au même groupe wx.RadioButton (RB_GROUP sur le premier) ; le premier est sélectionné par défaut et l'initialisation restaure explicitement l'une des deux valeurs, donc GetDonnees rencontre toujours un choix actif avant de lire option_lignes"
+    ),
+    ('Dlg/DLG_Recopiage_conso.py', 'GetDonnees', 'option_lignes', 'body_only', '6a08b6aab02ca8987b4de02a7971e297230281a2399c42fb450f2e761140c71b'): (
+        "les deux contrôles appartiennent au même groupe wx.RadioButton (RB_GROUP sur le premier) ; le premier est sélectionné par défaut et l'initialisation restaure explicitement l'une des deux valeurs, donc GetDonnees rencontre toujours un choix actif avant de lire option_lignes"
+    ),
 }
 
 def _candidate_fingerprint(root, item):
