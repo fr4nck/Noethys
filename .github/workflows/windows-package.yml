@@ -10,6 +10,7 @@ on:
     paths:
       - 'noethys/Utils/UTILS_Fichiers.py'
       - 'packaging/**'
+      - 'requirements*.txt'
       - 'tests/test_noe_041_portable_paths.py'
       - '.github/workflows/windows-package.yml'
 
