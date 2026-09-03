@@ -2952,6 +2952,8 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                                     nbreIndividus = len(listeIndividusPresents)
                                     
                                     # Recherche le tarif à appliquer à chaque individu
+                                    # Un palier nul reste un tarif valide lors du recalcul.
+                                    montant_tarif_tmp = 0.0
                                     if "degr" in methode_calcul :
                                         # Si tarif dégressif différent pour chaque individu
                                         tarifsDegr = []
