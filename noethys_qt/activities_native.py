@@ -1,8 +1,9 @@
 """Lance le prototype Activités Qt sans importer wx/GestionDB.
 
-Ce pont de lecture est volontairement minimal et en lecture seule. Il lit la
-configuration Noethys historique directement puis ouvre soit la base SQLite
-locale, soit la base MySQL réseau avec mysql.connector.
+Ce pont de lecture est volontairement minimal. Il lit la configuration Noethys
+historique directement puis ouvre soit la base SQLite locale, soit la base
+MySQL réseau avec mysql.connector. La liste reste indépendante de wx et la
+modification progressive d'une activité passe désormais par une fenêtre Qt.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QDialog, QMessageBox, QStyle, QToolBar
 
 from .activities_prototype import (
     ActivitiesWindow,
@@ -71,12 +72,7 @@ def _custom_data_dir() -> Path | None:
 
 
 def _data_database_name(name: str) -> str:
-    """Reproduit le suffixe ``DATA`` ajouté par ``GestionDB.DB()``.
-
-    ``Config.json`` stocke le nom logique de la base. Le runtime historique
-    ajoute ensuite ``_DATA`` lorsqu'il ouvre la base principale. Le prototype
-    natif doit conserver exactement ce contrat, notamment pour MySQL.
-    """
+    """Reproduit le suffixe ``DATA`` ajouté par ``GestionDB.DB()``."""
     normalized = name.strip()
     if normalized.lower().endswith("_data"):
         return normalized
@@ -130,7 +126,7 @@ def _query(only_open: bool, placeholder: str) -> tuple[str, tuple[object, ...]]:
 
 
 class NativeConfiguredActivityRepository(ActivityRepository):
-    """Lecture seule de la base configurée, sans importer le runtime wx."""
+    """Lecture de la base configurée, sans importer le runtime wx."""
 
     def fetch(self, only_open: bool = False) -> list[ActivityRow]:
         config = _load_config()
@@ -192,6 +188,74 @@ class NativeConfiguredActivityRepository(ActivityRepository):
             connection.close()
 
 
+class NativeActivitiesWindow(ActivitiesWindow):
+    """Liste Qt enrichie du premier dialogue de modification réel."""
+
+    def __init__(
+        self,
+        repository: ActivityRepository,
+        *,
+        editor_sqlite_path: Path | None = None,
+        initial_open_only: bool = False,
+        requested_theme: str | None = None,
+    ):
+        self.editor_sqlite_path = editor_sqlite_path
+        super().__init__(
+            repository,
+            initial_open_only=initial_open_only,
+            requested_theme=requested_theme,
+        )
+
+        self.modify_action = self.deferred_actions[1]
+        self.modify_action.setEnabled(False)
+        self.modify_action.setToolTip("Modifier l'activité sélectionnée")
+        self.modify_action.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogDetailedView)
+        )
+        self.modify_action.triggered.connect(self._edit_selected)
+
+        toolbar = self.findChild(QToolBar)
+        if toolbar is not None:
+            toolbar.insertAction(self.export_text_action, self.modify_action)
+            toolbar.insertSeparator(self.export_text_action)
+
+        selection_model = self.table.selectionModel()
+        if selection_model is not None:
+            selection_model.selectionChanged.connect(self._sync_modify_action)
+        self.table.doubleClicked.connect(self._edit_selected)
+        self._sync_modify_action()
+
+    def _selected_activity_id(self) -> int | None:
+        index = self.table.currentIndex()
+        if not index.isValid():
+            return None
+        source_index = self.proxy.mapToSource(index)
+        if not source_index.isValid():
+            return None
+        return self.model.row_at(source_index.row()).activity_id
+
+    def _sync_modify_action(self, *_args) -> None:
+        self.modify_action.setEnabled(self._selected_activity_id() is not None)
+
+    def _edit_selected(self, *_args) -> None:
+        activity_id = self._selected_activity_id()
+        if activity_id is None:
+            return
+
+        try:
+            from .activity_editor import ActivityEditorDialog, NativeActivityEditorRepository
+
+            editor_repository = NativeActivityEditorRepository(self.editor_sqlite_path)
+            dialog = ActivityEditorDialog(editor_repository, activity_id, self)
+        except Exception as exc:
+            QMessageBox.critical(self, "Modification impossible", str(exc))
+            return
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.reload()
+            self._sync_modify_action()
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parse_args(argv)
     app = QApplication(sys.argv[:1])
@@ -204,8 +268,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     else:
         repository = NativeConfiguredActivityRepository()
 
-    window = ActivitiesWindow(
+    window = NativeActivitiesWindow(
         repository,
+        editor_sqlite_path=args.sqlite,
         initial_open_only=args.open_only,
         requested_theme=args.theme,
     )
