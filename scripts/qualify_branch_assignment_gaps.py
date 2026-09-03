@@ -145,6 +145,36 @@ EXPLICIT_SAFE = {
     ('Dlg/DLG_Releve_prestations_saisie.py', 'GetPeriode', 'parametres', 'body_only', 'e4e498bf1ad21e688ae114bed74ab2c2938c18cceb08061764d1b6902c760e4c'): (
         'les sept périodes appartiennent au même groupe wx.RadioButton ouvert par radio_tout avec wx.RB_GROUP ; un membre est donc actif et la branche correspondante affecte parametres avant le retour'
     ),
+    ('Dlg/DLG_Impression_don_oeuvres.py', 'SetListeDonnees', 'nomTitulaires', 'body_only', '00f3603e1115e49c00a56d85121d852ac88660246cc1e15af30c0d039ea58258'): (
+        'nbreTitulaires vient de len(listeTitulaires) ; les cas 0, 1, 2 et > 2 sont exhaustifs et affectent nomTitulaires'
+    ),
+    ('Dlg/DLG_Saisie_cotisation.py', 'SetListeDonnees', 'nomTitulaires', 'body_only', '24c2be783944620320109b1f00badfa42aafd2509acc980ceb8999badbec69b9'): (
+        'nbreTitulaires vient de len(listeTitulaires) ; les cas 0, 1, 2 et > 2 sont exhaustifs et affectent nomTitulaires'
+    ),
+    ('Dlg/DLG_Saisie_cotisation.py', 'MAJ', 'nomTitulaires', 'body_only', '9421712a7bb2f16c698f77752b49ea7bfc8512740a744c362579c2c610b3f710'): (
+        'nbreTitulaires vient de len(listeTitulaires) ; les cas 0, 1, 2 et > 2 sont exhaustifs et affectent nomTitulaires'
+    ),
+    ('Dlg/DLG_Saisie_cotisation.py', 'MAJ', 'IDcompte_payeur', 'body_only', '0bae14cfb9ce3fd17ae7eef5f7d714a9825baaee6e07cb64eb344dd1c9e60f18'): (
+        "si listeTitulaires est vide IDcompte_payeur est mis à None ; sinon la boucle qui a rempli la liste l'a déjà affecté"
+    ),
+    ('Ol/OL_Etat_nomin_resultats.py', '__init__', 'valeur', 'partial_branches', '9cd718823faa61de4c31850db7909ec0ace156e8e319475584f68ed3e2255601'): (
+        'prefixe parcourt uniquement NBRE, TEMPS et TEMPS_FACTURE ; le cas NBRE et le couple TEMPS/TEMPS_FACTURE affectent valeur avant setattr'
+    ),
+    ('Utils/UTILS_Sauvegarde.py', 'Sauvegarde', 'err', 'body_only', 'a7768a2427dd2bbcc182784fbfaefe6f2908d5983a1a7b6a1ef8f3b5683d09da'): (
+        "err est lié par le except Exception as err externe ; le try/except interne n'a pas de cible d'exception et ne supprime pas cette liaison"
+    ),
+    ('Dlg/DLG_Releve_prestations_saisie.py', 'GetOptions', 'regroupement', 'partial_branches', '076091d5da5f887d72e44ead6c19551a4f24a866ae3bc47508263d60a65f76b4'): (
+        "le wx.Choice contient exactement Date, Mois, Année et démarre à l'index 0 ; les index 0, 1, 2 couvrent donc le domaine lorsque le regroupement est actif"
+    ),
+    ('Dlg/DLG_Saisie_texte_html.py', 'Importation', 'condition', 'body_only', '09773fc59fe8f6a53f5862d9c2eb465a40e74c0e20697ef31d1bdcfd461dafa5'): (
+        "le constructeur n'appelle Importation que si IDelement ou categorie est non nul ; chacun de ces gardes affecte condition avant la requête"
+    ),
+    ('Dlg/DLG_Stats.py', 'Imprimer', 'html', 'body_only', '887c7c1ab10848c856b90de60e7518a933e3b6bad66a8c599a817d9ea34c5d74'): (
+        "Imprimer n'est relié qu'aux commandes 10, 20 et 30 ; chacune affecte html avant son utilisation"
+    ),
+    ('Utils/UTILS_Stats_modeles.py', 'GetHTML', 'html', 'body_only', 'ab5adc57bb82b744f682a74ae2e913119a6c854d0e1807af3366f759b0cae858'): (
+        'le garde initial rejette tout mode autre que affichage/impression ; chacun des deux modes autorisés affecte html avant le retour'
+    ),
 }
 
 def _candidate_fingerprint(root, item):
