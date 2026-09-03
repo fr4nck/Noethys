@@ -2,6 +2,37 @@
 
 Ce fichier conserve les décisions qui changent le périmètre des branches ou la manière de développer Noethys. Il doit être mis à jour lorsqu'une décision durable est prise afin qu'elle ne reste pas uniquement dans une conversation.
 
+## 3 septembre 2026 — branche Qt expérimentale strictement isolée
+
+### Décision
+
+Créer une ligne expérimentale `poc/qt-theme-isole`, dérivée d'Upgrade, afin d'évaluer le remplacement progressif de la couche graphique wxPython par Qt/PySide6.
+
+Le principe n'est pas de réécrire Noethys : la base, les règles métier, les traitements, les exports et les comportements fonctionnels historiques restent les invariants à préserver. Les tableaux actuels constituent un contrat de densité et de fonctionnalités, même si leur rendu est remplacé.
+
+Le premier écran témoin est la gestion des activités (`Ol/OL_Activites.py`). Le prototype n°1 reste en lecture seule côté base et doit prouver le raccordement des vraies données à un `QTableView` avant toute migration des dialogues d'édition.
+
+### Motif
+
+La transition graphique de Teamworks a montré qu'une architecture graphique trop ambitieuse, un moteur de thème maison et des couches d'adaptation généralisées peuvent masquer très tôt la valeur réelle d'une migration. Noethys Qt doit donc être jugé sur un écran concret avant tout investissement transversal.
+
+### Conséquences
+
+- aucune modification de `maintenance/vanilla` ;
+- aucune fusion automatique de la branche Qt vers `master` ;
+- pas de moteur de thème maison comme préalable ;
+- pas de dimensionnement fixe des boutons et formulaires comme méthode de layout ;
+- conservation des colonnes, tris, sélections, menus et densité des tableaux historiques ;
+- extraction métier/UI uniquement lorsqu'elle est nécessaire à un écran réel ;
+- seuil d'arrêt : 2 jours sans tableau réel fonctionnel, 4 jours sans prototype complet ;
+- toute décision de généraliser Qt à Upgrade devra faire l'objet d'une décision distincte après recette du prototype.
+
+### Périmètre du prototype n°1
+
+Opérationnel : chargement réel des activités, tri, sélection, redimensionnement, filtre des activités ouvertes, actualisation, export Texte et export Excel.
+
+Hors périmètre provisoire : Ajouter, Modifier, Supprimer, Dupliquer, Importer, export complet d'une activité, aperçu avant impression et impression.
+
 ## 25 août 2026 — séparation stricte Vanilla / Upgrade
 
 ### Décision

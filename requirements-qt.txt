@@ -1,0 +1,3 @@
+# Dépendances exclusives au chantier Qt isolé.
+# Ne pas fusionner dans la ligne Vanilla.
+PySide6>=6.8,<7
