@@ -13,7 +13,7 @@ replacement = (
     "                                        montant_tarif_tmp = 0.0\n"
     "                                        # Si tarif unique pour chacun des individus\n"
 )
-if source.count(marker) < 2:
+if source.count(marker) != 1:
     raise SystemExit("Structure CTRL_Grille inattendue")
 source_path.write_text(source.replace(marker, replacement, 1), encoding="utf-8")
 
