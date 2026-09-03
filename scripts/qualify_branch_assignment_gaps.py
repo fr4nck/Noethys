@@ -255,6 +255,31 @@ EXPLICIT_SAFE = {
         'listeRefExistantes est construite sous full_synchro == True et sa seule lecture signalée est protégée par le même garde'
     ),
 
+    ('Ctrl/CTRL_Synthese_conso.py', 'Importation', 'regroupement', 'body_only', 'c4030bbe4160747afa4dcbbc5b40573de7db9ec3930fdb04b9280f8b47bc5039'): (
+        'affichage_lignes provient du choix UI fini de DLG_Synthese_conso ; chaque code déclaré, y compris les questionnaires famille/individu, affecte regroupement et le bloc try fournit en plus un repli None'
+    ),
+    ('Ctrl/CTRL_Synthese_conso.py', 'Importation', 'valeur', 'body_only', 'e34ccdd2cceaa6f4acb3774495e23d5f116d851f4d8966a7959b42ddc28e82af'): (
+        "affichage_valeurs provient d'un choix UI à trois valeurs quantite/temps_presence/temps_facture, toutes trois affectant valeur avant son utilisation"
+    ),
+    ('Ctrl/CTRL_Synthese_deductions.py', 'Importation', 'regroupement', 'body_only', '3641952e2069fbf86fb142decf6aa0843a1fed6835a2f6f259964010f4e50eb6'): (
+        'affichage_regroupement provient du choix UI fini de DLG_Synthese_deductions ; chaque code déclaré et les questionnaires famille affectent regroupement, avec repli None dans le try/except'
+    ),
+    ('Ctrl/CTRL_Synthese_locations.py', 'Importation', 'regroupement', 'body_only', '4b46ed148e1373aba5c70629cbae2fd44f113c1c4d96f6ae3273a56574a8b7d3'): (
+        'affichage_regroupement provient du choix UI fini de DLG_Synthese_locations ; chaque code déclaré et les questionnaires famille affectent regroupement, avec repli None dans le try/except'
+    ),
+    ('Ctrl/CTRL_Synthese_modes_reglements.py', 'Importation', 'condition', 'body_only', '4b035aa113b05943472c47c01fae9ac2ed809392622106cd5a81e0b3f3bb6ec3'): (
+        'mode provient de Parametres.GetMode, lui-même adossé à un groupe radio wx exhaustif saisie/depose/nondepose ; les trois valeurs affectent condition'
+    ),
+    ('Ol/OL_Liste_factures_detail.py', '__init__', 'label_key', 'body_only', '844bfd458f15972c32467b0877ee092cffd3bf824e52129c2b7be00e4592f6d1'): (
+        "ListView.detail est initialisé à label et l'unique sélecteur de DLG_Liste_factures_detail le borne à label ou IDactivite ; les deux branches affectent label_key"
+    ),
+    ('Ol/OL_Liste_factures_detail.py', 'InitObjectListView', 'label_colonne', 'body_only', 'be48c350db30c96e78cf921ec8f631013cb9f36b7bb4796eb062cc6841a97ecf'): (
+        'le même domaine fini label/IDactivite gouverne le détail de facture et les deux branches affectent label_colonne avant la création de colonne'
+    ),
+    ('Dlg/DLG_Saisie_tarification.py', 'Sauvegarde', 'DB', 'body_only', '2b4755c2feeaa043e4ca12c5a7422c19c54b306778a931ab76471ee67f38fe48'): (
+        'après la correction #347, DB est créé uniquement sous self.track_tarif == None et chaque opération base restante, suppression de filtres et fermeture comprises, est protégée par ce même mode non-track'
+    ),
+
 }
 
 def _candidate_fingerprint(root, item):
