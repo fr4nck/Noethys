@@ -1,0 +1,39 @@
+name: Temporary scan safe contracts 2
+
+on:
+  push:
+    branches:
+      - audit/call-contract-safe-invariants-2
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+      - name: Scanner les candidats ciblés
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from scripts import audit_branch_assignment_gaps as audit
+          root = Path('noethys')
+          files = (
+              'Dlg/DLG_Badgeage_importation.py',
+              'Dlg/DLG_Saisie_contrat_periode_auto.py',
+              'Dlg/DLG_Saisie_lot_ouvertures2.py',
+              'Dlg/DLG_Liste_envoi_email.py',
+              'Dlg/DLG_Individu_coords.py',
+              'Ol/OL_Prelevements_sepa.py',
+              'Ol/OL_Archivage.py',
+          )
+          for relative in files:
+              print('\n###', relative)
+              for item in audit.scan_file(root / relative, root):
+                  print(item)
+          PY
