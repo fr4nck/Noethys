@@ -2964,6 +2964,9 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                                         for x in range(0, 20) : tarifsDegr.append(0.0)
                                         montant_tarif = tarifsDegr[nbreIndividus-1]
                                     else:
+                                        # Un palier nul reste un tarif valide : le recalcul doit pouvoir ramener
+                                        # explicitement les prestations restantes à 0.0.
+                                        montant_tarif_tmp = 0.0
                                         # Si tarif unique pour chacun des individus
                                         if nbreIndividus == 1 and montant_enfant_1 != None and montant_enfant_1 != 0.0 : montant_tarif_tmp = montant_enfant_1
                                         if nbreIndividus == 2 and montant_enfant_2 != None and montant_enfant_2 != 0.0 : montant_tarif_tmp = montant_enfant_2
