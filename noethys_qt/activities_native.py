@@ -25,6 +25,7 @@ from .activities_prototype import (
     ActivityRow,
     _parse_args,
 )
+from .activity_visuals import apply_activity_visuals
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -208,6 +209,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         initial_open_only=args.open_only,
         requested_theme=args.theme,
     )
+    apply_activity_visuals(window)
     window.show()
     return app.exec()
 
