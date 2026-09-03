@@ -96,6 +96,15 @@ class CtrlGrilleFamilyHourlyUnmatchedRangeTests(unittest.TestCase):
         # des montants de la première ligne de calcul.
         self.assertEqual(montant, 0.0)
 
+    def test_hourly_branch_resets_all_family_rank_amounts_before_matching(self):
+        source = SOURCE.read_text(encoding="utf-8")
+        start = source.index('            if "horaire" in methode_calcul  :')
+        end = source.index("                # Recherche des heures debut et fin des unités cochées", start)
+        hourly_prologue = source[start:end]
+
+        for rank in range(1, 7):
+            self.assertIn(f"montant_enfant_{rank} = None", hourly_prologue)
+
 
 if __name__ == "__main__":
     unittest.main()
