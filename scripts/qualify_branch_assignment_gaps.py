@@ -221,6 +221,40 @@ EXPLICIT_SAFE = {
         'dans chaque itération, niveauPrestation est créé sous affichage_details == True et toutes ses lectures ultérieures sont protégées par ce même garde'
     ),
 
+    ('Ctrl/CTRL_Informations.py', 'GetRenseignements', 'dictDonneesFamille', 'body_only', '553a2da43f84d88750fa5cb2f80464a15ef3ba297a7840808cc1c1ec880695e1'): (
+        'dictDonneesFamille est créé dès que self.IDfamille est renseigné ; toutes les lectures famille signalées sont elles-mêmes gardées par self.IDfamille != None'
+    ),
+    ('Ctrl/CTRL_Tarification_calcul.py', 'Sauvegarde', 'DB', 'body_only', '64b232151781a42f76e5ebbb62132ce5462d24ea671a58ba1a1d6690135805c2'): (
+        "DB n'existe qu'en mode sans track_tarif et chaque accès base de la méthode est protégé par ce même test self.track_tarif == None"
+    ),
+    ('Ctrl/CTRL_Tarification_forfait.py', 'Sauvegarde', 'options', 'body_only', '5c43f37bd39a724ca1e53df08e464bd741babaaf1d5ec0309b045b336d58f19c'): (
+        'les trois boutons radio forment un groupe wx exhaustif ; chacun des trois états affecte options avant la sauvegarde'
+    ),
+    ('Dlg/DLG_Appliquer_forfait.py', 'Applique_forfait', 'IDgroupe', 'body_only', 'f277d576ab915af8a7ae2f65be13da20afaa2188ff62e865c7452ce0791bf34b'): (
+        "IDgroupe est affecté en même temps que IDcategorie_tarif_temp ; le flot aval ne l'utilise que sous le garde IDcategorie_tarif_temp != None"
+    ),
+    ('Dlg/DLG_Appliquer_forfait.py', 'Applique_forfait', 'IDinscription', 'body_only', '721fdff3ed814dddb85acdb5de0dd73261b4a31c4e78610cc56c927c9f69e0ca'): (
+        'IDinscription est affecté en même temps que IDcategorie_tarif_temp ; les consommations ne sont créées que dans le flot gardé par IDcategorie_tarif_temp != None'
+    ),
+    ('Dlg/DLG_Nbre_inscrits_2.py', 'MAJ', 'dictGroupeParActivite', 'body_only', '8b5c81c2346031249d856905667d48be2f7cd54b01752cec2beeb419b0d58c84'): (
+        "dictGroupeParActivite est créé lorsque regroupement_groupe_activites == 1 et sa lecture est dans le second opérande d'un and portant exactement le même test"
+    ),
+    ('Ol/OL_PES_pieces.py', 'GetTracks', 'criteres', 'body_only', 'e4d0949a679a053f1a5caf53ae039116b8e72df5f022726f0c0d6c3747da065c'): (
+        'si IDlot et IDmandat sont tous deux None la fonction retourne immédiatement ; sinon au moins une des deux branches affecte criteres avant la requête'
+    ),
+    ('Utils/UTILS_Portail_synchro.py', 'Upload_data', 'IDfamille', 'body_only', '507611e7116da5de8ffffe3e27c3b3f24bc49331d084a640056b7eeeeb7e5a84'): (
+        'profil parcourt littéralement famille/utilisateur ; les deux branches affectent IDfamille avant toute lecture'
+    ),
+    ('Utils/UTILS_Portail_synchro.py', 'Upload_data', 'IDutilisateur', 'body_only', 'ea2ef62443e863b14b71ade08b1529287e5bc2d560f41127a0681fd7276f8386'): (
+        'profil parcourt littéralement famille/utilisateur ; les deux branches affectent IDutilisateur avant la création du compte'
+    ),
+    ('Utils/UTILS_Portail_synchro.py', 'Upload_data', 'nomDossier', 'body_only', '6da45fa1c42a7ca448ba000d773ab5d6cb9fdd5742a4c133d63986519cde66ab'): (
+        'profil parcourt littéralement famille/utilisateur et chacune des deux valeurs affecte nomDossier avant anonymisation ou création du compte'
+    ),
+    ('Utils/UTILS_Portail_synchro.py', 'Download_data', 'listeRefExistantes', 'body_only', '95cfbe85369db500f839937ef8cd70a610fe0c509ddf536aceed728850cce8eb'): (
+        'listeRefExistantes est construite sous full_synchro == True et sa seule lecture signalée est protégée par le même garde'
+    ),
+
 }
 
 def _candidate_fingerprint(root, item):
