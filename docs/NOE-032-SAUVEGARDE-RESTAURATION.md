@@ -30,7 +30,10 @@ Le correctif Noe-032b conserve les formats et la logique métier existants. Il a
 - nettoyage garanti de ces répertoires même si `Popen`, `communicate()`, la création du fichier de connexion ou l'extraction SQL lève une exception ;
 - commande `mysqldump` en `--opt --single-transaction --skip-lock-tables` ;
 - tentative de fermeture du transport de messagerie après exception ;
-- suppression des archives temporaires de travail sur les chemins de succès et d'échec explicitement gérés.
+- suppression des archives temporaires de travail sur les chemins de succès et d'échec explicitement gérés ;
+- refus d'un SQL vide ou sans charge restauratrice avant lancement de `mysql` ;
+- création d'une base MySQL absente uniquement après validation de la charge SQL, avec contrôle de l'échec de création ;
+- après un retour `mysql` nul, reconnexion à la cible et exigence d'au moins une table ou vue avant de comptabiliser la restauration comme réussie.
 
 ## Précautions obligatoires
 
@@ -48,7 +51,10 @@ Le correctif Noe-032b conserve les formats et la logique métier existants. Il a
 - restauration d'un fichier SQLite depuis une archive `.nod` ;
 - remplacement d'un fichier SQLite existant après confirmation ;
 - chemin de restauration réseau avec import MySQL simulé réussi ;
-- valeur de retour listant correctement les fichiers restaurés.
+- valeur de retour listant correctement les fichiers restaurés ;
+- refus d'un SQL sans effet (`SELECT 1;`) avant appel à `mysql` ;
+- absence de création d'une base manquante lorsque le SQL est sans effet ;
+- refus d'un retour `mysql` nul si la cible ne contient toujours aucune table ou vue.
 
 `tests/test_noe_032_backup_integrity.py` couvre les nouveaux invariants Noe-032b :
 
@@ -59,8 +65,6 @@ Le correctif Noe-032b conserve les formats et la logique métier existants. Il a
 - confinement et nettoyage lorsqu'un appel à `Popen` lève pendant la sauvegarde ou la restauration ;
 - confinement et nettoyage lorsqu'une extraction SQL échoue avant l'appel à `mysql` ;
 - suppression de `restoretemp` après échec simulé du client `mysql` ;
-- refus d’un SQL vide ou sans charge restauratrice avant lancement du client `mysql` ;
-- postcondition après import : la base cible doit être accessible et exposer au moins une table ou vue avant d’être comptée comme restaurée ;
 - fermeture du transport de messagerie et suppression de l'archive temporaire après échec d'envoi.
 
 Ces tests sont inclus automatiquement dans la suite métier Noe-031 (`tests/test_*.py`).
