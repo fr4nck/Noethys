@@ -72,159 +72,69 @@ jobs:
           python scripts/check_schema_compatibility.py HEAD^ HEAD
 
   package:
-    name: Construire la RC Windows portable
+    name: Construire et tester la RC Windows
     needs: gate
-    runs-on: windows-latest
-    timeout-minutes: 45
+    uses: ./.github/workflows/windows-package.yml
+
+  publish:
+    name: Préparer et publier la RC
+    needs:
+      - gate
+      - package
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-python@v7
+      - name: Télécharger le portable qualifié
+        uses: actions/download-artifact@v7
         with:
-          python-version: "3.10"
-          cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-build.txt
+          name: Noethys-Windows-portable
+          path: rc-input
 
-      - name: Installer les dépendances de fabrication
-        run: python -m pip install --upgrade pip wheel && python -m pip install -r requirements-build.txt
-
-      - name: Appliquer les corrections runtime Python 3 validées
-        run: python scripts/apply_py3_runtime_source_fixes.py
-
-      - name: Compiler les sources corrigées
-        run: python -m compileall -q noethys
-
-      - name: Valider les piles fonctionnelles optionnelles
-        run: python scripts/smoke_optional_feature_stacks.py
-
-      - name: Valider la génération PDF Unicode
-        run: python scripts/smoke_reportlab_unicode_pdf.py
-
-      - name: Valider les ressources PyInstaller essentielles
-        run: python scripts/smoke_packaged_resources.py
-
-      - name: Construire le dossier portable
-        run: pyinstaller --noconfirm --clean packaging/noethys.spec
-
-      - name: Vérifier l'exécutable et le layout historique
-        shell: pwsh
-        run: |
-          if (-not (Test-Path "dist/Noethys/Noethys.exe")) {
-            throw "Noethys.exe absent du résultat PyInstaller"
-          }
-          foreach ($resource in @("Static", "Versions.txt", "Licence.txt", "Icone.ico")) {
-            $path = Join-Path "dist/Noethys" $resource
-            if (-not (Test-Path $path)) {
-              throw "Ressource attendue à côté de Noethys.exe absente : $resource"
-            }
-          }
-          if (Test-Path "dist/Noethys/_internal") {
-            throw "Layout PyInstaller 6 _internal détecté : incompatible avec Chemins.py historique"
-          }
-
-      - name: Activer l'isolation portable
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Path "dist/Noethys/Portable" -Force | Out-Null
-          Copy-Item "packaging/portable/README.txt" "dist/Noethys/Portable/README.txt"
-
-      - name: Écrire les informations de RC
-        shell: pwsh
-        env:
-          RC_TAG: ${{ needs.gate.outputs.rc_tag }}
-        run: |
-          $pythonVersion = (python --version 2>&1)
-          @(
-            "Noethys portable Windows — Release Candidate"
-            "RC: $env:RC_TAG"
-            "Commit: $env:GITHUB_SHA"
-            "Python: $pythonVersion"
-            "Workflow run: $env:GITHUB_RUN_ID"
-            "Portable mode: enabled (Portable/)"
-            "Python 3 source fixes: applied before PyInstaller"
-            "Real DB recipe: confirmed before workflow dispatch"
-            "Build UTC: $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
-          ) | Set-Content -Path "dist/Noethys/BUILD-INFO.txt" -Encoding UTF8
-
-      - name: Créer l'archive RC
-        shell: pwsh
-        env:
-          RC_TAG: ${{ needs.gate.outputs.rc_tag }}
-        run: |
-          $safeTag = $env:RC_TAG -replace '[^A-Za-z0-9._-]', '-'
-          $archive = "Noethys-Windows-portable-$safeTag.zip"
-          Compress-Archive -Path "dist/Noethys/*" -DestinationPath $archive
-          "archive=$archive" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+      - name: Marquer l'archive comme Release Candidate
         id: archive
-
-      - name: Tester l'archive extraite sans environnement Python
-        shell: pwsh
+        shell: bash
         env:
-          ARCHIVE: ${{ steps.archive.outputs.archive }}
+          RC_TAG: ${{ needs.gate.outputs.rc_tag }}
         run: |
-          $testRoot = Join-Path $env:RUNNER_TEMP "noethys-rc-frozen-smoke"
-          $profileRoot = Join-Path $env:RUNNER_TEMP "noethys-rc-frozen-profile"
-          Remove-Item $testRoot -Recurse -Force -ErrorAction SilentlyContinue
-          Remove-Item $profileRoot -Recurse -Force -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Path $testRoot | Out-Null
-          New-Item -ItemType Directory -Path $profileRoot | Out-Null
-          Expand-Archive -Path $env:ARCHIVE -DestinationPath $testRoot
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          import re
+          import zipfile
+          from pathlib import Path
 
-          $exe = Join-Path $testRoot "Noethys.exe"
-          if (-not (Test-Path $exe)) { throw "Noethys.exe absent de l'archive RC" }
-          if (-not (Test-Path (Join-Path $testRoot "Portable/README.txt"))) {
-            throw "Marqueur Portable absent de l'archive RC"
-          }
+          rc_tag = os.environ["RC_TAG"]
+          safe_tag = re.sub(r"[^A-Za-z0-9._-]", "-", rc_tag)
+          source = Path("rc-input/Noethys-Windows-portable.zip")
+          target = Path(f"Noethys-Windows-portable-{safe_tag}.zip")
 
-          $savedPath = $env:PATH
-          $savedPythonHome = $env:PYTHONHOME
-          $savedPythonPath = $env:PYTHONPATH
-          $savedAppData = $env:APPDATA
-          $savedLocalAppData = $env:LOCALAPPDATA
-          try {
-            $env:NOETHYS_FROZEN_SMOKE = "1"
-            $env:PYTHONHOME = ""
-            $env:PYTHONPATH = ""
-            $env:APPDATA = Join-Path $profileRoot "Roaming"
-            $env:LOCALAPPDATA = Join-Path $profileRoot "Local"
-            New-Item -ItemType Directory -Path $env:APPDATA -Force | Out-Null
-            New-Item -ItemType Directory -Path $env:LOCALAPPDATA -Force | Out-Null
-            $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          if not source.is_file():
+              raise SystemExit(f"Archive portable absente : {source}")
 
-            $process = Start-Process -FilePath $exe -PassThru
-            if (-not $process.WaitForExit(30000)) {
-              $process.Kill()
-              throw "Le smoke de la RC n'a pas quitté sous 30 secondes"
-            }
-            $errorMarker = Join-Path $testRoot "FROZEN-SMOKE-ERROR.txt"
-            $okMarker = Join-Path $testRoot "FROZEN-SMOKE-OK.txt"
-            if ($process.ExitCode -ne 0) {
-              if (Test-Path $errorMarker) { Get-Content $errorMarker | Write-Error }
-              throw "Smoke RC en échec (code $($process.ExitCode))"
-            }
-            if (-not (Test-Path $okMarker)) {
-              throw "La RC a quitté sans marqueur de validation"
-            }
-            Get-Content $okMarker
-            if (Test-Path (Join-Path $env:APPDATA "noethys")) {
-              throw "La RC portable a écrit dans APPDATA"
-            }
-            if (Test-Path (Join-Path $env:LOCALAPPDATA "noethys")) {
-              throw "La RC portable a écrit dans LOCALAPPDATA"
-            }
-          }
-          finally {
-            Remove-Item Env:NOETHYS_FROZEN_SMOKE -ErrorAction SilentlyContinue
-            $env:PATH = $savedPath
-            $env:PYTHONHOME = $savedPythonHome
-            $env:PYTHONPATH = $savedPythonPath
-            $env:APPDATA = $savedAppData
-            $env:LOCALAPPDATA = $savedLocalAppData
-          }
+          with zipfile.ZipFile(source, "r") as zin:
+              names = zin.namelist()
+              if "BUILD-INFO.txt" not in names:
+                  raise SystemExit("BUILD-INFO.txt absent du portable qualifié")
+              build_info = zin.read("BUILD-INFO.txt").decode("utf-8-sig")
+              build_info = build_info.rstrip() + "\n" + "\n".join([
+                  "Release Candidate: yes",
+                  f"RC: {rc_tag}",
+                  f"RC workflow run: {os.environ['GITHUB_RUN_ID']}",
+                  "Real DB recipe: confirmed before workflow dispatch",
+              ]) + "\n"
 
-      - uses: actions/upload-artifact@v7
+              with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+                  for info in zin.infolist():
+                      if info.filename == "BUILD-INFO.txt":
+                          continue
+                      zout.writestr(info, zin.read(info.filename))
+                  zout.writestr("BUILD-INFO.txt", build_info.encode("utf-8"))
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"archive={target}\n")
+          PY
+
+      - name: Conserver l'archive RC
+        uses: actions/upload-artifact@v7
         with:
           name: Noethys-Windows-RC-${{ needs.gate.outputs.rc_tag }}
           path: ${{ steps.archive.outputs.archive }}
@@ -232,24 +142,29 @@ jobs:
           retention-days: 30
 
       - name: Publier une release GitHub en brouillon
-        shell: pwsh
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           RC_TAG: ${{ needs.gate.outputs.rc_tag }}
           ARCHIVE: ${{ steps.archive.outputs.archive }}
         run: |
-          $notes = @"
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/rc-notes.md" <<EOF
           Release Candidate Upgrade Noethys
 
-          - commit : $env:GITHUB_SHA
+          - commit : $GITHUB_SHA
           - Python : 3.10
           - portable Windows : oui
+          - installateur Windows : qualifié par le builder commun
           - corrections runtime Python 3 appliquées avant PyInstaller
           - recette sur copie réelle : déclarée validée au déclenchement
           - CI métier/SQL/runtime rejouée avant fabrication
+          - portable et installateur issus du workflow Windows commun
 
           Cette release est créée en brouillon. Elle doit être relue avant publication.
-          "@
-          $notesPath = Join-Path $env:RUNNER_TEMP "rc-notes.md"
-          Set-Content -Path $notesPath -Value $notes -Encoding UTF8
-          gh release create $env:RC_TAG $env:ARCHIVE --draft --target $env:GITHUB_SHA --title "Noethys $env:RC_TAG" --notes-file $notesPath
+          EOF
+          gh release create "$RC_TAG" "$ARCHIVE" \
+            --draft \
+            --target "$GITHUB_SHA" \
+            --title "Noethys $RC_TAG" \
+            --notes-file "$RUNNER_TEMP/rc-notes.md"
