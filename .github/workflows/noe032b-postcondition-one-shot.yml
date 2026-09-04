@@ -1,0 +1,277 @@
+name: NOE-032b postcondition one-shot
+
+on:
+  push:
+    branches:
+      - fix/noe-032b-backup-integrity
+    paths:
+      - .github/workflows/noe032b-postcondition-one-shot.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/noe-032b-backup-integrity
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Appliquer la postcondition de restauration MySQL
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import ast
+
+          source_path = Path('noethys/Utils/UTILS_Sauvegarde.py')
+          source = source_path.read_text(encoding='utf-8')
+
+          if 'import re\n' not in source:
+              source = source.replace('import time\n', 'import time\nimport re\n', 1)
+
+          helper_anchor = '''def _TexteErreurProcessus(valeur):
+              """ Normalise la sortie des clients MySQL pour l'affichage des erreurs. """
+              if isinstance(valeur, bytes):
+                  return valeur.decode("utf-8", errors="replace")
+              return str(valeur)
+          '''
+          helper_block = helper_anchor + '''
+
+          _SQL_RESTAURATION_RE = re.compile(
+              r"\\b(?:CREATE\\s+(?:(?:OR\\s+REPLACE|TEMPORARY|ALGORITHM\\s*=\\s*\\S+|DEFINER\\s*=\\s*\\S+|SQL\\s+SECURITY\\s+\\w+)\\s+)*(?:TABLE|VIEW|TRIGGER|PROCEDURE|FUNCTION|EVENT)|INSERT\\s+(?:IGNORE\\s+)?INTO|REPLACE\\s+INTO)\\b",
+              re.IGNORECASE,
+          )
+
+
+          def _SQLContientChargeRestauratrice(fichier):
+              """ Vérifie qu'un export SQL contient une charge utile de restauration. """
+              try:
+                  with open(fichier, "rb") as flux:
+                      contenu = flux.read()
+              except (IOError, OSError):
+                  return False
+              if not contenu or not contenu.strip():
+                  return False
+              if isinstance(contenu, bytes):
+                  texte = contenu.decode("utf-8", "ignore")
+              else:
+                  texte = contenu
+              # Ignore les commentaires ordinaires mais conserve le SQL conditionnel /*!xxxxx ... */ de mysqldump.
+              texte = re.sub(r"/\\*(?!\\!)[\\s\\S]*?\\*/", " ", texte)
+              texte = re.sub(r"/\\*!\\d{5,6}\\s*(.*?)\\*/", r" \\1 ", texte, flags=re.S)
+              texte = re.sub(r"(?m)^\\s*(?:--(?:\\s|$)|#).*$", " ", texte)
+              return _SQL_RESTAURATION_RE.search(texte) is not None
+
+
+          def _BaseMySQLContientObjets(dictConnexion, fichier):
+              """ Postcondition minimale : la base cible doit être accessible et contenir au moins une table ou vue. """
+              nomFichier = u"%s;%s;%s;%s[RESEAU]%s" % (
+                  dictConnexion["port"], dictConnexion["host"], dictConnexion["user"], dictConnexion["password"], fichier)
+              DB = GestionDB.DB(suffixe=None, nomFichier=nomFichier)
+              try:
+                  if getattr(DB, "echec", 1) == 1:
+                      return False
+                  return len(DB.GetListeTables()) > 0
+              finally:
+                  DB.Close()
+          '''
+          if 'def _SQLContientChargeRestauratrice(' not in source:
+              if helper_anchor not in source:
+                  raise SystemExit('ancre helper introuvable')
+              source = source.replace(helper_anchor, helper_block, 1)
+
+          extract_anchor = '''                # Copie du fichier SQL dans le répertoire Temp / restoretemp
+                          fichierZip.extract(u"%s.sql" % fichier, repTemp)
+                          fichierRestore = u"%s/%s.sql" % (repTemp, fichier)
+
+                          # Importation du fichier SQL dans MySQL
+          '''
+          extract_replacement = '''                # Copie du fichier SQL dans le répertoire Temp / restoretemp
+                          fichierZip.extract(u"%s.sql" % fichier, repTemp)
+                          fichierRestore = u"%s/%s.sql" % (repTemp, fichier)
+
+                          # Refuse un SQL vide ou sans charge utile de restauration avant de toucher à la base.
+                          if _SQLContientChargeRestauratrice(fichierRestore) == False:
+                              dlgprogress.Destroy()
+                              dlgErreur = wx.MessageDialog(None, _(u"Le fichier SQL '%s' ne contient aucune instruction de restauration exploitable.") % fichier, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                              dlgErreur.ShowModal()
+                              dlgErreur.Destroy()
+                              fichierZip.close()
+                              return False
+
+                          # Importation du fichier SQL dans MySQL
+          '''
+          if 'aucune instruction de restauration exploitable' not in source:
+              if extract_anchor not in source:
+                  raise SystemExit('ancre extraction introuvable')
+              source = source.replace(extract_anchor, extract_replacement, 1)
+
+          success_anchor = '''                if proc.returncode != 0:
+                          print(("subprocess de restauration mysql :", out))
+                          out = _TexteErreurProcessus(out)
+                          dlgprogress.Destroy()
+                          dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de restauration !\\n\\nErreur : %s") % out, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                          dlgErreur.ShowModal()
+                          dlgErreur.Destroy()
+                          fichierZip.close()
+                          return False
+
+                      listeFichiersRestaures.append(fichier)
+          '''
+          success_replacement = '''                if proc.returncode != 0:
+                          print(("subprocess de restauration mysql :", out))
+                          out = _TexteErreurProcessus(out)
+                          dlgprogress.Destroy()
+                          dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de restauration !\\n\\nErreur : %s") % out, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                          dlgErreur.ShowModal()
+                          dlgErreur.Destroy()
+                          fichierZip.close()
+                          return False
+
+                      # Un code retour nul ne suffit pas : la cible doit contenir au moins une table ou vue.
+                      if _BaseMySQLContientObjets(dictConnexion, fichier) == False:
+                          dlgprogress.Destroy()
+                          dlgErreur = wx.MessageDialog(None, _(u"Le client MySQL n'a signalé aucune erreur, mais la base restaurée ne contient aucune table ou vue."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                          dlgErreur.ShowModal()
+                          dlgErreur.Destroy()
+                          fichierZip.close()
+                          return False
+
+                      listeFichiersRestaures.append(fichier)
+          '''
+          if "la base restaurée ne contient aucune table ou vue" not in source:
+              if success_anchor not in source:
+                  raise SystemExit('ancre succès mysql introuvable')
+              source = source.replace(success_anchor, success_replacement, 1)
+
+          ast.parse(source)
+          source_path.write_text(source, encoding='utf-8')
+
+          tests_path = Path('tests/test_noe_032_restore_flow.py')
+          tests = tests_path.read_text(encoding='utf-8')
+          fake_db_anchor = '''class _FakeDB(object):
+              echec = 0
+              isNetwork = False
+
+              def __init__(self, *args, **kwargs):
+                  pass
+
+              def Close(self):
+                  pass
+          '''
+          fake_db_replacement = fake_db_anchor + '''
+              def GetListeTables(self):
+                  return [("test_restore",)]
+          '''
+          if 'def GetListeTables(self):' not in tests:
+              if fake_db_anchor not in tests:
+                  raise SystemExit('ancre FakeDB introuvable')
+              tests = tests.replace(fake_db_anchor, fake_db_replacement, 1)
+
+          tests = tests.replace('zf.writestr("demo_data.sql", b"SELECT 1;")', 'zf.writestr("demo_data.sql", b"CREATE TABLE test_restore (id INTEGER);")', 1)
+
+          new_tests = '''
+              def test_network_restore_rejects_noop_sql_before_mysql(self):
+                  with tempfile.TemporaryDirectory() as root:
+                      root = Path(root)
+                      data_dir = root / "data"
+                      temp_dir = root / "temp"
+                      data_dir.mkdir()
+                      temp_dir.mkdir()
+                      archive = root / "backup.nod"
+                      with zipfile.ZipFile(str(archive), "w") as zf:
+                          zf.writestr("demo_data.sql", b"SELECT 1;")
+
+                      module = _load_module(data_dir, temp_dir)
+                      module.GetListeFichiersReseau = lambda values: ["demo_data"]
+                      module.GetRepertoireMySQL = lambda values: "/fake/mysql/"
+                      module.CreationFichierLoginTemp = lambda **kwargs: Path(kwargs["nomFichier"]).write_text("[client]\\n")
+                      params = {"host": "localhost", "port": 3306, "user": "test", "password": "test"}
+
+                      with mock.patch.object(module.subprocess, "Popen", return_value=_FakeProcess()) as popen:
+                          result = module.Restauration(
+                              fichier=str(archive),
+                              listeFichiersReseau=["demo_data.sql"],
+                              dictConnexion=params,
+                          )
+
+                      self.assertFalse(result)
+                      popen.assert_not_called()
+                      self.assertFalse((temp_dir / "restoretemp").exists())
+
+              def test_network_restore_rejects_mysql_success_without_tables(self):
+                  with tempfile.TemporaryDirectory() as root:
+                      root = Path(root)
+                      data_dir = root / "data"
+                      temp_dir = root / "temp"
+                      data_dir.mkdir()
+                      temp_dir.mkdir()
+                      archive = root / "backup.nod"
+                      with zipfile.ZipFile(str(archive), "w") as zf:
+                          zf.writestr("demo_data.sql", b"CREATE TABLE test_restore (id INTEGER);")
+
+                      module = _load_module(data_dir, temp_dir)
+                      module.GetListeFichiersReseau = lambda values: ["demo_data"]
+                      module.GetRepertoireMySQL = lambda values: "/fake/mysql/"
+                      module.CreationFichierLoginTemp = lambda **kwargs: Path(kwargs["nomFichier"]).write_text("[client]\\n")
+
+                      class _NoTablesDB(_FakeDB):
+                          def GetListeTables(self):
+                              return []
+
+                      module.GestionDB.DB = _NoTablesDB
+                      params = {"host": "localhost", "port": 3306, "user": "test", "password": "test"}
+
+                      with mock.patch.object(module.subprocess, "Popen", return_value=_FakeProcess()) as popen:
+                          result = module.Restauration(
+                              fichier=str(archive),
+                              listeFichiersReseau=["demo_data.sql"],
+                              dictConnexion=params,
+                          )
+
+                      self.assertFalse(result)
+                      popen.assert_called_once()
+                      self.assertFalse((temp_dir / "restoretemp").exists())
+
+          '''
+          marker = '\n\nif __name__ == "__main__":\n'
+          if 'def test_network_restore_rejects_noop_sql_before_mysql' not in tests:
+              if marker not in tests:
+                  raise SystemExit('ancre fin tests introuvable')
+              tests = tests.replace(marker, '\n' + new_tests + marker, 1)
+
+          ast.parse(tests)
+          tests_path.write_text(tests, encoding='utf-8')
+
+          docs_path = Path('docs/NOE-032-SAUVEGARDE-RESTAURATION.md')
+          docs = docs_path.read_text(encoding='utf-8')
+          anchor = '- suppression de `restoretemp` après échec simulé du client `mysql` ;\n'
+          addition = '- refus d’un SQL vide ou sans charge restauratrice avant lancement du client `mysql` ;\n- postcondition après import : la base cible doit être accessible et exposer au moins une table ou vue avant d’être comptée comme restaurée ;\n'
+          if addition not in docs:
+              if anchor not in docs:
+                  raise SystemExit('ancre documentation introuvable')
+              docs = docs.replace(anchor, anchor + addition, 1)
+          docs_path.write_text(docs, encoding='utf-8')
+          PY
+      - name: Vérifier le lot
+        shell: bash
+        run: |
+          python -m py_compile noethys/Utils/UTILS_Sauvegarde.py tests/test_noe_032_restore_flow.py
+          python tests/test_noe_032_restore_flow.py
+          python tests/test_noe_032_backup_integrity.py
+          python scripts/qualify_branch_assignment_gaps.py
+      - name: Commit et nettoyage du workflow temporaire
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/noe032b-postcondition-one-shot.yml
+          git add noethys/Utils/UTILS_Sauvegarde.py tests/test_noe_032_restore_flow.py docs/NOE-032-SAUVEGARDE-RESTAURATION.md
+          git diff --cached --check
+          git commit -m "Fix: refuser les faux succès de restauration MySQL"
+          git push origin HEAD:fix/noe-032b-backup-integrity
