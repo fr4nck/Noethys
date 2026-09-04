@@ -24,10 +24,12 @@ SCHEMA_PATTERNS = (
 )
 
 TEXT_SUFFIXES = {".py", ".sql", ".txt", ".ini", ".cfg", ".json", ".yaml", ".yml"}
-# Outils explicitement destinés à fabriquer des bases temporaires de recette.
+# Outils explicitement destinés à fabriquer des bases temporaires de recette,
+# ainsi que le garde-fou lui-même : ses motifs de détection ne sont pas du SQL exécuté.
 IGNORED_PATHS = {
     "scripts/build_synthetic_recette_db.py",
     "scripts/qualify_noe032_mysql.py",
+    "scripts/check_schema_compatibility.py",
 }
 IGNORED_PREFIXES = ("tests/",)
 
