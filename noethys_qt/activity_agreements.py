@@ -107,6 +107,8 @@ class ActivityAgreementsRepository:
         for agreement in state.multiple:
             if not agreement.number.strip():
                 raise ValueError("Chaque agrément doit obligatoirement comporter un numéro.")
+            if agreement.end_date < agreement.start_date:
+                raise ValueError("La date de fin d'un agrément ne peut pas précéder sa date de début.")
 
     def save(self, activity_id: int, state: AgreementState) -> None:
         self.validate(state)
@@ -216,6 +218,8 @@ class AgreementEditDialog(QDialog):
         number = self.number_edit.text().strip()
         if not number:
             QMessageBox.warning(self, "Erreur de saisie", "Vous devez obligatoirement donner un numéro d'agrément."); return
+        if self.end_edit.date() < self.start_edit.date():
+            QMessageBox.warning(self, "Erreur de saisie", "La date de fin ne peut pas précéder la date de début."); return
         self.agreement = replace(
             self.agreement,
             number=number,
@@ -330,7 +334,35 @@ class ActivityEditorDialog(RequirementsActivityEditorDialog):
         self.agreements_page = ActivityAgreementsPage(repository, activity_id, self)
         self.tabs.insertTab(1, self.agreements_page, "Agréments")
 
+    def _validate_composed_editor(self) -> bool:
+        group_page = getattr(self, "group_page", None)
+        if group_page is not None and group_page.group_count() == 0:
+            self.tabs.setCurrentWidget(group_page)
+            QMessageBox.warning(
+                self,
+                "Erreur de saisie",
+                "Vous devez créer au moins un groupe. Si nécessaire, créez simplement « Groupe unique ».",
+            )
+            return False
+
+        pricing_page = getattr(self, "pricing_page", None)
+        if pricing_page is not None and not pricing_page.has_categories():
+            answer = QMessageBox.question(
+                self,
+                "Aucune catégorie de tarif",
+                "Vous n'avez saisi aucune catégorie de tarif. Aucun individu ne pourra donc être inscrit à cette activité. Continuer quand même ?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                self.tabs.setCurrentWidget(pricing_page)
+                return False
+
+        return True
+
     def _save(self) -> None:
+        if not self._validate_composed_editor():
+            return
         try:
             details = self._collect()
             requirements = self.requirements_page.collect()
