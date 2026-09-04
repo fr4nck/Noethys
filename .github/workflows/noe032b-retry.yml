@@ -52,6 +52,18 @@ jobs:
           if old not in code:
               raise SystemExit('bloc regex à corriger introuvable')
           code = code.replace(old, new, 1)
+
+          docs_start = code.index("docs_path = Path('docs/NOE-032-SAUVEGARDE-RESTAURATION.md')")
+          print_start = code.index("print('fingerprints'", docs_start)
+          docs_code = '''docs_path = Path('docs/NOE-032-SAUVEGARDE-RESTAURATION.md')
+          docs = docs_path.read_text(encoding='utf-8')
+          addition = """\n### Durcissement des processus MySQL\n\nLe flux réseau garantit désormais le nettoyage de `savetemp` et `restoretemp` même si `Popen`, `communicate()`, la création du fichier de connexion ou l’extraction SQL lève une exception. La commande `mysqldump` applique `--opt --single-transaction --skip-lock-tables`, afin que l’option groupée `--opt` ne réactive pas le verrouillage des tables après l’activation du mode transactionnel.\n"""
+          if addition not in docs:
+              docs += addition
+          docs_path.write_text(docs, encoding='utf-8')
+
+          '''
+          code = code[:docs_start] + docs_code + code[print_start:]
           exec(compile(code, 'noe032b-one-shot-patched', 'exec'), {'__name__': '__main__'})
           PY
       - name: Vérifier et pousser
