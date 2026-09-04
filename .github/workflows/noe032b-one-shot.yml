@@ -1,0 +1,372 @@
+name: NOE-032b one-shot MySQL hardening
+
+on:
+  push:
+    branches:
+      - fix/noe-032b-backup-integrity
+    paths:
+      - .github/workflows/noe032b-one-shot.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/noe-032b-backup-integrity
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Appliquer le correctif ciblé
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import ast
+          import hashlib
+          import re
+
+          source_path = Path('noethys/Utils/UTILS_Sauvegarde.py')
+          source = source_path.read_text(encoding='utf-8')
+
+          helper_marker = '\n\n\ndef Sauvegarde('
+          helper = '''\n\ndef _TexteErreurProcessus(valeur):
+              """ Normalise la sortie des clients MySQL pour l'affichage des erreurs. """
+              if isinstance(valeur, bytes):
+                  return valeur.decode("utf-8", errors="replace")
+              return str(valeur)
+          '''
+          if 'def _TexteErreurProcessus(' not in source:
+              if helper_marker not in source:
+                  raise SystemExit('marqueur helper introuvable')
+              source = source.replace(helper_marker, helper + helper_marker, 1)
+
+          backup_start = source.index('    # Intégration des fichiers réseau\n')
+          backup_end = source.index('    # Finalise le fichier ZIP\n', backup_start)
+          backup_block = '''    # Intégration des fichiers réseau
+              if len(listeFichiersReseau) > 0 and dictConnexion != None :
+                  repTemp = UTILS_Fichiers.GetRepTemp(fichier="savetemp")
+                  try:
+                      if os.path.isdir(repTemp) == True :
+                          shutil.rmtree(repTemp)
+                      os.mkdir(repTemp)
+
+                      # Recherche du répertoire d'installation de MySQL
+                      repMySQL = GetRepertoireMySQL(dictConnexion)
+                      if repMySQL == None :
+                          dlgprogress.Destroy()
+                          dlgErreur = wx.MessageDialog(None, _(u"Noethys n'a pas réussi à localiser MySQL sur votre ordinateur.\\n\\nNotez bien que MySQL doit être installé obligatoirement pour créer une sauvegarde réseau."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                          dlgErreur.ShowModal()
+                          dlgErreur.Destroy()
+                          fichierZip.close()
+                          _SupprimerFichiersSauvegardeTemp(nom)
+                          return False
+
+                      # Création du fichier de login
+                      nomFichierLoginTemp = repTemp + "/logintemp.cnf"
+                      CreationFichierLoginTemp(host=dictConnexion["host"], port=dictConnexion["port"], user=dictConnexion["user"], password=dictConnexion["password"], nomFichier=nomFichierLoginTemp)
+
+                      # Création du backup pour chaque fichier MySQL
+                      for nomFichier in listeFichiersReseau :
+                          dlgprogress.Update(numEtape, _(u"Compression du fichier %s...") % nomFichier);numEtape += 1
+                          fichierSave = u"%s/%s.sql" % (repTemp, nomFichier)
+                          options = UTILS_Customize.GetValeur("sauvegarde", "options", "", ajouter_si_manquant=False)
+
+                          # --opt active notamment --lock-tables : les options transactionnelles doivent suivre.
+                          args = u""""%sbin/mysqldump" --defaults-extra-file="%s" --opt --single-transaction --skip-lock-tables %s --databases %s > "%s" """ % (repMySQL, nomFichierLoginTemp, options or "", nomFichier, fichierSave)
+                          print(("Chemin mysqldump =", args))
+                          if six.PY2:
+                              args = args.encode('utf8')
+                          proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+                          out, temp = proc.communicate()
+
+                          if proc.returncode != 0:
+                              print((out,))
+                              out = _TexteErreurProcessus(out)
+                              dlgprogress.Destroy()
+                              dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de sauvegarde !\\n\\nErreur : %s") % out, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                              dlgErreur.ShowModal()
+                              dlgErreur.Destroy()
+                              fichierZip.close()
+                              _SupprimerFichiersSauvegardeTemp(nom)
+                              return False
+
+                          # Insère le fichier Sql dans le ZIP
+                          try :
+                              fichierZip.write(fichierSave, u"%s.sql" % nomFichier)
+                          except Exception as err :
+                              dlgprogress.Destroy()
+                              print(("insertion sql dans zip : ", err,))
+                              try :
+                                  if six.PY2:
+                                      err = str(err).decode("utf8")
+                              except Exception:
+                                  pass
+                              dlgErreur = wx.MessageDialog(None, _(u"Une erreur est survenue dans la sauvegarde !\\n\\nErreur : %s") % err, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                              dlgErreur.ShowModal()
+                              dlgErreur.Destroy()
+                              fichierZip.close()
+                              _SupprimerFichiersSauvegardeTemp(nom)
+                              return False
+
+                  except Exception as err:
+                      dlgprogress.Destroy()
+                      print(("Echec commande de sauvegarde MySQL :", err,))
+                      try:
+                          fichierZip.close()
+                      except Exception:
+                          pass
+                      _SupprimerFichiersSauvegardeTemp(nom)
+                      dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de sauvegarde !\\n\\nErreur : %s") % err, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                      dlgErreur.ShowModal()
+                      dlgErreur.Destroy()
+                      return False
+                  finally:
+                      _SupprimerRepertoireTemp(repTemp)
+
+          '''
+          source = source[:backup_start] + backup_block + source[backup_end:]
+
+          restore_func = source.index('def Restauration(')
+          restore_start = source.index('        # Création du répertoire temporaire\n', restore_func)
+          restore_end = source.index('    # Fin de la procédure\n', restore_start)
+          restore_block = '''        # Création du répertoire temporaire et restauration réseau
+                  repTemp = UTILS_Fichiers.GetRepTemp(fichier="restoretemp")
+                  try:
+                      if os.path.isdir(repTemp) == True :
+                          shutil.rmtree(repTemp)
+                      os.mkdir(repTemp)
+
+                      # Création du fichier de login
+                      nomFichierLoginTemp = repTemp + "/logintemp.cnf"
+                      CreationFichierLoginTemp(host=dictConnexion["host"], port=dictConnexion["port"], user=dictConnexion["user"], password=dictConnexion["password"], nomFichier=nomFichierLoginTemp)
+
+                      # Restauration
+                      nbreEtapes = len(listeFichiersReseau)
+                      dlgprogress = wx.ProgressDialog(_(u"Merci de patienter"), _(u"Lancement de la restauration..."), maximum=nbreEtapes, parent=parent, style= wx.PD_SMOOTH | wx.PD_AUTO_HIDE | wx.PD_APP_MODAL)
+                      numEtape = 1
+
+                      for fichier in listeFichiersReseau:
+                          fichier = fichier[:-4]
+
+                          # Création de la base si elle n'existe pas
+                          if fichier not in listeFichiersExistants :
+                              nomFichier = u"%s;%s;%s;%s[RESEAU]%s" % (dictConnexion["port"], dictConnexion["host"], dictConnexion["user"], dictConnexion["password"], fichier)
+                              DB = GestionDB.DB(suffixe=None, nomFichier=nomFichier, modeCreation=True)
+                              DB.Close()
+
+                          # Copie du fichier SQL dans le répertoire Temp / restoretemp
+                          fichierZip.extract(u"%s.sql" % fichier, repTemp)
+                          fichierRestore = u"%s/%s.sql" % (repTemp, fichier)
+
+                          # Importation du fichier SQL dans MySQL
+                          dlgprogress.Update(numEtape, _(u"Restauration du fichier %s...") % fichier);numEtape += 1
+
+                          args = u""""%sbin/mysql" --defaults-extra-file="%s" %s < "%s" """ % (repMySQL, nomFichierLoginTemp, fichier, fichierRestore)
+                          print(("Chemin mysql =", args))
+                          if six.PY2:
+                              args = args.encode("utf8")
+                          proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+                          out, temp = proc.communicate()
+
+                          if proc.returncode != 0:
+                              print(("subprocess de restauration mysql :", out))
+                              out = _TexteErreurProcessus(out)
+                              dlgprogress.Destroy()
+                              dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de restauration !\\n\\nErreur : %s") % out, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                              dlgErreur.ShowModal()
+                              dlgErreur.Destroy()
+                              fichierZip.close()
+                              return False
+
+                          listeFichiersRestaures.append(fichier)
+
+                  except Exception as err:
+                      if dlgprogress is not None:
+                          dlgprogress.Destroy()
+                      print(("Echec commande de restauration MySQL :", err,))
+                      dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de restauration !\\n\\nErreur : %s") % err, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                      dlgErreur.ShowModal()
+                      dlgErreur.Destroy()
+                      fichierZip.close()
+                      return False
+                  finally:
+                      _SupprimerRepertoireTemp(repTemp)
+
+          '''
+          source = source[:restore_start] + restore_block + source[restore_end:]
+          ast.parse(source)
+          source_path.write_text(source, encoding='utf-8')
+
+          tests_path = Path('tests/test_noe_032_backup_integrity.py')
+          tests = tests_path.read_text(encoding='utf-8')
+
+          old_backup_patch = '''            with mock.patch.object(module.subprocess, "Popen", return_value=_FailProcess()):
+                          result = module.Sauvegarde(
+                              listeFichiersReseau=["demo_data"],
+                              nom="backup",
+                              dictConnexion=params,
+                          )
+
+                      self.assertFalse(result)
+          '''
+          new_backup_patch = '''            with mock.patch.object(module.subprocess, "Popen", return_value=_FailProcess()) as popen:
+                          result = module.Sauvegarde(
+                              listeFichiersReseau=["demo_data"],
+                              nom="backup",
+                              dictConnexion=params,
+                          )
+
+                      args = popen.call_args.args[0]
+                      self.assertLess(args.index("--opt"), args.index("--single-transaction"))
+                      self.assertLess(args.index("--single-transaction"), args.index("--skip-lock-tables"))
+                      self.assertFalse(result)
+          '''
+          if old_backup_patch not in tests:
+              raise SystemExit('bloc test sauvegarde introuvable')
+          tests = tests.replace(old_backup_patch, new_backup_patch, 1)
+
+          backup_exception_test = '''    def test_popen_exception_during_backup_is_contained_and_cleans_temp(self):
+                  with tempfile.TemporaryDirectory() as root:
+                      root = Path(root)
+                      data_dir = root / "data"
+                      temp_dir = root / "temp"
+                      data_dir.mkdir()
+                      temp_dir.mkdir()
+
+                      module = _load_module(data_dir, temp_dir)
+                      module.GetRepertoireMySQL = lambda values: "/fake/mysql/"
+                      params = {"host": "localhost", "port": 3306, "user": "test", "password": "secret"}
+
+                      with mock.patch.object(module.subprocess, "Popen", side_effect=OSError("mysqldump unavailable")):
+                          result = module.Sauvegarde(
+                              listeFichiersReseau=["demo_data"],
+                              nom="backup",
+                              dictConnexion=params,
+                          )
+
+                      self.assertFalse(result)
+                      self.assertFalse((temp_dir / "savetemp").exists())
+                      self.assertFalse((temp_dir / "backup.nod").exists())
+
+          '''
+          marker_restore_test = '    def test_failed_network_restore_removes_login_directory(self):\n'
+          if backup_exception_test.strip() not in tests:
+              if marker_restore_test not in tests:
+                  raise SystemExit('marqueur test restauration introuvable')
+              tests = tests.replace(marker_restore_test, backup_exception_test + marker_restore_test, 1)
+
+          restore_extra_tests = '''    def test_popen_exception_during_restore_is_contained_and_cleans_temp(self):
+                  with tempfile.TemporaryDirectory() as root:
+                      root = Path(root)
+                      data_dir = root / "data"
+                      temp_dir = root / "temp"
+                      data_dir.mkdir()
+                      temp_dir.mkdir()
+                      archive = root / "backup.nod"
+                      with zipfile.ZipFile(str(archive), "w") as zf:
+                          zf.writestr("demo_data.sql", b"SELECT 1;")
+
+                      module = _load_module(data_dir, temp_dir)
+                      module.GetListeFichiersReseau = lambda values: []
+                      module.GetRepertoireMySQL = lambda values: "/fake/mysql/"
+                      params = {"host": "localhost", "port": 3306, "user": "test", "password": "secret"}
+
+                      with mock.patch.object(module.subprocess, "Popen", side_effect=OSError("mysql unavailable")):
+                          result = module.Restauration(
+                              fichier=str(archive),
+                              listeFichiersReseau=["demo_data.sql"],
+                              dictConnexion=params,
+                          )
+
+                      self.assertFalse(result)
+                      self.assertFalse((temp_dir / "restoretemp").exists())
+
+              def test_extract_exception_during_restore_is_contained_and_cleans_temp(self):
+                  with tempfile.TemporaryDirectory() as root:
+                      root = Path(root)
+                      data_dir = root / "data"
+                      temp_dir = root / "temp"
+                      data_dir.mkdir()
+                      temp_dir.mkdir()
+                      archive = root / "backup.nod"
+                      with zipfile.ZipFile(str(archive), "w") as zf:
+                          zf.writestr("demo_data.sql", b"SELECT 1;")
+
+                      module = _load_module(data_dir, temp_dir)
+                      module.GetListeFichiersReseau = lambda values: []
+                      module.GetRepertoireMySQL = lambda values: "/fake/mysql/"
+                      params = {"host": "localhost", "port": 3306, "user": "test", "password": "secret"}
+
+                      with mock.patch.object(module.zipfile.ZipFile, "extract", side_effect=OSError("extract failure")):
+                          result = module.Restauration(
+                              fichier=str(archive),
+                              listeFichiersReseau=["demo_data.sql"],
+                              dictConnexion=params,
+                          )
+
+                      self.assertFalse(result)
+                      self.assertFalse((temp_dir / "restoretemp").exists())
+
+          '''
+          marker_email = '    def test_failed_email_closes_transport_and_removes_temp_archive(self):\n'
+          if 'def test_popen_exception_during_restore_is_contained_and_cleans_temp' not in tests:
+              if marker_email not in tests:
+                  raise SystemExit('marqueur test email introuvable')
+              tests = tests.replace(marker_email, restore_extra_tests + marker_email, 1)
+          ast.parse(tests)
+          tests_path.write_text(tests, encoding='utf-8')
+
+          # Les qualifications sont liées à l'AST complet de Sauvegarde : recalcul déterministe.
+          tree = ast.parse(source)
+          function = next(node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == 'Sauvegarde')
+          dumped = ast.dump(function, include_attributes=False)
+          fingerprints = {}
+          for name in ('fichierDest', 'dictAdresse', 'err'):
+              payload = '|'.join(('Sauvegarde', name, 'body_only', dumped))
+              fingerprints[name] = hashlib.sha256(payload.encode('utf-8')).hexdigest()
+
+          qualify_path = Path('scripts/qualify_branch_assignment_gaps.py')
+          qualify = qualify_path.read_text(encoding='utf-8')
+          for name, fingerprint in fingerprints.items():
+              pattern = re.compile(r"(\('Utils/UTILS_Sauvegarde\.py', 'Sauvegarde', '" + re.escape(name) + r"', 'body_only', ')[0-9a-f]{64}('):)")
+              qualify, count = pattern.subn(r'\g<1>' + fingerprint + r'\g<2>', qualify, count=1)
+              if count != 1:
+                  raise SystemExit('qualification introuvable pour %s' % name)
+          qualify_path.write_text(qualify, encoding='utf-8')
+
+          docs_path = Path('docs/NOE-032-SAUVEGARDE-RESTAURATION.md')
+          docs = docs_path.read_text(encoding='utf-8')
+          anchor = '- suppression de `savetemp` et `restoretemp` sur le chemin nominal et sur les retours d’erreur MySQL couverts ;\n'
+          addition = '- nettoyage garanti de ces répertoires même si `Popen`, `communicate()`, la création du fichier de connexion ou l’extraction SQL lève une exception ;\n- ordre `mysqldump` corrigé en `--opt --single-transaction --skip-lock-tables` afin que `--opt` ne réactive pas le verrouillage des tables ;\n'
+          if addition not in docs:
+              if anchor not in docs:
+                  raise SystemExit('marqueur documentation introuvable')
+              docs = docs.replace(anchor, anchor + addition, 1)
+          docs_path.write_text(docs, encoding='utf-8')
+
+          print('fingerprints', fingerprints)
+          PY
+
+      - name: Vérifier le correctif
+        shell: bash
+        run: |
+          python -m py_compile noethys/Utils/UTILS_Sauvegarde.py tests/test_noe_032_backup_integrity.py scripts/qualify_branch_assignment_gaps.py
+          python tests/test_noe_032_backup_integrity.py
+          python scripts/qualify_branch_assignment_gaps.py
+
+      - name: Commit ciblé
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add noethys/Utils/UTILS_Sauvegarde.py tests/test_noe_032_backup_integrity.py scripts/qualify_branch_assignment_gaps.py docs/NOE-032-SAUVEGARDE-RESTAURATION.md
+          git diff --cached --check
+          git commit -m "Fix: durcir les appels mysql et mysqldump"
+          git push origin HEAD:fix/noe-032b-backup-integrity
