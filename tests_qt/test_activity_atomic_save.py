@@ -4,6 +4,7 @@ import datetime as dt
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
@@ -75,6 +76,9 @@ class _EditorHarness:
         self.details = None
         self.accepted = False
 
+    def _validate_composed_editor(self) -> bool:
+        return ActivityEditorDialog._validate_composed_editor(self)
+
     def _collect(self) -> ActivityDetails:
         return self._details
 
@@ -90,8 +94,9 @@ class ActivityTransactionTests(unittest.TestCase):
     def test_inner_commit_is_deferred_and_outer_rollback_wins(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "transaction.sqlite"
-            with sqlite3.connect(path) as connection:
+            with closing(sqlite3.connect(path)) as connection:
                 connection.execute("CREATE TABLE probe (value TEXT)")
+                connection.commit()
 
             with self.assertRaises(RuntimeError):
                 with activity_transaction(_Repository(path)) as shared:
@@ -101,7 +106,7 @@ class ActivityTransactionTests(unittest.TestCase):
                     connection.close()
                     raise RuntimeError("boom")
 
-            with sqlite3.connect(path) as connection:
+            with closing(sqlite3.connect(path)) as connection:
                 count = connection.execute("SELECT COUNT(*) FROM probe").fetchone()[0]
             self.assertEqual(count, 0)
 
@@ -146,7 +151,7 @@ class ActivityTransactionTests(unittest.TestCase):
 
             self.assertFalse(editor.accepted)
             critical.assert_called_once()
-            with sqlite3.connect(path) as connection:
+            with closing(sqlite3.connect(path)) as connection:
                 name = connection.execute("SELECT nom FROM activites WHERE IDactivite=1").fetchone()[0]
                 groups = connection.execute("SELECT COUNT(*) FROM groupes_activites").fetchone()[0]
                 pieces = connection.execute("SELECT COUNT(*) FROM pieces_activites").fetchone()[0]
@@ -163,7 +168,7 @@ class ActivityTransactionTests(unittest.TestCase):
 
     @staticmethod
     def _create_schema(path: Path) -> None:
-        with sqlite3.connect(path) as connection:
+        with closing(sqlite3.connect(path)) as connection:
             connection.executescript(
                 """
                 CREATE TABLE activites (
@@ -197,6 +202,7 @@ class ActivityTransactionTests(unittest.TestCase):
                 );
                 """
             )
+            connection.commit()
 
 
 if __name__ == "__main__":
