@@ -69,12 +69,15 @@ class ActivityLabelsTests(unittest.TestCase):
         repository = ActivityLabelsRepository(NativeActivityEditorRepository(database))
         parent_id = repository.save(7, "Salles", None, None, False)
         child_id = repository.save(7, "Gymnase", parent_id, None, True)
-        with sqlite3.connect(database) as connection:
+        connection = sqlite3.connect(database)
+        try:
             connection.execute(
                 "INSERT INTO consommations (etiquettes) VALUES (?)",
                 (f"{child_id};999",),
             )
             connection.commit()
+        finally:
+            connection.close()
 
         with self.assertRaisesRegex(ValueError, "Gymnase"):
             repository.delete(7, parent_id)
