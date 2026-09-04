@@ -1,0 +1,70 @@
+name: Recette NOE-032 MySQL
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'noethys/Utils/UTILS_Sauvegarde.py'
+      - 'tests/test_noe_032_backup_integrity.py'
+      - 'scripts/qualify_noe032_mysql.py'
+      - '.github/workflows/noe-032-mysql-recette.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: noe-032-mysql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mysql-57:
+    name: Qualification restauration sur MySQL 5.7 jetable
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: noethys
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pnoethys"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+
+      - name: Installer les dépendances de recette
+        run: |
+          python -m pip install six
+          sudo apt-get update
+          sudo apt-get install -y default-mysql-client
+
+      - name: Attendre MySQL 5.7
+        env:
+          MYSQL_PWD: noethys
+        run: |
+          for i in $(seq 1 30); do
+            if mysql --protocol=TCP -h 127.0.0.1 -P 3306 -uroot -e 'SELECT VERSION();'; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'MySQL 5.7 indisponible' >&2
+          exit 1
+
+      - name: Qualifier NOE-032c sur le serveur réel
+        env:
+          NOE032_MYSQL_HOST: 127.0.0.1
+          NOE032_MYSQL_PORT: '3306'
+          NOE032_MYSQL_USER: root
+          NOE032_MYSQL_PASSWORD: noethys
+        run: python scripts/qualify_noe032_mysql.py

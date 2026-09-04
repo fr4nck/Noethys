@@ -100,10 +100,10 @@ EXPLICIT_SAFE = {
     ('Dlg/DLG_Saisie_produit.py', 'OnBoutonOk', 'prochainIDligne', 'body_only', 'c5617cf6777451edb437c0626035e0717d96d3b98ff1ffc9ef8e4ef37a951dee'): (
         'prochainIDligne est initialisé lorsque DB.isNetwork est faux et toutes ses lectures/incréments restent sous le même garde DB.isNetwork == False'
     ),
-    ('Utils/UTILS_Sauvegarde.py', 'Sauvegarde', 'fichierDest', 'body_only', '99d5dac98f4e3f5c63a3eecab3a5c6c64dbcaafb3b9101ad87323a3aba322044'): (
+    ('Utils/UTILS_Sauvegarde.py', 'Sauvegarde', 'fichierDest', 'body_only', 'd740f1fa5b514c261cba47fb4d7e28344dac8cea7559ca26d9ed374b4c05ea93'): (
         "fichierDest est créé sous repertoire != None et sa seule lecture ultérieure reste protégée par exactement le même garde"
     ),
-    ('Utils/UTILS_Sauvegarde.py', 'Sauvegarde', 'dictAdresse', 'body_only', '7bad752c10292daba9b617a1ee491bd3615f296533ef7fe9af66593ae8c830e5'): (
+    ('Utils/UTILS_Sauvegarde.py', 'Sauvegarde', 'dictAdresse', 'body_only', '0e49d7712ab28b4550b1bac93f15b219fc22f37ab80e9e0fdba199d6da2c953a'): (
         "dictAdresse est créé sous listeEmails != None ; l'absence d'adresse quitte la fonction et sa lecture ultérieure reste sous exactement le même garde"
     ),
     ('Dlg/DLG_Conversion_etat.py', 'GetDonnees', 'option_lignes', 'body_only', '3f4e12d4bbddaa5622c402f57190e4b516d1a75dcdf1ec5cb0ade3262aa5fe98'): (
@@ -160,7 +160,7 @@ EXPLICIT_SAFE = {
     ('Ol/OL_Etat_nomin_resultats.py', '__init__', 'valeur', 'partial_branches', '9cd718823faa61de4c31850db7909ec0ace156e8e319475584f68ed3e2255601'): (
         'prefixe parcourt uniquement NBRE, TEMPS et TEMPS_FACTURE ; le cas NBRE et le couple TEMPS/TEMPS_FACTURE affectent valeur avant setattr'
     ),
-    ('Utils/UTILS_Sauvegarde.py', 'Sauvegarde', 'err', 'body_only', 'a7768a2427dd2bbcc182784fbfaefe6f2908d5983a1a7b6a1ef8f3b5683d09da'): (
+    ('Utils/UTILS_Sauvegarde.py', 'Sauvegarde', 'err', 'body_only', '41818ba28d146a39b2b979cf449fb865253915aaf5adb1fcbd36f3e5d3a57fbe'): (
         "err est lié par le except Exception as err externe ; le try/except interne n'a pas de cible d'exception et ne supprime pas cette liaison"
     ),
     ('Dlg/DLG_Releve_prestations_saisie.py', 'GetOptions', 'regroupement', 'partial_branches', '076091d5da5f887d72e44ead6c19551a4f24a866ae3bc47508263d60a65f76b4'): (
