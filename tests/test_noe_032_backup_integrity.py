@@ -196,7 +196,33 @@ class BackupIntegrityTests(unittest.TestCase):
             module.GetRepertoireMySQL = lambda values: "/fake/mysql/"
             params = {"host": "localhost", "port": 3306, "user": "test", "password": "secret"}
 
-            with mock.patch.object(module.subprocess, "Popen", return_value=_FailProcess()):
+            with mock.patch.object(module.subprocess, "Popen", return_value=_FailProcess()) as popen:
+                result = module.Sauvegarde(
+                    listeFichiersReseau=["demo_data"],
+                    nom="backup",
+                    dictConnexion=params,
+                )
+
+            args = popen.call_args.args[0]
+            self.assertLess(args.index("--opt"), args.index("--single-transaction"))
+            self.assertLess(args.index("--single-transaction"), args.index("--skip-lock-tables"))
+            self.assertFalse(result)
+            self.assertFalse((temp_dir / "savetemp").exists())
+            self.assertFalse((temp_dir / "backup.nod").exists())
+
+    def test_popen_exception_during_backup_is_contained_and_cleans_temp(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            data_dir = root / "data"
+            temp_dir = root / "temp"
+            data_dir.mkdir()
+            temp_dir.mkdir()
+
+            module = _load_module(data_dir, temp_dir)
+            module.GetRepertoireMySQL = lambda values: "/fake/mysql/"
+            params = {"host": "localhost", "port": 3306, "user": "test", "password": "secret"}
+
+            with mock.patch.object(module.subprocess, "Popen", side_effect=OSError("mysqldump unavailable")):
                 result = module.Sauvegarde(
                     listeFichiersReseau=["demo_data"],
                     nom="backup",
@@ -224,6 +250,58 @@ class BackupIntegrityTests(unittest.TestCase):
             params = {"host": "localhost", "port": 3306, "user": "test", "password": "secret"}
 
             with mock.patch.object(module.subprocess, "Popen", return_value=_FailProcess()):
+                result = module.Restauration(
+                    fichier=str(archive),
+                    listeFichiersReseau=["demo_data.sql"],
+                    dictConnexion=params,
+                )
+
+            self.assertFalse(result)
+            self.assertFalse((temp_dir / "restoretemp").exists())
+
+    def test_popen_exception_during_restore_is_contained_and_cleans_temp(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            data_dir = root / "data"
+            temp_dir = root / "temp"
+            data_dir.mkdir()
+            temp_dir.mkdir()
+            archive = root / "backup.nod"
+            with zipfile.ZipFile(str(archive), "w") as zf:
+                zf.writestr("demo_data.sql", b"SELECT 1;")
+
+            module = _load_module(data_dir, temp_dir)
+            module.GetListeFichiersReseau = lambda values: []
+            module.GetRepertoireMySQL = lambda values: "/fake/mysql/"
+            params = {"host": "localhost", "port": 3306, "user": "test", "password": "secret"}
+
+            with mock.patch.object(module.subprocess, "Popen", side_effect=OSError("mysql unavailable")):
+                result = module.Restauration(
+                    fichier=str(archive),
+                    listeFichiersReseau=["demo_data.sql"],
+                    dictConnexion=params,
+                )
+
+            self.assertFalse(result)
+            self.assertFalse((temp_dir / "restoretemp").exists())
+
+    def test_extract_exception_during_restore_is_contained_and_cleans_temp(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            data_dir = root / "data"
+            temp_dir = root / "temp"
+            data_dir.mkdir()
+            temp_dir.mkdir()
+            archive = root / "backup.nod"
+            with zipfile.ZipFile(str(archive), "w") as zf:
+                zf.writestr("demo_data.sql", b"SELECT 1;")
+
+            module = _load_module(data_dir, temp_dir)
+            module.GetListeFichiersReseau = lambda values: []
+            module.GetRepertoireMySQL = lambda values: "/fake/mysql/"
+            params = {"host": "localhost", "port": 3306, "user": "test", "password": "secret"}
+
+            with mock.patch.object(module.zipfile.ZipFile, "extract", side_effect=OSError("extract failure")):
                 result = module.Restauration(
                     fichier=str(archive),
                     listeFichiersReseau=["demo_data.sql"],

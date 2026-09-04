@@ -61,6 +61,13 @@ def _SupprimerRepertoireTemp(repertoire):
         pass
 
 
+def _TexteErreurProcessus(valeur):
+    """ Normalise la sortie des clients MySQL pour l'affichage des erreurs. """
+    if isinstance(valeur, bytes):
+        return valeur.decode("utf-8", errors="replace")
+    return str(valeur)
+
+
 
 def Sauvegarde(listeFichiersLocaux=[], listeFichiersReseau=[], nom="", repertoire=None, motdepasse=None, listeEmails=None, dictConnexion=None):
     """ Processus de de création du ZIP """
@@ -131,79 +138,84 @@ def Sauvegarde(listeFichiersLocaux=[], listeFichiersReseau=[], nom="", repertoir
         
     # Intégration des fichiers réseau
     if len(listeFichiersReseau) > 0 and dictConnexion != None :
-        
-        # Création du répertoire temporaire
         repTemp = UTILS_Fichiers.GetRepTemp(fichier="savetemp")
-        if os.path.isdir(repTemp) == True :
-            shutil.rmtree(repTemp)
-        os.mkdir(repTemp)
-        
-        # Recherche du répertoire d'installation de MySQL
-        repMySQL = GetRepertoireMySQL(dictConnexion) 
-        if repMySQL == None :
+        try:
+            if os.path.isdir(repTemp) == True :
+                shutil.rmtree(repTemp)
+            os.mkdir(repTemp)
+
+            # Recherche du répertoire d'installation de MySQL
+            repMySQL = GetRepertoireMySQL(dictConnexion)
+            if repMySQL == None :
+                dlgprogress.Destroy()
+                dlgErreur = wx.MessageDialog(None, _(u"Noethys n'a pas réussi à localiser MySQL sur votre ordinateur.\n\nNotez bien que MySQL doit être installé obligatoirement pour créer une sauvegarde réseau."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                dlgErreur.ShowModal()
+                dlgErreur.Destroy()
+                fichierZip.close()
+                _SupprimerFichiersSauvegardeTemp(nom)
+                return False
+
+            # Création du fichier de login
+            nomFichierLoginTemp = repTemp + "/logintemp.cnf"
+            CreationFichierLoginTemp(host=dictConnexion["host"], port=dictConnexion["port"], user=dictConnexion["user"], password=dictConnexion["password"], nomFichier=nomFichierLoginTemp)
+
+            # Création du backup pour chaque fichier MySQL
+            for nomFichier in listeFichiersReseau :
+                dlgprogress.Update(numEtape, _(u"Compression du fichier %s...") % nomFichier);numEtape += 1
+                fichierSave = u"%s/%s.sql" % (repTemp, nomFichier)
+                options = UTILS_Customize.GetValeur("sauvegarde", "options", "", ajouter_si_manquant=False)
+
+                # --opt active notamment --lock-tables : les options transactionnelles doivent suivre.
+                args = u""""%sbin/mysqldump" --defaults-extra-file="%s" --opt --single-transaction --skip-lock-tables %s --databases %s > "%s" """ % (repMySQL, nomFichierLoginTemp, options or "", nomFichier, fichierSave)
+                print(("Chemin mysqldump =", args))
+                if six.PY2:
+                    args = args.encode('utf8')
+                proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+                out, temp = proc.communicate()
+
+                if proc.returncode != 0:
+                    print((out,))
+                    out = _TexteErreurProcessus(out)
+                    dlgprogress.Destroy()
+                    dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de sauvegarde !\n\nErreur : %s") % out, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                    dlgErreur.ShowModal()
+                    dlgErreur.Destroy()
+                    fichierZip.close()
+                    _SupprimerFichiersSauvegardeTemp(nom)
+                    return False
+
+                # Insère le fichier Sql dans le ZIP
+                try :
+                    fichierZip.write(fichierSave, u"%s.sql" % nomFichier)
+                except Exception as err :
+                    dlgprogress.Destroy()
+                    print(("insertion sql dans zip : ", err,))
+                    try :
+                        if six.PY2:
+                            err = str(err).decode("utf8")
+                    except Exception:
+                        pass
+                    dlgErreur = wx.MessageDialog(None, _(u"Une erreur est survenue dans la sauvegarde !\n\nErreur : %s") % err, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                    dlgErreur.ShowModal()
+                    dlgErreur.Destroy()
+                    fichierZip.close()
+                    _SupprimerFichiersSauvegardeTemp(nom)
+                    return False
+
+        except Exception as err:
             dlgprogress.Destroy()
-            dlgErreur = wx.MessageDialog(None, _(u"Noethys n'a pas réussi à localiser MySQL sur votre ordinateur.\n\nNotez bien que MySQL doit être installé obligatoirement pour créer une sauvegarde réseau."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
-            dlgErreur.ShowModal() 
-            dlgErreur.Destroy()
-            fichierZip.close()
-            _SupprimerRepertoireTemp(repTemp)
+            print(("Echec commande de sauvegarde MySQL :", err,))
+            try:
+                fichierZip.close()
+            except Exception:
+                pass
             _SupprimerFichiersSauvegardeTemp(nom)
+            dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de sauvegarde !\n\nErreur : %s") % err, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlgErreur.ShowModal()
+            dlgErreur.Destroy()
             return False
-        
-        # Création du fichier de login
-        nomFichierLoginTemp = repTemp + "/logintemp.cnf" #os.path.abspath(os.curdir) + "/" + repTemp + "/logintemp.cnf"
-        CreationFichierLoginTemp(host=dictConnexion["host"], port=dictConnexion["port"], user=dictConnexion["user"], password=dictConnexion["password"], nomFichier=nomFichierLoginTemp)
-        
-        # Création du backup pour chaque fichier MySQL
-        for nomFichier in listeFichiersReseau :
-            dlgprogress.Update(numEtape, _(u"Compression du fichier %s...") % nomFichier);numEtape += 1
-            fichierSave = u"%s/%s.sql" % (repTemp, nomFichier)
-            options = UTILS_Customize.GetValeur("sauvegarde", "options", "", ajouter_si_manquant=False)
-
-            args = u""""%sbin/mysqldump" --defaults-extra-file="%s" --single-transaction --opt %s --databases %s > "%s" """ % (repMySQL, nomFichierLoginTemp, options or "", nomFichier, fichierSave)
-            print(("Chemin mysqldump =", args))
-            if six.PY2:
-                args = args.encode('utf8')
-            proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
-            out, temp = proc.communicate()
-
-            if proc.returncode != 0:
-                print((out,))
-                try :
-                    if six.PY2:
-                        out = str(out).decode("utf8")
-                except Exception:
-                    pass
-                dlgprogress.Destroy()
-                dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de sauvegarde !\n\nErreur : %s") % out, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
-                dlgErreur.ShowModal() 
-                dlgErreur.Destroy()
-                fichierZip.close()
-                _SupprimerRepertoireTemp(repTemp)
-                _SupprimerFichiersSauvegardeTemp(nom)
-                return False
-
-            # Insère le fichier Sql dans le ZIP
-            try :
-                fichierZip.write(fichierSave, u"%s.sql" % nomFichier)
-            except Exception as err :
-                dlgprogress.Destroy()
-                print(("insertion sql dans zip : ", err,))
-                try :
-                    if six.PY2:
-                        err = str(err).decode("utf8")
-                except Exception:
-                    pass
-                dlgErreur = wx.MessageDialog(None, _(u"Une erreur est survenue dans la sauvegarde !\n\nErreur : %s") % err, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
-                dlgErreur.ShowModal() 
-                dlgErreur.Destroy()
-                fichierZip.close()
-                _SupprimerRepertoireTemp(repTemp)
-                _SupprimerFichiersSauvegardeTemp(nom)
-                return False
-
-        # Supprime le répertoire temp
-        _SupprimerRepertoireTemp(repTemp)
+        finally:
+            _SupprimerRepertoireTemp(repTemp)
 
     # Finalise le fichier ZIP
     fichierZip.close()
@@ -382,64 +394,68 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
                 fichierZip.close()
                 return False
 
-        # Création du répertoire temporaire
+        # Création du répertoire temporaire et restauration réseau
         repTemp = UTILS_Fichiers.GetRepTemp(fichier="restoretemp")
-        if os.path.isdir(repTemp) == True :
-            shutil.rmtree(repTemp)
-        os.mkdir(repTemp)
+        try:
+            if os.path.isdir(repTemp) == True :
+                shutil.rmtree(repTemp)
+            os.mkdir(repTemp)
 
-        # Création du fichier de login
-        nomFichierLoginTemp = repTemp + "/logintemp.cnf" #os.path.abspath(os.curdir) + "/" + repTemp + "/logintemp.cnf"
-        CreationFichierLoginTemp(host=dictConnexion["host"], port=dictConnexion["port"], user=dictConnexion["user"], password=dictConnexion["password"], nomFichier=nomFichierLoginTemp)
+            # Création du fichier de login
+            nomFichierLoginTemp = repTemp + "/logintemp.cnf"
+            CreationFichierLoginTemp(host=dictConnexion["host"], port=dictConnexion["port"], user=dictConnexion["user"], password=dictConnexion["password"], nomFichier=nomFichierLoginTemp)
 
-        # Restauration
-        nbreEtapes = len(listeFichiersReseau)
-        dlgprogress = wx.ProgressDialog(_(u"Merci de patienter"), _(u"Lancement de la restauration..."), maximum=nbreEtapes, parent=parent, style= wx.PD_SMOOTH | wx.PD_AUTO_HIDE | wx.PD_APP_MODAL)
-        numEtape = 1
+            # Restauration
+            nbreEtapes = len(listeFichiersReseau)
+            dlgprogress = wx.ProgressDialog(_(u"Merci de patienter"), _(u"Lancement de la restauration..."), maximum=nbreEtapes, parent=parent, style= wx.PD_SMOOTH | wx.PD_AUTO_HIDE | wx.PD_APP_MODAL)
+            numEtape = 1
 
-        for fichier in listeFichiersReseau:
-            fichier = fichier[:-4]
-            
-            # Création de la base si elle n'existe pas
-            if fichier not in listeFichiersExistants :
-                nomFichier = u"%s;%s;%s;%s[RESEAU]%s" % (dictConnexion["port"], dictConnexion["host"], dictConnexion["user"], dictConnexion["password"], fichier)
-                DB = GestionDB.DB(suffixe=None, nomFichier=nomFichier, modeCreation=True)
-                DB.Close()
+            for fichier in listeFichiersReseau:
+                fichier = fichier[:-4]
 
-            # Copie du fichier SQL dans le répertoire Temp / restoretemp
-            # buffer = fichierZip.read(u"%s.sql" % fichier)
-            # f = open(fichierRestore, "wb")
-            # f.write(buffer)
-            # f.close()
-            fichierZip.extract(u"%s.sql" % fichier, repTemp)
-            fichierRestore = u"%s/%s.sql" % (repTemp, fichier)
+                # Création de la base si elle n'existe pas
+                if fichier not in listeFichiersExistants :
+                    nomFichier = u"%s;%s;%s;%s[RESEAU]%s" % (dictConnexion["port"], dictConnexion["host"], dictConnexion["user"], dictConnexion["password"], fichier)
+                    DB = GestionDB.DB(suffixe=None, nomFichier=nomFichier, modeCreation=True)
+                    DB.Close()
 
-            # Importation du fichier SQL dans MySQL
-            dlgprogress.Update(numEtape, _(u"Restauration du fichier %s...") % fichier);numEtape += 1
+                # Copie du fichier SQL dans le répertoire Temp / restoretemp
+                fichierZip.extract(u"%s.sql" % fichier, repTemp)
+                fichierRestore = u"%s/%s.sql" % (repTemp, fichier)
 
-            args = u""""%sbin/mysql" --defaults-extra-file="%s" %s < "%s" """ % (repMySQL, nomFichierLoginTemp, fichier, fichierRestore)
-            print(("Chemin mysql =", args))
-            if six.PY2:
-                args = args.encode("utf8")
-            proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
-            out, temp = proc.communicate()
+                # Importation du fichier SQL dans MySQL
+                dlgprogress.Update(numEtape, _(u"Restauration du fichier %s...") % fichier);numEtape += 1
 
-            if proc.returncode != 0:
-                print(("subprocess de restauration mysql :", out))
+                args = u""""%sbin/mysql" --defaults-extra-file="%s" %s < "%s" """ % (repMySQL, nomFichierLoginTemp, fichier, fichierRestore)
+                print(("Chemin mysql =", args))
                 if six.PY2:
-                    out = str(out).decode("utf8")
+                    args = args.encode("utf8")
+                proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+                out, temp = proc.communicate()
+
+                if proc.returncode != 0:
+                    print(("subprocess de restauration mysql :", out))
+                    out = _TexteErreurProcessus(out)
+                    dlgprogress.Destroy()
+                    dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de restauration !\n\nErreur : %s") % out, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                    dlgErreur.ShowModal()
+                    dlgErreur.Destroy()
+                    fichierZip.close()
+                    return False
+
+                listeFichiersRestaures.append(fichier)
+
+        except Exception as err:
+            if dlgprogress is not None:
                 dlgprogress.Destroy()
-                dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de restauration !\n\nErreur : %s") % out, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
-                dlgErreur.ShowModal() 
-                dlgErreur.Destroy()
-                _SupprimerRepertoireTemp(repTemp)
-                fichierZip.close()
-                return False
-            
-            listeFichiersRestaures.append(fichier)
-            
-        # Supprime le répertoire temp
-        _SupprimerRepertoireTemp(repTemp)
+            print(("Echec commande de restauration MySQL :", err,))
+            dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de restauration !\n\nErreur : %s") % err, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+            dlgErreur.ShowModal()
+            dlgErreur.Destroy()
+            fichierZip.close()
+            return False
+        finally:
+            _SupprimerRepertoireTemp(repTemp)
 
     # Fin de la procédure
     if dlgprogress is not None:

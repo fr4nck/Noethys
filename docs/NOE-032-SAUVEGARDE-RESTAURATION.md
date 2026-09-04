@@ -60,3 +60,7 @@ Ces tests sont inclus automatiquement dans la suite métier Noe-031 (`tests/test
 ## Limites
 
 La CI ne lance pas un serveur MySQL/MariaDB 5.5 réel pour écraser une base de production. Les tests réseau simulent `mysqldump` et le client `mysql` afin de protéger le contrôle de flux et le nettoyage des ressources. La compatibilité serveur réelle reste couverte par la stratégie conservatrice du projet et doit être confirmée sur une copie avant RC.
+
+### Durcissement des processus MySQL
+
+Le flux réseau garantit désormais le nettoyage de `savetemp` et `restoretemp` même si `Popen`, `communicate()`, la création du fichier de connexion ou l’extraction SQL lève une exception. La commande `mysqldump` applique `--opt --single-transaction --skip-lock-tables`, afin que l’option groupée `--opt` ne réactive pas le verrouillage des tables après l’activation du mode transactionnel.
