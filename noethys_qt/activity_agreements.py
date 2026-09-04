@@ -34,7 +34,11 @@ from PySide6.QtWidgets import (
 )
 
 from .activity_editor import NativeActivityEditorRepository
-from .activity_requirements import ActivityEditorDialog as RequirementsActivityEditorDialog
+from .activity_requirements import (
+    ActivityEditorDialog as RequirementsActivityEditorDialog,
+    ActivityRequirementsRepository,
+)
+from .activity_transaction import activity_transaction
 
 
 UNIQUE_START = dt.date(1977, 1, 1)
@@ -367,9 +371,20 @@ class ActivityEditorDialog(RequirementsActivityEditorDialog):
             details = self._collect()
             requirements = self.requirements_page.collect()
             agreements = self.agreements_page.collect(confirm_delete=True)
-            self.repository.save(details, self._checked_group_ids())
-            self.requirements_page.save(requirements)
-            self.agreements_page.save(agreements)
+            with activity_transaction(self.repository) as shared_repository:
+                NativeActivityEditorRepository.save(
+                    shared_repository,
+                    details,
+                    self._checked_group_ids(),
+                )
+                ActivityRequirementsRepository(shared_repository).save(
+                    self.activity_id,
+                    requirements,
+                )
+                ActivityAgreementsRepository(shared_repository).save(
+                    self.activity_id,
+                    agreements,
+                )
         except ValueError as exc:
             QMessageBox.warning(self, "Erreur de saisie", str(exc))
             return
@@ -377,4 +392,6 @@ class ActivityEditorDialog(RequirementsActivityEditorDialog):
             QMessageBox.critical(self, "Enregistrement impossible", str(exc))
             return
         self.details = details
+        self.requirements_page.state = requirements
+        self.agreements_page.state = agreements
         self.accept()
