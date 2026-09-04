@@ -35,6 +35,25 @@ Le correctif Noe-032b conserve les formats et la logique métier existants. Il a
 - création d'une base MySQL absente uniquement après validation de la charge SQL, avec contrôle de l'échec de création ;
 - après un retour `mysql` nul, reconnexion à la cible et exigence d'au moins une table ou vue avant de comptabiliser la restauration comme réussie.
 
+## Complément Noe-032c — postcondition forte des restaurations MySQL
+
+Le contrôle Noe-032b « code retour nul et au moins une table ou vue » ne prouvait pas que l'import avait atteint sa fin. Une interruption après quelques `CREATE TABLE` pouvait laisser des objets visibles et être prise à tort pour un succès.
+
+Noe-032c remplace cette postcondition minimale par trois contrôles complémentaires :
+
+1. **Intégrité du dump produit.** Chaque nouveau dump réseau reste stocké sous le même nom `<base>.sql` dans l'archive historique. Deux commentaires SQL compatibles avec les anciens clients l'encadrent désormais : un en-tête et un manifeste terminal contenant un identifiant, la taille exacte de la charge originale et son empreinte SHA-256. Une troncature ou une altération entre ces deux bornes est refusée avant création de la base et avant lancement de `mysql`.
+2. **Marqueur terminal exécuté.** La restauration ajoute uniquement à la copie SQL extraite dans `restoretemp` la création puis l'alimentation d'une table au nom aléatoire. Cette instruction est placée après tout le dump. Après le retour du client, une nouvelle connexion doit retrouver la table et son jeton ; sinon l'import n'est pas considéré comme arrivé à son terme. Le marqueur est supprimé après la vérification, y compris sur les chemins d'échec couverts.
+3. **Objets attendus réellement présents.** Le SQL validé est analysé pour recenser les tables ciblées par `CREATE`, `INSERT` ou `REPLACE`, ainsi que les vues, triggers, procédures, fonctions et événements créés. La postcondition compare cette liste avec `SHOW FULL TABLES` et, lorsque nécessaire, avec `information_schema`. Un marqueur présent ne suffit donc pas si un objet attendu manque ou n'a pas le bon type.
+
+La compatibilité descendante est conservée :
+
+- aucun membre obligatoire supplémentaire n'est ajouté au ZIP et les extensions `.nod` / `.noc` ne changent pas ;
+- les lignes de manifeste sont des commentaires ignorés par les anciennes versions de MySQL et de Noethys ;
+- un ancien dump sans manifeste reste restaurable s'il est non vide, se termine par une instruction SQL complète et expose au moins un objet persistant attendu ;
+- les objets attendus d'un ancien dump sont dérivés du SQL disponible, puis le même marqueur terminal et la même postcondition sont appliqués.
+
+Cette protection est une **détection de restauration partielle**, pas une transaction globale. Les DDL MySQL et certains effets du dump peuvent être validés implicitement ; en cas d'échec, les objets déjà modifiés peuvent donc rester partiellement restaurés et doivent être repris depuis une copie saine.
+
 ## Précautions obligatoires
 
 1. Ne jamais valider une restauration pour la première fois sur la base de production.
@@ -50,15 +69,24 @@ Le correctif Noe-032b conserve les formats et la logique métier existants. Il a
 
 - restauration d'un fichier SQLite depuis une archive `.nod` ;
 - remplacement d'un fichier SQLite existant après confirmation ;
-- chemin de restauration réseau avec import MySQL simulé réussi ;
-- valeur de retour listant correctement les fichiers restaurés ;
-- refus d'un SQL sans effet (`SELECT 1;`) avant appel à `mysql` ;
-- absence de création d'une base manquante lorsque le SQL est sans effet ;
-- refus d'un retour `mysql` nul si la cible ne contient toujours aucune table ou vue.
+- succès complet d'un dump MySQL portant le manifeste Noe-032c ;
+- succès d'un ancien dump complet sans manifeste ;
+- analyse des objets de premier niveau d'un dump `mysqldump` avec commentaires conditionnels, fins de ligne CRLF et changements `DELIMITER`, sans confondre le SQL contenu dans le corps d'un trigger ;
+- succès lorsque tables, vues, triggers, procédures, fonctions et événements attendus sont tous visibles dans les catalogues simulés ;
+- refus d'un import interrompu après les premières instructions `CREATE TABLE`, même si le client simulé retourne zéro ;
+- refus d'un marqueur terminal présent lorsque l'un des objets attendus manque ;
+- refus d'un marqueur terminal présent lorsqu'un événement attendu manque dans `information_schema` ;
+- refus avant appel à `mysql` d'un dump manifesté tronqué ;
+- refus avant appel à `mysql` d'un ancien SQL tronqué au milieu d'une instruction ;
+- refus d'un SQL sans effet (`SELECT 1;`) et absence de création d'une base manquante dans ce cas ;
+- refus d'un retour `mysql` nul lorsque le marqueur terminal n'a pas été exécuté ;
+- nettoyage du marqueur et de `restoretemp` sur les chemins couverts.
 
-`tests/test_noe_032_backup_integrity.py` couvre les nouveaux invariants Noe-032b :
+`tests/test_noe_032_backup_integrity.py` couvre les invariants Noe-032b et Noe-032c :
 
 - refus d'une sauvegarde réseau sans paramètres de connexion ;
+- création d'une archive réseau réussie dont le SQL contient un manifeste terminal vérifiable sans changement de nom de membre ;
+- refus d'une charge SQL altérée à taille constante lorsque son empreinte ne correspond plus au manifeste ;
 - fermeture du ZIP et suppression d'une archive partielle lorsqu'un fichier local manque ;
 - suppression de `savetemp` et de l'archive partielle après échec simulé de `mysqldump` ;
 - ordre des options transactionnelles de `mysqldump` ;
@@ -71,6 +99,8 @@ Ces tests sont inclus automatiquement dans la suite métier Noe-031 (`tests/test
 
 ## Limites
 
-La CI ne lance pas un serveur MySQL/MariaDB 5.5 réel pour écraser une base de production. Les tests réseau simulent `mysqldump` et le client `mysql` afin de protéger le contrôle de flux et le nettoyage des ressources. La compatibilité serveur réelle reste couverte par la stratégie conservatrice du projet et doit être confirmée sur une copie avant RC.
+La CI ne lance pas un serveur MySQL/MariaDB de production et n'écrase aucune base réelle. Les tests réseau simulent `mysqldump`, le client `mysql` et les catalogues du serveur afin de protéger le contrôle de flux, la postcondition et le nettoyage des ressources. Une qualification sur une copie dédiée reste requise avant RC.
 
-La restauration MySQL reste non atomique : un échec du client `mysql` après le début de l'import peut laisser une base partiellement restaurée. Ce risque est identifié mais volontairement hors du lot Noe-032b ; il doit être traité et qualifié séparément sur une base de recette.
+La restauration MySQL reste non atomique : un échec après le début de l'import peut laisser une base partiellement modifiée. Noe-032c empêche de déclarer ce cas réussi, mais ne tente pas de l'annuler automatiquement.
+
+Pour une nouvelle sauvegarde, le manifeste taille/empreinte permet de détecter une perte de fin du SQL. Pour un ancien dump sans aucune métadonnée terminale, une troncature nette exactement entre deux instructions complètes est indistinguable d'un dump volontairement plus court ; le marqueur prouve seulement que la totalité du fichier fourni a été exécutée. Ce risque résiduel est inhérent à l'absence de manifeste dans les archives historiques.
