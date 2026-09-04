@@ -153,6 +153,15 @@ def _assert(condition, message):
         raise AssertionError(message)
 
 
+def _prepare_server(conn):
+    """Rend déterministes les objets de recette sur un serveur MySQL 5.7 jetable."""
+    proc = _run_mysql(
+        conn["host"], conn["port"], conn["user"], conn["password"],
+        "SET GLOBAL log_bin_trust_function_creators=1; SET GLOBAL event_scheduler=ON;",
+    )
+    _assert(proc.returncode == 0, "préparation serveur impossible: %s" % proc.stderr)
+
+
 def _create_database(conn, database):
     proc = _run_mysql(conn["host"], conn["port"], conn["user"], conn["password"],
                       "DROP DATABASE IF EXISTS `{0}`; CREATE DATABASE `{0}` CHARACTER SET utf8mb4;".format(database))
@@ -201,6 +210,7 @@ def main():
     probe = _run_mysql(args.host, args.port, args.user, args.password, "SELECT VERSION();")
     _assert(probe.returncode == 0, "serveur MySQL inaccessible: %s" % probe.stderr)
     print("Serveur:", probe.stdout.strip())
+    _prepare_server(conn)
 
     suffix = uuid.uuid4().hex[:8]
     db_manifest = "noe032_manifest_%s" % suffix
