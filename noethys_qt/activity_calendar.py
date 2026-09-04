@@ -114,6 +114,26 @@ class MonthData:
     consumption_counts: dict[tuple[dt.date, int | None, int], int]
 
 
+def _event_counts_by_cell(
+    events: Iterable[CalendarEvent],
+) -> dict[tuple[dt.date, int | None, int], int]:
+    counts: dict[tuple[dt.date, int | None, int], int] = {}
+    for event in events:
+        key = (event.date, event.group_id, event.unit_id)
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def _event_counts_by_period(
+    events: Iterable[CalendarEvent],
+) -> dict[tuple[int, int, int | None, int], int]:
+    counts: dict[tuple[int, int, int | None, int], int] = {}
+    for event in events:
+        key = (event.date.year, event.date.month, event.group_id, event.unit_id)
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
 def _to_date(value: object) -> dt.date:
     if isinstance(value, dt.datetime):
         return value.date()
@@ -670,6 +690,7 @@ class CalendarEditorDialog(QDialog):
         self.table.clear(); self.table.setColumnCount(len(headers)); self.table.setHorizontalHeaderLabels(headers); self.table.setRowCount(days * len(groups))
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents); self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         for column in range(2, len(headers)): self.table.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeMode.ResizeToContents)
+        event_counts = _event_counts_by_cell(self.events)
         row = 0
         for day in range(1, days + 1):
             date_value = dt.date(self.year, self.month, day)
@@ -682,7 +703,7 @@ class CalendarEditorDialog(QDialog):
                     check = QCheckBox(cell); key = (date_value, group_id, unit.unit_id); check.setChecked(key in self.openings); check.setEnabled(self._active_unit(unit, date_value, group_id)); check.setProperty("calendar_key", key); check.toggled.connect(self._opening_toggled); layout.addWidget(check)
                     if unit.type_code == "Evenement":
                         button = QPushButton("Év.", cell); button.setEnabled(check.isChecked() and check.isEnabled()); button.setProperty("calendar_key", key); button.clicked.connect(self._edit_events)
-                        count = sum(1 for event in self.events if (event.date, event.group_id, event.unit_id) == key)
+                        count = event_counts.get(key, 0)
                         if count: button.setText(f"Év. {count}")
                         check.toggled.connect(button.setEnabled); layout.addWidget(button)
                     layout.addStretch(1); self.table.setCellWidget(row, column, cell); column += 1
@@ -759,9 +780,7 @@ class ActivityCalendarPage(QWidget):
         units = self.repository.list_units(self.activity_id); groups = dict(self.repository.list_groups(self.activity_id))
         openings = self.repository.list_openings(self.activity_id, dt.date(1977, 1, 1), dt.date(2999, 1, 1))
         events = self.repository.list_events(self.activity_id, dt.date(1977, 1, 1), dt.date(2999, 1, 1))
-        event_counts: dict[tuple[dt.date, int | None, int], int] = {}
-        for event in events:
-            key = (event.date, event.group_id, event.unit_id); event_counts[key] = event_counts.get(key, 0) + 1
+        event_counts = _event_counts_by_period(events)
         data: dict[int, dict[int, dict[int | None, dict[int, int]]]] = {}
         year_dates: dict[int, set[dt.date]] = {}; year_unit_dates: dict[tuple[int, int], set[dt.date]] = {}
         for opening in openings:
@@ -783,7 +802,7 @@ class ActivityCalendarPage(QWidget):
                     for unit_id, count in unit_counts.items():
                         column = unit_columns.get(unit_id)
                         if column is None: continue
-                        event_total = sum(event_counts.get((opening.date, group_id, unit_id), 0) for opening in openings if opening.date.year == year and opening.date.month == month and opening.group_id == group_id and opening.unit_id == unit_id)
+                        event_total = event_counts.get((year, month, group_id, unit_id), 0)
                         text = "1 date" if count == 1 else f"{count} dates"
                         if event_total: text += f" · {event_total} év."
                         group_item.setText(column, text)
