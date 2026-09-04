@@ -35,6 +35,9 @@ class _FakeDB(object):
     def Close(self):
         pass
 
+    def GetListeTables(self):
+        return [("test_restore",)]
+
 
 class _FakeProcess(object):
     returncode = 0
@@ -172,7 +175,7 @@ class RestoreFlowTests(unittest.TestCase):
             temp_dir.mkdir()
             archive = root / "backup.nod"
             with zipfile.ZipFile(str(archive), "w") as zf:
-                zf.writestr("demo_data.sql", b"SELECT 1;")
+                zf.writestr("demo_data.sql", b"CREATE TABLE test_restore (id INTEGER);")
 
             module = _load_module(data_dir, temp_dir)
             module.GetListeFichiersReseau = lambda values: []
@@ -188,6 +191,70 @@ class RestoreFlowTests(unittest.TestCase):
                 )
 
             self.assertEqual(result, ["demo_data"])
+
+
+    def test_network_restore_rejects_noop_sql_before_mysql(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            data_dir = root / "data"
+            temp_dir = root / "temp"
+            data_dir.mkdir()
+            temp_dir.mkdir()
+            archive = root / "backup.nod"
+            with zipfile.ZipFile(str(archive), "w") as zf:
+                zf.writestr("demo_data.sql", b"SELECT 1;")
+
+            module = _load_module(data_dir, temp_dir)
+            module.GetListeFichiersReseau = lambda values: ["demo_data"]
+            module.GetRepertoireMySQL = lambda values: "/fake/mysql/"
+            module.CreationFichierLoginTemp = lambda **kwargs: Path(kwargs["nomFichier"]).write_text("[client]\n")
+            params = {"host": "localhost", "port": 3306, "user": "test", "password": "test"}
+
+            with mock.patch.object(module.subprocess, "Popen", return_value=_FakeProcess()) as popen:
+                result = module.Restauration(
+                    fichier=str(archive),
+                    listeFichiersReseau=["demo_data.sql"],
+                    dictConnexion=params,
+                )
+
+            self.assertFalse(result)
+            popen.assert_not_called()
+            self.assertFalse((temp_dir / "restoretemp").exists())
+
+    def test_network_restore_rejects_mysql_success_without_tables(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            data_dir = root / "data"
+            temp_dir = root / "temp"
+            data_dir.mkdir()
+            temp_dir.mkdir()
+            archive = root / "backup.nod"
+            with zipfile.ZipFile(str(archive), "w") as zf:
+                zf.writestr("demo_data.sql", b"CREATE TABLE test_restore (id INTEGER);")
+
+            module = _load_module(data_dir, temp_dir)
+            module.GetListeFichiersReseau = lambda values: ["demo_data"]
+            module.GetRepertoireMySQL = lambda values: "/fake/mysql/"
+            module.CreationFichierLoginTemp = lambda **kwargs: Path(kwargs["nomFichier"]).write_text("[client]\n")
+
+            class _NoTablesDB(_FakeDB):
+                def GetListeTables(self):
+                    return []
+
+            module.GestionDB.DB = _NoTablesDB
+            params = {"host": "localhost", "port": 3306, "user": "test", "password": "test"}
+
+            with mock.patch.object(module.subprocess, "Popen", return_value=_FakeProcess()) as popen:
+                result = module.Restauration(
+                    fichier=str(archive),
+                    listeFichiersReseau=["demo_data.sql"],
+                    dictConnexion=params,
+                )
+
+            self.assertFalse(result)
+            popen.assert_called_once()
+            self.assertFalse((temp_dir / "restoretemp").exists())
+
 
 
 if __name__ == "__main__":

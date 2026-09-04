@@ -59,6 +59,8 @@ Le correctif Noe-032b conserve les formats et la logique métier existants. Il a
 - confinement et nettoyage lorsqu'un appel à `Popen` lève pendant la sauvegarde ou la restauration ;
 - confinement et nettoyage lorsqu'une extraction SQL échoue avant l'appel à `mysql` ;
 - suppression de `restoretemp` après échec simulé du client `mysql` ;
+- refus d’un SQL vide ou sans charge restauratrice avant lancement du client `mysql` ;
+- postcondition après import : la base cible doit être accessible et exposer au moins une table ou vue avant d’être comptée comme restaurée ;
 - fermeture du transport de messagerie et suppression de l'archive temporaire après échec d'envoi.
 
 Ces tests sont inclus automatiquement dans la suite métier Noe-031 (`tests/test_*.py`).

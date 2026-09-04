@@ -20,6 +20,7 @@ import GestionDB
 import subprocess
 import shutil
 import time
+import re
 
 import GestionDB
 from Utils import UTILS_Fichiers
@@ -66,6 +67,45 @@ def _TexteErreurProcessus(valeur):
     if isinstance(valeur, bytes):
         return valeur.decode("utf-8", errors="replace")
     return str(valeur)
+
+
+_SQL_RESTAURATION_RE = re.compile(
+    r"\b(?:CREATE\s+(?:(?:OR\s+REPLACE|TEMPORARY|ALGORITHM\s*=\s*\S+|DEFINER\s*=\s*\S+|SQL\s+SECURITY\s+\w+)\s+)*(?:TABLE|VIEW|TRIGGER|PROCEDURE|FUNCTION|EVENT)|INSERT\s+(?:IGNORE\s+)?INTO|REPLACE\s+INTO)\b",
+    re.IGNORECASE,
+)
+
+
+def _SQLContientChargeRestauratrice(fichier):
+    """ Vérifie qu'un export SQL contient une charge utile de restauration. """
+    try:
+        with open(fichier, "rb") as flux:
+            contenu = flux.read()
+    except (IOError, OSError):
+        return False
+    if not contenu or not contenu.strip():
+        return False
+    if isinstance(contenu, bytes):
+        texte = contenu.decode("utf-8", "ignore")
+    else:
+        texte = contenu
+    # Ignore les commentaires ordinaires mais conserve le SQL conditionnel /*!xxxxx ... */ de mysqldump.
+    texte = re.sub(r"/\*(?!\!)[\s\S]*?\*/", " ", texte)
+    texte = re.sub(r"/\*!\d{5,6}\s*(.*?)\*/", r" \1 ", texte, flags=re.S)
+    texte = re.sub(r"(?m)^\s*(?:--(?:\s|$)|#).*$", " ", texte)
+    return _SQL_RESTAURATION_RE.search(texte) is not None
+
+
+def _BaseMySQLContientObjets(dictConnexion, fichier):
+    """ Postcondition minimale : la base cible doit être accessible et contenir au moins une table ou vue. """
+    nomFichier = u"%s;%s;%s;%s[RESEAU]%s" % (
+        dictConnexion["port"], dictConnexion["host"], dictConnexion["user"], dictConnexion["password"], fichier)
+    DB = GestionDB.DB(suffixe=None, nomFichier=nomFichier)
+    try:
+        if getattr(DB, "echec", 1) == 1:
+            return False
+        return len(DB.GetListeTables()) > 0
+    finally:
+        DB.Close()
 
 
 
@@ -423,6 +463,15 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
                 fichierZip.extract(u"%s.sql" % fichier, repTemp)
                 fichierRestore = u"%s/%s.sql" % (repTemp, fichier)
 
+                # Refuse un SQL vide ou sans charge utile de restauration avant de toucher à la base.
+                if _SQLContientChargeRestauratrice(fichierRestore) == False:
+                    dlgprogress.Destroy()
+                    dlgErreur = wx.MessageDialog(None, _(u"Le fichier SQL '%s' ne contient aucune instruction de restauration exploitable.") % fichier, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                    dlgErreur.ShowModal()
+                    dlgErreur.Destroy()
+                    fichierZip.close()
+                    return False
+
                 # Importation du fichier SQL dans MySQL
                 dlgprogress.Update(numEtape, _(u"Restauration du fichier %s...") % fichier);numEtape += 1
 
@@ -438,6 +487,15 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
                     out = _TexteErreurProcessus(out)
                     dlgprogress.Destroy()
                     dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de restauration !\n\nErreur : %s") % out, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                    dlgErreur.ShowModal()
+                    dlgErreur.Destroy()
+                    fichierZip.close()
+                    return False
+
+                # Un code retour nul ne suffit pas : la cible doit contenir au moins une table ou vue.
+                if _BaseMySQLContientObjets(dictConnexion, fichier) == False:
+                    dlgprogress.Destroy()
+                    dlgErreur = wx.MessageDialog(None, _(u"Le client MySQL n'a signalé aucune erreur, mais la base restaurée ne contient aucune table ou vue."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
                     dlgErreur.ShowModal()
                     dlgErreur.Destroy()
                     fichierZip.close()
