@@ -21,6 +21,9 @@ import subprocess
 import shutil
 import time
 import re
+import hashlib
+import uuid
+import io
 
 import GestionDB
 from Utils import UTILS_Fichiers
@@ -69,41 +72,539 @@ def _TexteErreurProcessus(valeur):
     return str(valeur)
 
 
-_SQL_RESTAURATION_RE = re.compile(
-    r"\b(?:CREATE\s+(?:(?:OR\s+REPLACE|TEMPORARY|ALGORITHM\s*=\s*\S+|DEFINER\s*=\s*\S+|SQL\s+SECURITY\s+\w+)\s+)*(?:TABLE|VIEW|TRIGGER|PROCEDURE|FUNCTION|EVENT)|INSERT\s+(?:IGNORE\s+)?INTO|REPLACE\s+INTO)\b",
+_SQL_MANIFESTE_ENTETE = b"-- NOETHYS-SQL-MANIFEST-V1 "
+_SQL_MANIFESTE_FIN = b"-- NOETHYS-SQL-MANIFEST-END-V1 "
+_SQL_MANIFESTE_FIN_RE = re.compile(
+    b"^-- NOETHYS-SQL-MANIFEST-END-V1 ([0-9a-f]{32}) ([0-9]+) ([0-9a-f]{64})\\n?$"
+)
+_TAILLE_BLOC_SQL = 1024 * 1024
+_TAILLE_PREFIXE_INSTRUCTION_SQL = 16 * 1024
+_IDENTIFIANT_SQL = r'(?:`(?:``|[^`])+`|"(?:""|[^"])+"|[A-Za-z0-9_$]+)'
+_NOM_QUALIFIE_SQL = r"(?:(?:%s)\s*\.\s*)?(?P<nom>%s)" % (_IDENTIFIANT_SQL, _IDENTIFIANT_SQL)
+_MODIFICATEURS_CREATE_SQL = (
+    r"(?P<modificateurs>(?:(?:OR\s+REPLACE|TEMPORARY|ALGORITHM\s*=\s*\S+|"
+    r"DEFINER\s*=\s*\S+(?:\s*@\s*\S+)?|SQL\s+SECURITY\s+\w+)\s+)*)"
+)
+_CREATE_OBJET_SQL_RE = re.compile(
+    r"\bCREATE\s+%s(?P<type>TABLE|VIEW|TRIGGER|PROCEDURE|FUNCTION|EVENT)\s+"
+    r"(?:IF\s+NOT\s+EXISTS\s+)?%s" % (_MODIFICATEURS_CREATE_SQL, _NOM_QUALIFIE_SQL),
+    re.IGNORECASE,
+)
+_ECRITURE_TABLE_SQL_RE = re.compile(
+    r"\b(?:INSERT(?:\s+(?:LOW_PRIORITY|DELAYED|HIGH_PRIORITY|IGNORE))*|"
+    r"REPLACE(?:\s+(?:LOW_PRIORITY|DELAYED))*)\s+INTO\s+%s" % _NOM_QUALIFIE_SQL,
     re.IGNORECASE,
 )
 
 
-def _SQLContientChargeRestauratrice(fichier):
-    """ Vérifie qu'un export SQL contient une charge utile de restauration. """
+def _EncoderAscii(texte):
+    if isinstance(texte, bytes):
+        return texte
+    return texte.encode("ascii")
+
+
+def _LireFichierBinaire(fichier):
+    with open(fichier, "rb") as flux:
+        return flux.read()
+
+
+def _AjouterManifesteIntegriteSQL(fichier):
+    """ Enveloppe un dump sans changer son caractère exécutable par les anciens clients. """
+    jeton = uuid.uuid4().hex
+    jetonBytes = _EncoderAscii(jeton)
+    fichierTemp = u"%s.noethys-manifest" % fichier
+    empreinte = hashlib.sha256()
+    taille = 0
+
     try:
-        with open(fichier, "rb") as flux:
-            contenu = flux.read()
-    except (IOError, OSError):
-        return False
-    if not contenu or not contenu.strip():
-        return False
-    if isinstance(contenu, bytes):
-        texte = contenu.decode("utf-8", "ignore")
+        with open(fichier, "rb") as source, open(fichierTemp, "wb") as destination:
+            destination.write(_SQL_MANIFESTE_ENTETE + jetonBytes + b"\n")
+            while True:
+                bloc = source.read(_TAILLE_BLOC_SQL)
+                if not bloc:
+                    break
+                empreinte.update(bloc)
+                taille += len(bloc)
+                destination.write(bloc)
+
+            # Cette ligne vide sépare toujours la charge originale du manifeste terminal.
+            destination.write(b"\n")
+            destination.write(
+                _SQL_MANIFESTE_FIN
+                + jetonBytes
+                + b" "
+                + _EncoderAscii(str(taille))
+                + b" "
+                + _EncoderAscii(empreinte.hexdigest())
+                + b"\n"
+            )
+
+        os.remove(fichier)
+        os.rename(fichierTemp, fichier)
+    except Exception:
+        try:
+            if os.path.isfile(fichierTemp):
+                os.remove(fichierTemp)
+        except OSError:
+            pass
+        raise
+
+
+def _ExtraireChargeSQL(contenu):
+    """ Retourne (charge, avec_manifeste, erreur) et valide taille/empreinte si présentes. """
+    if not contenu.startswith(_SQL_MANIFESTE_ENTETE):
+        if re.search(b"(?m)^-- NOETHYS-SQL-MANIFEST-END-V1 ", contenu):
+            return None, False, _(u"le manifeste terminal est présent sans son en-tête")
+        return contenu, False, None
+
+    finEntete = contenu.find(b"\n")
+    if finEntete == -1:
+        return None, True, _(u"l'en-tête du manifeste SQL est tronqué")
+
+    jeton = contenu[len(_SQL_MANIFESTE_ENTETE):finEntete]
+    if re.match(b"^[0-9a-f]{32}$", jeton) is None:
+        return None, True, _(u"l'identifiant du manifeste SQL est invalide")
+
+    debutFin = contenu.rfind(b"\n" + _SQL_MANIFESTE_FIN)
+    if debutFin == -1:
+        return None, True, _(u"le manifeste terminal du dump SQL est absent")
+
+    ligneFin = contenu[debutFin + 1:]
+    correspondance = _SQL_MANIFESTE_FIN_RE.match(ligneFin)
+    if correspondance is None:
+        return None, True, _(u"le manifeste terminal du dump SQL est tronqué ou invalide")
+
+    jetonFin, tailleTexte, empreinteAttendue = correspondance.groups()
+    if jetonFin != jeton:
+        return None, True, _(u"les identifiants de début et de fin du dump SQL diffèrent")
+
+    charge = contenu[finEntete + 1:debutFin]
+    if len(charge) != int(tailleTexte):
+        return None, True, _(u"la taille du dump SQL ne correspond pas au manifeste")
+
+    empreinteReelle = _EncoderAscii(hashlib.sha256(charge).hexdigest())
+    if empreinteReelle != empreinteAttendue:
+        return None, True, _(u"l'empreinte du dump SQL ne correspond pas au manifeste")
+
+    return charge, True, None
+
+
+def _NettoyerSQLPourAnalyse(texte):
+    """ Retire commentaires et littéraux sans masquer les identifiants SQL quotés. """
+    texte = re.sub(r"/\*!\d{5,6}\s*(.*?)\*/", r"\1", texte, flags=re.S)
+    resultat = io.StringIO()
+    index = 0
+    longueur = len(texte)
+
+    while index < longueur:
+        caractere = texte[index]
+
+        if caractere == u"'":
+            quote = caractere
+            resultat.write(u" __NOETHYS_SQL_STRING__ ")
+            index += 1
+            ferme = False
+            while index < longueur:
+                caractere = texte[index]
+                if caractere == u"\\":
+                    index += 2
+                    continue
+                if caractere == quote:
+                    if index + 1 < longueur and texte[index + 1] == quote:
+                        index += 2
+                        continue
+                    index += 1
+                    ferme = True
+                    break
+                index += 1
+            if ferme == False:
+                return resultat.getvalue(), False
+            continue
+
+        if caractere in (u"`", u'"'):
+            quote = caractere
+            debut = index
+            index += 1
+            ferme = False
+            while index < longueur:
+                if texte[index] == quote:
+                    if index + 1 < longueur and texte[index + 1] == quote:
+                        index += 2
+                        continue
+                    index += 1
+                    ferme = True
+                    break
+                if texte[index] == u"\\":
+                    index += 2
+                    continue
+                index += 1
+            resultat.write(texte[debut:index])
+            if ferme == False:
+                return resultat.getvalue(), False
+            continue
+
+        if caractere == u"/" and index + 1 < longueur and texte[index + 1] == u"*":
+            finCommentaire = texte.find(u"*/", index + 2)
+            if finCommentaire == -1:
+                return resultat.getvalue(), False
+            resultat.write(u" ")
+            index = finCommentaire + 2
+            continue
+
+        if caractere == u"#":
+            finLigne = texte.find(u"\n", index + 1)
+            if finLigne == -1:
+                break
+            resultat.write(u"\n")
+            index = finLigne + 1
+            continue
+
+        if caractere == u"-" and index + 1 < longueur and texte[index + 1] == u"-":
+            suivant = texte[index + 2:index + 3]
+            if suivant == u"" or suivant.isspace():
+                finLigne = texte.find(u"\n", index + 2)
+                if finLigne == -1:
+                    break
+                resultat.write(u"\n")
+                index = finLigne + 1
+                continue
+
+        resultat.write(caractere)
+        index += 1
+
+    return resultat.getvalue(), True
+
+
+def _NouvelInventaireObjetsSQL():
+    return {
+        "tables": set(),
+        "vues": set(),
+        "triggers": set(),
+        "procedures": set(),
+        "fonctions": set(),
+        "evenements": set(),
+    }
+
+
+def _ClasserInstructionSQL(instruction, objets):
+    correspondances = {
+        "TABLE": "tables",
+        "VIEW": "vues",
+        "TRIGGER": "triggers",
+        "PROCEDURE": "procedures",
+        "FUNCTION": "fonctions",
+        "EVENT": "evenements",
+    }
+
+    correspondance = _CREATE_OBJET_SQL_RE.match(instruction)
+    if correspondance is not None:
+        typeObjet = correspondance.group("type").upper()
+        modificateurs = correspondance.group("modificateurs") or u""
+        if typeObjet != "TABLE" or re.search(r"\bTEMPORARY\b", modificateurs, re.IGNORECASE) is None:
+            objets[correspondances[typeObjet]].add(_NomObjetSQL(correspondance.group("nom")))
+        return
+
+    correspondance = _ECRITURE_TABLE_SQL_RE.match(instruction)
+    if correspondance is not None:
+        objets["tables"].add(_NomObjetSQL(correspondance.group("nom")))
+
+
+def _DecouperInstructionsSQL(texte):
+    """ Classe les instructions de premier niveau en respectant DELIMITER, avec mémoire bornée par instruction. """
+    objets = _NouvelInventaireObjetsSQL()
+    tampon = []
+    tailleTampon = 0
+    tamponSignificatif = False
+    delimiteur = u";"
+    index = 0
+    debutLigne = True
+    longueur = len(texte)
+
+    while index < longueur:
+        if debutLigne and tamponSignificatif == False:
+            finLigne = texte.find(u"\n", index)
+            if finLigne == -1:
+                finLigne = longueur
+            ligne = texte[index:finLigne]
+            correspondance = re.match(r"^[ \t]*DELIMITER[ \t]+(\S+)[ \t\r]*$", ligne, re.IGNORECASE)
+            if correspondance is not None:
+                delimiteur = correspondance.group(1)
+                tampon = []
+                tailleTampon = 0
+                index = finLigne + (1 if finLigne < longueur else 0)
+                debutLigne = True
+                continue
+
+        caractere = texte[index]
+        if caractere in (u"`", u'"'):
+            quote = caractere
+            debut = index
+            index += 1
+            while index < longueur:
+                if texte[index] == quote:
+                    if index + 1 < longueur and texte[index + 1] == quote:
+                        index += 2
+                        continue
+                    index += 1
+                    break
+                if texte[index] == u"\\":
+                    index += 2
+                    continue
+                index += 1
+            fragment = texte[debut:index]
+            if tailleTampon < _TAILLE_PREFIXE_INSTRUCTION_SQL:
+                fragmentPrefixe = fragment[:_TAILLE_PREFIXE_INSTRUCTION_SQL - tailleTampon]
+                tampon.append(fragmentPrefixe)
+                tailleTampon += len(fragmentPrefixe)
+            tamponSignificatif = True
+            debutLigne = fragment.endswith(u"\n")
+            continue
+
+        if delimiteur and texte.startswith(delimiteur, index):
+            instruction = u"".join(tampon).strip()
+            if tamponSignificatif and instruction:
+                _ClasserInstructionSQL(instruction, objets)
+            tampon = []
+            tailleTampon = 0
+            tamponSignificatif = False
+            index += len(delimiteur)
+            debutLigne = False
+            continue
+
+        if tailleTampon < _TAILLE_PREFIXE_INSTRUCTION_SQL:
+            tampon.append(caractere)
+            tailleTampon += 1
+        if not caractere.isspace():
+            tamponSignificatif = True
+        debutLigne = caractere == u"\n"
+        index += 1
+
+    # Un objet explicitement créé comme vue ne doit pas être accepté comme table ordinaire.
+    objets["tables"].difference_update(objets["vues"])
+    return objets, tamponSignificatif, delimiteur
+
+
+def _NomObjetSQL(valeur):
+    valeur = valeur.strip()
+    if valeur.startswith(u"`") and valeur.endswith(u"`"):
+        valeur = valeur[1:-1].replace(u"``", u"`")
+    elif valeur.startswith(u'"') and valeur.endswith(u'"'):
+        valeur = valeur[1:-1].replace(u'""', u'"')
+    return valeur.lower()
+
+
+def _AnalyserDumpSQL(fichier):
+    """ Valide l'intégrité disponible et extrait les objets persistants attendus. """
+    try:
+        contenu = _LireFichierBinaire(fichier)
+    except (IOError, OSError) as err:
+        return None, _(u"lecture impossible : %s") % err
+
+    charge, avecManifeste, erreur = _ExtraireChargeSQL(contenu)
+    if erreur is not None:
+        return None, erreur
+    if not charge or not charge.strip():
+        return None, _(u"le dump SQL est vide")
+
+    if isinstance(charge, bytes):
+        texte = charge.decode("utf-8", "ignore")
     else:
-        texte = contenu
-    # Ignore les commentaires ordinaires mais conserve le SQL conditionnel /*!xxxxx ... */ de mysqldump.
-    texte = re.sub(r"/\*(?!\!)[\s\S]*?\*/", " ", texte)
-    texte = re.sub(r"/\*!\d{5,6}\s*(.*?)\*/", r" \1 ", texte, flags=re.S)
-    texte = re.sub(r"(?m)^\s*(?:--(?:\s|$)|#).*$", " ", texte)
-    return _SQL_RESTAURATION_RE.search(texte) is not None
+        texte = charge
+
+    texteNettoye, ferme = _NettoyerSQLPourAnalyse(texte)
+    if ferme == False:
+        return None, _(u"le dump SQL se termine dans une chaîne, un identifiant ou un commentaire non fermé")
+
+    objets, reste, delimiteur = _DecouperInstructionsSQL(texteNettoye)
+    if reste:
+        return None, _(u"la dernière instruction SQL est incomplète")
+    if delimiteur != u";":
+        return None, _(u"le dump SQL ne rétablit pas le délimiteur standard en fin de fichier")
+
+    if not any(objets.values()):
+        return None, _(u"aucun objet persistant ou chargement de table n'a été trouvé")
+
+    return {"avec_manifeste": avecManifeste, "objets": objets}, None
 
 
-def _BaseMySQLContientObjets(dictConnexion, fichier):
-    """ Postcondition minimale : la base cible doit être accessible et contenir au moins une table ou vue. """
-    nomFichier = u"%s;%s;%s;%s[RESEAU]%s" % (
+def _SQLContientChargeRestauratrice(fichier):
+    analyse, erreur = _AnalyserDumpSQL(fichier)
+    return analyse is not None and erreur is None
+
+
+def _QuoteIdentifiantMySQL(valeur):
+    return u"`%s`" % valeur.replace(u"`", u"``")
+
+
+def _EchapperLitteralMySQL(valeur):
+    return valeur.replace(u"\\", u"\\\\").replace(u"'", u"\\'")
+
+
+def _AjouterMarqueurTerminalSQL(fichier, nomBase):
+    """ Ajoute au fichier extrait un objet éphémère qui ne peut exister que si la fin est exécutée. """
+    jeton = uuid.uuid4().hex
+    nomTable = u"__noethys_restore_%s" % jeton
+    tableQualifiee = u"%s.%s" % (_QuoteIdentifiantMySQL(nomBase), _QuoteIdentifiantMySQL(nomTable))
+    sql = (
+        u"\n-- NOETHYS-RESTORE-END-V1 %s\n"
+        u"CREATE TABLE %s (`jeton` CHAR(32) NOT NULL PRIMARY KEY);\n"
+        u"INSERT INTO %s (`jeton`) VALUES ('%s');\n"
+    ) % (jeton, tableQualifiee, tableQualifiee, jeton)
+    with open(fichier, "ab") as flux:
+        flux.write(sql.encode("utf-8"))
+    return {"table": nomTable, "jeton": jeton}
+
+
+def _NomFichierReseau(dictConnexion, fichier):
+    return u"%s;%s;%s;%s[RESEAU]%s" % (
         dictConnexion["port"], dictConnexion["host"], dictConnexion["user"], dictConnexion["password"], fichier)
-    DB = GestionDB.DB(suffixe=None, nomFichier=nomFichier)
+
+
+def _ExecuterRequeteResultat(DB, requete):
+    if DB.ExecuterReq(requete) != 1:
+        return None
+    return DB.ResultatReq()
+
+
+def _NormaliserValeurSQL(valeur):
+    if isinstance(valeur, bytes):
+        return valeur.decode("utf-8", "ignore").lower()
+    return (u"%s" % valeur).lower()
+
+
+def _DiagnosticObjetsManquants(categorie, manquants):
+    return u"%s : %s" % (categorie, u", ".join(sorted(manquants)))
+
+
+def _VerifierPostconditionRestaurationMySQL(dictConnexion, fichier, marqueur, objetsAttendus):
+    """ Vérifie le marqueur terminal puis chaque type d'objet attendu, et retire le marqueur. """
+    DB = GestionDB.DB(suffixe=None, nomFichier=_NomFichierReseau(dictConnexion, fichier))
+    resultat = (False, _(u"la base restaurée n'est pas accessible"))
+    nettoyageOk = False
+
+    try:
+        if getattr(DB, "echec", 1) == 1:
+            return resultat
+
+        tableMarqueur = _QuoteIdentifiantMySQL(marqueur["table"])
+        jeton = _EchapperLitteralMySQL(marqueur["jeton"])
+        lignes = _ExecuterRequeteResultat(
+            DB,
+            u"SELECT `jeton` FROM %s WHERE `jeton`='%s' LIMIT 1;" % (tableMarqueur, jeton),
+        )
+        if lignes is None or len(lignes) != 1 or _NormaliserValeurSQL(lignes[0][0]) != marqueur["jeton"].lower():
+            resultat = (False, _(u"le marqueur terminal n'a pas été exécuté"))
+        else:
+            lignes = _ExecuterRequeteResultat(DB, u"SHOW FULL TABLES;")
+            if lignes is None:
+                resultat = (False, _(u"la liste des tables et vues restaurées est illisible"))
+            else:
+                tables = set()
+                vues = set()
+                nomMarqueur = marqueur["table"].lower()
+                for ligne in lignes:
+                    if not ligne:
+                        continue
+                    nomObjet = _NormaliserValeurSQL(ligne[0])
+                    if nomObjet == nomMarqueur:
+                        continue
+                    typeObjet = _NormaliserValeurSQL(ligne[1]) if len(ligne) > 1 else u"base table"
+                    if typeObjet == u"view":
+                        vues.add(nomObjet)
+                    else:
+                        tables.add(nomObjet)
+
+                manquants = []
+                tablesManquantes = objetsAttendus["tables"] - tables
+                vuesManquantes = objetsAttendus["vues"] - vues
+                if tablesManquantes:
+                    manquants.append(_DiagnosticObjetsManquants(_(u"tables"), tablesManquantes))
+                if vuesManquantes:
+                    manquants.append(_DiagnosticObjetsManquants(_(u"vues"), vuesManquantes))
+
+                nomBase = _EchapperLitteralMySQL(fichier)
+                if not manquants and objetsAttendus["triggers"]:
+                    lignes = _ExecuterRequeteResultat(
+                        DB,
+                        u"SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA='%s';" % nomBase,
+                    )
+                    if lignes is None:
+                        manquants.append(_(u"triggers : vérification impossible"))
+                    else:
+                        trouves = set(_NormaliserValeurSQL(ligne[0]) for ligne in lignes)
+                        absents = objetsAttendus["triggers"] - trouves
+                        if absents:
+                            manquants.append(_DiagnosticObjetsManquants(_(u"triggers"), absents))
+
+                if not manquants and (objetsAttendus["procedures"] or objetsAttendus["fonctions"]):
+                    lignes = _ExecuterRequeteResultat(
+                        DB,
+                        u"SELECT ROUTINE_NAME, ROUTINE_TYPE FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA='%s';" % nomBase,
+                    )
+                    if lignes is None:
+                        manquants.append(_(u"routines : vérification impossible"))
+                    else:
+                        procedures = set()
+                        fonctions = set()
+                        for ligne in lignes:
+                            if len(ligne) < 2:
+                                continue
+                            if _NormaliserValeurSQL(ligne[1]) == u"procedure":
+                                procedures.add(_NormaliserValeurSQL(ligne[0]))
+                            elif _NormaliserValeurSQL(ligne[1]) == u"function":
+                                fonctions.add(_NormaliserValeurSQL(ligne[0]))
+                        absents = objetsAttendus["procedures"] - procedures
+                        if absents:
+                            manquants.append(_DiagnosticObjetsManquants(_(u"procédures"), absents))
+                        absents = objetsAttendus["fonctions"] - fonctions
+                        if absents:
+                            manquants.append(_DiagnosticObjetsManquants(_(u"fonctions"), absents))
+
+                if not manquants and objetsAttendus["evenements"]:
+                    lignes = _ExecuterRequeteResultat(
+                        DB,
+                        u"SELECT EVENT_NAME FROM information_schema.EVENTS WHERE EVENT_SCHEMA='%s';" % nomBase,
+                    )
+                    if lignes is None:
+                        manquants.append(_(u"événements : vérification impossible"))
+                    else:
+                        trouves = set(_NormaliserValeurSQL(ligne[0]) for ligne in lignes)
+                        absents = objetsAttendus["evenements"] - trouves
+                        if absents:
+                            manquants.append(_DiagnosticObjetsManquants(_(u"événements"), absents))
+
+                if manquants:
+                    resultat = (False, _(u"des objets attendus sont absents ou de type incorrect : %s") % u" ; ".join(manquants))
+                else:
+                    resultat = (True, u"")
+    except Exception as err:
+        resultat = (False, _(u"la vérification post-restauration a échoué : %s") % err)
+    finally:
+        try:
+            if getattr(DB, "echec", 1) != 1:
+                nettoyageOk = DB.ExecuterReq(
+                    u"DROP TABLE IF EXISTS %s;" % _QuoteIdentifiantMySQL(marqueur["table"])
+                ) == 1
+        except Exception:
+            nettoyageOk = False
+        DB.Close()
+
+    if resultat[0] and nettoyageOk == False:
+        return False, _(u"le marqueur terminal n'a pas pu être supprimé après vérification")
+    return resultat
+
+
+def _SupprimerMarqueurRestaurationMySQL(dictConnexion, fichier, marqueur):
+    """ Nettoyage de secours après un échec du client ou une exception locale. """
+    DB = GestionDB.DB(suffixe=None, nomFichier=_NomFichierReseau(dictConnexion, fichier))
     try:
         if getattr(DB, "echec", 1) == 1:
             return False
-        return len(DB.GetListeTables()) > 0
+        return DB.ExecuterReq(
+            u"DROP TABLE IF EXISTS %s;" % _QuoteIdentifiantMySQL(marqueur["table"])
+        ) == 1
+    except Exception:
+        return False
     finally:
         DB.Close()
 
@@ -223,6 +724,9 @@ def Sauvegarde(listeFichiersLocaux=[], listeFichiersReseau=[], nom="", repertoir
                     fichierZip.close()
                     _SupprimerFichiersSauvegardeTemp(nom)
                     return False
+
+                # Ajoute un manifeste SQL non cassant (commentaires) avant archivage.
+                _AjouterManifesteIntegriteSQL(fichierSave)
 
                 # Insère le fichier Sql dans le ZIP
                 try :
@@ -457,10 +961,11 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
                 fichierZip.extract(u"%s.sql" % fichier, repTemp)
                 fichierRestore = u"%s/%s.sql" % (repTemp, fichier)
 
-                # Refuse un SQL vide ou sans charge utile de restauration avant de toucher à la base.
-                if _SQLContientChargeRestauratrice(fichierRestore) == False:
+                # Valide le manifeste lorsqu'il existe, la terminaison SQL et les objets attendus.
+                analyseSQL, erreurSQL = _AnalyserDumpSQL(fichierRestore)
+                if analyseSQL is None:
                     dlgprogress.Destroy()
-                    dlgErreur = wx.MessageDialog(None, _(u"Le fichier SQL '%s' ne contient aucune instruction de restauration exploitable.") % fichier, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                    dlgErreur = wx.MessageDialog(None, _(u"Le fichier SQL '%s' est incomplet ou invalide :\n\n%s") % (fichier, erreurSQL), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
                     dlgErreur.ShowModal()
                     dlgErreur.Destroy()
                     fichierZip.close()
@@ -476,34 +981,42 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
                     finally:
                         DB.Close()
 
-                # Importation du fichier SQL dans MySQL
-                dlgprogress.Update(numEtape, _(u"Restauration du fichier %s...") % fichier);numEtape += 1
+                # Le marqueur est ajouté uniquement à la copie extraite. Il doit être exécuté en toute fin d'import.
+                marqueurRestauration = _AjouterMarqueurTerminalSQL(fichierRestore, fichier)
+                try:
+                    # Importation du fichier SQL dans MySQL
+                    dlgprogress.Update(numEtape, _(u"Restauration du fichier %s...") % fichier);numEtape += 1
 
-                args = u""""%sbin/mysql" --defaults-extra-file="%s" %s < "%s" """ % (repMySQL, nomFichierLoginTemp, fichier, fichierRestore)
-                print(("Chemin mysql =", args))
-                if six.PY2:
-                    args = args.encode("utf8")
-                proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
-                out, temp = proc.communicate()
+                    args = u""""%sbin/mysql" --defaults-extra-file="%s" %s < "%s" """ % (repMySQL, nomFichierLoginTemp, fichier, fichierRestore)
+                    print(("Chemin mysql =", args))
+                    if six.PY2:
+                        args = args.encode("utf8")
+                    proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+                    out, temp = proc.communicate()
 
-                if proc.returncode != 0:
-                    print(("subprocess de restauration mysql :", out))
-                    out = _TexteErreurProcessus(out)
-                    dlgprogress.Destroy()
-                    dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de restauration !\n\nErreur : %s") % out, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
-                    dlgErreur.ShowModal()
-                    dlgErreur.Destroy()
-                    fichierZip.close()
-                    return False
+                    if proc.returncode != 0:
+                        print(("subprocess de restauration mysql :", out))
+                        out = _TexteErreurProcessus(out)
+                        dlgprogress.Destroy()
+                        dlgErreur = wx.MessageDialog(None, _(u"Une erreur a été détectée dans la procédure de restauration !\n\nErreur : %s") % out, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                        dlgErreur.ShowModal()
+                        dlgErreur.Destroy()
+                        fichierZip.close()
+                        return False
 
-                # Un code retour nul ne suffit pas : la cible doit contenir au moins une table ou vue.
-                if _BaseMySQLContientObjets(dictConnexion, fichier) == False:
-                    dlgprogress.Destroy()
-                    dlgErreur = wx.MessageDialog(None, _(u"Le client MySQL n'a signalé aucune erreur, mais la base restaurée ne contient aucune table ou vue."), _(u"Erreur"), wx.OK | wx.ICON_ERROR)
-                    dlgErreur.ShowModal()
-                    dlgErreur.Destroy()
-                    fichierZip.close()
-                    return False
+                    postconditionOk, diagnostic = _VerifierPostconditionRestaurationMySQL(
+                        dictConnexion, fichier, marqueurRestauration, analyseSQL["objets"]
+                    )
+                    if postconditionOk == False:
+                        dlgprogress.Destroy()
+                        dlgErreur = wx.MessageDialog(None, _(u"Le client MySQL n'a signalé aucune erreur, mais la restauration est incomplète :\n\n%s") % diagnostic, _(u"Erreur"), wx.OK | wx.ICON_ERROR)
+                        dlgErreur.ShowModal()
+                        dlgErreur.Destroy()
+                        fichierZip.close()
+                        return False
+                finally:
+                    if marqueurRestauration is not None:
+                        _SupprimerMarqueurRestaurationMySQL(dictConnexion, fichier, marqueurRestauration)
 
                 listeFichiersRestaures.append(fichier)
 

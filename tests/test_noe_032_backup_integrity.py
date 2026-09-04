@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import importlib.util
+import re
 import sys
 import tempfile
 import types
@@ -30,10 +31,17 @@ class _FakeDB(object):
     isNetwork = False
 
     def __init__(self, *args, **kwargs):
-        pass
+        self.resultat = []
 
     def Close(self):
         pass
+
+    def ExecuterReq(self, req):
+        self.resultat = []
+        return 1
+
+    def ResultatReq(self):
+        return self.resultat
 
 
 class _FailProcess(object):
@@ -41,6 +49,18 @@ class _FailProcess(object):
 
     def communicate(self):
         return b"simulated failure", None
+
+
+class _DumpProcess(object):
+    returncode = 0
+
+    def __init__(self, args):
+        self.args = args
+
+    def communicate(self):
+        chemin = re.search(r'>\s+"([^"]+)"', self.args).group(1)
+        Path(chemin).write_bytes(b"CREATE TABLE `test_restore` (id INTEGER);\n")
+        return b"", None
 
 
 class _FailingTransport(object):
@@ -149,6 +169,60 @@ class BackupIntegrityTests(unittest.TestCase):
             self.assertFalse(result)
             self.assertFalse((temp_dir / "backup.nod").exists())
 
+    def test_successful_network_backup_embeds_terminal_sql_manifest(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            data_dir = root / "data"
+            temp_dir = root / "temp"
+            output_dir = root / "output"
+            data_dir.mkdir()
+            temp_dir.mkdir()
+            output_dir.mkdir()
+
+            module = _load_module(data_dir, temp_dir)
+            module.GetRepertoireMySQL = lambda values: "/fake/mysql/"
+            params = {"host": "localhost", "port": 3306, "user": "test", "password": "secret"}
+
+            with mock.patch.object(module.subprocess, "Popen", side_effect=lambda args, **kwargs: _DumpProcess(args)):
+                result = module.Sauvegarde(
+                    listeFichiersReseau=["demo_data"],
+                    nom="backup",
+                    repertoire=str(output_dir),
+                    dictConnexion=params,
+                )
+
+            self.assertTrue(result)
+            with zipfile.ZipFile(str(output_dir / "backup.nod"), "r") as zf:
+                sql = zf.read("demo_data.sql")
+            charge, avecManifeste, erreur = module._ExtraireChargeSQL(sql)
+            self.assertIsNone(erreur)
+            self.assertTrue(avecManifeste)
+            self.assertEqual(charge, b"CREATE TABLE `test_restore` (id INTEGER);\n")
+            self.assertFalse((temp_dir / "savetemp").exists())
+            self.assertFalse((temp_dir / "backup.nod").exists())
+
+    def test_sql_manifest_rejects_same_size_payload_tampering(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            data_dir = root / "data"
+            temp_dir = root / "temp"
+            data_dir.mkdir()
+            temp_dir.mkdir()
+            dump = root / "source.sql"
+            dump.write_bytes(b"CREATE TABLE `first_table` (id INTEGER);\n")
+
+            module = _load_module(data_dir, temp_dir)
+            module._AjouterManifesteIntegriteSQL(str(dump))
+            contenu = bytearray(dump.read_bytes())
+            position = contenu.index(b"first_table")
+            contenu[position] = ord("x")
+
+            charge, avecManifeste, erreur = module._ExtraireChargeSQL(bytes(contenu))
+
+            self.assertIsNone(charge)
+            self.assertTrue(avecManifeste)
+            self.assertIn("empreinte", erreur)
+
     def test_missing_local_file_closes_zip_and_removes_partial_archive(self):
         with tempfile.TemporaryDirectory() as root:
             root = Path(root)
@@ -242,7 +316,7 @@ class BackupIntegrityTests(unittest.TestCase):
             temp_dir.mkdir()
             archive = root / "backup.nod"
             with zipfile.ZipFile(str(archive), "w") as zf:
-                zf.writestr("demo_data.sql", b"SELECT 1;")
+                zf.writestr("demo_data.sql", b"CREATE TABLE `test_restore` (id INTEGER);\n")
 
             module = _load_module(data_dir, temp_dir)
             module.GetListeFichiersReseau = lambda values: []
@@ -268,7 +342,7 @@ class BackupIntegrityTests(unittest.TestCase):
             temp_dir.mkdir()
             archive = root / "backup.nod"
             with zipfile.ZipFile(str(archive), "w") as zf:
-                zf.writestr("demo_data.sql", b"SELECT 1;")
+                zf.writestr("demo_data.sql", b"CREATE TABLE `test_restore` (id INTEGER);\n")
 
             module = _load_module(data_dir, temp_dir)
             module.GetListeFichiersReseau = lambda values: []
@@ -294,7 +368,7 @@ class BackupIntegrityTests(unittest.TestCase):
             temp_dir.mkdir()
             archive = root / "backup.nod"
             with zipfile.ZipFile(str(archive), "w") as zf:
-                zf.writestr("demo_data.sql", b"SELECT 1;")
+                zf.writestr("demo_data.sql", b"CREATE TABLE `test_restore` (id INTEGER);\n")
 
             module = _load_module(data_dir, temp_dir)
             module.GetListeFichiersReseau = lambda values: []
