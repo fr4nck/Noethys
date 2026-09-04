@@ -453,12 +453,6 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
             for fichier in listeFichiersReseau:
                 fichier = fichier[:-4]
 
-                # Création de la base si elle n'existe pas
-                if fichier not in listeFichiersExistants :
-                    nomFichier = u"%s;%s;%s;%s[RESEAU]%s" % (dictConnexion["port"], dictConnexion["host"], dictConnexion["user"], dictConnexion["password"], fichier)
-                    DB = GestionDB.DB(suffixe=None, nomFichier=nomFichier, modeCreation=True)
-                    DB.Close()
-
                 # Copie du fichier SQL dans le répertoire Temp / restoretemp
                 fichierZip.extract(u"%s.sql" % fichier, repTemp)
                 fichierRestore = u"%s/%s.sql" % (repTemp, fichier)
@@ -471,6 +465,16 @@ def Restauration(parent=None, fichier="", listeFichiersLocaux=[], listeFichiersR
                     dlgErreur.Destroy()
                     fichierZip.close()
                     return False
+
+                # Création de la base uniquement après validation de la charge SQL.
+                if fichier not in listeFichiersExistants :
+                    nomFichier = u"%s;%s;%s;%s[RESEAU]%s" % (dictConnexion["port"], dictConnexion["host"], dictConnexion["user"], dictConnexion["password"], fichier)
+                    DB = GestionDB.DB(suffixe=None, nomFichier=nomFichier, modeCreation=True)
+                    try:
+                        if getattr(DB, "echec", 1) == 1:
+                            raise RuntimeError(_(u"La base MySQL '%s' n'a pas pu être créée.") % fichier)
+                    finally:
+                        DB.Close()
 
                 # Importation du fichier SQL dans MySQL
                 dlgprogress.Update(numEtape, _(u"Restauration du fichier %s...") % fichier);numEtape += 1
