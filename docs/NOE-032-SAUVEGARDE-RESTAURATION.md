@@ -19,13 +19,16 @@ Le peigne fin du flux de création de sauvegarde a confirmé plusieurs défauts 
 - le ZIP temporaire pouvait rester ouvert sur certains retours anticipés ;
 - `savetemp` et `restoretemp`, qui contiennent notamment `logintemp.cnf` avec les identifiants MySQL nécessaires aux outils en ligne de commande, n'étaient supprimés que sur le chemin nominal ;
 - une erreur d'envoi de courriel ne garantissait pas la fermeture du transport ;
-- les archives temporaires `.nod` / `.noc` pouvaient subsister après certains échecs de copie ou d'envoi.
+- les archives temporaires `.nod` / `.noc` pouvaient subsister après certains échecs de copie ou d'envoi ;
+- l'ordre `--single-transaction --opt` permettait à l'option groupée `--opt` de réactiver le verrouillage des tables.
 
-Le correctif Noe-032b conserve les formats, les commandes MySQL et la logique métier existants. Il ajoute uniquement des gardes et des nettoyages ciblés :
+Le correctif Noe-032b conserve les formats et la logique métier existants. Il ajoute des gardes et des nettoyages ciblés et corrige l'ordre des options de `mysqldump` :
 
 - refus d'une sauvegarde ou restauration réseau sans paramètres de connexion ;
 - fermeture explicite du ZIP avant les retours anticipés de création couverts ;
 - suppression de `savetemp` et `restoretemp` sur le chemin nominal et sur les retours d'erreur MySQL couverts ;
+- nettoyage garanti de ces répertoires même si `Popen`, `communicate()`, la création du fichier de connexion ou l'extraction SQL lève une exception ;
+- commande `mysqldump` en `--opt --single-transaction --skip-lock-tables` ;
 - tentative de fermeture du transport de messagerie après exception ;
 - suppression des archives temporaires de travail sur les chemins de succès et d'échec explicitement gérés.
 
@@ -52,6 +55,9 @@ Le correctif Noe-032b conserve les formats, les commandes MySQL et la logique m�
 - refus d'une sauvegarde réseau sans paramètres de connexion ;
 - fermeture du ZIP et suppression d'une archive partielle lorsqu'un fichier local manque ;
 - suppression de `savetemp` et de l'archive partielle après échec simulé de `mysqldump` ;
+- ordre des options transactionnelles de `mysqldump` ;
+- confinement et nettoyage lorsqu'un appel à `Popen` lève pendant la sauvegarde ou la restauration ;
+- confinement et nettoyage lorsqu'une extraction SQL échoue avant l'appel à `mysql` ;
 - suppression de `restoretemp` après échec simulé du client `mysql` ;
 - fermeture du transport de messagerie et suppression de l'archive temporaire après échec d'envoi.
 
@@ -61,6 +67,4 @@ Ces tests sont inclus automatiquement dans la suite métier Noe-031 (`tests/test
 
 La CI ne lance pas un serveur MySQL/MariaDB 5.5 réel pour écraser une base de production. Les tests réseau simulent `mysqldump` et le client `mysql` afin de protéger le contrôle de flux et le nettoyage des ressources. La compatibilité serveur réelle reste couverte par la stratégie conservatrice du projet et doit être confirmée sur une copie avant RC.
 
-### Durcissement des processus MySQL
-
-Le flux réseau garantit désormais le nettoyage de `savetemp` et `restoretemp` même si `Popen`, `communicate()`, la création du fichier de connexion ou l’extraction SQL lève une exception. La commande `mysqldump` applique `--opt --single-transaction --skip-lock-tables`, afin que l’option groupée `--opt` ne réactive pas le verrouillage des tables après l’activation du mode transactionnel.
+La restauration MySQL reste non atomique : un échec du client `mysql` après le début de l'import peut laisser une base partiellement restaurée. Ce risque est identifié mais volontairement hors du lot Noe-032b ; il doit être traité et qualifié séparément sur une base de recette.
