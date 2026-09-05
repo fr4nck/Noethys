@@ -9,6 +9,7 @@ NOETHYS = ROOT / "noethys"
 sys.path.insert(0, str(NOETHYS))
 
 from Utils import UTILS_Interdomain_Secrets as secrets
+from Utils import UTILS_Interdomain_Mailbox_Client as mailbox_client
 
 
 class MemoryProvider(secrets.SecretProvider):
@@ -60,6 +61,21 @@ class InterdomainSecretsTests(unittest.TestCase):
         self.assertEqual(keyring["kid-1"], b"h" * 32)
         self.assertEqual(keyring["kid-2"], b"j" * 48)
         self.assertNotEqual(bearer.encode("utf-8"), keyring["kid-1"])
+
+    def test_mailbox_client_is_built_from_vault_only(self):
+        provider = MemoryProvider()
+        provider.set(secrets.MAILBOX_BEARER, "mbx1.token.from-vault")
+        provider.set(secrets.HmacSecretName("kid-1"), "k" * 32)
+
+        transport, keyring = mailbox_client.ConstruireClientDepuisCoffre(
+            "https://portal.example.test",
+            ["kid-1"],
+            provider=provider,
+        )
+
+        self.assertEqual(transport.base_url, "https://portal.example.test")
+        self.assertEqual(transport.bearer_token, "mbx1.token.from-vault")
+        self.assertEqual(keyring, {"kid-1": b"k" * 32})
 
     def test_missing_or_weak_secret_fails_closed(self):
         provider = MemoryProvider()
