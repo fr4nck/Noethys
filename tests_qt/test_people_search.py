@@ -101,7 +101,8 @@ class PeopleSearchTests(unittest.TestCase):
     def test_search_is_accent_insensitive_and_searches_family_and_phone(self) -> None:
         database = self._database()
         repository = self._repository(database)
-        self.assertEqual(repository.search("elodie").total, 1)
+        by_representative = repository.search("elodie")
+        self.assertEqual({row.individual_id for row in by_representative.rows}, {1, 2})
         self.assertEqual(repository.search("0612345678").rows[0].individual_id, 1)
         family = repository.search("dupont")
         self.assertEqual({row.individual_id for row in family.rows}, {1, 2})
