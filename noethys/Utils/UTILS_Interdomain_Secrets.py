@@ -69,10 +69,10 @@ class UnavailableSecretProvider(SecretProvider):
 def _logical_name(value):
     if not isinstance(value, str):
         raise SecretProviderError("nom logique de secret obligatoire")
-    value = value.strip()
-    if not _NAME_RE.match(value):
+    normalized = value.strip()
+    if value != normalized or not _NAME_RE.match(normalized):
         raise SecretProviderError("nom logique de secret invalide")
-    return value
+    return normalized
 
 
 def _namespace(value):
