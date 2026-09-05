@@ -230,3 +230,34 @@ HMAC_PREFIX = "delivery/operations_portal/activity_users/hmac/"
 def HmacSecretName(key_id):
     key_id = _logical_name(key_id)
     return HMAC_PREFIX + key_id
+
+
+def ChargerSecretsMailbox(provider, key_ids):
+    """Charge séparément le bearer du canal et les clés HMAC ADR-012.
+
+    Les clés HMAC sont stockées comme texte de forte entropie puis converties en
+    bytes au dernier moment pour l'adaptateur de livraison. Aucun fallback vers
+    Config.json ou une variable vide n'est autorisé.
+    """
+    if provider is None or not callable(getattr(provider, "get", None)):
+        raise SecretProviderError("SecretProvider invalide")
+    if not isinstance(key_ids, (tuple, list)) or not key_ids:
+        raise SecretProviderError("au moins un key_id HMAC est requis")
+
+    bearer = provider.get(MAILBOX_BEARER)
+    if not isinstance(bearer, str) or not bearer:
+        raise SecretProviderError("bearer mailbox absent du coffre")
+
+    keyring = {}
+    for raw_key_id in key_ids:
+        key_id = _logical_name(raw_key_id)
+        if key_id in keyring:
+            raise SecretProviderError("key_id HMAC dupliqué")
+        secret = provider.get(HmacSecretName(key_id))
+        if not isinstance(secret, str) or not secret:
+            raise SecretProviderError("secret HMAC absent du coffre pour %s" % key_id)
+        encoded = secret.encode("utf-8")
+        if len(encoded) < 32:
+            raise SecretProviderError("secret HMAC trop court pour %s" % key_id)
+        keyring[key_id] = encoded
+    return bearer, keyring
