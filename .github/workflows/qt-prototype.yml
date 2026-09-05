@@ -1,4 +1,4 @@
-name: Qt prototype — Activités
+name: Qt prototype — Noethys
 
 on:
   workflow_dispatch:
@@ -36,7 +36,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-qt.txt
 
-      - name: Compiler le prototype
+      - name: Compiler le rail Qt
         run: python -m compileall -q noethys_qt tests_qt
 
       - name: Tests Qt hors écran
