@@ -238,8 +238,8 @@ class NativeActivitiesWindow(ActivitiesWindow):
             return
 
         try:
+            from .activity_complete import ActivityEditorDialog
             from .activity_editor import NativeActivityEditorRepository
-            from .activity_portal import ActivityEditorDialog
 
             editor_repository = NativeActivityEditorRepository(self.editor_sqlite_path)
             dialog = ActivityEditorDialog(editor_repository, activity_id, self)
