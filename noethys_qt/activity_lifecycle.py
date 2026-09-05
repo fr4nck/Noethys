@@ -57,6 +57,8 @@ DIRECT_CLONE_PLAN: tuple[tuple[str, str], ...] = (
 )
 
 # Tables reliées par un identifiant d'objet et non directement par IDactivite.
+# L'ordre est significatif : la combinaison tarifaire doit être créée avant ses
+# unités pour que ``IDcombi_tarif`` puisse être remappé vers la nouvelle ligne.
 DEPENDENT_CLONE_PLAN: tuple[tuple[str, str, str], ...] = (
     ("unites_groupes", "IDunite", "unites"),
     ("unites_incompat", "IDunite", "unites"),
@@ -165,12 +167,12 @@ class ActivityLifecycleRepository:
                 cursor, placeholder, "categories_tarifs", "IDcategorie_tarif", activity_id
             )
 
-            # Relations dépendantes : même périmètre que l'export/duplication,
-            # complété des filtres et villes pour ne jamais laisser d'orphelins.
+            # Relations dépendantes : les lignes filles sont effacées avant leur
+            # parent afin de rester valides lorsque des clés étrangères existent.
             for table, field, ids in (
                 ("questionnaire_filtres", "IDtarif", tariff_ids),
-                ("combi_tarifs", "IDtarif", tariff_ids),
                 ("combi_tarifs_unites", "IDtarif", tariff_ids),
+                ("combi_tarifs", "IDtarif", tariff_ids),
                 ("categories_tarifs_villes", "IDcategorie_tarif", category_ids),
                 ("unites_groupes", "IDunite", unit_ids),
                 ("unites_incompat", "IDunite", unit_ids),
@@ -264,6 +266,8 @@ class ActivityLifecycleRepository:
                 self._register_reference_map(table, rows_map, field_maps)
 
             # Deuxième passe : tables de liaison dépendant des nouveaux objets.
+            # Les mappings produits ici peuvent eux-mêmes être requis par la
+            # table suivante (combi_tarifs -> combi_tarifs_unites).
             for table, field, source_table in DEPENDENT_CLONE_PLAN:
                 source_ids = tuple(table_maps.get(source_table, {}).keys())
                 if not source_ids:
@@ -280,6 +284,7 @@ class ActivityLifecycleRepository:
                     table_maps,
                 )
                 table_maps[table] = rows_map
+                self._register_reference_map(table, rows_map, field_maps)
 
             # Références dont le nom de colonne ne suffit pas à déduire la cible.
             self._repair_label_parents(cursor, placeholder, activity_id, new_id, table_maps)
@@ -309,13 +314,15 @@ class ActivityLifecycleRepository:
             "noms_tarifs": "IDnom_tarif",
             "tarifs": "IDtarif",
             "portail_periodes": "IDperiode",
+            "combi_tarifs": "IDcombi_tarif",
         }
         key = key_by_table.get(table)
         if key and rows_map:
             field_maps[key] = rows_map
         if table == "unites" and rows_map:
-            # Alias utilisé par la table d'incompatibilités suivant les versions.
+            # Les deux noms existent dans les branches/schémas Noethys observés.
             field_maps["IDunite_incompat"] = rows_map
+            field_maps["IDunite_incompatible"] = rows_map
 
     def _clone_where(
         self,
