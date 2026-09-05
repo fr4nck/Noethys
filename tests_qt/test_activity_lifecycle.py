@@ -34,11 +34,11 @@ CREATE TABLE portail_periodes (IDperiode INTEGER PRIMARY KEY AUTOINCREMENT, IDac
 CREATE TABLE portail_unites (IDunite INTEGER PRIMARY KEY AUTOINCREMENT, IDactivite INTEGER, nom TEXT, unites_principales TEXT, unites_secondaires TEXT);
 CREATE TABLE evenements (IDevenement INTEGER PRIMARY KEY AUTOINCREMENT, IDactivite INTEGER, IDunite INTEGER, nom TEXT);
 CREATE TABLE unites_groupes (IDunite_groupe INTEGER PRIMARY KEY AUTOINCREMENT, IDunite INTEGER, IDgroupe INTEGER);
-CREATE TABLE unites_incompat (IDincompat INTEGER PRIMARY KEY AUTOINCREMENT, IDunite INTEGER, IDunite_incompat INTEGER);
+CREATE TABLE unites_incompat (IDunite_incompat INTEGER PRIMARY KEY AUTOINCREMENT, IDunite INTEGER, IDunite_incompatible INTEGER);
 CREATE TABLE unites_remplissage_unites (IDlien INTEGER PRIMARY KEY AUTOINCREMENT, IDunite_remplissage INTEGER, IDunite INTEGER);
 CREATE TABLE categories_tarifs_villes (IDville_tarif INTEGER PRIMARY KEY AUTOINCREMENT, IDcategorie_tarif INTEGER, ville TEXT);
-CREATE TABLE combi_tarifs (IDcombi INTEGER PRIMARY KEY AUTOINCREMENT, IDtarif INTEGER, nom TEXT);
-CREATE TABLE combi_tarifs_unites (IDcombi_unite INTEGER PRIMARY KEY AUTOINCREMENT, IDtarif INTEGER, IDunite INTEGER);
+CREATE TABLE combi_tarifs (IDcombi_tarif INTEGER PRIMARY KEY AUTOINCREMENT, IDtarif INTEGER, nom TEXT);
+CREATE TABLE combi_tarifs_unites (IDcombi_tarif_unite INTEGER PRIMARY KEY AUTOINCREMENT, IDcombi_tarif INTEGER, IDtarif INTEGER, IDunite INTEGER);
 CREATE TABLE questionnaire_filtres (IDfiltre INTEGER PRIMARY KEY AUTOINCREMENT, IDtarif INTEGER, champ TEXT);
 """
 
@@ -62,7 +62,7 @@ def seed(database: Path) -> int:
         c.execute("INSERT INTO unites (IDactivite, nom) VALUES (?, 'Journée')", (activity_id,)); unit1 = int(c.lastrowid)
         c.execute("INSERT INTO unites (IDactivite, nom) VALUES (?, 'Repas')", (activity_id,)); unit2 = int(c.lastrowid)
         c.execute("INSERT INTO unites_groupes (IDunite, IDgroupe) VALUES (?, ?)", (unit1, group_id))
-        c.execute("INSERT INTO unites_incompat (IDunite, IDunite_incompat) VALUES (?, ?)", (unit1, unit2))
+        c.execute("INSERT INTO unites_incompat (IDunite, IDunite_incompatible) VALUES (?, ?)", (unit1, unit2))
         c.execute("INSERT INTO etiquettes (IDactivite, label, parent) VALUES (?, 'Racine', NULL)", (activity_id,)); root = int(c.lastrowid)
         c.execute("INSERT INTO etiquettes (IDactivite, label, parent) VALUES (?, 'Enfant', ?)", (activity_id, root)); child = int(c.lastrowid)
         c.execute("INSERT INTO unites_remplissage (IDactivite, nom) VALUES (?, 'Capacité')", (activity_id,)); fill = int(c.lastrowid)
@@ -74,8 +74,8 @@ def seed(database: Path) -> int:
         c.execute("INSERT INTO noms_tarifs (IDactivite, nom) VALUES (?, 'Journée')", (activity_id,)); tariff_name = int(c.lastrowid)
         c.execute("INSERT INTO tarifs (IDactivite, IDnom_tarif, categories_tarifs, groupes) VALUES (?, ?, ?, ?)", (activity_id, tariff_name, str(category), str(group_id))); tariff = int(c.lastrowid)
         c.execute("INSERT INTO tarifs_lignes (IDactivite, IDtarif, montant) VALUES (?, ?, 12.5)", (activity_id, tariff))
-        c.execute("INSERT INTO combi_tarifs (IDtarif, nom) VALUES (?, 'Journée')", (tariff,))
-        c.execute("INSERT INTO combi_tarifs_unites (IDtarif, IDunite) VALUES (?, ?)", (tariff, unit1))
+        c.execute("INSERT INTO combi_tarifs (IDtarif, nom) VALUES (?, 'Journée')", (tariff,)); combo = int(c.lastrowid)
+        c.execute("INSERT INTO combi_tarifs_unites (IDcombi_tarif, IDtarif, IDunite) VALUES (?, ?, ?)", (combo, tariff, unit1))
         c.execute("INSERT INTO questionnaire_filtres (IDtarif, champ) VALUES (?, 'QF')", (tariff,))
         c.execute("INSERT INTO portail_periodes (IDactivite, nom) VALUES (?, 'Été')", (activity_id,))
         c.execute("INSERT INTO portail_unites (IDactivite, nom, unites_principales, unites_secondaires) VALUES (?, 'Journée + repas', ?, ?)", (activity_id, str(unit1), str(unit2)))
@@ -87,7 +87,7 @@ def seed(database: Path) -> int:
 
 class ActivityLifecycleTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.temp = tempfile.TemporaryDirectory()
+        self.temp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.database = Path(self.temp.name) / "activities.db"
         with connect(self.database) as connection:
             connection.executescript(DDL); connection.commit()
@@ -118,6 +118,28 @@ class ActivityLifecycleTests(unittest.TestCase):
             copy_category = connection.execute("SELECT IDcategorie_tarif FROM categories_tarifs WHERE IDactivite=?", (copy_id,)).fetchone()[0]
             tariff = connection.execute("SELECT IDtarif, categories_tarifs, groupes FROM tarifs WHERE IDactivite=?", (copy_id,)).fetchone()
             self.assertEqual((tariff[1], tariff[2]), (str(copy_category), str(copy_group)))
+
+            incompat = connection.execute(
+                "SELECT IDunite, IDunite_incompatible FROM unites_incompat WHERE IDunite IN (?, ?)",
+                tuple(copy_units),
+            ).fetchone()
+            self.assertIsNotNone(incompat)
+            self.assertIn(incompat[0], copy_units); self.assertIn(incompat[1], copy_units)
+
+            source_combo = connection.execute(
+                "SELECT IDcombi_tarif FROM combi_tarifs WHERE IDtarif IN (SELECT IDtarif FROM tarifs WHERE IDactivite=?)",
+                (source,),
+            ).fetchone()[0]
+            copy_combo = connection.execute("SELECT IDcombi_tarif FROM combi_tarifs WHERE IDtarif=?", (tariff[0],)).fetchone()[0]
+            self.assertNotEqual(source_combo, copy_combo)
+            combo_link = connection.execute(
+                "SELECT IDcombi_tarif, IDtarif, IDunite FROM combi_tarifs_unites WHERE IDtarif=?",
+                (tariff[0],),
+            ).fetchone()
+            self.assertEqual(combo_link[0], copy_combo)
+            self.assertEqual(combo_link[1], tariff[0])
+            self.assertIn(combo_link[2], copy_units)
+
             portal = connection.execute("SELECT unites_principales, unites_secondaires FROM portail_unites WHERE IDactivite=?", (copy_id,)).fetchone()
             self.assertEqual({int(portal[0]), int(portal[1])}, copy_units)
             labels = connection.execute("SELECT IDetiquette, label, parent FROM etiquettes WHERE IDactivite=?", (copy_id,)).fetchall()
@@ -149,6 +171,8 @@ class ActivityLifecycleTests(unittest.TestCase):
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM activites WHERE IDactivite=?", (activity_id,)).fetchone()[0], 0)
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM questionnaire_filtres").fetchone()[0], 0)
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM evenements").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM combi_tarifs_unites").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM combi_tarifs").fetchone()[0], 0)
 
 
 if __name__ == "__main__":
