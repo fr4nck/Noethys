@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QApplication, QDialog, QMessageBox, QStyle, QToolBar
 
 from .activities_prototype import (
@@ -184,7 +185,7 @@ class NativeConfiguredActivityRepository(ActivityRepository):
 
 
 class NativeActivitiesWindow(ActivitiesWindow):
-    """Liste Qt enrichie des pages et commandes déjà migrées."""
+    """Liste Qt enrichie des pages, assistants et commandes déjà migrés."""
 
     def __init__(
         self,
@@ -195,6 +196,7 @@ class NativeActivitiesWindow(ActivitiesWindow):
         requested_theme: str | None = None,
     ):
         self.editor_sqlite_path = editor_sqlite_path
+        self.simulation_mode = False
         super().__init__(
             repository,
             initial_open_only=initial_open_only,
@@ -230,6 +232,13 @@ class NativeActivitiesWindow(ActivitiesWindow):
         self.delete_action.triggered.connect(self._delete_selected)
         self.duplicate_action.triggered.connect(self._duplicate_selected)
 
+        self.simulation_action = QAction("Simulation", self)
+        self.simulation_action.setCheckable(True)
+        self.simulation_action.setToolTip(
+            "Prévisualiser Ajouter / Dupliquer / Supprimer sans aucune écriture"
+        )
+        self.simulation_action.toggled.connect(self._set_simulation_mode)
+
         toolbar = self.findChild(QToolBar)
         if toolbar is not None:
             for action in (
@@ -239,6 +248,8 @@ class NativeActivitiesWindow(ActivitiesWindow):
                 self.duplicate_action,
             ):
                 toolbar.insertAction(self.export_text_action, action)
+            toolbar.insertSeparator(self.export_text_action)
+            toolbar.insertAction(self.export_text_action, self.simulation_action)
             toolbar.insertSeparator(self.export_text_action)
 
         selection_model = self.table.selectionModel()
@@ -262,9 +273,14 @@ class NativeActivitiesWindow(ActivitiesWindow):
 
     def _sync_lifecycle_actions(self, *_args) -> None:
         selected = self._selected_activity() is not None
-        self.modify_action.setEnabled(selected)
+        self.add_action.setEnabled(True)
+        self.modify_action.setEnabled(selected and not self.simulation_mode)
         self.delete_action.setEnabled(selected)
         self.duplicate_action.setEnabled(selected)
+        if self.simulation_mode:
+            self.modify_action.setToolTip("Modification désactivée en mode simulation")
+        else:
+            self.modify_action.setToolTip("Modifier l'activité sélectionnée")
 
     # Compatibilité avec les tests/appels précédents du POC.
     def _sync_modify_action(self, *_args) -> None:
@@ -276,6 +292,22 @@ class NativeActivitiesWindow(ActivitiesWindow):
 
         editor = NativeActivityEditorRepository(self.editor_sqlite_path)
         return editor, ActivityLifecycleRepository(editor)
+
+    def _simulation_repository(self):
+        from .activity_editor import NativeActivityEditorRepository
+        from .activity_simulation import ActivitySimulationRepository
+
+        return ActivitySimulationRepository(NativeActivityEditorRepository(self.editor_sqlite_path))
+
+    def _set_simulation_mode(self, enabled: bool) -> None:
+        self.simulation_mode = bool(enabled)
+        self._sync_lifecycle_actions()
+        if self.simulation_mode:
+            self.statusBar().showMessage(
+                "MODE SIMULATION — aucune écriture via Ajouter / Modifier / Dupliquer / Supprimer"
+            )
+        else:
+            self.statusBar().showMessage("Mode réel réactivé", 3500)
 
     def _select_activity_id(self, activity_id: int) -> None:
         for proxy_row in range(self.proxy.rowCount()):
@@ -291,6 +323,29 @@ class NativeActivitiesWindow(ActivitiesWindow):
         self._sync_lifecycle_actions()
 
     def _add_activity(self, *_args) -> None:
+        try:
+            from .activity_assistants import ActivityAssistantChoiceDialog
+
+            choice = ActivityAssistantChoiceDialog(self)
+        except Exception as exc:
+            QMessageBox.critical(self, "Création impossible", str(exc))
+            return
+        if choice.exec() != QDialog.DialogCode.Accepted:
+            return
+        code = choice.selected_code()
+        if code == "nouveau":
+            if self.simulation_mode:
+                try:
+                    report = self._simulation_repository().manual_create_report()
+                    QMessageBox.information(self, "Simulation — création", report.as_text())
+                except Exception as exc:
+                    QMessageBox.critical(self, "Simulation impossible", str(exc))
+                return
+            self._add_manual_activity()
+            return
+        self._run_creation_assistant(code)
+
+    def _add_manual_activity(self) -> None:
         try:
             editor_repository, lifecycle = self._editor_and_lifecycle()
             activity_id = lifecycle.create_activity()
@@ -333,9 +388,58 @@ class NativeActivitiesWindow(ActivitiesWindow):
             )
         self.reload()
 
+    def _run_creation_assistant(self, code: str) -> None:
+        try:
+            from .activity_assistants import ActivityAssistantDialog
+            from .activity_assistants_core import ActivityAssistantRepository
+            from .activity_editor import NativeActivityEditorRepository
+
+            repository = ActivityAssistantRepository(
+                NativeActivityEditorRepository(self.editor_sqlite_path)
+            )
+            dialog = ActivityAssistantDialog(repository, code, self)
+        except Exception as exc:
+            QMessageBox.critical(self, "Assistant impossible", str(exc))
+            return
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        configuration = dialog.configuration()
+        try:
+            plan = repository.preview(configuration)
+        except Exception as exc:
+            QMessageBox.critical(self, "Assistant impossible", str(exc))
+            return
+        if self.simulation_mode:
+            QMessageBox.information(self, "Simulation — assistant", plan.as_text())
+            return
+        confirm = QMessageBox.question(
+            self,
+            "Générer l'activité",
+            plan.as_text() + "\n\nConfirmer la génération ?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            activity_id = repository.generate(configuration)
+        except Exception as exc:
+            QMessageBox.critical(self, "Génération impossible", str(exc))
+            return
+        self.reload()
+        self._select_activity_id(activity_id)
+        self.statusBar().showMessage("Activité générée par l'assistant Qt", 5000)
+
     def _edit_selected(self, *_args) -> None:
         activity_id = self._selected_activity_id()
         if activity_id is None:
+            return
+        if self.simulation_mode:
+            QMessageBox.information(
+                self,
+                "Mode simulation",
+                "La modification est désactivée en mode simulation afin de garantir zéro écriture.",
+            )
             return
 
         try:
@@ -356,6 +460,14 @@ class NativeActivitiesWindow(ActivitiesWindow):
         row = self._selected_activity()
         if row is None:
             return
+        if self.simulation_mode:
+            try:
+                report = self._simulation_repository().duplicate_report(row.activity_id)
+                QMessageBox.information(self, "Simulation — duplication", report.as_text())
+            except Exception as exc:
+                QMessageBox.critical(self, "Simulation impossible", str(exc))
+            return
+
         answer = QMessageBox.question(
             self,
             "Duplication",
@@ -379,6 +491,17 @@ class NativeActivitiesWindow(ActivitiesWindow):
         row = self._selected_activity()
         if row is None:
             return
+        if self.simulation_mode:
+            try:
+                report = self._simulation_repository().delete_report(row.activity_id)
+                if report.blocked:
+                    QMessageBox.warning(self, "Simulation — suppression", report.as_text())
+                else:
+                    QMessageBox.information(self, "Simulation — suppression", report.as_text())
+            except Exception as exc:
+                QMessageBox.critical(self, "Simulation impossible", str(exc))
+            return
+
         try:
             _editor, lifecycle = self._editor_and_lifecycle()
             check = lifecycle.delete_check(row.activity_id)
