@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import sqlite3
+import tempfile
+import unittest
 from pathlib import Path
-
-import pytest
 
 from noethys_qt.activity_editor import NativeActivityEditorRepository
 from noethys_qt.activity_lifecycle import ActivityLifecycleRepository
@@ -61,8 +61,8 @@ CREATE TABLE questionnaire_filtres (IDfiltre INTEGER PRIMARY KEY AUTOINCREMENT, 
 """
 
 
-def make_repo(tmp_path: Path) -> tuple[Path, ActivityLifecycleRepository]:
-    database = tmp_path / "activities.db"
+def make_repo(folder: Path) -> tuple[Path, ActivityLifecycleRepository]:
+    database = folder / "activities.db"
     with sqlite3.connect(database) as connection:
         connection.executescript(DDL)
     editor = NativeActivityEditorRepository(database)
@@ -116,100 +116,138 @@ def seed_activity(database: Path) -> int:
         return activity_id
 
 
-def test_create_activity_creates_only_provisional_activity(tmp_path: Path) -> None:
-    database, lifecycle = make_repo(tmp_path)
-    activity_id = lifecycle.create_activity()
-    with sqlite3.connect(database) as connection:
-        row = connection.execute("SELECT nom, date_creation FROM activites WHERE IDactivite=?", (activity_id,)).fetchone()
-        groups = connection.execute("SELECT COUNT(*) FROM groupes WHERE IDactivite=?", (activity_id,)).fetchone()[0]
-    assert row is not None
-    assert row[0] is None
-    assert row[1]
-    assert groups == 0
+class ActivityLifecycleTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.folder = Path(self.temp.name)
+        self.database, self.lifecycle = make_repo(self.folder)
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def test_create_activity_creates_only_provisional_activity(self) -> None:
+        activity_id = self.lifecycle.create_activity()
+        with sqlite3.connect(self.database) as connection:
+            row = connection.execute(
+                "SELECT nom, date_creation FROM activites WHERE IDactivite=?", (activity_id,)
+            ).fetchone()
+            groups = connection.execute(
+                "SELECT COUNT(*) FROM groupes WHERE IDactivite=?", (activity_id,)
+            ).fetchone()[0]
+        self.assertIsNotNone(row)
+        self.assertIsNone(row[0])
+        self.assertTrue(row[1])
+        self.assertEqual(groups, 0)
+
+    def test_duplicate_copies_configuration_and_remaps_internal_ids(self) -> None:
+        source_id = seed_activity(self.database)
+        copy_id = self.lifecycle.duplicate_activity(source_id)
+
+        with sqlite3.connect(self.database) as connection:
+            self.assertEqual(
+                connection.execute("SELECT nom FROM activites WHERE IDactivite=?", (copy_id,)).fetchone()[0],
+                "Copie de ALSH",
+            )
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM inscriptions WHERE IDactivite=?", (copy_id,)).fetchone()[0],
+                0,
+            )
+            source_units = [
+                row[0] for row in connection.execute(
+                    "SELECT IDunite FROM unites WHERE IDactivite=? ORDER BY IDunite", (source_id,)
+                )
+            ]
+            copy_units = [
+                row[0] for row in connection.execute(
+                    "SELECT IDunite FROM unites WHERE IDactivite=? ORDER BY IDunite", (copy_id,)
+                )
+            ]
+            self.assertEqual(len(copy_units), 2)
+            self.assertTrue(set(copy_units).isdisjoint(source_units))
+
+            copy_group = connection.execute(
+                "SELECT IDgroupe FROM groupes WHERE IDactivite=?", (copy_id,)
+            ).fetchone()[0]
+            tariff = connection.execute(
+                "SELECT IDtarif, categories_tarifs, groupes FROM tarifs WHERE IDactivite=?", (copy_id,)
+            ).fetchone()
+            copy_category = connection.execute(
+                "SELECT IDcategorie_tarif FROM categories_tarifs WHERE IDactivite=?", (copy_id,)
+            ).fetchone()[0]
+            self.assertEqual(tariff[1], str(copy_category))
+            self.assertEqual(tariff[2], str(copy_group))
+
+            portal = connection.execute(
+                "SELECT unites_principales, unites_secondaires FROM portail_unites WHERE IDactivite=?", (copy_id,)
+            ).fetchone()
+            self.assertEqual({int(portal[0]), int(portal[1])}, set(copy_units))
+
+            labels = connection.execute(
+                "SELECT IDetiquette, label, parent FROM etiquettes WHERE IDactivite=? ORDER BY IDetiquette", (copy_id,)
+            ).fetchall()
+            root = next(row for row in labels if row[1] == "Racine")
+            child = next(row for row in labels if row[1] == "Enfant")
+            self.assertEqual(child[2], root[0])
+
+            psu = connection.execute(
+                "SELECT psu_unite_prevision, psu_unite_presence, psu_tarif_forfait, psu_etiquette_rtt "
+                "FROM activites WHERE IDactivite=?",
+                (copy_id,),
+            ).fetchone()
+            self.assertIn(psu[0], copy_units)
+            self.assertIn(psu[1], copy_units)
+            self.assertEqual(psu[2], tariff[0])
+            self.assertEqual(psu[3], child[0])
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM questionnaire_filtres WHERE IDtarif=?", (tariff[0],)).fetchone()[0],
+                1,
+            )
+
+    def test_delete_is_blocked_when_registrations_exist(self) -> None:
+        activity_id = seed_activity(self.database)
+        with sqlite3.connect(self.database) as connection:
+            connection.execute("INSERT INTO inscriptions (IDactivite) VALUES (?)", (activity_id,))
+            connection.commit()
+
+        check = self.lifecycle.delete_check(activity_id)
+        self.assertEqual(check.registrations, 1)
+        self.assertFalse(check.allowed)
+        with self.assertRaisesRegex(ValueError, "déjà inscrits"):
+            self.lifecycle.delete_activity(activity_id)
+        with sqlite3.connect(self.database) as connection:
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM activites WHERE IDactivite=?", (activity_id,)).fetchone()[0],
+                1,
+            )
+
+    def test_delete_removes_configuration_atomically(self) -> None:
+        activity_id = seed_activity(self.database)
+        self.lifecycle.delete_activity(activity_id)
+        with sqlite3.connect(self.database) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM activites WHERE IDactivite=?", (activity_id,)).fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM groupes WHERE IDactivite=?", (activity_id,)).fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM unites").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM questionnaire_filtres").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM evenements").fetchone()[0], 0)
+
+    def test_delete_rolls_back_everything_if_one_step_fails(self) -> None:
+        activity_id = seed_activity(self.database)
+        with sqlite3.connect(self.database) as connection:
+            connection.execute(
+                "CREATE TRIGGER refuse_agreement_delete BEFORE DELETE ON agrements "
+                "BEGIN SELECT RAISE(FAIL, 'refus test'); END"
+            )
+            before_links = connection.execute("SELECT COUNT(*) FROM unites_groupes").fetchone()[0]
+            connection.commit()
+
+        with self.assertRaisesRegex(sqlite3.IntegrityError, "refus test"):
+            self.lifecycle.delete_activity(activity_id)
+
+        with sqlite3.connect(self.database) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM activites WHERE IDactivite=?", (activity_id,)).fetchone()[0], 1)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM unites_groupes").fetchone()[0], before_links)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM responsables_activite WHERE IDactivite=?", (activity_id,)).fetchone()[0], 1)
 
 
-def test_duplicate_copies_configuration_and_remaps_internal_ids(tmp_path: Path) -> None:
-    database, lifecycle = make_repo(tmp_path)
-    source_id = seed_activity(database)
-    copy_id = lifecycle.duplicate_activity(source_id)
-
-    with sqlite3.connect(database) as connection:
-        assert connection.execute("SELECT nom FROM activites WHERE IDactivite=?", (copy_id,)).fetchone()[0] == "Copie de ALSH"
-        assert connection.execute("SELECT COUNT(*) FROM inscriptions WHERE IDactivite=?", (copy_id,)).fetchone()[0] == 0
-
-        source_units = [row[0] for row in connection.execute("SELECT IDunite FROM unites WHERE IDactivite=? ORDER BY IDunite", (source_id,))]
-        copy_units = [row[0] for row in connection.execute("SELECT IDunite FROM unites WHERE IDactivite=? ORDER BY IDunite", (copy_id,))]
-        assert len(copy_units) == 2
-        assert set(copy_units).isdisjoint(source_units)
-
-        copy_group = connection.execute("SELECT IDgroupe FROM groupes WHERE IDactivite=?", (copy_id,)).fetchone()[0]
-        tariff = connection.execute("SELECT IDtarif, categories_tarifs, groupes FROM tarifs WHERE IDactivite=?", (copy_id,)).fetchone()
-        copy_category = connection.execute("SELECT IDcategorie_tarif FROM categories_tarifs WHERE IDactivite=?", (copy_id,)).fetchone()[0]
-        assert tariff[1] == str(copy_category)
-        assert tariff[2] == str(copy_group)
-
-        portal = connection.execute("SELECT unites_principales, unites_secondaires FROM portail_unites WHERE IDactivite=?", (copy_id,)).fetchone()
-        assert {int(portal[0]), int(portal[1])} == set(copy_units)
-
-        labels = connection.execute("SELECT IDetiquette, label, parent FROM etiquettes WHERE IDactivite=? ORDER BY IDetiquette", (copy_id,)).fetchall()
-        root = next(row for row in labels if row[1] == "Racine")
-        child = next(row for row in labels if row[1] == "Enfant")
-        assert child[2] == root[0]
-
-        psu = connection.execute(
-            "SELECT psu_unite_prevision, psu_unite_presence, psu_tarif_forfait, psu_etiquette_rtt FROM activites WHERE IDactivite=?",
-            (copy_id,),
-        ).fetchone()
-        assert psu[0] in copy_units and psu[1] in copy_units
-        assert psu[2] == tariff[0]
-        assert psu[3] == child[0]
-
-        assert connection.execute("SELECT COUNT(*) FROM questionnaire_filtres WHERE IDtarif=?", (tariff[0],)).fetchone()[0] == 1
-
-
-def test_delete_is_blocked_when_registrations_exist(tmp_path: Path) -> None:
-    database, lifecycle = make_repo(tmp_path)
-    activity_id = seed_activity(database)
-    with sqlite3.connect(database) as connection:
-        connection.execute("INSERT INTO inscriptions (IDactivite) VALUES (?)", (activity_id,))
-        connection.commit()
-
-    check = lifecycle.delete_check(activity_id)
-    assert check.registrations == 1
-    assert not check.allowed
-    with pytest.raises(ValueError, match="déjà inscrits"):
-        lifecycle.delete_activity(activity_id)
-    with sqlite3.connect(database) as connection:
-        assert connection.execute("SELECT COUNT(*) FROM activites WHERE IDactivite=?", (activity_id,)).fetchone()[0] == 1
-
-
-def test_delete_removes_configuration_atomically(tmp_path: Path) -> None:
-    database, lifecycle = make_repo(tmp_path)
-    activity_id = seed_activity(database)
-    lifecycle.delete_activity(activity_id)
-    with sqlite3.connect(database) as connection:
-        assert connection.execute("SELECT COUNT(*) FROM activites WHERE IDactivite=?", (activity_id,)).fetchone()[0] == 0
-        assert connection.execute("SELECT COUNT(*) FROM groupes WHERE IDactivite=?", (activity_id,)).fetchone()[0] == 0
-        assert connection.execute("SELECT COUNT(*) FROM unites").fetchone()[0] == 0
-        assert connection.execute("SELECT COUNT(*) FROM questionnaire_filtres").fetchone()[0] == 0
-        assert connection.execute("SELECT COUNT(*) FROM evenements").fetchone()[0] == 0
-
-
-def test_delete_rolls_back_everything_if_one_step_fails(tmp_path: Path) -> None:
-    database, lifecycle = make_repo(tmp_path)
-    activity_id = seed_activity(database)
-    with sqlite3.connect(database) as connection:
-        connection.execute(
-            "CREATE TRIGGER refuse_agreement_delete BEFORE DELETE ON agrements "
-            "BEGIN SELECT RAISE(FAIL, 'refus test'); END"
-        )
-        before_links = connection.execute("SELECT COUNT(*) FROM unites_groupes").fetchone()[0]
-        connection.commit()
-
-    with pytest.raises(sqlite3.IntegrityError, match="refus test"):
-        lifecycle.delete_activity(activity_id)
-
-    with sqlite3.connect(database) as connection:
-        assert connection.execute("SELECT COUNT(*) FROM activites WHERE IDactivite=?", (activity_id,)).fetchone()[0] == 1
-        assert connection.execute("SELECT COUNT(*) FROM unites_groupes").fetchone()[0] == before_links
-        assert connection.execute("SELECT COUNT(*) FROM responsables_activite WHERE IDactivite=?", (activity_id,)).fetchone()[0] == 1
+if __name__ == "__main__":
+    unittest.main()
