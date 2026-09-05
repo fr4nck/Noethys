@@ -184,7 +184,7 @@ class NativeConfiguredActivityRepository(ActivityRepository):
 
 
 class NativeActivitiesWindow(ActivitiesWindow):
-    """Liste Qt enrichie des pages déjà migrées de la fiche activité."""
+    """Liste Qt enrichie des pages et commandes déjà migrées."""
 
     def __init__(
         self,
@@ -201,36 +201,137 @@ class NativeActivitiesWindow(ActivitiesWindow):
             requested_theme=requested_theme,
         )
 
+        self.add_action = self.deferred_actions[0]
         self.modify_action = self.deferred_actions[1]
-        self.modify_action.setEnabled(False)
+        self.delete_action = self.deferred_actions[2]
+        self.duplicate_action = self.deferred_actions[3]
+
+        self.add_action.setEnabled(True)
+        self.add_action.setToolTip("Créer une activité")
         self.modify_action.setToolTip("Modifier l'activité sélectionnée")
+        self.delete_action.setToolTip("Supprimer l'activité sélectionnée")
+        self.duplicate_action.setToolTip("Dupliquer l'activité sélectionnée")
+
+        self.add_action.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogNewFolder)
+        )
         self.modify_action.setIcon(
             self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogDetailedView)
         )
+        self.delete_action.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_TrashIcon)
+        )
+        self.duplicate_action.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon)
+        )
+
+        self.add_action.triggered.connect(self._add_activity)
         self.modify_action.triggered.connect(self._edit_selected)
+        self.delete_action.triggered.connect(self._delete_selected)
+        self.duplicate_action.triggered.connect(self._duplicate_selected)
 
         toolbar = self.findChild(QToolBar)
         if toolbar is not None:
-            toolbar.insertAction(self.export_text_action, self.modify_action)
+            for action in (
+                self.add_action,
+                self.modify_action,
+                self.delete_action,
+                self.duplicate_action,
+            ):
+                toolbar.insertAction(self.export_text_action, action)
             toolbar.insertSeparator(self.export_text_action)
 
         selection_model = self.table.selectionModel()
         if selection_model is not None:
-            selection_model.selectionChanged.connect(self._sync_modify_action)
+            selection_model.selectionChanged.connect(self._sync_lifecycle_actions)
         self.table.doubleClicked.connect(self._edit_selected)
-        self._sync_modify_action()
+        self._sync_lifecycle_actions()
 
-    def _selected_activity_id(self) -> int | None:
+    def _selected_activity(self) -> ActivityRow | None:
         index = self.table.currentIndex()
         if not index.isValid():
             return None
         source_index = self.proxy.mapToSource(index)
         if not source_index.isValid():
             return None
-        return self.model.row_at(source_index.row()).activity_id
+        return self.model.row_at(source_index.row())
 
+    def _selected_activity_id(self) -> int | None:
+        row = self._selected_activity()
+        return row.activity_id if row is not None else None
+
+    def _sync_lifecycle_actions(self, *_args) -> None:
+        selected = self._selected_activity() is not None
+        self.modify_action.setEnabled(selected)
+        self.delete_action.setEnabled(selected)
+        self.duplicate_action.setEnabled(selected)
+
+    # Compatibilité avec les tests/appels précédents du POC.
     def _sync_modify_action(self, *_args) -> None:
-        self.modify_action.setEnabled(self._selected_activity_id() is not None)
+        self._sync_lifecycle_actions(*_args)
+
+    def _editor_and_lifecycle(self):
+        from .activity_editor import NativeActivityEditorRepository
+        from .activity_lifecycle import ActivityLifecycleRepository
+
+        editor = NativeActivityEditorRepository(self.editor_sqlite_path)
+        return editor, ActivityLifecycleRepository(editor)
+
+    def _select_activity_id(self, activity_id: int) -> None:
+        for proxy_row in range(self.proxy.rowCount()):
+            proxy_index = self.proxy.index(proxy_row, 0)
+            source_index = self.proxy.mapToSource(proxy_index)
+            if not source_index.isValid():
+                continue
+            row = self.model.row_at(source_index.row())
+            if row.activity_id == activity_id:
+                self.table.setCurrentIndex(self.proxy.index(proxy_row, 1))
+                self.table.selectRow(proxy_row)
+                break
+        self._sync_lifecycle_actions()
+
+    def _add_activity(self, *_args) -> None:
+        try:
+            editor_repository, lifecycle = self._editor_and_lifecycle()
+            activity_id = lifecycle.create_activity()
+        except Exception as exc:
+            QMessageBox.critical(self, "Création impossible", str(exc))
+            return
+
+        try:
+            from .activity_complete import ActivityEditorDialog
+
+            dialog = ActivityEditorDialog(editor_repository, activity_id, self)
+            dialog.setWindowTitle("Nouvelle activité")
+            result = dialog.exec()
+        except Exception as exc:
+            try:
+                lifecycle.discard_new_activity(activity_id)
+            except Exception as cleanup_exc:
+                QMessageBox.critical(
+                    self,
+                    "Création impossible",
+                    f"{exc}\n\nLe nettoyage de l'activité provisoire a aussi échoué : {cleanup_exc}",
+                )
+                return
+            QMessageBox.critical(self, "Création impossible", str(exc))
+            self.reload()
+            return
+
+        if result == QDialog.DialogCode.Accepted:
+            self.reload()
+            self._select_activity_id(activity_id)
+            return
+
+        try:
+            lifecycle.discard_new_activity(activity_id)
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Annulation incomplète",
+                "L'activité provisoire n'a pas pu être supprimée :\n" + str(exc),
+            )
+        self.reload()
 
     def _edit_selected(self, *_args) -> None:
         activity_id = self._selected_activity_id()
@@ -249,7 +350,83 @@ class NativeActivitiesWindow(ActivitiesWindow):
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.reload()
-            self._sync_modify_action()
+            self._select_activity_id(activity_id)
+
+    def _duplicate_selected(self, *_args) -> None:
+        row = self._selected_activity()
+        if row is None:
+            return
+        answer = QMessageBox.question(
+            self,
+            "Duplication",
+            f"Confirmez-vous la duplication de l'activité « {row.name} » ?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            _editor, lifecycle = self._editor_and_lifecycle()
+            new_id = lifecycle.duplicate_activity(row.activity_id, f"Copie de {row.name}")
+        except Exception as exc:
+            QMessageBox.critical(self, "Duplication impossible", str(exc))
+            return
+        self.reload()
+        self._select_activity_id(new_id)
+
+    def _delete_selected(self, *_args) -> None:
+        row = self._selected_activity()
+        if row is None:
+            return
+        try:
+            _editor, lifecycle = self._editor_and_lifecycle()
+            check = lifecycle.delete_check(row.activity_id)
+        except Exception as exc:
+            QMessageBox.critical(self, "Suppression impossible", str(exc))
+            return
+
+        if not check.allowed:
+            QMessageBox.critical(
+                self,
+                "Suppression impossible",
+                "Vous ne pouvez pas supprimer cette activité car "
+                f"{check.registrations} individu(s) y sont déjà inscrits.",
+            )
+            return
+
+        first = QMessageBox.question(
+            self,
+            "Suppression",
+            f"Souhaitez-vous vraiment supprimer l'activité « {row.name} » ?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.No,
+        )
+        if first != QMessageBox.StandardButton.Yes:
+            return
+
+        second = QMessageBox.warning(
+            self,
+            "Suppression",
+            "Vous êtes vraiment sûr de vouloir supprimer cette activité ?\n\n"
+            "Toute suppression sera irréversible !",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.No,
+        )
+        if second != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            # Le contrôle des inscriptions est répété dans delete_activity afin
+            # de fermer la fenêtre de course entre confirmation et suppression.
+            lifecycle.delete_activity(row.activity_id)
+        except Exception as exc:
+            QMessageBox.critical(self, "Suppression impossible", str(exc))
+            return
+        self.reload()
+        self._sync_lifecycle_actions()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
