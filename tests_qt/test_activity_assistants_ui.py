@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import os
 import sqlite3
 import tempfile
@@ -8,6 +9,7 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 
 from noethys_qt.activities_native import NativeActivitiesWindow
@@ -22,11 +24,24 @@ class ActivityAssistantsUiTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.app = QApplication.instance() or QApplication([])
 
+    @staticmethod
+    def _safe_unlink(database: Path) -> None:
+        QApplication.processEvents()
+        gc.collect()
+        try:
+            database.unlink(missing_ok=True)
+        except PermissionError:
+            # Windows peut conserver brièvement un handle SQLite après la
+            # destruction différée d'un widget Qt. Ce détail de nettoyage ne
+            # doit pas transformer un smoke UI réussi en échec fonctionnel.
+            pass
+
     def _database(self) -> Path:
         handle, filename = tempfile.mkstemp(suffix="_DATA.dat")
         os.close(handle)
         database = Path(filename)
-        with sqlite3.connect(database) as connection:
+        connection = sqlite3.connect(database)
+        try:
             connection.executescript(
                 """
                 CREATE TABLE activites (
@@ -55,14 +70,19 @@ class ActivityAssistantsUiTests(unittest.TestCase):
                 "VALUES ('Test', 'TEST', '1977-01-01', '2999-01-01')"
             )
             connection.commit()
-        self.addCleanup(database.unlink, missing_ok=True)
+        finally:
+            connection.close()
+        self.addCleanup(self._safe_unlink, database)
         return database
 
     def test_choice_dialog_exposes_historic_six_choices(self) -> None:
         dialog = ActivityAssistantChoiceDialog()
         self.addCleanup(dialog.close)
         self.assertEqual(dialog.list.count(), 6)
-        codes = [dialog.list.item(index).data(0x0100) for index in range(dialog.list.count())]
+        codes = [
+            dialog.list.item(index).data(Qt.ItemDataRole.UserRole)
+            for index in range(dialog.list.count())
+        ]
         self.assertEqual(codes, ["nouveau", "annuelle", "sejour", "stage", "cantine", "sorties"])
 
     def test_cantine_wizard_builds_without_wx_and_prefills_last_responsible(self) -> None:
@@ -72,11 +92,11 @@ class ActivityAssistantsUiTests(unittest.TestCase):
         self.addCleanup(wizard.close)
         self.assertEqual(wizard.name_edit.text(), "Cantine")
         self.assertEqual(wizard.responsible_name.text(), "Direction")
-        self.assertFalse(wizard.start_date.isVisible())
-        self.assertFalse(wizard.session_box.isVisible())
         wizard.groups_edit.setPlainText("Service 1\nService 2")
         configuration = wizard.configuration()
         self.assertEqual(configuration.group_names, ("Service 1", "Service 2"))
+        self.assertIsNone(configuration.start_date)
+        self.assertFalse(configuration.track_sessions)
 
     def test_simulation_toggle_disables_modify_but_keeps_preview_actions(self) -> None:
         database = self._database()
