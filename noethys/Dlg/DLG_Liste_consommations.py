@@ -117,6 +117,7 @@ class Dialog(wx.Dialog):
     def __init__(self, parent):
         wx.Dialog.__init__(self, parent, -1, style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER|wx.MAXIMIZE_BOX|wx.MINIMIZE_BOX)
         self.parent = parent
+        self._fermeture_en_cours = False
         
         intro = _(u"Vous pouvez ici consulter la liste complète des consommations saisies dans le logiciel.")
         titre = _(u"Liste détaillée des consommations")
@@ -158,6 +159,8 @@ class Dialog(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, self.ctrl_consommations.ExportExcel, self.bouton_excel)
         self.Bind(wx.EVT_BUTTON, self.ctrl_consommations.Supprimer, self.bouton_supprimer)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonAide, self.bouton_aide)
+        self.Bind(wx.EVT_BUTTON, self.OnFermer, self.bouton_fermer)
+        self.Bind(wx.EVT_CLOSE, self.OnFermer)
         self.Bind(wx.EVT_CHOICE, self.OnParametre, self.ctrl_annee)
         self.Bind(wx.EVT_CHOICE, self.OnParametre, self.ctrl_activite)
 
@@ -237,6 +240,43 @@ class Dialog(wx.Dialog):
     def OnBoutonAide(self, event): 
         from Utils import UTILS_Aide
         UTILS_Aide.Aide("")
+
+    def _NettoieAvantFermeture(self):
+        """Neutralise les callbacks wx d'une liste virtuelle avant sa destruction."""
+        if self._fermeture_en_cours:
+            return
+        self._fermeture_en_cours = True
+
+        # La barre de recherche possède un wx.Timer qui peut encore poster un
+        # EVT_TIMER alors que le dialogue et sa liste sont en cours de destruction.
+        try:
+            timer = self.ctrl_recherche.barreRecherche.timer
+            if timer.IsRunning():
+                timer.Stop()
+        except (AttributeError, RuntimeError):
+            pass
+
+        # FastObjectListView est un wx.ListCtrl virtuel. Sous Windows, le contrôle
+        # natif peut demander une dernière ligne pendant sa destruction. On retire
+        # donc son getter et son cache avant de remettre le compteur à zéro.
+        try:
+            ctrl = self.ctrl_consommations
+            ctrl.SetObjectGetter(None)
+            ctrl.lastGetObjectIndex = -1
+            ctrl.lastGetObject = None
+            ctrl.SetItemCount(0)
+            ctrl.modelObjects = []
+            ctrl.innerList = []
+            ctrl.donnees = []
+        except (AttributeError, RuntimeError):
+            pass
+
+    def OnFermer(self, event=None):
+        self._NettoieAvantFermeture()
+        if self.IsModal():
+            self.EndModal(wx.ID_CANCEL)
+        else:
+            self.Destroy()
 
     def OnParametre(self, event=None):
         listeFiltres = []
