@@ -7,7 +7,10 @@ on:
   pull_request:
     paths:
       - 'tools/audit_ui_commands.py'
+      - 'tools/audit_ui_execution.py'
+      - 'tools/audit_ui_second_pass.py'
       - 'tests/test_vanilla_ui_command_audit.py'
+      - 'tests/test_vanilla_ui_second_pass.py'
       - 'docs/VANILLA_UI_COMMAND_AUDIT.md'
       - '.github/workflows/vanilla-ui-command-audit.yml'
   workflow_dispatch:
@@ -17,7 +20,7 @@ permissions:
 
 jobs:
   static-audit:
-    name: Inventorier les commandes wxPython
+    name: Inventorier et exercer les commandes wxPython
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -36,19 +39,22 @@ jobs:
           -x 'C866CA3A-32F7-11D2-9602-00C04F8EE628x0x5x0\.py$'
           noethys
 
-      - name: Tester le scanner d'audit
-        run: python -m unittest tests.test_vanilla_ui_command_audit
+      - name: Tester les scanners d'audit
+        run: >-
+          python -m unittest
+          tests.test_vanilla_ui_command_audit
+          tests.test_vanilla_ui_second_pass
 
-      - name: Générer la matrice exhaustive
+      - name: Générer la matrice exhaustive du passage 2
         shell: bash
         run: |
           git fetch origin maintenance/vanilla
           BASE_SHA="$(git merge-base HEAD origin/maintenance/vanilla)"
-          python tools/audit_ui_commands.py \
+          python tools/audit_ui_second_pass.py \
             --root . \
             --baseline-sha "$BASE_SHA" \
             --output docs/VANILLA_UI_COMMAND_AUDIT.md
-          sed -n '1,80p' docs/VANILLA_UI_COMMAND_AUDIT.md
+          sed -n '1,110p' docs/VANILLA_UI_COMMAND_AUDIT.md
 
       - name: Vérifier ou publier le rapport généré
         shell: bash
@@ -67,5 +73,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/VANILLA_UI_COMMAND_AUDIT.md
-          git commit -m "Audit: regenerate Vanilla UI command matrix [skip ci]"
+          git commit -m "Audit: regenerate Vanilla UI command matrix pass 2 [skip ci]"
           git push origin HEAD:${{ github.ref_name }}
