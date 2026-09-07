@@ -14,6 +14,7 @@ import datetime
 import wx
 
 import GestionDB
+from Utils import UTILS_Dates
 from Utils import UTILS_StyleRepens as Style
 from Utils.UTILS_Traduction import _
 
@@ -249,8 +250,8 @@ class Vacances(wx.Panel):
         DB.Close()
         listeChoix = []
         for nom, date_debut, date_fin in listeVacances:
-            date_debutDD = datetime.date.fromisoformat(date_debut[:10])
-            date_finDD = datetime.date.fromisoformat(date_fin[:10])
+            date_debutDD = UTILS_Dates.DateEngEnDateDD(date_debut)
+            date_finDD = UTILS_Dates.DateEngEnDateDD(date_fin)
             listeChoix.append((nom, date_debutDD, date_finDD))
         self.ctrl_periode.SetListeChoix(listeChoix, conserveSelections=False)
 
