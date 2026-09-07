@@ -1,16 +1,17 @@
-# Noethys Vanilla — prototype de pilote de recette Windows interactif
+# Noethys Vanilla — pilote de recette Windows interactif (prototype)
 
-Prototype isolé du code métier, destiné à piloter le vrai `Noethys.exe` sous Windows comme un utilisateur.
+Prototype strictement séparé du code métier. Il pilote le vrai `Noethys.exe` sous Windows comme un utilisateur et n'appelle aucun handler Noethys directement.
 
 ## Choix technique
 
 - `pywinauto==0.6.9`.
-- backend UI Automation (`uia`) en priorité ; backend Win32 en repli.
-- toutes les actions du scénario passent par `click_input()` ou par de vraies frappes clavier ; aucun handler Noethys n'est appelé directement.
-- aucun clic à coordonnées fixes.
-- attentes explicites et timeouts bornés.
+- UI Automation (`uia`) en priorité pour les contrôles nommés et la croix Windows.
+- Win32 en complément pour les HWND, listes natives, hiérarchie et diagnostic.
+- actions utilisateur via `click_input()`, `double_click_input()`, `right_click_input()` et vraies frappes clavier quand elles sont sûres.
+- aucun clic à coordonnées fixes dans le scénario pilote.
+- attentes explicites, polling borné et détection de fenêtre non responsive (`IsHungAppWindow` + `SendMessageTimeout(WM_NULL)`).
 
-Ce choix est particulièrement adapté à l'interface wx historique : Noethys combine des fenêtres/dialogues et boutons wx natifs avec des contrôles plus complexes AGW/AUI et un `FastObjectListView`. UIA apporte les rôles accessibles lorsqu'ils existent ; Win32 permet de retrouver une partie des contrôles natifs que UIA décrit mal.
+Le choix est volontairement hybride : Noethys mélange `wx.Frame`, `wx.Dialog`, `wx.Button`, `wx.SearchCtrl`, `wx.ListCtrl` virtuel, AGW/AUI et contrôles owner-drawn. Le premier run interactif doit produire les arbres UIA **et** Win32 avant toute généralisation des sélecteurs.
 
 ## Dépendances
 
@@ -22,7 +23,7 @@ psutil==7.2.2
 Pillow==12.3.0
 ```
 
-Installer une fois dans la session Windows de recette :
+Installation dans la session Windows de recette :
 
 ```powershell
 python -m pip install -r tools\windows_ui_recipe\requirements.txt
@@ -37,13 +38,15 @@ Le pilote refuse de lancer Noethys si :
 - le profil n'a pas le marqueur `NOETHYS_UI_RECIPE_PROFILE=1` ;
 - `Roaming\noethys\Config.json` est absent ;
 - `nomFichier` ne désigne pas une base réseau/MySQL ;
-- le host ne correspond pas à `--expected-db-host` ;
-- le nom de base ne correspond pas à `--expected-db-name` ;
-- le host ne résout pas vers la boucle locale (`localhost`, `127.0.0.1`, `::1`, etc.).
+- le host ou le nom de base ne correspond pas aux valeurs attendues ;
+- le host ne résout pas exclusivement vers la boucle locale ;
+- `assistant_demarrage` n'est pas configuré pour empêcher l'assistant de démarrage de perturber le scénario.
 
-`APPDATA` et `LOCALAPPDATA` sont redirigés vers le profil jetable. Les actions génériques dont le libellé évoque suppression, envoi, facturation ou publication sont refusées.
+`APPDATA` et `LOCALAPPDATA` du processus Noethys sont redirigés vers le profil jetable. Ce chemin correspond au comportement réel de `UTILS_Fichiers.GetRepUtilisateur()` : `appdirs.user_config_dir(..., roaming=True)` puis sous-répertoire `noethys`.
 
-Le helper `prepare_profile.ps1` copie uniquement un `Config.json` de recette déjà préparé. Il ne crée, ne migre et ne modifie aucune base.
+Les actions génériques dont le libellé évoque suppression, envoi, facturation ou publication sont refusées par le prototype. Aucune écriture Connecthys/Ivan n'est autorisée.
+
+`prepare_profile.ps1` copie uniquement un `Config.json` de recette déjà préparé. Il ne crée, ne migre et ne modifie aucune base.
 
 ## Préparation
 
@@ -53,7 +56,7 @@ Le helper `prepare_profile.ps1` copie uniquement un `Config.json` de recette dé
   -RecipeConfig "C:\recette\Config.json"
 ```
 
-## Exécution du prototype
+## Exécution locale interactive
 
 ```powershell
 .\tools\windows_ui_recipe\run.ps1 `
@@ -64,78 +67,103 @@ Le helper `prepare_profile.ps1` copie uniquement un `Config.json` de recette dé
   -Repeat 5
 ```
 
-La sortie standard du scénario contient uniquement un statut par étape exécutée :
+Chaque étape produit exactement l'un des statuts :
 
 - `PASS`
 - `FAIL`
 - `TIMEOUT`
 - `CRASH`
+- `NON_AUTOMATISABLE`
 
-Le détail est écrit dans `artifacts\noethys-ui\scenario.jsonl`.
+`NON_AUTOMATISABLE` ne masque jamais une exception fonctionnelle : il est réservé à une limite démontrée du pilote (par exemple contrôle non exposé de manière sûre ou événement interne impossible à provoquer en boîte noire).
 
-## Scénario minimal
+Le détail est écrit dans `artifacts\noethys-ui\scenario.jsonl` et le comptage final dans `summary.json`.
 
-1. lancer `Noethys.exe` ;
-2. attendre la fenêtre principale et vérifier sa réactivité ;
-3. ouvrir `Affichage` ;
-4. le fermer par `Echap` ;
-5. ouvrir `Consommations > Liste d'attente` ;
-6. fermer avec le bouton `Fermer` ;
-7. ouvrir `Consommations > Liste détaillée des consommations` ;
-8. fermer au premier instant où le dialogue devient réellement visible ;
-9. rouvrir immédiatement ;
-10. répéter fermeture/réouverture plusieurs fois ;
-11. fermer par la vraie croix Windows ;
-12. vérifier que `Noethys.exe` reste vivant et responsive.
+## Premier lot A → E
 
-### Limite de l'étape 8
+### A — Démarrage (`WIN-01`)
 
-`DLG_Liste_consommations.Dialog` effectue une partie de son chargement synchrone dans le constructeur, avant `ShowModal()`. Un vrai utilisateur ne peut donc pas cliquer pendant cette phase cachée. Le pilote ferme au premier instant où la fenêtre devient user-visible. Instrumenter avant cela ne serait plus une recette UI « comme un utilisateur ».
+1. lancer `Noethys.exe` avec le profil isolé ;
+2. attendre la fenêtre principale ;
+3. vérifier le processus et la réactivité ;
+4. capturer les arbres UIA et Win32.
 
-## Détection d'échec
+### B — Affichage (`WIN-01`, cycle `WIN-13`)
 
-Sur `FAIL`, `TIMEOUT` ou `CRASH`, le pilote enregistre autant que possible :
+`Affichage` est un menu principal, pas un dialogue unique. Pour obtenir un dialogue réel sans modifier la configuration, le pilote ouvre **Affichage → Sauvegarder la disposition actuelle**, vérifie `Sauvegarde d'une disposition`, ferme par **Annuler**, rouvre puis ferme par **Echap**. Aucun `OK` n'est envoyé.
 
-- scénario, étape, action, attendu, obtenu ;
+### C — Liste d'attente (`WIN-06`, cycle `WIN-13`)
+
+Ouvrir `Consommations → Liste d'attente`, vérifier la fenêtre, fermer par **Fermer**, rouvrir immédiatement, puis fermer avec **Echap**.
+
+### D — Liste détaillée des consommations (`WIN-04`)
+
+1. ouvrir `Consommations → Liste détaillée des consommations` ;
+2. fermer au premier instant où le dialogue est réellement visible ;
+3. rouvrir immédiatement ;
+4. répéter fermeture/réouverture ;
+5. fermer par la vraie croix Windows ;
+6. vérifier que Noethys reste vivant et responsive.
+
+La branche prototype contient déjà le correctif de PR #359. Le résultat doit donc être consigné comme **CORRECTIF EXISTANT — VALIDATION RUNTIME REQUISE**, jamais comme découverte/correction du pilote.
+
+### E — Cycle de vie wx (`WIN-13`)
+
+- ouverture/fermeture et ouverture/annulation : couverts par B/C ;
+- liste virtuelle : `FastObjectListView` est recherché via UIA puis Win32, puis fermeture/réouverture réelle ;
+- timer actif : le pilote tape réellement dans le `wx.SearchCtrl`, ce qui déclenche `EVT_TEXT` et arme le `wx.Timer`, puis ferme immédiatement ;
+- callback tardif : observation de 1,25 s, au-delà du délai maximal de 1000 ms codé dans `BarreRecherche.OnDoSearch`, avec contrôle continu du processus et de la réapparition du dialogue ;
+- double fermeture physique : `NON_AUTOMATISABLE` dans ce prototype, car le deuxième clic après destruction peut tomber sur un contrôle différent sous la fenêtre ; un double `WM_CLOSE` serait une fausse recette utilisateur ;
+- `wx.CallAfter` arbitraire après destruction : `NON_AUTOMATISABLE` sans instrumentation métier. Le chemin réel du timer est exercé à la place.
+
+## Détection d'échec et artefacts
+
+Sur `FAIL`, `TIMEOUT`, `CRASH` et `NON_AUTOMATISABLE`, le pilote conserve autant que possible :
+
+- WIN, section, étape, action, attendu, obtenu ;
 - durée et horodatage ;
 - titre de la fenêtre active ;
-- état du processus ;
+- PID, état vivant/sorti, hung/responsive ;
 - screenshot multi-écrans ;
-- traceback ;
+- traceback du pilote ;
 - dumps UIA et Win32 ;
-- corrélation best-effort du journal `Application` pour Event ID 1000, `Noethys.exe` et `0xc0000005`.
+- fin de `journal.log` du profil et lignes wx/traceback détectées ;
+- événements Application corrélés, notamment Event ID 1000 ;
+- codes d'exception trouvés, dont `0xc0000005`.
 
-L'absence d'événement Windows n'est jamais interprétée comme preuve d'absence de bug.
+L'absence d'un Event 1000 n'est jamais utilisée comme preuve d'absence de crash.
 
-La réactivité est contrôlée avec `IsHungAppWindow` et `SendMessageTimeout(WM_NULL)`.
+## Contrôles wx : ce que le pilote vérifie
 
-## Contrôles et limites wxPython
+Probables candidats accessibles, à confirmer par le premier run sur **le vrai binaire** :
 
-Statistiquement favorables, mais à confirmer sur le vrai binaire Windows :
+- `wx.Frame` / `wx.Dialog` ;
+- menus wx ;
+- `wx.Button` / `CTRL_Bouton_image.CTRL` ;
+- `wx.SearchCtrl` ;
+- certaines listes `wx.ListCtrl`.
 
-- fenêtre principale `wx.Frame` ;
-- menus `wx.Menu` ;
-- dialogues `wx.Dialog` ;
-- boutons `CTRL_Bouton_image.CTRL`, car ils héritent de `wx.Button` ;
-- `wx.Choice` ;
-- certaines listes natives.
+Candidats à risque, donc jamais supposés accessibles :
 
-À qualifier en priorité car potentiellement moins bien exposés :
-
-- `wx.lib.agw.aui.AuiNotebook` ;
-- AUI/AGW toolbars et panes ;
+- AUI/AGW notebooks, toolbars et panes ;
 - contrôles owner-drawn ;
-- `FastObjectListView`/`wx.ListCtrl` virtuel ;
-- `wx.BitmapButton` sans libellé textuel exploitable.
+- `FastObjectListView` virtuel ;
+- `wx.BitmapButton` sans nom accessible ;
+- contrôles dont UIA ne remonte ni nom ni rôle et dont Win32 n'expose qu'un HWND générique.
 
-Le scénario produit des dumps d'accessibilité même sur certaines étapes réussies afin de documenter précisément les rôles UIA, `AutomationId`, classes Win32 et contrôles réellement exposés. Un dump n'est jamais converti automatiquement en preuve fonctionnelle.
+Le pilote écrit des dumps d'accessibilité sur les fenêtres clés. Ces dumps servent à décider ensuite quel backend/sélecteur est fiable ; ils ne valent pas preuve fonctionnelle par eux-mêmes.
 
 ## Croix Windows
 
-L'étape de fermeture par croix cherche et clique le vrai bouton de `TitleBar` via UI Automation. Il n'existe volontairement **aucun fallback `WM_CLOSE`** pour cette étape : si la croix n'est pas accessible, le résultat doit être `FAIL`, pas un faux `PASS`.
+La fermeture par croix cherche le vrai bouton de `TitleBar` via UI Automation et exécute un clic utilisateur. Il n'existe volontairement **aucun fallback `WM_CLOSE`** pour cette étape. Si la croix n'est pas exposée de façon sûre, le scénario doit le signaler, pas fabriquer un PASS.
 
-## Session Windows / CI
+## Session Windows et GitHub Actions
 
-Une vraie session Windows utilisateur, active et déverrouillée, est nécessaire pour rendre `click_input()` et les frappes clavier fiables. Éviter un bureau RDP déconnecté et aligner les niveaux d'élévation entre Noethys et le pilote.
+Une session Windows utilisateur active et déverrouillée est requise pour `click_input()`, focus et clavier.
 
-Les runners GitHub Actions hébergés restent utiles pour construire le portable et les smokes processus, mais ne doivent pas servir de preuve de recette souris/clavier tant que l'environnement de bureau interactif n'est pas explicitement maîtrisé. Pour une CI UI fiable, utiliser de préférence un runner Windows self-hosted lancé dans une session utilisateur interactive, et non uniquement comme service en Session 0.
+`.github/workflows/vanilla-windows-ui-recipe.yml` sépare :
+
+1. `contract` sur `windows-latest` : installation des dépendances, compilation et tests non interactifs uniquement ; **ce job n'est jamais une validation Windows fonctionnelle** ;
+2. `live-ui` : seulement sur `[self-hosted, Windows, vanilla-ui-recipe]`, déclenché manuellement avec `live=true`.
+
+Le job live refuse la Session 0 et vérifie qu'un `explorer.exe` existe dans la même session que le runner. La machine doit disposer localement du binaire de recette, du profil jetable et de la base Docker. Le runner ne doit pas être utilisé comme simple service Windows en Session 0.
