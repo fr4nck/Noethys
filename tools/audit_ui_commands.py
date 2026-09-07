@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Inventaire statique des commandes wxPython de Noethys Vanilla.
 
-Ce script ne pretend pas qu'une commande est fonctionnelle parce qu'elle existe.
-Il recense boutons, menus, outils et Bind, qualifie les liaisons evidentes et
-produit la matrice de recette. Les comportements GUI/BDD non executes restent
-BLOCKED avec HUMAN_RECIPE_REQUIRED.
+L'inventaire est volontairement strict sur la notion de preuve : une commande
+présente et correctement bindée n'est jamais déclarée PASS sans exécution du
+comportement. Les validations GUI/BDD restantes sont marquées explicitement
+HUMAN_RECIPE_REQUIRED.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import ast
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 
 STATUSES = {"PASS", "FAIL", "BLOCKED", "NOT_TESTABLE"}
@@ -32,22 +32,25 @@ COLUMNS = [
 ]
 
 STANDARD_WX_IDS = {
-    "wx.ID_OK",
-    "wx.ID_CANCEL",
-    "wx.ID_CLOSE",
-    "wx.ID_EXIT",
-    "wx.ID_APPLY",
-    "wx.ID_HELP",
-    "wx.ID_SAVE",
-    "wx.ID_OPEN",
-    "wx.ID_NEW",
-    "wx.ID_PRINT",
-    "wx.ID_PREVIEW",
+    "wx.ID_OK", "wx.ID_CANCEL", "wx.ID_CLOSE", "wx.ID_EXIT",
+    "wx.ID_APPLY", "wx.ID_HELP", "wx.ID_SAVE", "wx.ID_OPEN",
+    "wx.ID_NEW", "wx.ID_PRINT", "wx.ID_PREVIEW", "wx.ID_YES", "wx.ID_NO",
 }
-
-MENU_METHODS = {"Append", "AppendItem", "AppendCheckItem", "AppendRadioItem"}
+MENU_METHODS = {"Append", "AppendCheckItem", "AppendRadioItem"}
 TOOL_METHODS = {"AddTool", "AddSimpleTool", "AddCheckTool", "AddRadioTool"}
 FIRST_PARTY_PACKAGES = {"Ctrl", "Dlg", "Ol", "Utils", "Data", "ObjectListView"}
+DEV_HARNESS_CLASSES = {"MyFrame"}
+
+# Un handler vide peut être volontaire (RadioButton natif, bouton désactivé,
+# hook à surcharger). Les rares cas statiquement suffisamment explicites pour
+# être considérés comme défauts sont promus ici, sans corriger le code métier.
+CONFIRMED_EMPTY_HANDLER_FAILURES = {
+    ("noethys/Dlg/DLG_Saisie_lot_tresor_public.py", "Dialog", "OnBoutonFichier"): (
+        "COMMAND_NO_EFFECT",
+        "P2",
+        "Le bouton 'Générer le fichier d'export...' est relié à un handler contenant uniquement pass.",
+    ),
+}
 
 
 @dataclass
@@ -154,7 +157,7 @@ def keyword_expr(call: ast.Call, *names: str) -> str:
 
 
 def extract_label(call: ast.Call) -> str:
-    for name in ("label", "text", "caption", "shortHelp", "short_help", "helpString"):
+    for name in ("label", "text", "texte", "caption", "libelle", "shortHelp", "short_help", "helpString"):
         value = keyword_expr(call, name)
         if value:
             return value
@@ -178,14 +181,27 @@ def extract_id(call: ast.Call, kind: str) -> str:
 
 def is_button_ctor(name: str) -> bool:
     short = name.rsplit(".", 1)[-1]
-    if short in {"Button", "BitmapButton", "ToggleButton", "CommandLinkButton"}:
-        return True
     lowered = name.lower()
+    if "sizer" in lowered:
+        return False
+    if short in {"Button", "BitmapButton", "ToggleButton", "CommandLinkButton", "RadioButton"}:
+        return True
     return "bouton" in lowered or "button" in lowered
 
 
 def is_menu_item_ctor(name: str) -> bool:
     return name.endswith("MenuItem") or name == "wx.MenuItem"
+
+
+def is_main_guard(node: ast.If) -> bool:
+    test = node.test
+    if not isinstance(test, ast.Compare) or len(test.ops) != 1 or len(test.comparators) != 1:
+        return False
+    if not isinstance(test.ops[0], ast.Eq):
+        return False
+    left = expr_text(test.left)
+    right = expr_text(test.comparators[0])
+    return {left, right} == {"__name__", "__main__"}
 
 
 def target_text(node: ast.AST) -> str:
@@ -210,7 +226,10 @@ def handler_is_empty(node: ast.FunctionDef) -> bool:
     for stmt in body:
         if isinstance(stmt, ast.Pass):
             continue
-        if isinstance(stmt, ast.Return) and (stmt.value is None or (isinstance(stmt.value, ast.Constant) and stmt.value.value is None)):
+        if isinstance(stmt, ast.Return) and (
+            stmt.value is None
+            or (isinstance(stmt.value, ast.Constant) and stmt.value.value is None)
+        ):
             continue
         return False
     return True
@@ -233,7 +252,16 @@ class FileVisitor(ast.NodeVisitor):
     def function_name(self) -> str:
         return self.function_stack[-1] if self.function_stack else "<module>"
 
+    def visit_If(self, node: ast.If) -> None:
+        if is_main_guard(node):
+            for stmt in node.orelse:
+                self.visit(stmt)
+            return
+        self.generic_visit(node)
+
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        if node.name in DEV_HARNESS_CLASSES:
+            return
         self.class_stack.append(node.name)
         self.generic_visit(node)
         self.class_stack.pop()
@@ -250,39 +278,41 @@ class FileVisitor(ast.NodeVisitor):
         label = extract_label(call)
         command_id = extract_id(call, kind)
         fallback = source or command_id or f"{kind}@{getattr(call, 'lineno', 0)}"
-        self.commands.append(
-            Command(
-                path=self.path,
-                class_name=self.class_name,
-                function_name=self.function_name,
-                line=getattr(call, "lineno", 0),
-                kind=kind,
-                source=source,
-                command_id=command_id,
-                label=label or fallback,
-            )
-        )
+        self.commands.append(Command(
+            path=self.path,
+            class_name=self.class_name,
+            function_name=self.function_name,
+            line=getattr(call, "lineno", 0),
+            kind=kind,
+            source=source,
+            command_id=command_id,
+            label=label or fallback,
+        ))
+
+    def _assignment_call(self, call: ast.Call, source: str) -> None:
+        name = expr_text(call.func)
+        if is_button_ctor(name):
+            self._add_command(call, source, "button")
+            return
+        if is_menu_item_ctor(name):
+            self._add_command(call, source, "menu")
+            return
+        if isinstance(call.func, ast.Attribute):
+            method = call.func.attr
+            if method in MENU_METHODS:
+                self._add_command(call, source, "menu")
+            elif method in TOOL_METHODS:
+                self._add_command(call, source, "tool")
 
     def visit_Assign(self, node: ast.Assign) -> None:
         if isinstance(node.value, ast.Call):
-            call = node.value
-            name = expr_text(call.func)
             source = target_text(node.targets[0]) if node.targets else ""
-            if is_button_ctor(name):
-                self._add_command(call, source, "button")
-            elif is_menu_item_ctor(name):
-                self._add_command(call, source, "menu")
+            self._assignment_call(node.value, source)
         self.generic_visit(node)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         if isinstance(node.value, ast.Call):
-            call = node.value
-            name = expr_text(call.func)
-            source = target_text(node.target)
-            if is_button_ctor(name):
-                self._add_command(call, source, "button")
-            elif is_menu_item_ctor(name):
-                self._add_command(call, source, "menu")
+            self._assignment_call(node.value, target_text(node.target))
         self.generic_visit(node)
 
     def visit_Expr(self, node: ast.Expr) -> None:
@@ -309,61 +339,116 @@ class FileVisitor(ast.NodeVisitor):
                 source = expr_text(node.args[2])
             source = keyword_expr(node, "source") or source
             command_id = keyword_expr(node, "id")
-            self.bindings.append(
-                Binding(
-                    path=self.path,
-                    class_name=self.class_name,
-                    function_name=self.function_name,
-                    line=getattr(node, "lineno", 0),
-                    source=source,
-                    command_id=command_id,
-                    event=event,
-                    handler=handler,
-                )
-            )
+            self.bindings.append(Binding(
+                path=self.path,
+                class_name=self.class_name,
+                function_name=self.function_name,
+                line=getattr(node, "lineno", 0),
+                source=source,
+                command_id=command_id,
+                event=event,
+                handler=handler,
+            ))
         self.generic_visit(node)
+
+
+class ImportDiagnosticVisitor(ast.NodeVisitor):
+    def __init__(self, root: Path, path: Path) -> None:
+        self.root = root
+        self.path = path
+        self.noethys = root / "noethys"
+        self.result: List[Diagnostic] = []
+
+    def visit_If(self, node: ast.If) -> None:
+        if is_main_guard(node):
+            for stmt in node.orelse:
+                self.visit(stmt)
+            return
+        self.generic_visit(node)
+
+    def _add(self, node: ast.AST, kind: str, message: str) -> None:
+        self.result.append(Diagnostic(
+            str(self.path.relative_to(self.root)).replace("\\", "/"),
+            getattr(node, "lineno", 0),
+            kind,
+            message,
+        ))
+
+    def visit_Import(self, node: ast.Import) -> None:
+        for alias in node.names:
+            bits = alias.name.split(".")
+            if bits and bits[0] in FIRST_PARTY_PACKAGES and len(bits) > 1:
+                candidate = self.noethys.joinpath(*bits).with_suffix(".py")
+                package_init = self.noethys.joinpath(*bits, "__init__.py")
+                if not candidate.exists() and not package_init.exists():
+                    self._add(node, "IMPORT_LOCAL_MISSING", alias.name)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        if node.level != 0 or not node.module:
+            return
+        bits = node.module.split(".")
+        if not bits or bits[0] not in FIRST_PARTY_PACKAGES:
+            return
+        module_path = self.noethys.joinpath(*bits)
+        module_file = module_path.with_suffix(".py")
+        package_init = module_path / "__init__.py"
+        if not module_file.exists() and not package_init.exists():
+            self._add(node, "IMPORT_LOCAL_MISSING", node.module)
+            return
+        if package_init.exists():
+            for alias in node.names:
+                if alias.name == "*":
+                    continue
+                candidate = module_path / f"{alias.name}.py"
+                if alias.name.startswith(("DLG_", "CTRL_", "OL_", "UTILS_", "DATA_")) and not candidate.exists():
+                    self._add(node, "IMPORT_MEMBER_MISSING", f"{node.module}.{alias.name}")
 
 
 def iter_python_files(root: Path) -> Iterable[Path]:
     base = root / "noethys"
     for path in sorted(base.rglob("*.py")):
-        parts = set(path.parts)
-        if "__pycache__" in parts:
-            continue
-        yield path
+        if "__pycache__" not in path.parts:
+            yield path
 
 
 def first_party_import_diagnostics(root: Path, path: Path, tree: ast.AST) -> List[Diagnostic]:
+    visitor = ImportDiagnosticVisitor(root, path)
+    visitor.visit(tree)
+    return visitor.result
+
+
+def handler_ref_name(handler: str) -> str:
+    return handler.rsplit(".", 1)[-1] if handler else ""
+
+
+def add_unbound_handler_diagnostics(
+    path: str,
+    handlers: Dict[Tuple[str, str], ast.FunctionDef],
+    bindings: List[Binding],
+) -> List[Diagnostic]:
+    bound: Set[Tuple[str, str]] = set()
+    for binding in bindings:
+        name = handler_ref_name(binding.handler)
+        if name:
+            bound.add((binding.class_name, name))
     result: List[Diagnostic] = []
-    noethys = root / "noethys"
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                bits = alias.name.split(".")
-                if bits and bits[0] in FIRST_PARTY_PACKAGES and len(bits) > 1:
-                    candidate = noethys.joinpath(*bits).with_suffix(".py")
-                    package_init = noethys.joinpath(*bits, "__init__.py")
-                    if not candidate.exists() and not package_init.exists():
-                        result.append(Diagnostic(str(path.relative_to(root)), node.lineno, "IMPORT_LOCAL_MISSING", alias.name))
-        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-            bits = node.module.split(".")
-            if bits and bits[0] in FIRST_PARTY_PACKAGES:
-                module_path = noethys.joinpath(*bits)
-                module_file = module_path.with_suffix(".py")
-                package_init = module_path / "__init__.py"
-                if not module_file.exists() and not package_init.exists():
-                    result.append(Diagnostic(str(path.relative_to(root)), node.lineno, "IMPORT_LOCAL_MISSING", node.module))
-                elif package_init.exists():
-                    for alias in node.names:
-                        if alias.name == "*":
-                            continue
-                        candidate = module_path / f"{alias.name}.py"
-                        if alias.name.startswith(("DLG_", "CTRL_", "OL_", "UTILS_", "DATA_")) and not candidate.exists():
-                            result.append(Diagnostic(str(path.relative_to(root)), node.lineno, "IMPORT_MEMBER_MISSING", f"{node.module}.{alias.name}"))
+    for (class_name, name), node in handlers.items():
+        if not name.startswith("On") or (class_name, name) in bound:
+            continue
+        result.append(Diagnostic(
+            path,
+            node.lineno,
+            "HANDLER_ON_UNBOUND_STATIC",
+            f"{class_name}.{name} n'est relié à aucun Bind corrélable dans ce fichier; appel direct, héritage ou code dynamique possible",
+        ))
     return result
 
 
-def match_commands(commands: List[Command], bindings: List[Binding], handlers: Dict[Tuple[str, str], ast.FunctionDef]) -> None:
+def match_commands(
+    commands: List[Command],
+    bindings: List[Binding],
+    handlers: Dict[Tuple[str, str], ast.FunctionDef],
+) -> None:
     by_source: Dict[Tuple[str, str, str], List[Binding]] = defaultdict(list)
     by_id: Dict[Tuple[str, str], List[Binding]] = defaultdict(list)
     for binding in bindings:
@@ -385,7 +470,6 @@ def match_commands(commands: List[Command], bindings: List[Binding], handlers: D
         if command.command_id:
             candidates.extend(by_id.get((cls, command.command_id), []))
 
-        # Dedoublonnage en conservant l'ordre source.
         unique: List[Binding] = []
         seen = set()
         for item in candidates:
@@ -395,32 +479,50 @@ def match_commands(commands: List[Command], bindings: List[Binding], handlers: D
                 seen.add(key)
 
         if unique:
-            binding = sorted(unique, key=lambda x: x.line)[0]
+            binding = sorted(unique, key=lambda item: item.line)[0]
             command.event = binding.event or "Bind"
             command.handler = binding.handler
-            handler_name = binding.handler.rsplit(".", 1)[-1] if binding.handler else ""
-            handler_node = handlers.get((command.class_name, handler_name))
+            name = handler_ref_name(binding.handler)
+            handler_node = handlers.get((command.class_name, name))
             if handler_node is not None and handler_is_empty(handler_node):
-                command.result_obtained = f"Handler {binding.handler} vide/pass détecté statiquement"
-                command.status = "FAIL"
-                command.defect_type = "HANDLER_EMPTY"
-                command.severity = "P2"
+                confirmed = CONFIRMED_EMPTY_HANDLER_FAILURES.get((command.path, command.class_name, name))
+                if confirmed:
+                    defect_type, severity, detail = confirmed
+                    command.result_obtained = detail
+                    command.status = "FAIL"
+                    command.defect_type = defect_type
+                    command.severity = severity
+                else:
+                    command.result_obtained = (
+                        f"Handler {binding.handler} vide/pass détecté statiquement; "
+                        "effet natif, état désactivé ou hook volontaire à vérifier"
+                    )
+                    command.status = "BLOCKED"
+                    command.defect_type = "EMPTY_HANDLER_REVIEW"
                 command.trace = f"{command.path}:{command.line}; handler:{handler_node.lineno}"
             else:
-                command.result_obtained = f"Liaison statique vers {binding.handler or '<handler dynamique>'}; comportement métier non exécuté"
+                command.result_obtained = (
+                    f"Liaison statique vers {binding.handler or '<handler dynamique>'}; "
+                    "comportement métier non exécuté"
+                )
                 command.status = "BLOCKED"
                 command.defect_type = "HUMAN_RECIPE_REQUIRED"
                 command.trace = f"{command.path}:{command.line}; bind:{binding.line}"
         elif command.command_id in STANDARD_WX_IDS:
             command.event = "wx standard ID"
             command.handler = "comportement implicite wx"
-            command.result_obtained = "Commande standard détectée; fermeture/validation native non exécutée en audit headless"
+            command.result_obtained = (
+                "Commande standard détectée; comportement natif non exécuté en audit headless"
+            )
             command.status = "BLOCKED"
             command.defect_type = "HUMAN_RECIPE_REQUIRED"
             command.trace = f"{command.path}:{command.line}"
         else:
             command.event = "aucun Bind explicite détecté"
-            command.result_obtained = "Commande créée sans liaison explicite corrélable statiquement; peut être liée par ID, héritage ou code dynamique"
+            command.result_obtained = (
+                "Commande créée sans liaison explicite corrélable statiquement; "
+                "liaison par ID, héritage ou code dynamique possible"
+            )
             command.status = "BLOCKED"
             command.defect_type = "STATIC_BIND_UNRESOLVED"
             command.trace = f"{command.path}:{command.line}"
@@ -430,9 +532,9 @@ def scan(root: Path) -> ScanResult:
     commands: List[Command] = []
     diagnostics: List[Diagnostic] = []
     parse_errors: List[str] = []
-    handlers: Dict[Tuple[str, str, str], ast.FunctionDef] = {}
-    bindings: List[Binding] = []
     python_files = 0
+    handler_count = 0
+    binding_count = 0
 
     for path in iter_python_files(root):
         python_files += 1
@@ -443,30 +545,19 @@ def scan(root: Path) -> ScanResult:
         except (SyntaxError, UnicodeDecodeError) as exc:
             parse_errors.append(f"{rel}: {exc}")
             continue
+
         visitor = FileVisitor(rel)
         visitor.visit(tree)
+        match_commands(visitor.commands, visitor.bindings, visitor.handlers)
         commands.extend(visitor.commands)
-        bindings.extend(visitor.bindings)
-        for key, node in visitor.handlers.items():
-            handlers[(rel, key[0], key[1])] = node
+        handler_count += len(visitor.handlers)
+        binding_count += len(visitor.bindings)
         diagnostics.extend(first_party_import_diagnostics(root, path, tree))
-
-    per_file_handlers: Dict[str, Dict[Tuple[str, str], ast.FunctionDef]] = defaultdict(dict)
-    for (path, class_name, name), node in handlers.items():
-        per_file_handlers[path][(class_name, name)] = node
-    per_file_bindings: Dict[str, List[Binding]] = defaultdict(list)
-    for binding in bindings:
-        per_file_bindings[binding.path].append(binding)
-    per_file_commands: Dict[str, List[Command]] = defaultdict(list)
-    for command in commands:
-        per_file_commands[command.path].append(command)
-
-    for path, file_commands in per_file_commands.items():
-        match_commands(file_commands, per_file_bindings[path], per_file_handlers[path])
+        diagnostics.extend(add_unbound_handler_diagnostics(rel, visitor.handlers, visitor.bindings))
 
     commands.sort(key=lambda c: (c.path.lower(), c.class_name.lower(), c.line, c.label.lower()))
-    diagnostics.sort(key=lambda d: (d.path.lower(), d.line, d.kind))
-    return ScanResult(commands, diagnostics, parse_errors, python_files, len(handlers), len(bindings))
+    diagnostics.sort(key=lambda d: (d.kind, d.path.lower(), d.line, d.message))
+    return ScanResult(commands, diagnostics, parse_errors, python_files, handler_count, binding_count)
 
 
 def known_rows() -> List[Dict[str, str]]:
@@ -481,7 +572,7 @@ def known_rows() -> List[Dict[str, str]]:
             "Statut": "FAIL",
             "Type de défaut": "UX_COMMAND_REDUNDANT",
             "Gravité": "P2",
-            "Trace / test associé": "KNOWN-UI-VOIR-TOUT; recette humaine à localiser précisément",
+            "Trace / test associé": "KNOWN-UI-VOIR-TOUT; localisation précise à compléter par la recette",
         },
         {
             "Écran / module": "Interface Vanilla",
@@ -535,17 +626,15 @@ def known_rows() -> List[Dict[str, str]]:
 
 
 def command_to_row(command: Command) -> Dict[str, str]:
-    module = f"{command.path} — {command.class_name}"
     precondition = "Fenêtre/module instancié"
     if "LIST" in command.event.upper() or "CONTEXT" in command.event.upper():
         precondition += "; sélection/contexte requis à valider"
-    expected = f"Déclencher {command.handler or command.label} sans exception et atteindre le comportement métier attendu"
     return {
-        "Écran / module": module,
+        "Écran / module": f"{command.path} — {command.class_name}",
         "Commande": command.label,
         "Déclencheur": command.event or command.kind,
         "Précondition": precondition,
-        "Résultat attendu": expected,
+        "Résultat attendu": f"Déclencher {command.handler or command.label} sans exception et atteindre le comportement métier attendu",
         "Résultat obtenu": command.result_obtained,
         "Statut": command.status,
         "Type de défaut": command.defect_type,
@@ -555,111 +644,116 @@ def command_to_row(command: Command) -> Dict[str, str]:
 
 
 def md_escape(value: object) -> str:
-    text = str(value or "").replace("|", "\\|").replace("\r", " ").replace("\n", " ")
-    return text.strip()
+    return str(value or "").replace("|", "\\|").replace("\r", " ").replace("\n", " ").strip()
 
 
 def render_markdown(result: ScanResult, baseline_sha: str) -> str:
-    command_rows = [command_to_row(c) for c in result.commands]
+    command_rows = [command_to_row(command) for command in result.commands]
     extra_rows = known_rows()
     rows = command_rows + extra_rows
     counts = Counter(row["Statut"] for row in rows)
     severity_counts = Counter(row["Gravité"] for row in rows if row["Gravité"])
     defect_counts = Counter(row["Type de défaut"] for row in rows if row["Type de défaut"])
+    diagnostic_counts = Counter(item.kind for item in result.diagnostics)
 
-    lines: List[str] = []
-    lines.append("# Audit fonctionnel systématique des commandes — Noethys Vanilla")
-    lines.append("")
-    lines.append(f"Baseline auditée : `maintenance/vanilla` / `{baseline_sha or 'SHA_NON_FOURNI'}`.")
-    lines.append("")
-    lines.append("## Portée et règle de preuve")
-    lines.append("")
-    lines.append(
-        "Inventaire généré statiquement à partir des sources wxPython (`wx.Button`, `wx.BitmapButton`, boutons custom, "
-        "`wx.MenuItem`, `Menu.Append*`, outils de barres, `Bind(...)`, handlers et actions de listes). "
-        "Une liaison statique correcte ne vaut pas preuve fonctionnelle : tant que le comportement réel n'est pas "
-        "exécuté de façon sûre, la commande reste `BLOCKED` avec `HUMAN_RECIPE_REQUIRED`."
-    )
-    lines.append("")
-    lines.append("Aucune production n'est utilisée par cet audit. Les actions destructives, d'envoi, de facturation ou de publication doivent rester mockées, annulées ou exécutées uniquement sur données jetables de recette.")
-    lines.append("")
-    lines.append("## Synthèse")
-    lines.append("")
-    lines.append(f"- Fichiers Python analysés : **{result.python_files}**")
-    lines.append(f"- Commandes wx recensées statiquement : **{len(result.commands)}**")
-    lines.append(f"- Scénarios/observations connus ajoutés : **{len(extra_rows)}**")
-    lines.append(f"- Lignes de la matrice : **{len(rows)}**")
-    lines.append(f"- Bind recensés : **{result.binding_count}**")
-    lines.append(f"- Fonctions/handlers recensés : **{result.handler_count}**")
-    lines.append(f"- PASS : **{counts.get('PASS', 0)}**")
-    lines.append(f"- FAIL : **{counts.get('FAIL', 0)}**")
-    lines.append(f"- BLOCKED : **{counts.get('BLOCKED', 0)}**")
-    lines.append(f"- NOT_TESTABLE : **{counts.get('NOT_TESTABLE', 0)}**")
-    lines.append("")
-    lines.append("Les PASS de la matrice sont volontairement rares au premier passage : le test structurel seul ne transforme jamais une commande en PASS.")
-    lines.append("")
-    lines.append("### Gravités détectées / connues")
-    lines.append("")
+    lines: List[str] = [
+        "# Audit fonctionnel systématique des commandes — Noethys Vanilla",
+        "",
+        f"Baseline auditée : `maintenance/vanilla` / `{baseline_sha or 'SHA_NON_FOURNI'}`.",
+        "",
+        "## Portée et règle de preuve",
+        "",
+        "Inventaire généré statiquement à partir des sources wxPython (`wx.Button`, `wx.BitmapButton`, boutons custom, `wx.MenuItem`, `Menu.Append*`, outils de barres, `Bind(...)`, handlers et actions de listes). Les classes de démonstration `MyFrame` et le code sous `if __name__ == '__main__'` sont exclus du périmètre fonctionnel.",
+        "",
+        "Une liaison statique correcte ne vaut pas preuve fonctionnelle : tant que le comportement réel n'est pas exécuté de façon sûre, la commande reste `BLOCKED` avec `HUMAN_RECIPE_REQUIRED`. Un handler vide est d'abord `EMPTY_HANDLER_REVIEW`; il ne devient `FAIL` que si le rôle actionnel de la commande est non ambigu.",
+        "",
+        "Aucune production n'est utilisée par cet audit. Les actions destructives, d'envoi, de facturation ou de publication doivent rester mockées, annulées ou exécutées uniquement sur données jetables de recette.",
+        "",
+        "## Synthèse",
+        "",
+        f"- Fichiers Python analysés : **{result.python_files}**",
+        f"- Commandes wx recensées statiquement : **{len(result.commands)}**",
+        f"- Scénarios/observations connus ajoutés : **{len(extra_rows)}**",
+        f"- Lignes de la matrice : **{len(rows)}**",
+        f"- Bind recensés : **{result.binding_count}**",
+        f"- Fonctions/handlers recensés : **{result.handler_count}**",
+        f"- PASS : **{counts.get('PASS', 0)}**",
+        f"- FAIL : **{counts.get('FAIL', 0)}**",
+        f"- BLOCKED : **{counts.get('BLOCKED', 0)}**",
+        f"- NOT_TESTABLE : **{counts.get('NOT_TESTABLE', 0)}**",
+        "",
+        "Le premier passage automatisé ne crée volontairement aucun PASS à partir de la seule structure du code.",
+        "",
+        "### Gravités détectées / connues",
+        "",
+    ]
     for severity in ("P0", "P1", "P2", "P3"):
         lines.append(f"- {severity} : **{severity_counts.get(severity, 0)}**")
-    lines.append("")
-    lines.append("### Types de défaut / blocage")
-    lines.append("")
+
+    lines.extend(["", "### Types de défaut / blocage", ""])
     for name, count in sorted(defect_counts.items(), key=lambda item: (-item[1], item[0])):
         lines.append(f"- `{name}` : {count}")
-    lines.append("")
-    lines.append("## Tests automatisés associés")
-    lines.append("")
-    lines.append("- `python -m compileall -q noethys` : compilation syntaxique de l'arbre source dans la CI d'audit.")
-    lines.append("- `python -m unittest tests.test_vanilla_ui_command_audit` : parse AST exhaustif, invariants de matrice, corrélation Bind/source/ID sur cas synthétiques et contrôle des scénarios connus.")
-    lines.append("- `python tools/audit_ui_commands.py --root . --output docs/VANILLA_UI_COMMAND_AUDIT.md` : régénération déterministe de cette matrice.")
-    lines.append("")
-    lines.append("## Diagnostics statiques hors matrice")
-    lines.append("")
+
+    lines.extend(["", "### Diagnostics statiques complémentaires", ""])
+    if diagnostic_counts:
+        for name, count in sorted(diagnostic_counts.items(), key=lambda item: (-item[1], item[0])):
+            lines.append(f"- `{name}` : {count}")
+    else:
+        lines.append("- Aucun diagnostic complémentaire.")
+
+    lines.extend([
+        "",
+        "## Tests automatisés associés",
+        "",
+        "- `python -m compileall -q -x 'C866CA3A-32F7-11D2-9602-00C04F8EE628x0x5x0\\.py$' noethys` : compilation syntaxique de l'arbre source; seul le wrapper COM Windows historique en encodage `mbcs` est exclu du runner Linux.",
+        "- `python -m unittest tests.test_vanilla_ui_command_audit` : parse AST exhaustif, invariants de matrice, corrélation Bind/source/ID, menus affectés, exclusion des sizers et harness de démonstration.",
+        "- `python tools/audit_ui_commands.py --root . --output docs/VANILLA_UI_COMMAND_AUDIT.md` : régénération déterministe de cette matrice.",
+        "",
+        "## Diagnostics statiques hors matrice",
+        "",
+    ])
     if result.parse_errors:
-        lines.append("### Erreurs de parsing")
-        lines.append("")
+        lines.extend(["### Erreurs de parsing", ""])
         for item in result.parse_errors:
             lines.append(f"- `{md_escape(item)}`")
         lines.append("")
     else:
-        lines.append("Aucune erreur de parsing AST détectée.")
-        lines.append("")
+        lines.extend(["Aucune erreur de parsing AST détectée.", ""])
+
     if result.diagnostics:
-        lines.append("### Imports locaux suspects")
-        lines.append("")
         for item in result.diagnostics:
-            lines.append(f"- `{item.path}:{item.line}` — `{item.kind}` — `{md_escape(item.message)}`")
+            lines.append(f"- `{item.path}:{item.line}` — `{item.kind}` — {md_escape(item.message)}")
         lines.append("")
     else:
-        lines.append("Aucun import first-party manquant détecté par le contrôle statique borné.")
-        lines.append("")
-    lines.append("## Matrice exhaustive des commandes recensées")
-    lines.append("")
-    lines.append("| " + " | ".join(COLUMNS) + " |")
-    lines.append("| " + " | ".join("---" for _ in COLUMNS) + " |")
+        lines.extend(["Aucun import first-party manquant ni handler `On...` non relié statiquement détecté.", ""])
+
+    lines.extend([
+        "## Matrice exhaustive des commandes recensées",
+        "",
+        "| " + " | ".join(COLUMNS) + " |",
+        "| " + " | ".join("---" for _ in COLUMNS) + " |",
+    ])
     for row in rows:
         lines.append("| " + " | ".join(md_escape(row.get(column, "")) for column in COLUMNS) + " |")
-    lines.append("")
-    lines.append("## Recette humaine restante")
-    lines.append("")
-    lines.append(
-        "Toute ligne `BLOCKED` marquée `HUMAN_RECIPE_REQUIRED` doit être exécutée sur Windows avec la base Docker de recette, "
-        "jamais sur la production. Pour chaque fenêtre pertinente : ouvrir, exercer la commande avec une précondition minimale, "
-        "vérifier l'effet métier ou l'échec propre, fermer par le bouton puis par la croix Windows, et répéter l'ouverture/fermeture "
-        "pour les fenêtres à chargement long ou contrôle virtuel."
-    )
-    lines.append("")
-    lines.append("Pour `Supprimer`, `Envoyer`, `Facturer`, `Publier` et opérations équivalentes : mocks, transaction annulée ou données jetables uniquement.")
-    lines.append("")
-    lines.append("## Recommandations de PR séparées")
-    lines.append("")
-    lines.append("1. Conserver la PR #359 isolée pour le crash natif de fermeture/réouverture de la liste des consommations.")
-    lines.append("2. Ouvrir une PR dédiée pour la commande Liste d'attente après localisation et reproduction minimale du bouton sans effet.")
-    lines.append("3. Traiter `Voir tout` dans une PR UI Vanilla dédiée, sans mélanger d'autres corrections métier.")
-    lines.append("4. Auditer puis borner le thème Vanilla clair dans une PR séparée uniquement si la recette Windows confirme l'écart.")
-    lines.append("5. Auditer la performance de chargement des questionnaires dans une PR performance séparée, avec mesure sur base Docker représentative avant tout changement.")
-    lines.append("")
+
+    lines.extend([
+        "",
+        "## Recette humaine restante",
+        "",
+        "Toute ligne `BLOCKED` marquée `HUMAN_RECIPE_REQUIRED`, `EMPTY_HANDLER_REVIEW` ou `STATIC_BIND_UNRESOLVED` doit être qualifiée avant d'être transformée en PASS/FAIL. Sur Windows, utiliser exclusivement la base Docker de recette : ouvrir l'écran, satisfaire la précondition minimale, déclencher la commande, vérifier l'effet métier ou l'échec propre, puis tester bouton de fermeture et croix Windows lorsque pertinent. Répéter les ouvertures/fermetures pour les fenêtres à chargement long ou contrôles virtuels.",
+        "",
+        "Pour `Supprimer`, `Envoyer`, `Facturer`, `Publier` et opérations équivalentes : mocks, transaction annulée ou données jetables uniquement.",
+        "",
+        "## Recommandations de PR séparées",
+        "",
+        "1. Conserver la PR #359 isolée pour le crash natif de fermeture/réouverture de la liste des consommations.",
+        "2. Ouvrir une PR dédiée pour la commande Liste d'attente après localisation et reproduction minimale du bouton sans effet.",
+        "3. Qualifier puis corriger séparément le bouton `Générer le fichier d'export...` du lot Trésor public si la recette confirme l'absence de voie alternative.",
+        "4. Traiter `Voir tout` dans une PR UI Vanilla dédiée, sans mélanger d'autres corrections métier.",
+        "5. Auditer puis borner le thème Vanilla clair dans une PR séparée uniquement si la recette Windows confirme l'écart.",
+        "6. Auditer la performance de chargement des questionnaires dans une PR performance séparée, avec mesure sur base Docker représentative avant tout changement.",
+        "",
+    ])
     return "\n".join(lines)
 
 
@@ -679,11 +773,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(argv)
     root = Path(args.root).resolve()
     result = scan(root)
-    text = render_markdown(result, args.baseline_sha)
-    write_output(text, Path(args.output) if args.output else None)
-    if result.parse_errors:
-        return 2
-    return 0
+    write_output(render_markdown(result, args.baseline_sha), Path(args.output) if args.output else None)
+    return 2 if result.parse_errors else 0
 
 
 if __name__ == "__main__":
