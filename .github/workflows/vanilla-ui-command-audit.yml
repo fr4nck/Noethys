@@ -55,10 +55,11 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             git diff --exit-code -- docs/VANILLA_UI_COMMAND_AUDIT.md
+            test -z "$(git ls-files --others --exclude-standard -- docs/VANILLA_UI_COMMAND_AUDIT.md)"
             exit 0
           fi
 
-          if git diff --quiet -- docs/VANILLA_UI_COMMAND_AUDIT.md; then
+          if [ -z "$(git status --porcelain -- docs/VANILLA_UI_COMMAND_AUDIT.md)" ]; then
             echo "Rapport déjà à jour"
             exit 0
           fi
