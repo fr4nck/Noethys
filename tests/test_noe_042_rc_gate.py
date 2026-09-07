@@ -5,12 +5,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "release-candidate.yml"
+WINDOWS_WORKFLOW = ROOT / ".github" / "workflows" / "windows-package.yml"
 
 
 class ReleaseCandidateGateTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.text = WORKFLOW.read_text(encoding="utf-8")
+        cls.windows_text = WINDOWS_WORKFLOW.read_text(encoding="utf-8")
 
     def test_real_database_recipe_is_required_and_denied_by_default(self):
         self.assertIn("real_db_recipe:", self.text)
@@ -30,10 +32,11 @@ class ReleaseCandidateGateTests(unittest.TestCase):
     def test_rc_is_restricted_to_master(self):
         self.assertIn('if [ "$GITHUB_REF" != "refs/heads/master" ]; then', self.text)
 
-    def test_portable_archive_is_smoke_tested(self):
-        self.assertIn('NOETHYS_FROZEN_SMOKE = "1"', self.text)
-        self.assertIn("WaitForExit(30000)", self.text)
-        self.assertIn("Portable/README.txt", self.text)
+    def test_portable_archive_is_smoke_tested_by_reusable_windows_builder(self):
+        self.assertIn("uses: ./.github/workflows/windows-package.yml", self.text)
+        self.assertIn('NOETHYS_FROZEN_SMOKE = "1"', self.windows_text)
+        self.assertIn("WaitForExit(30000)", self.windows_text)
+        self.assertIn("Portable/README.txt", self.windows_text)
 
 
 if __name__ == "__main__":
