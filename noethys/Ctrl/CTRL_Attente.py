@@ -23,6 +23,7 @@ import os
 import GestionDB
 from Ctrl import CTRL_Saisie_euros
 import FonctionsPerso
+from Utils import UTILS_Dates
 from Utils import UTILS_Organisateur
 from Utils import UTILS_Utilisateurs
 
@@ -41,7 +42,9 @@ def DateComplete(dateDD):
     return dateComplete
 
 def DateEngEnDateDD(dateEng):
-    return datetime.date.fromisoformat(dateEng[:10])
+    if isinstance(dateEng, datetime.datetime):
+        return dateEng.date()
+    return UTILS_Dates.DateEngEnDateDD(dateEng)
         
 def PeriodeComplete(mois, annee):
     listeMois = (_(u"Janvier"), _(u"Février"), _(u"Mars"), _(u"Avril"), _(u"Mai"), _(u"Juin"), _(u"Juillet"), _(u"Août"), _(u"Septembre"), _(u"Octobre"), _(u"Novembre"), _(u"Décembre"))
