@@ -19,11 +19,11 @@ class Apercu(wx.Panel):
         self.SetMinSize((500, 205))
         self.echelle = 100
         self.taille_texte = 100
-        self.apparence = "systeme"
+        self.apparence = "clair"
         self.theme = "Vert"
         self.Bind(wx.EVT_PAINT, self.OnPaint)
 
-    def SetValeurs(self, echelle=100, taille_texte=100, apparence="systeme", theme="Vert"):
+    def SetValeurs(self, echelle=100, taille_texte=100, apparence="clair", theme="Vert"):
         self.echelle = echelle
         self.taille_texte = taille_texte
         self.apparence = apparence
@@ -128,11 +128,14 @@ class Dialog(wx.Dialog):
             style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
         )
 
-        # Apparence
+        # Apparence. Vanilla reste temporairement verrouillé en clair : les
+        # autres valeurs historiques sont conservées pour une réactivation
+        # future mais ne sont pas sélectionnables dans cette baseline.
         self.liste_codes_apparence = [code for code, label in UTILS_Interface.APPARENCES]
         self.liste_labels_apparence = [label for code, label in UTILS_Interface.APPARENCES]
         self.label_apparence = wx.StaticText(self, -1, _(u"Apparence :"))
         self.ctrl_apparence = wx.Choice(self, -1, choices=self.liste_labels_apparence)
+        self.ctrl_apparence.Enable(False)
 
         # Couleur d'accent / thème historique Noethys
         self.liste_codes_theme = [code for code, label in UTILS_Interface.THEMES]
@@ -156,7 +159,11 @@ class Dialog(wx.Dialog):
             choices=[u"%d %%" % valeur for valeur in UTILS_Interface.TAILLES_TEXTE],
         )
 
-        self.info_systeme = wx.StaticText(self, -1, "")
+        self.info_systeme = wx.StaticText(
+            self,
+            -1,
+            _(u"Vanilla utilise temporairement le thème clair ; le thème système et le mode sombre ne sont pas activés."),
+        )
         self.info_accessibilite = wx.StaticText(
             self,
             -1,
@@ -241,14 +248,14 @@ class Dialog(wx.Dialog):
 
     def GetValeurs(self):
         return {
-            "apparence": self.liste_codes_apparence[self.ctrl_apparence.GetSelection()],
+            "apparence": UTILS_Interface.GetApparence(),
             "theme": self.liste_codes_theme[self.ctrl_theme.GetSelection()],
             "echelle": UTILS_Interface.ECHELLES[self.ctrl_echelle.GetSelection()],
             "taille_texte": UTILS_Interface.TAILLES_TEXTE[self.ctrl_texte.GetSelection()],
         }
 
     def OnValeursDefaut(self, event):
-        self.ctrl_apparence.SetSelection(self.liste_codes_apparence.index("systeme"))
+        self.ctrl_apparence.SetSelection(self.liste_codes_apparence.index("clair"))
         self.ctrl_theme.SetSelection(self.liste_codes_theme.index("Vert"))
         self.ctrl_echelle.SetSelection(UTILS_Interface.ECHELLES.index(100))
         self.ctrl_texte.SetSelection(UTILS_Interface.TAILLES_TEXTE.index(100))
@@ -261,11 +268,9 @@ class Dialog(wx.Dialog):
     def MAJaperçu(self):
         valeurs = self.GetValeurs()
         self.apercu.SetValeurs(**valeurs)
-        if valeurs["apparence"] == "systeme":
-            etat = _(u"sombre") if UTILS_Interface.SystemeEstSombre() else _(u"clair")
-            self.info_systeme.SetLabel(_(u"Mode système détecté actuellement : %s.") % etat)
-        else:
-            self.info_systeme.SetLabel("")
+        self.info_systeme.SetLabel(
+            _(u"Vanilla utilise temporairement le thème clair ; le thème système et le mode sombre ne sont pas activés.")
+        )
         self.Layout()
 
 
