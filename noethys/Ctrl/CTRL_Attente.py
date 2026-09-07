@@ -64,11 +64,11 @@ class CTRL(HTL.HyperTreeList):
         UTILS_Linux.AdaptePolice(self)
 
         self.dictDonnees = dictDonnees
-        self.listeActivites = self.dictDonnees["listeActivites"] if len(self.dictDonnees) > 0 else []
-        self.listePeriodes = self.dictDonnees["listePeriodes"] if len(self.dictDonnees) > 0 else []
         self.dictEtatPlaces = dictEtatPlaces # copy.deepcopy(dictEtatPlaces)
         self.dictUnitesRemplissage = dictUnitesRemplissage
         self.listeTracks = []
+        self.listePeriodes = []
+        self.listeActivites = []
         self.listeImpression = []
                 
         # Création des colonnes
