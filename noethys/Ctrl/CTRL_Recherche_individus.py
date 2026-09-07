@@ -202,9 +202,14 @@ class BarreRechercheAccueil(OL_Individus.BarreRecherche):
         self.ShowCancelButton(bool(texte))
 
         if not texte:
-            self.listView.SetObjects([])
-            self._MajResume("", 0)
-            self.parent.AfficherEtatVide()
+            # La liste est déjà chargée par ListeIndividusAccueil/MAJ : une
+            # recherche vide affiche directement toutes ces données, sans
+            # étape « Voir tout » et sans relancer le chargement métier.
+            self.listView.SetObjects(self.listView.donnees)
+            self.parent.ctrl_resume.SetLabel(
+                _(u"%d individu(s) · liste complète") % len(self.listView.donnees)
+            )
+            self.parent.AfficherResultats()
             self.listView.Refresh()
             return
 
@@ -237,20 +242,6 @@ class BarreRechercheAccueil(OL_Individus.BarreRecherche):
         self.listView.SelectObject(track)
         self.listView.OuvrirFicheFamille(track)
         self.ouvrir_fiche = False
-
-    def AfficherTout(self):
-        self.InvaliderIndex()
-        try:
-            self.ChangeValue("")
-        except Exception:
-            self.SetValue("")
-        if self.timer.IsRunning():
-            self.timer.Stop()
-        self.ShowCancelButton(False)
-        self.listView.SetObjects(self.listView.donnees)
-        self.parent.ctrl_resume.SetLabel(_(u"%d individu(s) · liste complète") % len(self.listView.donnees))
-        self.parent.AfficherResultats()
-        self.listView.Refresh()
 
 
 class BarreCommandes(wx.Panel):
@@ -375,10 +366,6 @@ class Panel(wx.Panel):
         )
         self.ctrl_recherche = BarreRechercheAccueil(self)
 
-        self.ctrl_voir_tout = CTRL_ActionRepens.CTRL(
-            self, label=_(u"Voir tout"), icone="people", variante="ghost",
-            tooltip=_(u"Afficher toute la liste"),
-        )
         self.ctrl_email = CTRL_ActionRepens.CTRL(
             self, label=u"", icone="mail", variante="secondaire",
             tooltip=_(u"Envoyer un email"),
@@ -395,7 +382,6 @@ class Panel(wx.Panel):
         self.ctrl_commandes = BarreCommandes(self)
         self.ctrl_indication = IndicationRecherche(self)
 
-        self.ctrl_voir_tout.Bind(wx.EVT_BUTTON, lambda evt: self.ctrl_recherche.AfficherTout())
         self.ctrl_email.Bind(wx.EVT_BUTTON, self.OnEmail)
         self.ctrl_sms.Bind(wx.EVT_BUTTON, self.OnSMS)
         self.ctrl_nouvelle_famille.Bind(wx.EVT_BUTTON, lambda evt: self.ctrl_listview.Ajouter(None))
@@ -404,7 +390,7 @@ class Panel(wx.Panel):
 
         self.__do_layout()
         self.ActualiseParametresAffichage()
-        wx.CallAfter(self.AfficherEtatVide)
+        wx.CallAfter(self.ctrl_recherche.Recherche)
         wx.CallAfter(self._ConfigurerPaneAui)
 
     def __do_layout(self):
@@ -416,7 +402,6 @@ class Panel(wx.Panel):
         entete = wx.BoxSizer(wx.HORIZONTAL)
         entete.Add(self.ctrl_resume, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, marge)
         entete.Add(self.ctrl_recherche, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, petit)
-        entete.Add(self.ctrl_voir_tout, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, petit)
         entete.Add(self.ctrl_email, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, petit)
         entete.Add(self.ctrl_sms, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, petit)
         entete.Add(self.ctrl_nouvelle_famille, 0, wx.ALIGN_CENTER_VERTICAL)
