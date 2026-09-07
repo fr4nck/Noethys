@@ -20,6 +20,20 @@ from Utils import UTILS_Fichiers
 from Utils import UTILS_Json
 
 
+# Vanilla conserve temporairement une apparence claire unique. Le choix
+# système/sombre reste dans la couche UI pour une réactivation future, mais il
+# ne doit plus influencer le rendu du candidat stabilisé.
+VANILLA_APPARENCE = "clair"
+
+# wxMSW n'active son rendu sombre que sur opt-in. Poser explicitement l'option
+# à 0 avant la création de wx.App rend la décision Vanilla indépendante du
+# thème Windows et neutralise aussi un éventuel wx_msw_dark_mode externe.
+if os.name == "nt":
+    try:
+        wx.SystemOptions.SetOption("msw.dark-mode", 0)
+    except Exception:
+        pass
+
 
 def GetNomFichierConfig(nomFichier="Config.json"):
     return UTILS_Fichiers.GetRepUtilisateur(nomFichier)
@@ -174,6 +188,9 @@ class FichierConfig():
 
 
 def GetParametre(nomParametre="", defaut=None):
+    if nomParametre == "interface_apparence":
+        return VANILLA_APPARENCE
+
     parametre = None
     try :
         topWindow = wx.GetApp().GetTopWindow()
@@ -193,6 +210,9 @@ def GetParametre(nomParametre="", defaut=None):
     return parametre
 
 def SetParametre(nomParametre="", parametre=None):
+    if nomParametre == "interface_apparence":
+        parametre = VANILLA_APPARENCE
+
     try :
         topWindow = wx.GetApp().GetTopWindow()
         nomWindow = topWindow.GetName()
