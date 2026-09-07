@@ -9,6 +9,9 @@ on:
       - master
     paths:
       - 'noethys/Utils/UTILS_Fichiers.py'
+      - 'noethys/Utils/UTILS_Config.py'
+      - 'noethys/Ctrl/CTRL_Recherche_individus.py'
+      - 'noethys/Dlg/DLG_Echelle_interface.py'
       - 'packaging/**'
       - 'requirements*.txt'
       - 'tests/test_noe_041_portable_paths.py'
