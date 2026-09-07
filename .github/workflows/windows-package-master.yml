@@ -1,0 +1,24 @@
+name: Package Windows master
+
+# Qualification lourde uniquement après intégration d'un changement qui peut
+# réellement affecter le package Windows. Le build reste implémenté une seule
+# fois dans windows-package.yml.
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'noethys/Utils/UTILS_Fichiers.py'
+      - 'packaging/**'
+      - 'requirements*.txt'
+      - 'tests/test_noe_041_portable_paths.py'
+      - '.github/workflows/windows-package.yml'
+      - '.github/workflows/windows-package-master.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Qualifier le packaging Windows du master exact
+    uses: ./.github/workflows/windows-package.yml
