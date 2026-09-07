@@ -11,6 +11,7 @@
 
 import Chemins
 from Utils import UTILS_Adaptations
+from Utils import UTILS_Dates
 from Utils.UTILS_Traduction import _
 import wx
 from Ctrl import CTRL_Bouton_image
@@ -244,8 +245,8 @@ class Vacances(wx.Panel):
         listeChoix = []
         index = 0
         for nom, date_debut, date_fin in listeVacances :
-            date_debutDD = datetime.date(year=int(date_debut[:4]), month=int(date_debut[5:7]), day=int(date_debut[8:10]))
-            date_finDD = datetime.date(year=int(date_fin[:4]), month=int(date_fin[5:7]), day=int(date_fin[8:10]))
+            date_debutDD = UTILS_Dates.DateEngEnDateDD(date_debut)
+            date_finDD = UTILS_Dates.DateEngEnDateDD(date_fin)
             listeChoix.append( (nom, date_debutDD, date_finDD) )
             index += 1
         self.ctrl_periode.SetListeChoix(listeChoix, conserveSelections=False)
