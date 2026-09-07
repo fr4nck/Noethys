@@ -11,6 +11,8 @@ on:
       - 'noethys/Utils/UTILS_Fichiers.py'
       - 'noethys/Utils/UTILS_Config.py'
       - 'noethys/Ctrl/CTRL_Recherche_individus.py'
+      - 'noethys/Ctrl/CTRL_Grille_periode.py'
+      - 'noethys/Ctrl/CTRL_Attente.py'
       - 'noethys/Dlg/DLG_Echelle_interface.py'
       - 'packaging/**'
       - 'requirements*.txt'
