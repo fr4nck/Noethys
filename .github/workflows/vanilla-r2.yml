@@ -5,7 +5,11 @@ on:
     paths:
       - 'noethys/Utils/UTILS_Fichiers.py'
       - 'noethys/Utils/UTILS_Rapport_bugs.py'
+      - 'noethys/Ctrl/CTRL_Grille_periode.py'
+      - 'noethys/Ctrl/CTRL_Attente.py'
+      - 'noethys/Dlg/DLG_Liste_consommations.py'
       - 'tests/test_vanilla_crash_recipient.py'
+      - 'tests/test_vanilla_candidate_contract.py'
       - 'packaging/vanilla-installer.iss'
       - 'packaging/vanilla-noethys.spec'
       - '.github/workflows/vanilla-r2.yml'
@@ -49,8 +53,8 @@ jobs:
       - name: Compiler les sources
         run: python -m compileall -q noethys
 
-      - name: Tester la migration du destinataire de crashreports
-        run: python -m unittest tests.test_vanilla_crash_recipient
+      - name: Tester les contrats Vanilla du candidat
+        run: python -m unittest tests.test_vanilla_crash_recipient tests.test_vanilla_candidate_contract
 
       - name: Vérifier wxPython sous Windows
         shell: pwsh
