@@ -30,8 +30,7 @@ markdown_extensions:
       permalink: true
 
 nav:
-  - Accueil: index.md
-  - Carte documentaire: README.md
+  - Accueil: README.md
   - Utiliser Noethys:
       - Guide utilisateur Upgrade: USER-GUIDE-UPGRADE.md
       - Sauvegarde et restauration: NOE-032-SAUVEGARDE-RESTAURATION.md
