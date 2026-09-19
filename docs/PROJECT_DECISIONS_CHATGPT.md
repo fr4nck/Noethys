@@ -17,6 +17,8 @@ Toute décision durable prise en conversation doit finir dans GitHub avant ferme
 
 ## Noethys Vanilla
 
+> Mise à jour 19/09/2026 : la source de vérité de la distribution Vanilla est désormais la branche `maintenance/vanilla`. Le candidat consolidé #361 y est intégré au SHA `f5d1f20a1c7642374b8b7766637d1f029b689d0b`. La version applicative 1.3.4.3 est préparée dans la PR #367 ; elle n'est pas considérée publiée tant que cette PR n'est pas intégrée et que la recette Windows requise n'est pas passée.
+
 Vanilla doit rester conservateur.
 
 - Conserver la base de données actuelle et sa structure historique.
