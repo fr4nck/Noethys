@@ -4,7 +4,9 @@ Cette branche est la ligne **Vanilla** du fork `fr4nck/Noethys`.
 
 Branche : `maintenance/vanilla`
 
-Snapshot upstream de référence : `630ef4373dbc05dae1cbc597b9baccb1178e64e4`.
+Snapshot upstream de référence : `630ef4373dbc05dae1cbc597b9baccb1178e64e4` (Noethys upstream 1.3.4.2).
+
+Version applicative Vanilla préparée au 19/09/2026 : **1.3.4.3**. Le numéro affiché par le logiciel et le changelog utilisateur ont pour source `noethys/Versions.txt`.
 
 ## But
 
@@ -44,5 +46,7 @@ Aucune migration implicite. Tester les changements SQL, sauvegarde, configuratio
 ## Suivi
 
 Cockpit GitHub : issue #120.
+
+État de stabilisation courant : `docs/VANILLA_STABILISATION.md`. Le candidat fonctionnel consolidé #361 est intégré sur `maintenance/vanilla` ; la qualification automatisée est verte, mais la recette humaine Windows reste nécessaire avant déclaration stable.
 
 La gouvernance générale du dépôt est maintenue sur `master` dans `docs/governance/`.
