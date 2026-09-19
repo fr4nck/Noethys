@@ -331,12 +331,13 @@ ORDER BY IDconso;
 
     @staticmethod
     def _etat_cible(status, etat_actuel):
+        if etat_actuel == "absentj":
+            # Une absence déjà justifiée est protégée du pointage terrain.
+            # Passer de absentj vers present/absenti traverse une frontière de
+            # facturation Noethys et doit rester une correction administrative.
+            return "absentj"
         if status == "present":
             return TARGET_PRESENT
-        if etat_actuel == "absentj":
-            # Une absence déjà justifiée ne redevient jamais injustifiée par
-            # un simple pointage terrain.
-            return "absentj"
         return TARGET_ABSENT
 
     def AppliquerMessage(
