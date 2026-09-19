@@ -12,21 +12,26 @@ Version applicative Vanilla préparée au 19/09/2026 : **1.3.4.3**. Le numéro a
 
 Maintenir la version historique de Noethys telle qu'elle est réellement utilisée, sans attendre ni importer la modernisation du fork.
 
+## Runtime de distribution retenu
+
+La ligne Vanilla est désormais qualifiée et distribuée sous **Python 3.10** avec **wxPython 4.2.5 / Phoenix**. Ce choix de runtime sert à maintenir le logiciel historique sur Windows actuel ; il ne constitue pas une autorisation de refonte générale du code ou de l'interface.
+
 ## Autorisé
 
 - correction d'un bug historique démontré ;
 - robustesse ou sécurité compatible ;
-- correctif de compatibilité nécessaire à l'exploitation historique ;
+- correctif Python 3 / wxPython Phoenix nécessaire au fonctionnement historique ;
 - tests, audits et documentation ;
-- packaging ou scripts n'imposant pas une migration du runtime applicatif.
+- packaging Windows, installateur et portable ;
+- adaptation locale minimale préservant les données, les formats et les usages historiques.
 
 ## Interdit sans décision explicite
 
-- Python 3 ;
-- wxPython Phoenix ;
-- nouvel UX / refonte graphique ;
-- nouvelles fonctions métier ;
-- migration de schéma ;
+- changement de baseline Python/wxPython non qualifié ;
+- nouvel UX / refonte graphique générale ;
+- migration Qt dans cette branche ;
+- nouvelles fonctions métier sans besoin séparément validé ;
+- migration de schéma uniquement pour moderniser Vanilla ;
 - merge global de `master`.
 
 ## Connecthys
