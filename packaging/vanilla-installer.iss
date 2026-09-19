@@ -3,7 +3,7 @@
 ; proprement l'installation existante au lieu de créer un second désinstalleur.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.3.4.2-r2"
+  #define MyAppVersion "1.3.4.3"
 #endif
 
 [Setup]
