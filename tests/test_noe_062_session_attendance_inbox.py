@@ -260,25 +260,26 @@ class AttendanceInboxTests(unittest.TestCase):
         finally:
             db.Close()
 
-    def test_absent_never_downgrades_an_already_justified_absence(self):
-        db = _db_pret()
-        try:
-            one = payload(
-                changes=[{"participant_uid": "44", "status": "absent"}]
-            )
-            result = INBOX.GestionnaireInboxAttendance(db).AppliquerMessage(
-                one,
-                idempotence(),
-                date_reception="2026-09-19 09:00:01",
-            )
-            self.assertTrue(result["applique"])
-            self.assertEqual(0, result["applied_rows"])
-            db.cursor.execute(
-                "SELECT etat FROM consommations WHERE IDindividu=44 AND IDgroupe=3"
-            )
-            self.assertEqual("absentj", db.cursor.fetchone()[0])
-        finally:
-            db.Close()
+    def test_pointage_never_overwrites_an_already_justified_absence(self):
+        for status in ("absent", "present"):
+            db = _db_pret()
+            try:
+                one = payload(
+                    changes=[{"participant_uid": "44", "status": status}]
+                )
+                result = INBOX.GestionnaireInboxAttendance(db).AppliquerMessage(
+                    one,
+                    idempotence(),
+                    date_reception="2026-09-19 09:00:01",
+                )
+                self.assertTrue(result["applique"])
+                self.assertEqual(0, result["applied_rows"])
+                db.cursor.execute(
+                    "SELECT etat FROM consommations WHERE IDindividu=44 AND IDgroupe=3"
+                )
+                self.assertEqual("absentj", db.cursor.fetchone()[0])
+            finally:
+                db.Close()
 
     def test_missing_participant_rejects_whole_batch_before_write(self):
         db = _db_pret()
