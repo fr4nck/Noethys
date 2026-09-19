@@ -23,6 +23,20 @@ def source_fonction(path, name, class_name=None):
 
 
 class VanillaCandidateContractTests(unittest.TestCase):
+    def test_version_vanilla_1343_est_synchronisee(self):
+        versions = lire("noethys/Versions.txt").splitlines()
+        self.assertTrue(versions)
+        self.assertEqual(versions[0], "Version 1.3.4.3 (19/09/2026) :")
+
+        installer = lire("packaging/vanilla-installer.iss")
+        self.assertIn('#define MyAppVersion "1.3.4.3"', installer)
+
+        release = lire(".github/workflows/vanilla-release.yml")
+        self.assertIn("Vanilla 1.3.4.3", release)
+        self.assertIn("vanilla-1.3.4.3", release)
+        self.assertNotIn("vanilla-1.3.4.2-r1", release)
+        self.assertNotIn("vanilla-1.3.4.2-r2", release)
+
     def test_vacances_accepte_les_dates_python3(self):
         maj = source_fonction("noethys/Ctrl/CTRL_Grille_periode.py", "MAJ", "Vacances")
         self.assertIn("UTILS_Dates.DateEngEnDateDD(date_debut)", maj)
