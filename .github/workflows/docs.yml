@@ -29,10 +29,10 @@ jobs:
       contents: read
     steps:
       - name: Récupérer le dépôt
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Installer Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.10"
           cache: pip
@@ -46,7 +46,7 @@ jobs:
 
       - name: Préparer l'artefact GitHub Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
@@ -64,4 +64,4 @@ jobs:
     steps:
       - name: Déployer
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

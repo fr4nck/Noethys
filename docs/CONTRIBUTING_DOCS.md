@@ -46,7 +46,7 @@ Le dossier généré `site/` est un artefact et ne doit pas être versionné.
 7. faire relire la modification avec le changement technique associé lorsqu'il existe ;
 8. publier uniquement après intégration.
 
-Les changements touchant uniquement la documentation ne doivent pas déclencher inutilement les tests applicatifs lourds ; le workflow documentaire valide la construction MkDocs séparément.
+Le workflow documentaire valide la construction MkDocs séparément. Le filtrage éventuel des autres workflows applicatifs relève de leur propre configuration et n'est pas modifié par ce lot.
 
 ## Navigation
 
