@@ -1,3 +1,19 @@
+Version 1.3.4.3 (19/09/2026) :
+
+- Publication de la ligne Noethys Vanilla maintenue, basée sur Noethys upstream 1.3.4.2
+- Correction du crash Windows lors de la fermeture puis réouverture rapide de la liste détaillée des consommations
+- Correction des commandes Affichage et Liste d'attente avec les dates SQL natives Python 3
+- Nombreux correctifs de robustesse Python 3 / wxPython et de cycle de vie des dialogues
+- Corrections ciblées dans les listes, la facturation, les règlements, la tarification, les transports, l'agenda et les questionnaires
+- Fiabilisation de la saisie PES et des replis sur les données historiques
+- Fiabilisation de l'administration et de la synchronisation Connecthys sans changement de protocole ni de schéma
+- Nettoyage garanti des fichiers temporaires de sauvegarde et restauration MySQL
+- Fiabilisation de la migration des fichiers locaux et de la conservation de la configuration utilisateur
+- Rapports de crash locaux avec destinataire configurable
+- Canal de mise à jour orienté vers les releases maintenues du fork
+- Ajout d'un installateur Windows et d'un paquet portable qualifiés automatiquement
+- Aucune migration de schéma de base de données et aucune refonte graphique dans cette version
+
 Version 1.3.4.2 (01/02/2026) :
 
 - Ajout des périodes dans la synthèse des déductions

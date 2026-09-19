@@ -1,5 +1,13 @@
 # Audit UI et stabilisation — Noethys Vanilla
 
+> **Mise à jour au 19/09/2026 : ce document reste le snapshot d'audit du 07/09/2026.**
+>
+> Depuis cet audit, la PR **#361** a été fusionnée dans `maintenance/vanilla` au SHA `f5d1f20a1c7642374b8b7766637d1f029b689d0b`. Elle intègre le correctif **#359** de fermeture/réouverture de la liste détaillée des consommations et le backport **#360** Affichage/Liste d'attente sur dates Python 3. Les deux workflows Windows du SHA exact ont réussi (runs 34157333714 et 34157333717).
+>
+> En conséquence, les lignes ci-dessous marquées `KO` ou « branche actuelle » pour ces deux défauts décrivent l'état **avant #361** et ne doivent plus être lues comme l'état du code courant. Leur validation humaine Windows reste néanmoins requise ; aucune réussite CI ne vaut preuve que le crash natif ou les parcours UI sont définitivement validés.
+>
+> La version applicative suivante est préparée sous le numéro **1.3.4.3**. Le détail courant est dans `docs/VANILLA_STABILISATION.md`.
+
 > État : **audit de stabilisation — Vanilla NON déclarée stable**.
 >
 > Périmètre exclusif : dépôt `fr4nck/Noethys`, branche `maintenance/vanilla`, base auditée `b09082726278d397b9f107ea470245ce51851fa3` (2026-08-27).
