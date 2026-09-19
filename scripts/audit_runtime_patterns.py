@@ -14,7 +14,11 @@ Motifs audités
 4.  BARE_EXCEPT        : clause ``except:`` sans type d'exception.
 5.  PY2_BUILTINS       : appels directs à unicode(), basestring(), raw_input() sans garde six.
 6.  UNSAFE_EXEC        : eval() ou exec() (hors commentaires).
-7.  INVALID_ESCAPE     : séquences d'échappement invalides.
+7.  INVALID_ESCAPE     : séquences d'échappement invalides, détectées via ast.parse()
+                         (sémantique réelle du compilateur CPython : couvre les
+                         chaînes simples comme les triple-guillemets multi-lignes,
+                         ignore nativement les raw strings et les échappements
+                         valides — pas de regex ligne par ligne).
 8.  ENCODING_MBCS      : fichiers déclarés # -*- coding: mbcs -*- (Windows-only).
 
 Répertoires tiers exclus
@@ -26,10 +30,12 @@ La couverture du périmètre retenu est bloquante : aucun fichier illisible ou
 non parsable n'est transformé en zéro occurrence.
 """
 
+import ast
 import json
 import os
 import re
 import sys
+import warnings
 from functools import lru_cache
 from pathlib import Path
 
@@ -43,11 +49,6 @@ THIRD_PARTY_DIRS = {"ObjectListView", "Outils"}
 FAIL_CONDITIONS = {
     "PY2_BUILTINS": 0,
 }
-_VALID_ESCAPES = set("nrtbfvauU0123456789x'\"\\")
-_INVALID_ESCAPE_RE = re.compile(
-    r'"[^"\\]*(?:\\(?![nrtbfvauU0123456789x\'\"\\])[^"\\]*)*"'
-    r"|'[^'\\]*(?:\\(?![nrtbfvauU0123456789x\'\"\\])[^'\\]*)*'"
-)
 
 
 def iter_python_files(root: Path):
@@ -113,7 +114,6 @@ def check_text_patterns(path: Path, root: Path) -> dict:
         "BARE_EXCEPT": [],
         "PY2_BUILTINS": [],
         "UNSAFE_EXEC": [],
-        "INVALID_ESCAPE": [],
     }
 
     lines = _source_text(path).splitlines()
@@ -169,19 +169,55 @@ def check_text_patterns(path: Path, root: Path) -> dict:
                 {"file": rel, "line": i + 1, "snippet": stripped[:120]}
             )
 
-        if ("'" in raw or '"' in raw):
-            for m in re.finditer(r'(?<!r)(?<!b)"([^"\\]|\\.)*"'
-                                 r"|(?<!r)(?<!b)'([^'\\]|\\.)*'", raw):
-                s = m.group(0)
-                for esc in re.finditer(r"\\(.)", s):
-                    c = esc.group(1)
-                    if c not in _VALID_ESCAPES:
-                        results["INVALID_ESCAPE"].append(
-                            {"file": rel, "line": i + 1, "snippet": stripped[:120]}
-                        )
-                        break
-
     return results
+
+
+def check_invalid_escape(path: Path, root: Path) -> list:
+    """Détecte les échappements invalides via le compilateur Python lui-même.
+
+    Une regex ligne par ligne ne peut voir que des chaînes ouvertes et
+    fermées sur la même ligne : elle est structurellement aveugle à un
+    docstring ou une chaîne triple-guillemets qui s'étend sur plusieurs
+    lignes. ``ast.parse()`` fait tourner le vrai tokenizer CPython sur le
+    fichier entier, donc :
+    - une chaîne triple-guillemets multi-lignes contenant un échappement
+      invalide est vue comme n'importe quelle autre chaîne ;
+    - une chaîne brute (``r"..."``) n'émet jamais cet avertissement, par
+      construction du langage ;
+    - un échappement valide (``\\n``, ``\\\\``, ``\\"``, ...) n'émet rien.
+
+    CPython émet un ``DeprecationWarning`` pour ce cas jusqu'à la 3.11 et un
+    ``SyntaxWarning`` à partir de la 3.12 (bascule documentée dans les notes
+    de version) ; on capture donc les deux catégories plutôt que de figer une
+    version. Le message n'est jamais localisé, le filtrage par sous-chaîne
+    est donc fiable sur toutes les versions supportées par Noethys.
+    """
+    issues = []
+    source = _source_text(path)
+    rel = str(path.relative_to(root))
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        try:
+            ast.parse(source, filename=str(path))
+        except SyntaxError:
+            # Une source non parsable est déjà signalée par le contrat de
+            # couverture commun (SourceAuditSession) ; ne pas dupliquer ici.
+            return issues
+
+    for warning in caught:
+        if not issubclass(warning.category, (DeprecationWarning, SyntaxWarning)):
+            continue
+        message = str(warning.message)
+        if "invalid escape sequence" not in message:
+            continue
+        issues.append({
+            "file": rel,
+            "line": warning.lineno or 0,
+            "snippet": message,
+        })
+
+    return issues
 
 
 def check_result_assign(path: Path, root: Path) -> list:
@@ -281,8 +317,9 @@ def run_audit(root: Path = NOETHYS_ROOT, *, report_coverage: bool = False) -> di
         report["ENCODING_MBCS"].extend(check_encoding_mbcs(pyfile, root))
         text = check_text_patterns(pyfile, root)
         for key in ("RESULT_UNGUARDED", "BARE_EXCEPT", "PY2_BUILTINS",
-                    "UNSAFE_EXEC", "INVALID_ESCAPE"):
+                    "UNSAFE_EXEC"):
             report[key].extend(text[key])
+        report["INVALID_ESCAPE"].extend(check_invalid_escape(pyfile, root))
         report["RESULT_ASSIGN"].extend(check_result_assign(pyfile, root))
         report["DB_UNCLOSED"].extend(check_db_unclosed(pyfile, root))
 
