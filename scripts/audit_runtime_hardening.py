@@ -114,18 +114,58 @@ def _inside_main_guard(relpath: str, line: int) -> bool:
     return False
 
 
-def _selection_index_from_same_list(lines: list[str], line_access: int, varname: str) -> bool:
+_COMPREHENSION_TYPES = (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)
+
+
+def _comprehension_selection_index(tree: ast.AST, line_access: int, varname: str) -> bool:
+    """``varname[index]`` à l'intérieur d'une compréhension dont le générateur
+    parcourt ``....GetSelection()``/``....GetSelections()``.
+
+    Une compréhension est un seul nœud AST dont ``lineno``/``end_lineno``
+    couvrent toutes ses lignes, qu'elle tienne sur une ligne ou que la clause
+    ``for`` soit repoussée à la ligne suivante par le formatage. S'appuyer sur
+    ce nœud plutôt que sur une fenêtre de lignes règle le cas multi-lignes
+    sans avoir à deviner de combien de lignes regarder plus loin, et sans
+    élargir la détection au-delà de cette construction précise.
+    """
+    for node in ast.walk(tree):
+        if not isinstance(node, _COMPREHENSION_TYPES) or not _line_inside(node, line_access):
+            continue
+        elements = (node.key, node.value) if isinstance(node, ast.DictComp) else (node.elt,)
+        for generator in node.generators:
+            if not isinstance(generator.target, ast.Name):
+                continue
+            call = generator.iter
+            if not (isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute)):
+                continue
+            if call.func.attr not in ("GetSelection", "GetSelections"):
+                continue
+            index_name = generator.target.id
+            for element in elements:
+                for sub in ast.walk(element):
+                    if (
+                        isinstance(sub, ast.Subscript)
+                        and isinstance(sub.value, ast.Name)
+                        and sub.value.id == varname
+                        and isinstance(sub.slice, ast.Name)
+                        and sub.slice.id == index_name
+                    ):
+                        return True
+    return False
+
+
+def _selection_index_from_same_list(
+    relpath: str, lines: list[str], line_access: int, varname: str
+) -> bool:
     if not varname or not (0 < line_access <= len(lines)):
         return False
     access = lines[line_access - 1]
-    if not re.search(rf"\b{re.escape(varname)}\s*\[\s*index\s*\]", access):
-        return False
-    start = max(0, line_access - 18)
-    context = "\n".join(lines[start:line_access])
-    return bool(
-        re.search(r"\bindex\s*=\s*\w+\.GetSelection\s*\(\s*\)", context)
-        or re.search(r"\bfor\s+index\s+in\s+\w+\.GetSelections\s*\(\s*\)", context)
-    )
+    if re.search(rf"\b{re.escape(varname)}\s*\[\s*index\s*\]", access):
+        start = max(0, line_access - 18)
+        context = "\n".join(lines[start:line_access])
+        if re.search(r"\bindex\s*=\s*\w+\.GetSelection\s*\(\s*\)", context):
+            return True
+    return _comprehension_selection_index(_source_tree(relpath), line_access, varname)
 
 
 def classify_result_unguarded(item: dict) -> dict:
@@ -177,7 +217,7 @@ def classify_result_assign(item: dict) -> dict:
         result["classification"] = "demo_only"
         result["priority"] = "low"
         result["reason"] = "chemin de démonstration __main__, hors runtime applicatif"
-    elif varname and _selection_index_from_same_list(lines, line_access, varname):
+    elif varname and _selection_index_from_same_list(item["file"], lines, line_access, varname):
         result["classification"] = "dialog_selection"
         result["priority"] = "low"
         result["reason"] = "l'index provient de la sélection du dialogue construit depuis la même liste"
