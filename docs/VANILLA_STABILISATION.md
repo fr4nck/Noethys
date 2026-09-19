@@ -1,130 +1,170 @@
 # Stabilisation Noethys Vanilla
 
-> Statut au 2026-09-07 : **NON STABLE — qualification en cours**.
+> Mise à jour : **19 septembre 2026**.
 >
 > Branche de référence : `maintenance/vanilla`.
+>
+> Version applicative préparée : **1.3.4.3**, basée sur Noethys upstream **1.3.4.2**.
+>
+> Statut : **candidat qualifié automatiquement, validation humaine Windows encore requise avant déclaration “stable”**.
 
-## Baseline auditée
+## 1. Source de vérité
 
-L'audit UI/cycle de vie/DPI du 2026-09-07 a été conduit sur la branche `maintenance/vanilla`, dont le point de départ de l'audit était le commit :
+La ligne Vanilla est maintenue séparément du `master` modernisé. Elle conserve l'interface historique et le modèle de données existant.
 
-`b09082726278d397b9f107ea470245ce51851fa3`
+Ordre de confiance pour Vanilla :
 
-Le rapport détaillé est conservé dans :
+1. code et tests de `maintenance/vanilla` ;
+2. pull requests et commits intégrés sur cette branche ;
+3. ce document de stabilisation ;
+4. l'audit historique `docs/VANILLA_UI_COMMAND_AUDIT.md`.
 
-`docs/VANILLA_UI_COMMAND_AUDIT.md`
+Le changelog visible dans le logiciel et le numéro de version affiché sont dérivés de `noethys/Versions.txt`. Pour la version préparée ici, sa première ligne est `Version 1.3.4.3 (19/09/2026)`.
 
-Les deux documents de traçabilité sont des modifications **documentation uniquement**. Aucune correction runtime, métier, SQL, Connecthys ou packaging n'a été introduite par cet audit.
+## 2. Baseline et releases précédentes
 
-## Contexte de recette à conserver
+Snapshot upstream de référence :
 
-- Recette humaine uniquement sur copie Docker locale des données, jamais sur production.
-- Le candidat `74d25fdd8431eb7a167ab35cab8e1e8aa4e3bdc9` a fait l'objet d'une recette humaine, mais n'est pas le même SHA que la branche auditée et ses résultats ne valent donc pas validation automatique de `maintenance/vanilla`.
-- Vanilla doit rester en **thème clair**, y compris lorsque Windows est en thème sombre, tant que le sombre n'est pas qualifié.
-- Le comportement « Voir tout » est rejeté : la liste complète des consommations doit être directement visible.
-- Aucun chantier Qt n'entre dans ce périmètre.
+`630ef4373dbc05dae1cbc597b9baccb1178e64e4`
 
-## État de qualification résumé
+Ce snapshot correspond à Noethys upstream **1.3.4.2**.
 
-### Actions
+Deux releases de maintenance ont déjà été publiées le 27 août 2026 :
 
-- 36 commandes/parcours prioritaires recensés dans la passe actuelle.
-- 2 disposent d'une preuve d'exécution disponible.
-- 1 `OK`.
-- 3 `KO`.
-- 32 `NON TESTABLE` dans l'environnement de cette passe.
+- `vanilla-1.3.4.2-r1` — première release maintenue Vanilla+ ;
+- `vanilla-1.3.4.2-r2` — clôture du premier lot bugfix et ajout de l'installateur Windows.
 
-### Crashs / cycle de vie
+Ces releases conservaient volontairement `1.3.4.2` comme version applicative interne. La version **1.3.4.3** devient la première version Vanilla dont le numéro visible dans le logiciel distingue explicitement la ligne maintenue du dernier upstream 1.3.4.2.
 
-- 1 crash confirmé : liste détaillée des consommations, fermeture pendant chargement puis réouverture immédiate, crash natif Windows `0xc0000005`.
-- 0 exception Python/wx confirmée dans cette passe.
-- 8 comportements de cycle de vie classés suspects et nécessitant reproduction ciblée.
+## 3. Candidat consolidé du 7 septembre 2026
 
-### DPI / layout
+La PR **#361 — “Vanilla — candidat consolidé #360 + #359”** a été fusionnée dans `maintenance/vanilla` le 7 septembre 2026.
 
-- 1 défaut de layout confirmé : bouton **Modifier** de la liste détaillée des consommations créé mais absent du sizer et sans binding.
-- Aucun défaut spécifiquement DPI n'est déclaré confirmé, faute d'exécution Windows interactive à 100/150/200 % pendant cette passe.
-- La qualification thème clair sous Windows sombre reste obligatoire.
+SHA candidat fonctionnel :
 
-## P1 connu — liste détaillée des consommations
+`f5d1f20a1c7642374b8b7766637d1f029b689d0b`
 
-Le défaut prioritaire reste le crash natif reproductible :
+Elle consolide exclusivement :
 
-1. ouvrir la liste détaillée des consommations ;
-2. laisser le chargement démarrer ;
-3. fermer avant la fin ;
-4. rouvrir immédiatement ;
-5. répéter ;
-6. refaire avec la croix Windows ;
-7. vérifier l'absence d'Application Error 1000 / `0xc0000005`.
+- le backport du correctif **#360** sur les commandes **Affichage** et **Liste d'attente**, pour accepter les dates SQL natives Python 3 ;
+- le correctif **#359** de fermeture/réouverture de la liste détaillée des consommations ;
+- les tests contractuels ciblés de ces deux correctifs ;
+- l'extension de la qualification Windows aux fichiers concernés.
 
-La PR #359 apporte un correctif ciblé de cycle de vie : arrêt du timer de recherche, neutralisation de l'`objectGetter` et du cache du `FastObjectListView`, remise du compteur natif à zéro et cleanup idempotent. Elle ne doit **pas** être considérée validée avant passage du scénario ci-dessus sur le build Windows de recette.
+La PR **#359** elle-même a été fermée sans merge direct sur sa branche d'origine : son correctif a été intégré dans #361.  
+La PR **#363** a été fermée sans merge car elle était devenue redondante après l'intégration de #361.
 
-## Anomalies importantes révélées par l'audit
+## 4. Qualification automatisée du SHA `f5d1f20…`
 
-- Le bouton **Modifier** de la liste détaillée des consommations est créé mais inaccessible : pas de sizer, pas de binding.
-- Le chargement des consommations charge globalement les réponses des questionnaires individu avant de construire les lignes ; la lenteur observée doit être mesurée séparément du crash de fermeture.
-- Le bouton/commande **Liste d'attente** possède bien une route statique jusqu'à `OuvrirListeAttente()` et `DLG_Attente`, mais a été observé sans effet lors d'une recette sur un autre candidat : reproduction obligatoire sur `maintenance/vanilla` avant toute correction.
-- `DLG_Famille.Notebook` programme des `wx.CallLater` sans annulation explicite à la destruction ; le mapping entre indices du notebook et liste canonique des pages mérite une recette avec pages masquées.
-- Le tableau de remplissage peut programmer une mise à jour automatique via `wx.CallLater` global sans hook de destruction explicite.
-- Deux entrées de menu différentes utilisent le même code `liste_pieces_fournies`, ce qui rend leur représentation ambiguë dans le dictionnaire utilisé par les barres d'outils personnalisées.
-- La couverture automatisée de la branche est insuffisante pour la stabilité UI : le workflow r2 construit et smoke-teste l'exécutable, mais ne pilote aucun parcours métier et ne couvre ni clavier ni DPI.
+Deux workflows Windows ont terminé avec succès sur le SHA exact :
 
-## CI existante
+- run **34157333714** — `Vanilla r2 - portable et installateur` : succès ;
+- run **34157333717** — `Vanilla Windows portable` : succès.
 
-Le workflow `.github/workflows/vanilla-r2.yml` couvre notamment :
+Les artefacts correspondants ont été produits :
+
+- `Noethys-Vanilla-r2-Windows` — artifact **10031502121** ;
+- `Noethys-Vanilla-Windows-portable` — artifact **10031462063**.
+
+La qualification automatisée couvre notamment :
 
 - compilation Python ;
-- test du destinataire de crashreports ;
-- import wxPython sur Windows ;
+- tests contractuels Vanilla ;
+- import et cycle minimal wxPython sous Windows ;
 - build PyInstaller ;
-- création installateur Inno Setup ;
+- vérification du payload ;
+- création de l'installateur Inno Setup ;
 - installation silencieuse ;
-- lancement de `Noethys.exe` pendant environ 10 secondes ;
-- vérification de conservation de la configuration ;
-- création du portable.
+- lancement de `Noethys.exe` ;
+- conservation de la configuration utilisateur ;
+- fabrication du portable.
 
-Ce workflow ne constitue pas une validation UI fonctionnelle.
+Cette qualification ne remplace pas les parcours métier interactifs sur une copie réelle de base.
 
-## Tests à ajouter avant de réduire fortement la recette humaine
+## 5. Correctifs consolidés depuis upstream 1.3.4.2
 
-Priorités :
+La version 1.3.4.3 regroupe les correctifs Vanilla accumulés depuis le snapshot upstream, notamment :
 
-1. boucle automatisée ouvrir/fermer/réouvrir consommations sur Windows ;
-2. détection `0xc0000005` / Event Viewer ;
-3. test cleanup FastObjectListView et timer de recherche ;
-4. contrôle structurel des boutons créés mais non sizés/non bindés ;
-5. unicité des codes de commandes ;
-6. route complète Liste d'attente ;
-7. base vide / zéro activité ;
-8. destruction avec `CallLater`/timers en attente ;
-9. fiche famille avec pages masquées ;
-10. contrat « liste complète directe, pas de Voir tout » ;
-11. Entrée/Echap/TAB/Shift+TAB ;
-12. exports/impressions ;
-13. contrôles de bornes/layout à 100/150/200 % ;
-14. thème Windows sombre avec Vanilla restant claire.
+- robustesse des titulaires de familles rattachées ;
+- filtrage iCalendar et gestion des événements incomplets ;
+- repli sur format PES inconnu et sécurisation de la saisie PES ;
+- élimination d'états mutables partagés dans plusieurs contrôles ;
+- corrections de noms non définis et défauts runtime ciblés ;
+- corrections Python 3 / wxPython dans les listes, synthèses, badgeage, transports, trésorerie, reçus et préférences ;
+- fiabilisation de l'administration et de la synchronisation Connecthys sans migration de protocole ou de schéma ;
+- respect de l'annulation dans la recherche de date de l'agenda ;
+- nettoyage garanti des temporaires de sauvegarde/restauration MySQL ;
+- sécurisation de la configuration Connecthys ;
+- corrections de cycle de vie des dialogues et de plusieurs use-after-destroy ;
+- isolation des fichiers temporaires par processus ;
+- protection de parcours facturation/règlement sur données supprimées ou incomplètes ;
+- stabilisation du splash de démarrage ;
+- rapports de crash locaux et destinataire configurable ;
+- correction de l'assistant CAF-CDAP sous Python 3 ;
+- compatibilités historiques d'impression/aperçu sous wxPython Phoenix ;
+- libération explicite de la base temporaire Connecthys sous Windows ;
+- correction des commandes Affichage / Liste d'attente avec dates natives Python 3 ;
+- correction du crash natif de fermeture/réouverture de la liste détaillée des consommations.
 
-## Validations humaines Windows encore obligatoires
+Le changelog utilisateur correspondant est maintenu dans `noethys/Versions.txt`.
 
-- PR #359 sur le scénario exact du crash, y compris croix Windows et Event Viewer.
-- Liste d'attente depuis menu et toolbar.
-- Liste complète des consommations visible immédiatement.
-- Thème clair sous Windows sombre.
-- DPI 100 %, 150 %, 200 % sur fenêtres principales.
-- Clavier et focus sur dialogues prioritaires.
-- Exports, impressions et aperçus.
-- Fermeture complète puis relance.
+## 6. Décisions de périmètre
 
-## Ordre recommandé
+Vanilla reste volontairement conservatrice :
 
-Le premier changement runtime recommandé après validation de ce rapport est **uniquement** le correctif de cycle de vie de la PR #359, sous réserve de réussite de la recette Windows native. La lenteur questionnaire, le bouton Modifier, la Liste d'attente et les autres anomalies doivent rester dans des correctifs séparés et seulement après reproduction/qualification.
+- aucune migration implicite ou destructive de base de données ;
+- aucun changement de protocole ou de format Connecthys/Ivan pour finaliser cette version ;
+- aucune refonte Qt ;
+- aucune refonte graphique générale ;
+- conservation de l'interface historique ;
+- corrections locales et démontrées ;
+- conservation des configurations et données existantes autant que possible.
 
-## Garde-fous
+Le bouton **Modifier** de la liste détaillée des consommations, la performance du chargement global des questionnaires et les autres anomalies non nécessaires au lot consolidé restent hors du correctif #361 tant qu'elles ne sont pas isolées et qualifiées séparément.
 
-- Ne pas déclarer Vanilla stable à ce stade.
-- Ne pas mélanger Qt, Teamworks ou adaptations locales.
-- Ne jamais tester sur production.
-- Ne pas introduire de migration BDD dans ce chantier.
-- Ne pas modifier Connecthys/Ivan dans ce chantier.
-- Aucun refactoring général tant que les défauts bloquants et majeurs ne sont pas isolés et couverts.
+## 7. Recette humaine encore nécessaire
+
+Avant de déclarer 1.3.4.3 stable, rejouer au minimum sur Windows avec une copie de base réellement utilisée :
+
+1. ouvrir la liste détaillée des consommations ;
+2. fermer pendant ou immédiatement après le chargement ;
+3. rouvrir immédiatement et répéter plusieurs fois ;
+4. refaire le scénario avec la croix Windows ;
+5. vérifier l'absence d'Application Error 1000 / `0xc0000005` ;
+6. ouvrir **Affichage** dans le tableau de remplissage et valider les paramètres ;
+7. ouvrir **Liste d'attente** depuis la toolbar et depuis le menu ;
+8. vérifier Capacité / Occupé / Disponible / Attente ;
+9. confirmer la fermeture complète puis la relance du logiciel ;
+10. vérifier les parcours prioritaires d'impression/export réellement utilisés.
+
+Aucune validation humaine n'est déduite de la seule réussite de la CI.
+
+## 8. Version 1.3.4.3
+
+La version 1.3.4.3 est choisie plutôt qu'un suffixe `-r3` dans `Versions.txt` pour conserver le contrat historique de comparaison numérique des versions dans Noethys.
+
+Le logiciel lit son numéro via `FonctionsPerso.GetVersionLogiciel()`, qui extrait la première version de `Versions.txt`. Les comparaisons historiques découpent ensuite ce numéro sur les points et convertissent chaque composant en entier. Un suffixe comme `1.3.4.2-r3` casserait ce contrat ; `1.3.4.3` reste compatible sans modifier le mécanisme de mise à jour.
+
+L'upstream public Noethys est toujours en **1.3.4.2** au 19 septembre 2026.
+
+## 9. Distribution Windows
+
+La distribution 1.3.4.3 doit conserver :
+
+- un installateur Inno Setup ;
+- un portable Windows ;
+- le layout PyInstaller historique sans sous-dossier `_internal` ;
+- `Versions.txt`, `Licence.txt`, `Icone.ico` et `Static/` dans le payload ;
+- la configuration utilisateur lors d'une mise à niveau ;
+- l'absence de dossier `Portable/` dans le Setup installable.
+
+Les noms d'artefacts, le `BUILD-INFO.txt`, l'`AppVersion` Inno Setup et les notes de release doivent tous porter **1.3.4.3**.
+
+## 10. Garde-fous de clôture
+
+- Ne pas déclarer Vanilla stable avant la recette humaine Windows du candidat final.
+- Ne jamais tester sur l'unique base de production.
+- Ne pas mélanger Qt, Teamworks ou adaptations locales au lot de release.
+- Ne pas introduire de migration BDD pour ce changement de version.
+- Le bump de version et le changelog ne doivent modifier aucune logique métier.
+- La release doit être construite sur le SHA exact finalement intégré à `maintenance/vanilla`.
