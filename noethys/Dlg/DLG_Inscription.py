@@ -141,12 +141,16 @@ class ListBox(wx.ListBox):
             self.SetID(selection_actuelle)
 
     def Importation_groupes(self):
+        if self.controller.dictActivite == None :
+            return
         for dictGroupe in self.controller.dictActivite["groupes"] :
             ID = dictGroupe["IDgroupe"]
             label = dictGroupe["nom"]
             self.listeDonnees.append({"ID" : ID, "label" : label})
 
     def Importation_categories(self):
+        if self.controller.dictActivite == None :
+            return
         for dictCategorie in self.controller.dictActivite["categories_tarifs"] :
             self.listeDonnees.append({"ID" : dictCategorie["IDcategorie_tarif"], "label" : dictCategorie["nom"], "listeVilles" : dictCategorie["listeVilles"]})
             
@@ -203,8 +207,12 @@ class CTRL_Activite(wx.Panel):
         self.Layout()
 
     def MAJ(self):
-        self.IDactivite = self.controller.dictActivite["IDactivite"]
-        label = self.controller.dictActivite["nom"]
+        if self.controller.dictActivite != None :
+            self.IDactivite = self.controller.dictActivite["IDactivite"]
+            label = self.controller.dictActivite["nom"]
+        else :
+            self.IDactivite = None
+            label = ""
         self.ctrl_activite.SetLabel(label)
         self.Layout()
 
@@ -790,6 +798,10 @@ class Page_Activite(wx.Panel):
         WHERE IDactivite=%d;""" % IDactivite
         DB.ExecuterReq(req)
         listeActivites = DB.ResultatReq()
+
+        if len(listeActivites) == 0 :
+            DB.Close()
+            return None
 
         nom, abrege, date_debut, date_fin, nbre_inscrits_max, inscriptions_multiples = listeActivites[0]
         dictActivite = {"IDactivite" : IDactivite, "nom" : nom, "abrege" : abrege, "date_debut" : date_debut, "date_fin" : date_fin,
