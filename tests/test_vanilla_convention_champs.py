@@ -14,7 +14,11 @@ TESTS_DIR = Path(__file__).resolve().parent
 if str(TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(TESTS_DIR))
 
-from _fixtures_noethys_db import creer_base_association_simple  # noqa: E402
+from _fixtures_noethys_db import (  # noqa: E402
+    creer_base_association_simple,
+    creer_base_ecole_simple,
+    creer_base_tarif_ambigu_simple,
+)
 from Utils import UTILS_Convention_champs as CC  # noqa: E402
 
 
@@ -230,6 +234,109 @@ class GetChampsConventionIntegrationTests(unittest.TestCase):
                 listeIDindividus=[2, 3], DB=base.db, informations=infos,
             )
         self.assertEqual(champs["{CONVENTION_REPRESENTANT_NOM_COMPLET}"], "Mme LE GALL Chantal")
+
+
+class GetChampsConventionOverridesTests(unittest.TestCase):
+    """ Les overrides (saisis dans DLG_Generation_convention) sont
+    appliques APRES le calcul automatique, uniquement sur les cles
+    fournies, et ne modifient jamais aucune donnee Noethys : voir
+    UTILS_Convention_champs.GetChampsConvention(overrides=...). """
+
+    def test_override_representant_ecrase_la_valeur_automatique(self):
+        infos = FauxInformations({
+            "{NBRE_REPRESENTANTS_RATTACHES}": 1,
+            "{REPRESENTANT_RATTACHE_1_PRENOM}": "Chantal",
+            "{REPRESENTANT_RATTACHE_1_NOM}": "LE GALL",
+            "{REPRESENTANT_RATTACHE_1_NOM_COMPLET}": "Mme LE GALL Chantal",
+        })
+        with creer_base_association_simple() as base:
+            champs, _ = CC.GetChampsConvention(
+                IDfamille=1, listeIDindividus=[2, 3], DB=base.db, informations=infos,
+                overrides={"{CONVENTION_REPRESENTANT_NOM_COMPLET}": "M. CORRIGE Manuellement"},
+            )
+        self.assertEqual(champs["{CONVENTION_REPRESENTANT_NOM_COMPLET}"], "M. CORRIGE Manuellement")
+
+    def test_override_fonction_du_representant(self):
+        """ La fonction n'est jamais determinee automatiquement (aucune
+        donnee Noethys ne la porte) : c'est un override pur. """
+        with creer_base_association_simple() as base:
+            champs, _ = CC.GetChampsConvention(
+                IDfamille=1, listeIDindividus=[2, 3], DB=base.db,
+                informations=FauxInformations({"{NBRE_REPRESENTANTS_RATTACHES}": 0}),
+                overrides={"{CONVENTION_REPRESENTANT_FONCTION}": "Présidente"},
+            )
+        self.assertEqual(champs["{CONVENTION_REPRESENTANT_FONCTION}"], "Présidente")
+
+    def test_override_date_et_lieu_de_signature(self):
+        with creer_base_association_simple() as base:
+            champs, _ = CC.GetChampsConvention(
+                IDfamille=1, listeIDindividus=[2, 3], DB=base.db,
+                informations=FauxInformations({"{NBRE_REPRESENTANTS_RATTACHES}": 0}),
+                overrides={
+                    "{CONVENTION_DATE_SIGNATURE}": "21/09/2026",
+                    "{CONVENTION_LIEU_SIGNATURE}": "TESTVILLE",
+                },
+            )
+        self.assertEqual(champs["{CONVENTION_DATE_SIGNATURE}"], "21/09/2026")
+        self.assertEqual(champs["{CONVENTION_LIEU_SIGNATURE}"], "TESTVILLE")
+
+    def test_override_none_ne_remplace_pas_la_valeur_automatique(self):
+        """ Un dialogue qui ne renseigne pas une cle (valeur None) ne doit
+        jamais effacer une valeur deja determinee automatiquement. """
+        with creer_base_ecole_simple() as base:
+            champs, _ = CC.GetChampsConvention(
+                IDfamille=2, listeIDindividus=[20, 21, 22], DB=base.db,
+                overrides={"{CONVENTION_TARIF_HORAIRE}": None},
+            )
+        self.assertEqual(champs["{CONVENTION_TARIF_HORAIRE}"], 20.0)
+
+    def test_tarif_automatique_utilise_si_aucun_override(self):
+        with creer_base_ecole_simple() as base:
+            champs, _ = CC.GetChampsConvention(
+                IDfamille=2, listeIDindividus=[20, 21, 22], DB=base.db,
+            )
+        self.assertEqual(champs["{CONVENTION_TARIF_HORAIRE}"], 20.0)
+
+    def test_tarif_override_ecrase_le_tarif_automatique(self):
+        with creer_base_ecole_simple() as base:
+            champs, _ = CC.GetChampsConvention(
+                IDfamille=2, listeIDindividus=[20, 21, 22], DB=base.db,
+                overrides={"{CONVENTION_TARIF_HORAIRE}": 22.5},
+            )
+        self.assertEqual(champs["{CONVENTION_TARIF_HORAIRE}"], 22.5)
+
+    def test_tarif_ambigu_reste_vide_sans_override(self):
+        with creer_base_tarif_ambigu_simple() as base:
+            champs, dictDonnees = CC.GetChampsConvention(
+                IDfamille=1, listeIDindividus=[2], DB=base.db,
+            )
+        self.assertEqual(CC.DetecterTarifs(dictDonnees)["mode"], "manuel")
+        self.assertEqual(champs["{CONVENTION_TARIF_HORAIRE}"], u"")
+
+    def test_tarif_ambigu_est_utilisable_avec_un_override_manuel(self):
+        with creer_base_tarif_ambigu_simple() as base:
+            champs, _ = CC.GetChampsConvention(
+                IDfamille=1, listeIDindividus=[2], DB=base.db,
+                overrides={"{CONVENTION_TARIF_HORAIRE}": 40.0},
+            )
+        self.assertEqual(champs["{CONVENTION_TARIF_HORAIRE}"], 40.0)
+
+    def test_override_ne_modifie_jamais_les_prestations_en_base(self):
+        """ Les overrides ne sont que des valeurs de generation : la table
+        prestations doit etre strictement identique avant/apres, meme
+        quand un tarif different est fourni en override. """
+        with creer_base_ecole_simple() as base:
+            base.db.ExecuterReq("SELECT IDprestation, label, montant FROM prestations ORDER BY IDprestation;")
+            avant = base.db.ResultatReq()
+
+            CC.GetChampsConvention(
+                IDfamille=2, listeIDindividus=[20, 21, 22], DB=base.db,
+                overrides={"{CONVENTION_TARIF_HORAIRE}": 999.99},
+            )
+
+            base.db.ExecuterReq("SELECT IDprestation, label, montant FROM prestations ORDER BY IDprestation;")
+            apres = base.db.ResultatReq()
+        self.assertEqual(avant, apres)
 
 
 if __name__ == "__main__":

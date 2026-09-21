@@ -164,6 +164,41 @@ class GenerationPDFConventionTests(unittest.TestCase):
         FauxMessageDialog.assert_called_once()
         FauxMessageDialog.return_value.ShowModal.assert_called_once()
 
+    def test_ordre_des_blocs_flottants_suit_la_colonne_ordre_pas_l_insertion(self):
+        """ Plusieurs blocs de texte dans le cadre principal : leur ordre
+        de lecture (et donc l'ordre du "story" ReportLab) doit suivre
+        exclusivement la colonne "ordre" des documents_objets -- celle
+        que l'éditeur Noedoc réécrit selon l'ordre d'empilement (voir
+        DLG_Noedoc.ModeleDoc.Sauvegarde, "ordre": index), pas l'ordre
+        dans lequel les lignes ont été insérées en base, ni leur position
+        géométrique. On insère volontairement les blocs dans un ordre
+        d'insertion différent de leur "ordre" voulu pour le prouver. """
+        import sys as _sys
+        if str(NOETHYS_DIR) not in _sys.path:
+            _sys.path.insert(0, str(NOETHYS_DIR))
+        from Dlg import DLG_Noedoc
+
+        with creer_base_association_simple() as base:
+            IDmodele = inserer_modele_document(base, "Ordre blocs", "convention", [
+                {"nom": "Cadre principal", "categorie": "special", "champ": "cadre_principal",
+                 "ordre": 0, "x": 13, "y": 20, "largeur": 182, "hauteur": 250},
+                # Insérés dans l'ordre C, A, B mais avec ordre=3/1/2 :
+                # la lecture attendue est A (ordre=1), B (ordre=2), C (ordre=3).
+                {"nom": "Bloc C", "categorie": "bloc_texte", "ordre": 3,
+                 "x": 13, "y": 200, "largeur": 182, "texte": "Texte C"},
+                {"nom": "Bloc A", "categorie": "bloc_texte", "ordre": 1,
+                 "x": 13, "y": 100, "largeur": 182, "texte": "Texte A"},
+                {"nom": "Bloc B", "categorie": "bloc_texte", "ordre": 2,
+                 "x": 13, "y": 150, "largeur": 182, "texte": "Texte B"},
+            ])
+            with RedirectionGestionDB(base.chemin):
+                modeleDoc = DLG_Noedoc.ModeleDoc(IDmodele=IDmodele)
+                cadre, objetsFlottants = UIC._SepareObjetsFixesEtFlottants(modeleDoc)
+                story = UIC._ConstruitStory(modeleDoc, objetsFlottants, {})
+
+        self.assertEqual([o.nom for o in objetsFlottants], ["Bloc A", "Bloc B", "Bloc C"])
+        self.assertEqual([p.text for p in story], ["Texte A", "Texte B", "Texte C"])
+
     def test_ancien_modele_facture_reste_generable_par_le_meme_moteur_noedoc(self):
         """ Non-regression : le moteur Noedoc (DLG_Noedoc.ModeleDoc) reste
         utilisable pour une autre categorie apres l'ajout de Convention. """

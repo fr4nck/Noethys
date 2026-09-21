@@ -314,6 +314,50 @@ def creer_base_ecole_simple():
     return base
 
 
+def creer_base_tarif_ambigu_simple():
+    """ Structure fictive minimale ou une meme activite presente deux
+    montants differents pour une meme duree de seance : DetecterTarifs()
+    doit alors refuser de proposer un taux automatique (mode="manuel"),
+    et {CONVENTION_TARIF_HORAIRE} doit rester vide tant qu'aucun
+    override n'est fourni. """
+    base = BaseTest()
+    base.inserer(
+        "organisateur",
+        ["IDorganisateur", "nom", "rue", "cp", "ville", "tel", "mail"],
+        [(1, "Association Test Loisirs", "1 rue des Tests", "00000", "Testville", "00.00.00.00.00", "test@example.org")],
+    )
+    base.inserer("familles", ["IDfamille"], [(1,)])
+    base.inserer(
+        "individus",
+        ["IDindividu", "nom", "prenom", "IDcivilite"],
+        [(1, "STRUCTURE TEST", "", 3), (2, "STRUCTURE TEST", "Groupe ambigu", 3)],
+    )
+    base.inserer(
+        "rattachements",
+        ["IDrattachement", "IDfamille", "IDindividu", "IDcategorie", "titulaire"],
+        [(1, 1, 1, 1, 1), (2, 1, 2, 2, 0)],
+    )
+    base.inserer("activites", ["IDactivite", "nom"], [(10, "Activite ambigue")])
+    base.inserer("groupes", ["IDgroupe", "IDactivite", "nom"], [(20, 10, "Groupe")])
+    base.inserer("unites", ["IDunite", "IDactivite", "nom", "ordre", "type"], [(30, 10, "Unite", 1, "Horaire")])
+    base.inserer(
+        "prestations",
+        ["IDprestation", "label", "montant"],
+        [(100, "Tarif A", 30.00), (101, "Tarif B", 50.00)],
+    )
+    base.inserer(
+        "consommations",
+        ["IDconso", "IDindividu", "IDactivite", "date", "IDunite", "heure_debut", "heure_fin", "etat", "IDgroupe", "IDprestation"],
+        [
+            # Deux seances de meme duree (1h), montants differents : la
+            # meme activite ne peut donc pas avoir de taux horaire unique.
+            (1000, 2, 10, "2026-09-01", 30, "10:00", "11:00", "reservation", 20, 100),
+            (1001, 2, 10, "2026-09-08", 30, "10:00", "11:00", "reservation", 20, 101),
+        ],
+    )
+    return base
+
+
 _DEFAUTS_OBJET = {
     "nbreMax": None, "obligatoire": 0, "points": None, "image": None,
     "typeImage": None, "verrouillageX": 0, "verrouillageY": 0,

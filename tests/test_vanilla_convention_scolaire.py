@@ -52,7 +52,7 @@ class ConventionScolaireIndividusTests(unittest.TestCase):
     def test_trois_cycles_distincts_sont_rattaches(self):
         with creer_base_ecole_simple() as base:
             with RedirectionGestionDB(base.chemin):
-                individus = CC._GetIndividusRattaches(2, DB=base.db)
+                individus = CC.GetIndividusRattaches(2, DB=base.db)
         # 10 (titulaire école), 11 (représentant), 20/21/22 (3 cycles)
         self.assertEqual(len(individus), 5)
 
@@ -175,6 +175,52 @@ class ConventionScolairePlanningSepareTests(unittest.TestCase):
                 finally:
                     if os.path.isfile(chemin_pdf):
                         os.remove(chemin_pdf)
+
+    @unittest.skipUnless(REPORTLAB_RESERVATIONS_COMPATIBLE, MOTIF_INDISPONIBILITE_RESERVATIONS)
+    def test_convention_et_planning_produisent_deux_fichiers_distincts_pour_la_meme_periode(self):
+        """ Depuis le même écran de génération, la Convention (moteur
+        Noedoc, avec overrides représentant/signature/tarif) et le
+        Planning (moteur Réservations, inchangé) portent sur exactement
+        la même famille/période/individus, mais restent deux fichiers
+        PDF distincts -- jamais fusionnés, jamais un second moteur PDF. """
+        date_debut, date_fin = "2026-08-01", "2027-07-31"
+        listeIDindividus = [20, 21, 22]
+        overrides = {
+            "{CONVENTION_REPRESENTANT_FONCTION}": "Directrice",
+            "{CONVENTION_DATE_SIGNATURE}": "21/09/2026",
+            "{CONVENTION_LIEU_SIGNATURE}": "TESTVILLE",
+        }
+        with creer_base_ecole_simple() as base:
+            IDmodele = inserer_modele_convention_scolaire_fictif(base)
+            chemin_convention = tempfile.mktemp(suffix=".pdf")
+            chemin_planning = tempfile.mktemp(suffix=".pdf")
+            try:
+                with RedirectionGestionDB(base.chemin):
+                    resultat_convention = UIC.Impression(
+                        IDfamille=2, IDmodele=IDmodele, date_debut=date_debut, date_fin=date_fin,
+                        listeIDindividus=listeIDindividus, nomDoc=chemin_convention,
+                        afficherDoc=False, overrides=overrides,
+                    )
+                    dictDonnees = RESA.GetDonnees(
+                        listeIDindividus=listeIDindividus, date_debut=date_debut, date_fin=date_fin,
+                    )
+                    resultat_planning = RESA.Impression(dictDonnees, nomDoc=chemin_planning, afficherDoc=False)
+
+                self.assertIsInstance(resultat_convention, dict)
+                self.assertIsNotNone(resultat_planning)
+                self.assertNotEqual(chemin_convention, chemin_planning)
+                self.assertTrue(os.path.isfile(chemin_convention))
+                self.assertTrue(os.path.isfile(chemin_planning))
+                self.assertGreater(os.path.getsize(chemin_convention), 0)
+                self.assertGreater(os.path.getsize(chemin_planning), 0)
+
+                champs = resultat_convention["champs"]
+                self.assertEqual(champs["{CONVENTION_REPRESENTANT_FONCTION}"], "Directrice")
+                self.assertEqual(champs["{CONVENTION_LIEU_SIGNATURE}"], "TESTVILLE")
+            finally:
+                for chemin in (chemin_convention, chemin_planning):
+                    if os.path.isfile(chemin):
+                        os.remove(chemin)
 
 
 if __name__ == "__main__":

@@ -17,7 +17,10 @@ on:
       - 'tests/test_vanilla_convention_periodes.py'
       - 'tests/test_vanilla_convention_rendering.py'
       - 'tests/test_vanilla_convention_scolaire.py'
+      - 'tests/test_vanilla_convention_recette_modeles.py'
+      - 'tests/test_vanilla_generation_convention_dialog.py'
       - 'tests/test_vanilla_reservations_extraction.py'
+      - 'docs/recette_conventions/**'
       - '.github/workflows/vanilla-convention.yml'
       - 'requirements.txt'
   workflow_dispatch:
@@ -64,4 +67,6 @@ jobs:
           tests.test_vanilla_convention_periodes
           tests.test_vanilla_convention_rendering
           tests.test_vanilla_convention_scolaire
+          tests.test_vanilla_convention_recette_modeles
+          tests.test_vanilla_generation_convention_dialog
           tests.test_vanilla_reservations_extraction

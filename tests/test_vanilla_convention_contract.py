@@ -30,6 +30,32 @@ class ConventionContractTests(unittest.TestCase):
         self.assertIn("CTRL_Choice", source)
         self.assertIn("MyDatePickerCtrl", source)
 
+    def test_generation_dialog_exposes_manual_fields_and_planning_button(self):
+        """ Dernier jalon : ce qui est annoncé comme "manuel" dans le
+        rapport (fonction, date/lieu de signature, tarif ambigu) doit
+        être réellement saisissable depuis ce dialogue, pas seulement
+        documenté. Le bouton Planning doit réutiliser le moteur
+        Réservations existant, jamais un second moteur PDF. """
+        source = DLG_GENERATION.read_text(encoding="utf-8")
+        self.assertIn("ctrl_representant_fonction", source)
+        self.assertIn("ctrl_date_signature", source)
+        self.assertIn("ctrl_lieu_signature", source)
+        self.assertIn("ctrl_tarif_horaire", source)
+        self.assertIn("def GetOverrides", source)
+        self.assertIn("def OnSelection", source)
+        self.assertIn("def OnBoutonPlanning", source)
+        self.assertIn("UTILS_Impression_reservations", source)
+        self.assertNotIn("SimpleDocTemplate", source)
+        self.assertNotIn("BaseDocTemplate", source)
+
+    def test_overrides_are_applied_without_touching_noethys_data(self):
+        source = UTIL_CHAMPS.read_text(encoding="utf-8")
+        self.assertIn("def GetChampsConvention(", source)
+        self.assertIn("overrides", source)
+        for table_interdite in ("prestations", "consommations", "tarifs", "individus", "familles"):
+            self.assertNotIn('ReqMAJ("%s"' % table_interdite, source)
+            self.assertNotIn('ReqInsert("%s"' % table_interdite, source)
+
     def test_convention_engine_reuses_noedoc_instead_of_a_dedicated_engine(self):
         source = UTIL_CONVENTION.read_text(encoding="utf-8")
         self.assertIn("DLG_Noedoc", source)
