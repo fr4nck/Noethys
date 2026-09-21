@@ -211,7 +211,11 @@ class GetChampsConventionIntegrationTests(unittest.TestCase):
         self.assertAlmostEqual(champs["{CONVENTION_PLANNING_TOTAL_MONTANT}"], 217.5)
         self.assertEqual(champs["{CONVENTION_TARIF_ADULTE}"], 36.5)
         self.assertEqual(champs["{CONVENTION_TARIF_ENFANT}"], 24.0)
-        self.assertNotIn("{CONVENTION_REPRESENTANT_NOM}", champs)
+        # La clé reste presente (vide) plutot qu'absente : c'est ce qui
+        # permet au moteur [[SI {CHAMP}=->...]] de detecter "vide" dans
+        # le modele .ndc (une cle absente ne declenche aucune des deux
+        # branches d'un bloc [[SI ...]]).
+        self.assertEqual(champs["{CONVENTION_REPRESENTANT_NOM}"], u"")
 
     def test_representant_present_est_reporte_dans_les_champs(self):
         infos = FauxInformations({

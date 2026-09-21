@@ -198,6 +198,99 @@ def creer_base_association_simple():
     return base
 
 
+def _dates_hebdomadaires(premiere_date, nombre, pas_jours=7):
+    d = premiere_date
+    dates = []
+    for _i in range(nombre):
+        dates.append(d.isoformat())
+        d = d + __import__("datetime").timedelta(days=pas_jours)
+    return dates
+
+
+def creer_base_ecole_simple():
+    """ Structure fictive proche d'une convention scolaire longue (type
+    "La Providence") : une famille "ecole", trois cycles (individus
+    distincts) avec plusieurs periodes chacun, dont au moins un vrai
+    trou de vacances (deux blocs separes de plusieurs mois sur le meme
+    creneau) et une exception ponctuelle d'horaire. Aucun nom, aucune
+    donnee reelle : tout est fictif. """
+    import datetime
+
+    base = BaseTest()
+
+    base.inserer(
+        "organisateur",
+        ["IDorganisateur", "nom", "rue", "cp", "ville", "tel", "mail"],
+        [(1, "Association Test Loisirs", "1 rue des Tests", "00000", "Testville", "00.00.00.00.00", "test@example.org")],
+    )
+    base.inserer("familles", ["IDfamille"], [(2,)])
+    base.inserer(
+        "individus",
+        ["IDindividu", "nom", "prenom", "IDcivilite"],
+        [
+            (10, "ECOLE FICTIVE TEST", "", 3),
+            (11, "MARTIN", "Alice", 1),  # représentant réellement nommé
+            (20, "CE2-CM1-CM2", "CYCLE FICTIF 3", 3),
+            (21, "CP-CE1-CE2", "CYCLE FICTIF 2", 3),
+            (22, "PS-MS-GS", "CYCLE FICTIF 1", 3),
+        ],
+    )
+    base.inserer(
+        "rattachements",
+        ["IDrattachement", "IDfamille", "IDindividu", "IDcategorie", "titulaire"],
+        [
+            (10, 2, 10, 1, 1),
+            (11, 2, 11, 1, 0),
+            (20, 2, 20, 2, 0),
+            (21, 2, 21, 2, 0),
+            (22, 2, 22, 2, 0),
+        ],
+    )
+    base.inserer(
+        "activites", ["IDactivite", "nom"],
+        [(30, "Encadrement sportif scolaires")],
+    )
+    base.inserer("groupes", ["IDgroupe", "IDactivite", "nom"], [(40, 30, "Scolaires")])
+    base.inserer("unites", ["IDunite", "IDactivite", "nom", "ordre", "type"], [(50, 30, "Scolaires", 1, "Horaire")])
+
+    lignes_conso = []
+    lignes_prestation = []
+    IDprestation = 200
+    IDconso = 2000
+
+    def _ajoute(IDindividu, dates, heure_debut, heure_fin, montant):
+        nonlocal IDprestation, IDconso
+        for jour in dates:
+            lignes_prestation.append((IDprestation, "Encadrement sportif scolaires", montant))
+            lignes_conso.append((IDconso, IDindividu, 30, jour, 50, heure_debut, heure_fin, "reservation", 40, IDprestation))
+            IDprestation += 1
+            IDconso += 1
+
+    # Cycle 3 : une seule période continue, 6 séances hebdomadaires, 2h chacune.
+    _ajoute(20, _dates_hebdomadaires(datetime.date(2026, 10, 8), 6), "09:00", "11:00", 40.0)
+
+    # Cycle 2 : deux périodes séparées par les vacances (vrai trou de 7 mois),
+    # même jour/horaire dans les deux blocs.
+    _ajoute(21, _dates_hebdomadaires(datetime.date(2026, 9, 10), 4), "09:00", "12:00", 60.0)
+    _ajoute(21, _dates_hebdomadaires(datetime.date(2027, 5, 20), 4), "09:00", "12:00", 60.0)
+
+    # Cycle 1 : jeudi 2h + vendredi 1h en alternance (durées différentes),
+    # plus une exception ponctuelle d'horaire l'après-midi.
+    _ajoute(22, _dates_hebdomadaires(datetime.date(2026, 11, 26), 4, pas_jours=7), "09:00", "11:00", 40.0)
+    _ajoute(22, _dates_hebdomadaires(datetime.date(2026, 11, 27), 4, pas_jours=7), "10:00", "11:00", 20.0)
+    _ajoute(22, [datetime.date(2027, 1, 14).isoformat()], "13:15", "16:15", 60.0)  # exception d'horaire
+
+    base.inserer(
+        "prestations", ["IDprestation", "label", "montant"], lignes_prestation,
+    )
+    base.inserer(
+        "consommations",
+        ["IDconso", "IDindividu", "IDactivite", "date", "IDunite", "heure_debut", "heure_fin", "etat", "IDgroupe", "IDprestation"],
+        lignes_conso,
+    )
+    return base
+
+
 _DEFAUTS_OBJET = {
     "nbreMax": None, "obligatoire": 0, "points": None, "image": None,
     "typeImage": None, "verrouillageX": 0, "verrouillageY": 0,
@@ -267,3 +360,75 @@ def inserer_modele_convention_fictif(base):
         },
     ]
     return inserer_modele_document(base, "Convention de test", "convention", objets)
+
+
+def inserer_modele_convention_scolaire_fictif(base):
+    """ Deuxieme modele de recette, de taille comparable a une vraie
+    convention scolaire longue (type "La Providence") : en-tete, parties,
+    6 articles fictifs, tarif, signatures -- avec le detail de planning
+    scolaire dynamique insere dans l'article 2. Aucun nom, lieu, date ou
+    discipline reel : tout le texte editorial est invente pour la
+    recette. Le detail de planning genere par
+    UTILS_Convention_champs.GetResumePlanning() est la seule partie
+    dynamique. """
+    corps = (
+        "CONVENTION DE TEST {CONVENTION_SAISON}\n\n"
+        "ENTRE :\n"
+        "{ORGANISATEUR_NOM}\n"
+        "{ORGANISATEUR_RUE}\n"
+        "{ORGANISATEUR_CP} {ORGANISATEUR_VILLE}\n\n"
+        "ET :\n"
+        "{FAMILLE_NOM}\n"
+        "[[SI {CONVENTION_REPRESENTANT_NOM_COMPLET}<>->Représenté(e) par {CONVENTION_REPRESENTANT_NOM_COMPLET}.]]\n\n"
+        "Il a été convenu ce qui suit :\n\n"
+
+        "ARTICLE FICTIF 1 : ENGAGEMENT\n"
+        "Ceci est un texte d'engagement fictif de test, suffisamment long pour occuper "
+        "plusieurs lignes dans le cadre principal du document, comme un vrai article de "
+        "convention le ferait dans un cas réel. Aucune donnée réelle n'apparaît ici.\n\n"
+
+        "ARTICLE FICTIF 2 : PLANNING\n"
+        "Un calendrier prévisionnel est joint à la présente convention à titre indicatif. "
+        "Le détail ci-dessous est calculé automatiquement depuis les données "
+        "d'inscription réellement enregistrées :\n\n"
+        "{CONVENTION_PLANNING_DETAIL}\n\n"
+        "Nombre total de séances : {CONVENTION_PLANNING_NBRE_SEANCES}\n"
+        "Volume horaire total : {CONVENTION_PLANNING_TOTAL_HEURES}\n\n"
+
+        "ARTICLE FICTIF 3 : ABSENCE ET ANNULATION\n"
+        "Texte fictif de test décrivant les modalités d'absence et d'annulation, "
+        "reproduisant la longueur habituelle de ce type d'article dans un document réel, "
+        "pour vérifier que la pagination se comporte correctement sur un contenu réaliste "
+        "plutôt que sur un texte artificiellement court.\n\n"
+
+        "ARTICLE FICTIF 4 : RESPONSABILITÉS\n"
+        "Texte fictif de test décrivant les responsabilités respectives des parties, "
+        "à nouveau de longueur comparable à un article réel, afin que le test de "
+        "pagination reste représentatif d'un document complet plutôt que d'un "
+        "extrait artificiellement réduit à quelques mots.\n\n"
+
+        "ARTICLE FICTIF 5 : LITIGES\n"
+        "Texte fictif de test décrivant le règlement des litiges éventuels entre les "
+        "parties signataires de la présente convention de test.\n\n"
+
+        "ARTICLE FICTIF 6 : FACTURATION\n"
+        "Le tarif horaire applicable pour la présente convention de test est de "
+        "[[SI {CONVENTION_TARIF_HORAIRE}<>->{CONVENTION_TARIF_HORAIRE} par heure encadrée.]]"
+        "[[SI {CONVENTION_TARIF_HORAIRE}=->à préciser manuellement (aucun taux horaire "
+        "unique n'a pu être déterminé automatiquement).]]\n\n"
+
+        "Fait en deux exemplaires, le .............................\n\n"
+        "Pour la structure adhérente\t\tPour {ORGANISATEUR_NOM}\n"
+        "Signature\t\t\t\tSignature"
+    )
+    objets = [
+        {
+            "nom": "Cadre principal", "categorie": "special", "champ": "cadre_principal",
+            "ordre": 0, "x": 13, "y": 20, "largeur": 182, "hauteur": 250,
+        },
+        {
+            "nom": "Corps", "categorie": "bloc_texte", "ordre": 1,
+            "x": 13, "y": 20, "largeur": 182, "texte": corps,
+        },
+    ]
+    return inserer_modele_document(base, "Convention scolaire de test", "convention", objets)

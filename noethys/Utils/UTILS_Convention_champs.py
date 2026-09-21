@@ -400,7 +400,25 @@ def GetChampsConvention(
         listeIDindividus=listeIDindividus, date_debut=date_debut, date_fin=date_fin, DB=DB,
     )
 
-    champs = {"{IDFAMILLE}": IDfamille}
+    # Tous les champs optionnels sont explicitement initialisés à une
+    # chaîne vide : le moteur [[SI {CHAMP}=->...]] (utilisé par les
+    # modèles pour afficher un texte de repli quand une donnée n'a pas pu
+    # être déterminée) ne détecte correctement "vide" que si la clé
+    # existe dans le dict -- une clé absente ne déclenche NI la branche
+    # "<>" (rempli) NI la branche "=" (vide), le bloc [[SI ...]] entier
+    # disparaît silencieusement. Voir DLG_Saisie_formule.ResolveurFormule.
+    champs = {
+        "{IDFAMILLE}": IDfamille,
+        "{CONVENTION_REPRESENTANT_NOM}": u"",
+        "{CONVENTION_REPRESENTANT_PRENOM}": u"",
+        "{CONVENTION_REPRESENTANT_NOM_COMPLET}": u"",
+        "{CONVENTION_SAISON}": u"",
+        "{CONVENTION_DATE_DEBUT}": u"",
+        "{CONVENTION_DATE_FIN}": u"",
+        "{CONVENTION_TARIF_HORAIRE}": u"",
+        "{CONVENTION_TARIF_ADULTE}": u"",
+        "{CONVENTION_TARIF_ENFANT}": u"",
+    }
 
     representant = GetRepresentant(IDfamille, informations=informations)
     if representant is not None:
@@ -444,9 +462,9 @@ def _CompleterTarifsAdulteEnfant(champs, tauxParActivite, dictDonnees):
 
     for IDactivite, taux in tauxParActivite.items():
         nom = nomsActivites.get(IDactivite, u"").lower()
-        if "enfant" in nom and "{CONVENTION_TARIF_ENFANT}" not in champs:
+        if "enfant" in nom and not champs.get("{CONVENTION_TARIF_ENFANT}"):
             champs["{CONVENTION_TARIF_ENFANT}"] = float(taux)
-        elif "adulte" in nom and "{CONVENTION_TARIF_ADULTE}" not in champs:
+        elif "adulte" in nom and not champs.get("{CONVENTION_TARIF_ADULTE}"):
             champs["{CONVENTION_TARIF_ADULTE}"] = float(taux)
 
 
