@@ -29,6 +29,126 @@ def DateEngFr(textDate):
     return text
 
 
+def LabelEtat(etat):
+    """ Traduit un code etat de consommation en libellé humain (voir CTRL_Grille.CreationPDF) """
+    return {
+        "reservation": _(u"Réservation"),
+        "absenti": _(u"Absence injustifiée"),
+        "absentj": _(u"Absence justifiée"),
+        "present": _(u"Présent"),
+        "attente": _(u"Attente"),
+        "refus": _(u"Refus"),
+    }.get(etat, etat)
+
+
+def GetDonnees(listeIDindividus=[], date_debut=None, date_fin=None, DB=None):
+    """ Reconstitue, à partir de la base, le dict Individu>Activite>Date>Unite
+    attendu par Impression(), sans dépendre d'une grille CTRL_Grille déjà
+    chargée en mémoire.
+
+    C'est l'extraction générique la plus basse permettant de produire le
+    même rapport Réservations depuis n'importe quel écran (grille de
+    saisie historique, génération de convention, ...) : la seule
+    différence avec CTRL_Grille.CreationPDF() est la façon dont les
+    consommations sont récupérées (requête directe ici, cache mémoire de
+    la grille là-bas). Le format du dict et le rendu produit par
+    Impression() restent strictement identiques.
+    """
+    if not listeIDindividus:
+        return {}
+
+    fermer_connexion = DB is None
+    if DB is None:
+        import GestionDB
+        DB = GestionDB.DB()
+
+    from Data import DATA_Civilites
+    dictCivilites = DATA_Civilites.GetDictCivilites()
+
+    placeholders = ", ".join(str(int(IDindividu)) for IDindividu in listeIDindividus)
+    req = """
+        SELECT consommations.IDindividu, consommations.IDactivite, consommations.date,
+            consommations.IDunite, consommations.heure_debut, consommations.heure_fin,
+            consommations.etat, consommations.IDgroupe, consommations.IDprestation,
+            individus.nom, individus.prenom, individus.date_naiss, individus.IDcivilite,
+            activites.nom,
+            unites.nom, unites.ordre, unites.type,
+            prestations.montant, prestations.label
+        FROM consommations
+        LEFT JOIN individus ON individus.IDindividu = consommations.IDindividu
+        LEFT JOIN activites ON activites.IDactivite = consommations.IDactivite
+        LEFT JOIN unites ON unites.IDunite = consommations.IDunite
+        LEFT JOIN prestations ON prestations.IDprestation = consommations.IDprestation
+        WHERE consommations.IDindividu IN (%s)
+        AND (consommations.etat IS NULL OR consommations.etat <> 'refus')
+    """ % placeholders
+    if date_debut is not None:
+        req += " AND consommations.date >= '%s'" % str(date_debut)
+    if date_fin is not None:
+        req += " AND consommations.date <= '%s'" % str(date_fin)
+    req += " ORDER BY consommations.date, consommations.heure_debut;"
+    DB.ExecuterReq(req)
+    listeConsommations = DB.ResultatReq()
+
+    req = "SELECT IDactivite, agrement, date_debut, date_fin FROM agrements ORDER BY date_debut;"
+    DB.ExecuterReq(req)
+    listeAgrements = DB.ResultatReq()
+
+    if fermer_connexion:
+        DB.Close()
+
+    def RechercheAgrement(IDactivite, date):
+        for IDactiviteTmp, agrement, debut, fin in listeAgrements:
+            if IDactivite == IDactiviteTmp and str(date) >= debut and str(date) <= fin:
+                return agrement
+        return None
+
+    dictDonnees = {}
+    for (IDindividu, IDactivite, date, IDunite, heure_debut, heure_fin, etat, IDgroupe,
+         IDprestation, nom, prenom, date_naiss, IDcivilite, nomActivite, nomUnite,
+         ordreUnite, typeUnite, montant, label) in listeConsommations:
+
+        sexe = dictCivilites.get(IDcivilite, {}).get("sexe")
+
+        agrement = RechercheAgrement(IDactivite, date)
+        if agrement is not None:
+            agrement = _(u" - n° agrément : %s") % agrement
+
+        if IDindividu not in dictDonnees:
+            dictDonnees[IDindividu] = {
+                "nom": nom, "prenom": prenom, "date_naiss": date_naiss,
+                "sexe": sexe, "activites": {},
+            }
+        dictActivites = dictDonnees[IDindividu]["activites"]
+        if IDactivite not in dictActivites:
+            dictActivites[IDactivite] = {"nom": nomActivite, "agrement": agrement, "dates": {}}
+        dictDates = dictActivites[IDactivite]["dates"]
+        if date not in dictDates:
+            dictDates[date] = {"unites": {}}
+        dictUnites = dictDates[date]["unites"]
+        if IDunite not in dictUnites:
+            dictUnites[IDunite] = []
+
+        if montant is not None:
+            # "paye" (montant déjà ventilé/réglé) n'est volontairement pas
+            # recalculé ici : cette information de règlement n'est pas
+            # nécessaire pour un planning/convention prévisionnel, et sa
+            # reconstitution demanderait de rejouer la logique de
+            # ventilation des règlements, hors périmètre de cette extraction.
+            prestation = {"montant": montant, "label": label, "paye": None}
+        else:
+            prestation = None
+
+        dictUnites[IDunite].append({
+            "nomUnite": nomUnite, "ordreUnite": ordreUnite, "etat": LabelEtat(etat),
+            "IDgroupe": IDgroupe, "IDprestation": IDprestation, "prestation": prestation,
+            "type": typeUnite, "heure_debut": heure_debut, "heure_fin": heure_fin,
+            "evenement": None,
+        })
+
+    return dictDonnees
+
+
 def Impression(dictDonnees={}, nomDoc=FonctionsPerso.GenerationNomDoc("RESERVATIONS", "pdf"), afficherDoc=True):
     # Création du PDF
     from reportlab.platypus.doctemplate import PageTemplate, BaseDocTemplate, NextPageTemplate
