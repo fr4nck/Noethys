@@ -463,8 +463,8 @@ class Dialog(wx.Dialog):
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.MenuListeDevis, id=20)
 
-        # Item Convention d'encadrement sportif
-        item = wx.MenuItem(menuPop, 16, _(u"Générer une convention d'encadrement sportif"))
+        # Item Convention
+        item = wx.MenuItem(menuPop, 16, _(u"Générer une convention"))
         bmp = wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Generation.png"), wx.BITMAP_TYPE_PNG)
         item.SetBitmap(bmp)
         menuPop.AppendItem(item)
@@ -644,34 +644,49 @@ class Dialog(wx.Dialog):
         dlg.Destroy()
 
     def MenuGenererConvention(self, event):
-        """ Génère la convention d'encadrement sportif de la famille. """
+        """ Génère une convention pour la famille, à partir d'un modèle de
+        catégorie "convention" choisi par l'utilisateur et de la période
+        sélectionnée. Aucune donnée n'est requise au préalable dans un
+        questionnaire : ce qui n'est pas déterminable automatiquement
+        reste simplement vide dans le PDF généré. """
         if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("familles_devis", "creer") == False :
             return
 
-        # Enregistre notamment les réponses du questionnaire avant génération.
         if self.Sauvegarde() == False :
             return
 
-        try :
-            from Utils import UTILS_Impression_convention
-            resultat = UTILS_Impression_convention.Impression(IDfamille=self.IDfamille)
-        except Exception as err :
+        from Dlg import DLG_Generation_convention
+        dlg = DLG_Generation_convention.Dialog(self)
+        if dlg.ShowModal() != wx.ID_OK :
+            dlg.Destroy()
+            return
+        IDmodele = dlg.GetIDmodele()
+        date_debut = dlg.GetDateDebut()
+        date_fin = dlg.GetDateFin()
+        saison = dlg.GetSaison()
+        dlg.Destroy()
+
+        if IDmodele is None :
             dlg = wx.MessageDialog(
-                self,
-                _(u"Impossible de générer la convention.\n\n%s") % err,
-                _(u"Convention d'encadrement sportif"),
-                wx.OK | wx.ICON_ERROR,
+                self, _(u"Aucun modèle de convention n'est disponible. Créez-en un depuis Paramétrage > Modèles de documents."),
+                _(u"Convention"), wx.OK | wx.ICON_EXCLAMATION,
             )
             dlg.ShowModal()
             dlg.Destroy()
             return
+
+        from Utils import UTILS_Impression_convention
+        resultat = UTILS_Impression_convention.Impression(
+            IDfamille=self.IDfamille, IDmodele=IDmodele,
+            date_debut=date_debut, date_fin=date_fin, saison=saison,
+        )
 
         if resultat :
             try :
                 UTILS_Historique.InsertActions([{
                     "IDfamille" : self.IDfamille,
                     "IDcategorie" : 4,
-                    "action" : _(u"Génération d'une convention d'encadrement sportif"),
+                    "action" : _(u"Génération d'une convention"),
                     },])
             except :
                 pass
