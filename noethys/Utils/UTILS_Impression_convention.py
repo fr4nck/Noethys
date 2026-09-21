@@ -20,6 +20,32 @@ Ce module se contente de :
   attestations fiscales. Aucune logique de pagination propre aux
   conventions n'est réintroduite ici.
 - gérer le fichier final (nom, ouverture).
+
+Audit ciblé (dernier jalon avant recette utilisateur) : BaseDocTemplate/
+PageTemplate/Frame/Paragraph ne sont utilisés ici QUE pour permettre
+l'écoulement multipage du contenu du cadre principal -- exactement le
+même besoin que pour une facture longue. Aucun de ces objets ne reçoit
+de texte, de style ou de coordonnées écrits en dur dans ce fichier :
+le texte et le style de police viennent de objet.texte/GetValeur() et
+objet.taillePolicePDF/Weight/Style (colonnes documents_objets, éditées
+dans le concepteur Noedoc), les coordonnées viennent de
+modeleDoc.GetCoordsObjet(cadre_principal).
+
+L'ordre de lecture des blocs flottants (et l'ordre de dessin des objets
+fixes qui se chevauchent) suit exclusivement la colonne "ordre" de
+documents_objets, PAS l'ordre d'insertion en base ni la position
+géométrique d'un objet. Cette colonne est réécrite par
+DLG_Noedoc.ModeleDoc.Sauvegarde() selon l'ordre d'empilement du canvas
+(index de self.GetObjets()), donc SEULES les actions explicites
+"Mettre au premier/arrière-plan" du concepteur changent cet ordre :
+déplacer un bloc (changer x/y) ne le modifie jamais. Un bloc déplacé
+hors du cadre principal bascule en revanche de "flottant" à "fixe" (ou
+inversement) via la règle géométrique _ObjetDansCadre -- c'est le seul
+changement de comportement attendu d'un déplacement visuel, et il est
+volontaire : un objet sorti du cadre n'est plus paginable, donc il doit
+redevenir un objet à position fixe. Voir
+tests/test_vanilla_convention_rendering.py::
+test_ordre_des_blocs_flottants_suit_la_colonne_ordre_pas_l_insertion.
 """
 
 from __future__ import annotations
@@ -161,7 +187,8 @@ def GenererPDF(IDmodele, dictChamps, nomDoc=None, afficherDoc=True):
 
 
 def Impression(IDfamille=None, IDmodele=None, date_debut=None, date_fin=None,
-                saison=None, listeIDindividus=None, nomDoc=None, afficherDoc=True):
+                saison=None, listeIDindividus=None, nomDoc=None, afficherDoc=True,
+                overrides=None):
     """ Point d'entrée : construit les champs depuis les données Noethys
     réelles de la famille, puis délègue tout le rendu au moteur Noedoc.
 
@@ -170,6 +197,13 @@ def Impression(IDfamille=None, IDmodele=None, date_debut=None, date_fin=None,
     simplement vides dans le PDF généré (à compléter dans le modèle ou
     en relançant avec des valeurs saisies manuellement), plutôt que de
     bloquer la génération ou d'inventer une valeur.
+
+    overrides : dict optionnel {"{CODE}": valeur} transmis tel quel à
+    UTILS_Convention_champs.GetChampsConvention -- les corrections
+    saisies par l'utilisateur dans DLG_Generation_convention (nom du
+    représentant, fonction, date/lieu de signature, tarif horaire).
+    N'écrit jamais rien dans Noethys : ce sont des valeurs de génération
+    uniquement, propres à ce PDF.
     """
     if IDfamille is None:
         raise ValueError(_(u"IDfamille obligatoire."))
@@ -179,7 +213,7 @@ def Impression(IDfamille=None, IDmodele=None, date_debut=None, date_fin=None,
     try:
         champs, dictDonnees = UTILS_Convention_champs.GetChampsConvention(
             IDfamille=IDfamille, date_debut=date_debut, date_fin=date_fin,
-            saison=saison, listeIDindividus=listeIDindividus,
+            saison=saison, listeIDindividus=listeIDindividus, overrides=overrides,
         )
         nomDocFinal = GenererPDF(IDmodele, champs, nomDoc=nomDoc, afficherDoc=afficherDoc)
     except Exception as err:

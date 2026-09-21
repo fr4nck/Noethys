@@ -379,7 +379,7 @@ def GetResumePlanning(dictDonnees):
 
 def GetChampsConvention(
     IDfamille, date_debut=None, date_fin=None, saison=None,
-    listeIDindividus=None, DB=None, informations=None,
+    listeIDindividus=None, DB=None, informations=None, overrides=None,
 ):
     """ Construit le dict {"{CODE}": valeur} pour la catégorie Convention.
 
@@ -390,11 +390,22 @@ def GetChampsConvention(
     Ne rend jamais aucun champ obligatoire : un représentant, une saison
     ou un tarif introuvables automatiquement donnent simplement un champ
     vide, à compléter manuellement avant génération.
+
+    overrides : dict optionnel {"{CODE}": valeur} appliqué APRES tout le
+    calcul automatique ci-dessus -- typiquement les corrections saisies
+    par l'utilisateur dans DLG_Generation_convention (nom du
+    représentant, fonction, date/lieu de signature, tarif horaire quand
+    l'auto-détection est ambiguë ou absente). Une clé absente
+    d'overrides, ou dont la valeur est None, laisse la valeur calculée
+    automatiquement inchangée. Ceci ne modifie et n'enregistre jamais
+    aucune donnée Noethys (prestations, consommations, tarifs, individus,
+    familles) : le résultat n'est qu'un dictionnaire de champs pour la
+    génération du PDF en cours.
     """
     from Utils import UTILS_Impression_reservations
 
     if listeIDindividus is None:
-        listeIDindividus = _GetIndividusRattaches(IDfamille, DB=DB)
+        listeIDindividus = GetIndividusRattaches(IDfamille, DB=DB)
 
     dictDonnees = UTILS_Impression_reservations.GetDonnees(
         listeIDindividus=listeIDindividus, date_debut=date_debut, date_fin=date_fin, DB=DB,
@@ -412,9 +423,12 @@ def GetChampsConvention(
         "{CONVENTION_REPRESENTANT_NOM}": u"",
         "{CONVENTION_REPRESENTANT_PRENOM}": u"",
         "{CONVENTION_REPRESENTANT_NOM_COMPLET}": u"",
+        "{CONVENTION_REPRESENTANT_FONCTION}": u"",
         "{CONVENTION_SAISON}": u"",
         "{CONVENTION_DATE_DEBUT}": u"",
         "{CONVENTION_DATE_FIN}": u"",
+        "{CONVENTION_DATE_SIGNATURE}": u"",
+        "{CONVENTION_LIEU_SIGNATURE}": u"",
         "{CONVENTION_TARIF_HORAIRE}": u"",
         "{CONVENTION_TARIF_ADULTE}": u"",
         "{CONVENTION_TARIF_ENFANT}": u"",
@@ -444,6 +458,13 @@ def GetChampsConvention(
         champs["{CONVENTION_TARIF_HORAIRE}"] = float(tarifs["taux"])
     elif tarifs["mode"] == "detail":
         _CompleterTarifsAdulteEnfant(champs, tarifs["taux_par_activite"], dictDonnees)
+    # mode == "manuel" : aucun taux fiable, {CONVENTION_TARIF_HORAIRE}
+    # reste vide -- à saisir manuellement (voir "overrides" ci-dessous).
+
+    if overrides:
+        for code, valeur in overrides.items():
+            if valeur is not None:
+                champs[code] = valeur
 
     return champs, dictDonnees
 
@@ -468,7 +489,12 @@ def _CompleterTarifsAdulteEnfant(champs, tauxParActivite, dictDonnees):
             champs["{CONVENTION_TARIF_ADULTE}"] = float(taux)
 
 
-def _GetIndividusRattaches(IDfamille, DB=None):
+def GetIndividusRattaches(IDfamille, DB=None):
+    """ Individus (créneaux/cycles/personnes) rattachés à la famille.
+    Fonction publique : réutilisée à la fois par GetChampsConvention() et
+    par le bouton "Imprimer le planning" de DLG_Generation_convention,
+    pour garantir que la Convention et le Planning séparé portent
+    toujours exactement sur les mêmes individus. """
     fermer = DB is None
     if DB is None:
         import GestionDB

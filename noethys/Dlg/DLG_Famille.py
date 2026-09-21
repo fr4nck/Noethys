@@ -656,7 +656,7 @@ class Dialog(wx.Dialog):
             return
 
         from Dlg import DLG_Generation_convention
-        dlg = DLG_Generation_convention.Dialog(self)
+        dlg = DLG_Generation_convention.Dialog(self, IDfamille=self.IDfamille)
         if dlg.ShowModal() != wx.ID_OK :
             dlg.Destroy()
             return
@@ -664,6 +664,7 @@ class Dialog(wx.Dialog):
         date_debut = dlg.GetDateDebut()
         date_fin = dlg.GetDateFin()
         saison = dlg.GetSaison()
+        overrides = dlg.GetOverrides()
         dlg.Destroy()
 
         if IDmodele is None :
@@ -679,6 +680,7 @@ class Dialog(wx.Dialog):
         resultat = UTILS_Impression_convention.Impression(
             IDfamille=self.IDfamille, IDmodele=IDmodele,
             date_debut=date_debut, date_fin=date_fin, saison=saison,
+            overrides=overrides,
         )
 
         if resultat :

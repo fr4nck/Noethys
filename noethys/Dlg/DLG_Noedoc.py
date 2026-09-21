@@ -1083,6 +1083,13 @@ class Convention():
             (_(u"Date de début de la période"), u"01/09/2026", "{CONVENTION_DATE_DEBUT}"),
             (_(u"Date de fin de la période"), u"30/06/2027", "{CONVENTION_DATE_FIN}"),
 
+            # Signature : toujours saisis manuellement dans le générateur
+            # (DLG_Generation_convention) -- rien dans Noethys ne permet
+            # de déterminer automatiquement une date ou un lieu de
+            # signature.
+            (_(u"Date de signature"), u"01/09/2026", "{CONVENTION_DATE_SIGNATURE}"),
+            (_(u"Lieu de signature"), _(u"LANNILIS"), "{CONVENTION_LIEU_SIGNATURE}"),
+
             # Résumé du planning calculé depuis les données Noethys
             # (consommations/prestations réellement enregistrées) : voir
             # UTILS_Convention_champs.GetResumePlanning().
