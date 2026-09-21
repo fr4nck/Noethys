@@ -13,6 +13,7 @@ import os
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 TESTS_DIR = Path(__file__).resolve().parent
@@ -144,13 +145,24 @@ class GenerationPDFConventionTests(unittest.TestCase):
                     os.remove(chemin_pdf)
 
     def test_modele_sans_cadre_principal_echoue_proprement(self):
+        """ Impression() affiche un wx.MessageDialog reel sur erreur : un
+        vrai ShowModal() peut bloquer indefiniment sur un runner CI sans
+        utilisateur interactif pour le fermer (constate : un job a
+        realmenet bloque 19 minutes jusqu'au timeout avant ce correctif).
+        On verifie donc le meme chemin de code (l'exception est bien
+        levee par GenererPDF, capturee par Impression, qui renvoie False)
+        sans jamais laisser un vrai ShowModal() s'executer. """
         with creer_base_association_simple() as base:
             IDmodele = inserer_modele_document(base, "Sans cadre", "convention", [
                 {"nom": "Texte", "categorie": "bloc_texte", "ordre": 0, "x": 10, "y": 10, "texte": "Bonjour"},
             ])
             with RedirectionGestionDB(base.chemin):
-                resultat = UIC.Impression(IDfamille=1, IDmodele=IDmodele, listeIDindividus=[2], afficherDoc=False)
+                with unittest.mock.patch("wx.MessageDialog") as FauxMessageDialog:
+                    FauxMessageDialog.return_value.ShowModal.return_value = wx.ID_OK
+                    resultat = UIC.Impression(IDfamille=1, IDmodele=IDmodele, listeIDindividus=[2], afficherDoc=False)
         self.assertFalse(resultat)
+        FauxMessageDialog.assert_called_once()
+        FauxMessageDialog.return_value.ShowModal.assert_called_once()
 
     def test_ancien_modele_facture_reste_generable_par_le_meme_moteur_noedoc(self):
         """ Non-regression : le moteur Noedoc (DLG_Noedoc.ModeleDoc) reste
