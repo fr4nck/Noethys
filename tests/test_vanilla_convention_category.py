@@ -10,15 +10,39 @@ import sys
 import unittest
 from pathlib import Path
 
-NOETHYS_DIR = Path(__file__).resolve().parents[1] / "noethys"
+TESTS_DIR = Path(__file__).resolve().parent
+NOETHYS_DIR = TESTS_DIR.parent / "noethys"
+if str(TESTS_DIR) not in sys.path:
+    sys.path.insert(0, str(TESTS_DIR))
 if str(NOETHYS_DIR) not in sys.path:
     sys.path.insert(0, str(NOETHYS_DIR))
 
+from _fixtures_noethys_db import BaseTest, RedirectionGestionDB  # noqa: E402
 from Dlg import DLG_Modeles_docs  # noqa: E402
 from Dlg import DLG_Noedoc  # noqa: E402
 
 
 class CategorieConventionTests(unittest.TestCase):
+    """ Construire une classe de categorie Noedoc (Convention/Famille/
+    Facture) declenche en interne
+    UTILS_Infos_individus.GetNomsChampsPossibles(mode="famille"), qui
+    appelle GestionDB.DB() SANS parametre : sans base explicite, cela
+    plante (TypeError sur un nomFichier par defaut a None) des qu'aucune
+    configuration Noethys locale n'existe -- ce qui n'arrive jamais sur
+    un poste de developpement deja utilisé pour l'application, mais
+    arrive systematiquement sur un runner CI propre. On isole donc
+    chaque test avec une base SQLite temporaire vide, exactement comme
+    le fait le vrai moteur en production avec une vraie base. """
+
+    def setUp(self):
+        self._base = BaseTest()
+        self._redirection = RedirectionGestionDB(self._base.chemin)
+        self._redirection.__enter__()
+
+    def tearDown(self):
+        self._redirection.__exit__(None, None, None)
+        self._base.fermer()
+
     def test_convention_est_listee_dans_les_categories(self):
         codes = [code for code, label in DLG_Modeles_docs.LISTE_CATEGORIES]
         self.assertIn("convention", codes)

@@ -12,6 +12,27 @@ reelle, hors depot, jamais utilisee par les tests).
 """
 from __future__ import annotations
 
+try:
+    from reportlab.platypus.frames import ShowBoundaryValue as _ShowBoundaryValue  # noqa: F401
+    REPORTLAB_RESERVATIONS_COMPATIBLE = True
+except ImportError:
+    REPORTLAB_RESERVATIONS_COMPATIBLE = False
+
+# UTILS_Impression_reservations.Impression() (moteur historique, non
+# modifie par cette PR, present bien avant elle) importe
+# reportlab.platypus.frames.ShowBoundaryValue, absent des versions
+# recentes de reportlab. requirements.txt ne pingle pas de version :
+# selon la version resolue au moment de l'installation, cet import peut
+# echouer. C'est un defaut preexistant et independant de la fonctionnalite
+# Convention -- documente dans la PR, pas corrige ici (hors perimetre).
+MOTIF_INDISPONIBILITE_RESERVATIONS = (
+    "UTILS_Impression_reservations.Impression() indisponible : "
+    "reportlab.platypus.frames.ShowBoundaryValue absent de la version de "
+    "reportlab installee (requirements.txt ne pingle pas de version). "
+    "Defaut preexistant, independant de la categorie Convention, "
+    "documente dans la PR."
+)
+
 import sys
 import tempfile
 from pathlib import Path
@@ -71,10 +92,12 @@ TABLES_REQUISES = (
     "activites", "groupes", "unites", "consommations", "prestations",
     "agrements", "documents_modeles", "documents_objets",
     # Tables interrogees sans condition par UTILS_Infos_individus.Informations
-    # (representant/famille) : vides ici, juste pour eviter les erreurs
+    # (representant/famille) et par GetNomsChampsPossibles/GetQuestions
+    # (questionnaires) : vides ici, juste pour eviter les erreurs
     # "no such table" bruyantes dans les tests.
     "secteurs", "caisses", "regimes", "liens", "parametres",
     "medecins", "categories_travail",
+    "questionnaire_categories", "questionnaire_questions", "questionnaire_choix",
 )
 
 

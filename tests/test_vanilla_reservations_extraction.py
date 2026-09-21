@@ -17,7 +17,11 @@ TESTS_DIR = Path(__file__).resolve().parent
 if str(TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(TESTS_DIR))
 
-from _fixtures_noethys_db import creer_base_association_simple  # noqa: E402
+from _fixtures_noethys_db import (  # noqa: E402
+    MOTIF_INDISPONIBILITE_RESERVATIONS,
+    REPORTLAB_RESERVATIONS_COMPATIBLE,
+    creer_base_association_simple,
+)
 from Utils import UTILS_Impression_reservations as R  # noqa: E402
 
 
@@ -75,6 +79,7 @@ class GetDonneesExtractionTests(unittest.TestCase):
         self.assertAlmostEqual(total_enfants, 108.00)
         self.assertAlmostEqual(total_adultes, 109.50)
 
+    @unittest.skipUnless(REPORTLAB_RESERVATIONS_COMPATIBLE, MOTIF_INDISPONIBILITE_RESERVATIONS)
     def test_rapport_reservations_historique_reste_fonctionnel(self):
         """Le moteur Impression() historique, non modifie, doit toujours
         produire un PDF exploitable a partir des donnees fournies par la

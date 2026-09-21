@@ -24,6 +24,8 @@ import wx  # noqa: E402
 _APP = wx.App(False)
 
 from _fixtures_noethys_db import (  # noqa: E402
+    MOTIF_INDISPONIBILITE_RESERVATIONS,
+    REPORTLAB_RESERVATIONS_COMPATIBLE,
     RedirectionGestionDB,
     creer_base_ecole_simple,
     inserer_modele_convention_scolaire_fictif,
@@ -153,6 +155,7 @@ class ConventionScolairePDFTests(unittest.TestCase):
 
 
 class ConventionScolairePlanningSepareTests(unittest.TestCase):
+    @unittest.skipUnless(REPORTLAB_RESERVATIONS_COMPATIBLE, MOTIF_INDISPONIBILITE_RESERVATIONS)
     def test_planning_reservations_reste_generable_pour_la_famille_ecole(self):
         """ Le PDF Planning séparé (moteur Réservations historique, non
         modifié) reste utilisable pour la même famille/période que la
