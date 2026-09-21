@@ -169,84 +169,6 @@ def _formate_heure(heure):
     return str(heure)[:5].replace(":", "h")
 
 
-def GetResumePlanning(dictDonnees):
-    """ Construit un résumé textuel déterministe du planning, individu
-    (groupe/cycle) par individu, à partir du même dict que
-    UTILS_Impression_reservations.GetDonnees()/Impression().
-
-    Ne fabrique aucune information absente des données fournies : les
-    libellés utilisés sont ceux réellement enregistrés dans Noethys
-    (nom d'activité, nom/prénom de l'individu représentant le
-    créneau/cycle). Si une information figurant dans un ancien document
-    papier (discipline précise, lieu de pratique, ...) n'existe dans
-    aucune de ces données, elle n'apparaît pas ici : elle reste du
-    contenu manuel du modèle ou de la saisie ponctuelle.
-    """
-    total_minutes = 0
-    total_montant = Decimal("0")
-    total_seances = 0
-    blocs = []
-
-    for dictIndividu in dictDonnees.values():
-        label_individu = u" ".join(
-            partie for partie in (dictIndividu.get("nom"), dictIndividu.get("prenom")) if partie
-        ).strip()
-
-        creneaux = {}
-        for IDactivite, dictActivite in dictIndividu["activites"].items():
-            for date, dictDate in dictActivite["dates"].items():
-                for listeConso in dictDate["unites"].values():
-                    for conso in listeConso:
-                        total_seances += 1
-                        duree = _duree_heures(conso.get("heure_debut"), conso.get("heure_fin"))
-                        if duree:
-                            total_minutes += int(round(duree * 60))
-                        prestation = conso.get("prestation")
-                        if prestation and prestation.get("montant") is not None:
-                            montant = _montant_decimal(prestation["montant"])
-                            if montant is not None:
-                                total_montant += montant
-
-                        jour = _jour_semaine(date)
-                        cle = (jour, conso.get("heure_debut"), conso.get("heure_fin"))
-                        creneaux.setdefault(cle, {"nom_activite": set(), "dates": []})
-                        creneaux[cle]["nom_activite"].add(dictActivite.get("nom") or u"")
-                        creneaux[cle]["dates"].append(date)
-
-        lignes_individu = []
-        for (jour, heure_debut, heure_fin), info in sorted(
-            creneaux.items(),
-            key=lambda item: (item[0][0] if item[0][0] is not None else 7, item[0][1] or u""),
-        ):
-            nb = len(info["dates"])
-            texte_activites = u", ".join(sorted(n for n in info["nom_activite"] if n))
-            if jour is not None and heure_debut and heure_fin:
-                ligne = _(u"%s de %s à %s") % (
-                    JOURS_SEMAINE[jour], _formate_heure(heure_debut), _formate_heure(heure_fin))
-            else:
-                ligne = _(u"%d séance(s)") % nb
-            if texte_activites:
-                ligne += u" : %s" % texte_activites
-            if nb > 1:
-                dates_triees = sorted(info["dates"])
-                ligne += _(u" (%d séances, du %s au %s)") % (
-                    nb, _formate_date_fr(dates_triees[0]), _formate_date_fr(dates_triees[-1]))
-            lignes_individu.append(ligne)
-
-        if lignes_individu:
-            if label_individu:
-                blocs.append(label_individu + u" :\n" + u"\n".join(u"- " + l for l in lignes_individu))
-            else:
-                blocs.extend(lignes_individu)
-
-    return {
-        "detail": u"\n\n".join(blocs),
-        "nbre_seances": total_seances,
-        "total_heures_minutes": total_minutes,
-        "total_montant": total_montant,
-    }
-
-
 def _formate_date_fr(date):
     try:
         if isinstance(date, datetime.date):
@@ -260,6 +182,195 @@ def _formate_date_fr(date):
 
 def FormateDureeHeures(minutes):
     return u"%dh%02d" % (minutes // 60, minutes % 60)
+
+
+# ---------------------------------------------------------------------------
+# Représentation métier structurée du planning (indépendante de wx/PDF)
+# ---------------------------------------------------------------------------
+
+# Au-delà de cet écart entre deux séances d'un même créneau récurrent
+# (jour + horaire identiques), on considère qu'il s'agit de deux périodes
+# distinctes (vacances, interruption, ...) plutôt que d'un seul bloc
+# continu : un cycle scolaire qui reprend le même jour/horaire plusieurs
+# mois plus tard (ex. reprise en mai d'un créneau utilisé en septembre)
+# ne doit jamais être présenté comme ininterrompu.
+SEUIL_RUPTURE_PERIODE_JOURS = 21
+
+
+class ConventionPeriode(object):
+    """ Un groupement cohérent de séances (même groupe/cycle, même jour de
+    semaine, même horaire, sans rupture de plus de
+    SEUIL_RUPTURE_PERIODE_JOURS jours) sur la période demandée.
+
+    Structure métier pure : aucune dépendance à wx, à ReportLab ni au
+    modèle .ndc. Les noms de champs sont volontairement simples pour
+    rester lisibles depuis les tests et un futur rendu alternatif. """
+
+    def __init__(self, groupe, activite, jour_semaine, heure_debut, heure_fin,
+                 date_debut, date_fin, nombre_seances, duree_minutes, montant_total):
+        self.groupe = groupe
+        self.activite = activite
+        self.jour_semaine = jour_semaine
+        self.heure_debut = heure_debut
+        self.heure_fin = heure_fin
+        self.date_debut = date_debut
+        self.date_fin = date_fin
+        self.nombre_seances = nombre_seances
+        self.duree_minutes = duree_minutes
+        self.montant_total = montant_total
+
+
+def _decoupe_en_sous_periodes(dates_triees, seuil_jours=SEUIL_RUPTURE_PERIODE_JOURS):
+    """ Coupe une liste de dates triées en sous-listes dès qu'un écart de
+    plus de seuil_jours sépare deux séances consécutives. """
+    if not dates_triees:
+        return []
+    groupes = [[dates_triees[0]]]
+    for date in dates_triees[1:]:
+        precedente = groupes[-1][-1]
+        try:
+            ecart = (_date_obj(date) - _date_obj(precedente)).days
+        except (ValueError, TypeError):
+            ecart = 0
+        if ecart > seuil_jours:
+            groupes.append([date])
+        else:
+            groupes[-1].append(date)
+    return groupes
+
+
+def _date_obj(date):
+    if isinstance(date, datetime.date):
+        return date
+    return datetime.datetime.strptime(str(date)[:10], "%Y-%m-%d").date()
+
+
+def ConstruirePeriodes(dictDonnees, seuil_rupture_jours=SEUIL_RUPTURE_PERIODE_JOURS):
+    """ Construit la liste des ConventionPeriode à partir du même dict que
+    UTILS_Impression_reservations.GetDonnees()/Impression().
+
+    Ne fabrique aucune information absente des données fournies : les
+    libellés utilisés (groupe, activité) sont ceux réellement enregistrés
+    dans Noethys. Si une information figurant dans un ancien document
+    papier (discipline précise, lieu de pratique, ...) n'existe dans
+    aucune de ces données, elle n'apparaît nulle part ici : elle reste du
+    contenu manuel du modèle ou de la saisie ponctuelle.
+    """
+    brut = {}
+    for dictIndividu in dictDonnees.values():
+        label_groupe = u" ".join(
+            partie for partie in (dictIndividu.get("nom"), dictIndividu.get("prenom")) if partie
+        ).strip()
+        for IDactivite, dictActivite in dictIndividu["activites"].items():
+            nom_activite = dictActivite.get("nom") or u""
+            for date, dictDate in dictActivite["dates"].items():
+                for listeConso in dictDate["unites"].values():
+                    for conso in listeConso:
+                        jour = _jour_semaine(date)
+                        cle = (label_groupe, IDactivite, nom_activite, jour,
+                               conso.get("heure_debut"), conso.get("heure_fin"))
+                        brut.setdefault(cle, []).append((date, conso))
+
+    periodes = []
+    for (label_groupe, IDactivite, nom_activite, jour, heure_debut, heure_fin), occurrences in brut.items():
+        occurrences.sort(key=lambda item: str(item[0]))
+        dates = [d for d, _c in occurrences]
+        for sous_dates in _decoupe_en_sous_periodes(dates, seuil_rupture_jours):
+            ensemble_sous_dates = set(sous_dates)
+            sous_occurrences = [(d, c) for d, c in occurrences if d in ensemble_sous_dates]
+            duree_totale = 0
+            montant_total = Decimal("0")
+            for _d, conso in sous_occurrences:
+                duree = _duree_heures(conso.get("heure_debut"), conso.get("heure_fin"))
+                if duree:
+                    duree_totale += int(round(duree * 60))
+                prestation = conso.get("prestation")
+                if prestation and prestation.get("montant") is not None:
+                    montant = _montant_decimal(prestation["montant"])
+                    if montant is not None:
+                        montant_total += montant
+            periodes.append(ConventionPeriode(
+                groupe=label_groupe, activite=nom_activite, jour_semaine=jour,
+                heure_debut=heure_debut, heure_fin=heure_fin,
+                date_debut=sous_dates[0], date_fin=sous_dates[-1],
+                nombre_seances=len(sous_dates), duree_minutes=duree_totale,
+                montant_total=montant_total,
+            ))
+
+    periodes.sort(key=lambda p: (
+        p.groupe, str(p.date_debut),
+        p.jour_semaine if p.jour_semaine is not None else 7,
+        p.heure_debut or u"",
+    ))
+    return periodes
+
+
+def FormatePeriode(periode):
+    """ Rend une ConventionPeriode en une ligne de texte factuelle, sans
+    aucune donnée absente de la période elle-même. """
+    if periode.jour_semaine is not None and periode.heure_debut and periode.heure_fin:
+        ligne = _(u"%s de %s à %s") % (
+            JOURS_SEMAINE[periode.jour_semaine],
+            _formate_heure(periode.heure_debut), _formate_heure(periode.heure_fin))
+    else:
+        ligne = _(u"%d séance(s)") % periode.nombre_seances
+
+    if periode.activite:
+        ligne += u" : %s" % periode.activite
+
+    if periode.nombre_seances > 1:
+        ligne += _(u" (%d séances, du %s au %s)") % (
+            periode.nombre_seances, _formate_date_fr(periode.date_debut), _formate_date_fr(periode.date_fin))
+    else:
+        ligne += _(u" (le %s)") % _formate_date_fr(periode.date_debut)
+
+    if periode.duree_minutes:
+        ligne += _(u" — %s au total") % FormateDureeHeures(periode.duree_minutes)
+
+    return ligne
+
+
+def FormatePeriodes(listePeriodes):
+    """ Regroupe les périodes par groupe/cycle (ordre stable, déjà trié
+    par ConstruirePeriodes) et produit le texte final. """
+    blocs = []
+    groupe_courant = object()  # sentinelle : ne matche aucun vrai groupe
+    lignes_courantes = []
+
+    def _cloture_bloc():
+        if not lignes_courantes:
+            return
+        if groupe_courant:
+            blocs.append(groupe_courant + u" :\n" + u"\n".join(u"- " + l for l in lignes_courantes))
+        else:
+            blocs.extend(lignes_courantes)
+
+    for periode in listePeriodes:
+        if periode.groupe != groupe_courant:
+            _cloture_bloc()
+            groupe_courant = periode.groupe
+            lignes_courantes = []
+        lignes_courantes.append(FormatePeriode(periode))
+    _cloture_bloc()
+
+    return u"\n\n".join(blocs)
+
+
+def GetResumePlanning(dictDonnees):
+    """ Construit le résumé du planning (texte + totaux) à partir du même
+    dict que UTILS_Impression_reservations.GetDonnees()/Impression().
+    Voir ConstruirePeriodes() pour la structure sous-jacente. """
+    periodes = ConstruirePeriodes(dictDonnees)
+    total_seances = sum(p.nombre_seances for p in periodes)
+    total_minutes = sum(p.duree_minutes for p in periodes)
+    total_montant = sum((p.montant_total for p in periodes), Decimal("0"))
+    return {
+        "detail": FormatePeriodes(periodes),
+        "nbre_seances": total_seances,
+        "total_heures_minutes": total_minutes,
+        "total_montant": total_montant,
+        "periodes": periodes,
+    }
 
 
 # ---------------------------------------------------------------------------
