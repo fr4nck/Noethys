@@ -463,6 +463,13 @@ class Dialog(wx.Dialog):
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.MenuListeDevis, id=20)
 
+        # Item Convention d'encadrement sportif
+        item = wx.MenuItem(menuPop, 16, _(u"Générer une convention d'encadrement sportif"))
+        bmp = wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Generation.png"), wx.BITMAP_TYPE_PNG)
+        item.SetBitmap(bmp)
+        menuPop.AppendItem(item)
+        self.Bind(wx.EVT_MENU, self.MenuGenererConvention, id=16)
+
         menuPop.AppendSeparator()
 
         # Item Editer Lettre de rappel
@@ -635,6 +642,39 @@ class Dialog(wx.Dialog):
         dlg = DLG_Liste_devis.Dialog(self, IDfamille=self.IDfamille)
         dlg.ShowModal()
         dlg.Destroy()
+
+    def MenuGenererConvention(self, event):
+        """ Génère la convention d'encadrement sportif de la famille. """
+        if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("familles_devis", "creer") == False :
+            return
+
+        # Enregistre notamment les réponses du questionnaire avant génération.
+        if self.Sauvegarde() == False :
+            return
+
+        try :
+            from Utils import UTILS_Impression_convention
+            resultat = UTILS_Impression_convention.Impression(IDfamille=self.IDfamille)
+        except Exception as err :
+            dlg = wx.MessageDialog(
+                self,
+                _(u"Impossible de générer la convention.\n\n%s") % err,
+                _(u"Convention d'encadrement sportif"),
+                wx.OK | wx.ICON_ERROR,
+            )
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
+
+        if resultat :
+            try :
+                UTILS_Historique.InsertActions([{
+                    "IDfamille" : self.IDfamille,
+                    "IDcategorie" : 4,
+                    "action" : _(u"Génération d'une convention d'encadrement sportif"),
+                    },])
+            except :
+                pass
 
     def MenuGenererRappel(self, event):
         if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("familles_lettre_rappel", "creer") == False : return
