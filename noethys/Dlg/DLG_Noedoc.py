@@ -1051,6 +1051,70 @@ class Devis():
 
 # ----------------------------------------------------------------------------------------------------------------------------------
 
+class Convention():
+    def __init__(self):
+        self.nom = _(u"Convention")
+        self.code = "convention"
+
+        self.photosIndividuelles = False
+
+        self.champs = [
+            (_(u"Numéro ID de la famille"), u"2582", "{IDFAMILLE}"),
+
+            (_(u"Nom de l'organisateur"), _(u"Association Noethys"), "{ORGANISATEUR_NOM}"),
+            (_(u"Rue de l'organisateur"), _(u"Avenue des Lilas"), "{ORGANISATEUR_RUE}"),
+            (_(u"Code postal de l'organisateur"), u"29870", "{ORGANISATEUR_CP}"),
+            (_(u"Ville de l'organisateur"), _(u"LANNILIS"), "{ORGANISATEUR_VILLE}"),
+            (_(u"Téléphone de l'organisateur"), u"01.98.01.02.03", "{ORGANISATEUR_TEL}"),
+            (_(u"Mail de l'organisateur"), _(u"noethys") + u"@gmail.com", "{ORGANISATEUR_MAIL}"),
+
+            # Alias stables du représentant de la structure cocontractante :
+            # alimentés par le fournisseur de champs Convention (voir
+            # Utils/UTILS_Convention_champs.py) à partir du même mécanisme
+            # historique {REPRESENTANT_RATTACHE_x_*}, sans redéfinir de
+            # deuxième source de données ni imposer à l'utilisateur de
+            # connaître un index "x".
+            (_(u"Nom du représentant de la structure"), _(u"DUPOND"), "{CONVENTION_REPRESENTANT_NOM}"),
+            (_(u"Prénom du représentant de la structure"), _(u"Gérard"), "{CONVENTION_REPRESENTANT_PRENOM}"),
+            (_(u"Nom complet du représentant de la structure"), _(u"M. DUPOND Gérard"), "{CONVENTION_REPRESENTANT_NOM_COMPLET}"),
+            (_(u"Fonction du représentant de la structure"), _(u"Président"), "{CONVENTION_REPRESENTANT_FONCTION}"),
+
+            (_(u"Saison de la convention"), _(u"2026-2027"), "{CONVENTION_SAISON}"),
+            (_(u"Date de début de la période"), u"01/09/2026", "{CONVENTION_DATE_DEBUT}"),
+            (_(u"Date de fin de la période"), u"30/06/2027", "{CONVENTION_DATE_FIN}"),
+
+            # Résumé du planning calculé depuis les données Noethys
+            # (consommations/prestations réellement enregistrées) : voir
+            # UTILS_Convention_champs.GetResumePlanning().
+            (_(u"Résumé du planning (créneaux/périodes)"), _(u"Lundi de 19h30 à 20h30 : Fitness"), "{CONVENTION_PLANNING_DETAIL}"),
+            (_(u"Nombre total de séances"), u"34", "{CONVENTION_PLANNING_NBRE_SEANCES}"),
+            (_(u"Volume horaire total"), _(u"51h00"), "{CONVENTION_PLANNING_TOTAL_HEURES}"),
+            (_(u"Montant total prévisionnel"), u"1224.00 €", "{CONVENTION_PLANNING_TOTAL_MONTANT}"),
+
+            # Tarifs : automatiquement déterminés depuis les prestations
+            # réellement facturées quand un taux horaire unique et non
+            # ambigu existe (voir UTILS_Convention_champs.DetecterTarifs) ;
+            # sinon laissés à la saisie manuelle dans le générateur.
+            (_(u"Tarif horaire (si un seul taux)"), u"20.00 €", "{CONVENTION_TARIF_HORAIRE}"),
+            (_(u"Tarif horaire adulte"), u"36.50 €", "{CONVENTION_TARIF_ADULTE}"),
+            (_(u"Tarif horaire enfant"), u"24.00 €", "{CONVENTION_TARIF_ENFANT}"),
+            ]
+
+        self.champs.extend(UTILS_Infos_individus.GetNomsChampsPossibles(mode="famille"))
+
+        self.codesbarres = []
+
+        self.speciaux = [{"nom": _(u"Cadre principal"), "champ": _(
+            u"cadre_principal"), "obligatoire": True, "nbreMax": 1, "x": None, "y": None, "verrouillageX": False, "verrouillageY": False, "Xmodifiable": True, "Ymodifiable": True, "largeur": 100, "hauteur": 150, "largeurModifiable": True, "hauteurModifiable": True, "largeurMin": 80, "largeurMax": 1000, "hauteurMin": 80, "hauteurMax": 1000, "verrouillageLargeur": False, "verrouillageHauteur": False, "verrouillageProportions": False, "interditModifProportions": False, }]
+
+        # Questionnaires (facultatifs : voir UTILS_Convention_champs, la
+        # génération ne dépend jamais d'une réponse de questionnaire)
+        self.champs.extend(GetQuestions("famille"))
+        self.codesbarres.extend(GetCodesBarresQuestionnaires("famille"))
+
+
+# ----------------------------------------------------------------------------------------------------------------------------------
+
 
 
 
@@ -5228,6 +5292,7 @@ class Dialog(wx.Dialog):
         if categorie == "location" : self.infosCategorie = Location()
         if categorie == "location_demande" : self.infosCategorie = Location_demande()
         if categorie == "devis": self.infosCategorie = Devis()
+        if categorie == "convention": self.infosCategorie = Convention()
 
         self._mgr = aui.AuiManager()
         self._mgr.SetManagedWindow(self)
