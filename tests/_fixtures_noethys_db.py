@@ -385,12 +385,18 @@ def inserer_modele_convention_scolaire_fictif(base):
         "ARTICLE FICTIF 1 : ENGAGEMENT\n"
         "Ceci est un texte d'engagement fictif de test, suffisamment long pour occuper "
         "plusieurs lignes dans le cadre principal du document, comme un vrai article de "
-        "convention le ferait dans un cas réel. Aucune donnée réelle n'apparaît ici.\n\n"
+        "convention le ferait dans un cas réel. Aucune donnée réelle n'apparaît ici. "
+        "La structure organisatrice met à disposition de l'établissement fictif un "
+        "intervenant pour accompagner l'équipe pédagogique dans la mise en place des "
+        "séances prévues au présent document de test, selon les modalités décrites "
+        "dans les articles suivants, pour la durée de la période convenue entre les "
+        "deux parties signataires de ce document fictif de recette.\n\n"
 
         "ARTICLE FICTIF 2 : PLANNING\n"
         "Un calendrier prévisionnel est joint à la présente convention à titre indicatif. "
+        "Il appartient à l'établissement nommé ci-dessus de le vérifier et de le signer. "
         "Le détail ci-dessous est calculé automatiquement depuis les données "
-        "d'inscription réellement enregistrées :\n\n"
+        "d'inscription réellement enregistrées, groupe par groupe :\n\n"
         "{CONVENTION_PLANNING_DETAIL}\n\n"
         "Nombre total de séances : {CONVENTION_PLANNING_NBRE_SEANCES}\n"
         "Volume horaire total : {CONVENTION_PLANNING_TOTAL_HEURES}\n\n"
@@ -399,17 +405,44 @@ def inserer_modele_convention_scolaire_fictif(base):
         "Texte fictif de test décrivant les modalités d'absence et d'annulation, "
         "reproduisant la longueur habituelle de ce type d'article dans un document réel, "
         "pour vérifier que la pagination se comporte correctement sur un contenu réaliste "
-        "plutôt que sur un texte artificiellement court.\n\n"
+        "plutôt que sur un texte artificiellement court. Pour des raisons de formation, "
+        "l'intervenant fictif peut être amené à s'absenter ; dans ce cas et pour toute "
+        "autre absence prévisible, l'établissement fictif sera prévenu au moins quinze "
+        "jours à l'avance et, dans la mesure du possible, il sera procédé à son "
+        "remplacement par un autre intervenant fictif de la structure organisatrice.\n"
+        "Si, pour des raisons qui devront être précisées, l'établissement devait annuler "
+        "une séance de test, le secrétariat fictif devra en être prévenu au moins une "
+        "semaine à l'avance, par tout moyen écrit convenu entre les parties. À défaut "
+        "d'un tel préavis, la séance de test annulée pourra être comptabilisée comme "
+        "réalisée dans le décompte prévisionnel fictif figurant à l'article précédent, "
+        "sauf accord contraire formalisé entre les deux parties signataires du présent "
+        "document de recette.\n\n"
 
         "ARTICLE FICTIF 4 : RESPONSABILITÉS\n"
         "Texte fictif de test décrivant les responsabilités respectives des parties, "
         "à nouveau de longueur comparable à un article réel, afin que le test de "
         "pagination reste représentatif d'un document complet plutôt que d'un "
-        "extrait artificiellement réduit à quelques mots.\n\n"
+        "extrait artificiellement réduit à quelques mots. La structure organisatrice "
+        "fictive gère les intervenants mis à disposition des établissements partenaires "
+        "fictifs du territoire de test ; ces intervenants restent placés sous la "
+        "responsabilité de la structure organisatrice fictive en sa qualité d'employeur "
+        "et déclinent toute responsabilité en dehors de leurs heures d'encadrement "
+        "prévues au planning ci-dessus.\n"
+        "La structure organisatrice fictive assure la protection morale et physique des "
+        "participants fictifs au sein des activités que son personnel de test anime, "
+        "dans le respect de la législation du travail et des textes applicables à "
+        "l'encadrement d'enfants et d'adolescents. En sa qualité d'employeur fictif, "
+        "elle déclare et verse les cotisations sociales de son personnel de test aux "
+        "organismes habilités, et son action professionnelle de test est régie par la "
+        "convention collective fictive applicable à ce secteur d'activité de recette.\n\n"
 
         "ARTICLE FICTIF 5 : LITIGES\n"
         "Texte fictif de test décrivant le règlement des litiges éventuels entre les "
-        "parties signataires de la présente convention de test.\n\n"
+        "parties signataires de la présente convention de test. Tout litige relatif à "
+        "l'exécution du présent document fictif doit être porté à la connaissance du "
+        "responsable de l'établissement fictif et de la direction de la structure "
+        "organisatrice fictive ; à défaut de règlement amiable entre les parties, le "
+        "litige de test sera porté devant la juridiction fictivement compétente.\n\n"
 
         "ARTICLE FICTIF 6 : FACTURATION\n"
         "Le tarif horaire applicable pour la présente convention de test est de "
@@ -422,9 +455,14 @@ def inserer_modele_convention_scolaire_fictif(base):
         "Signature\t\t\t\tSignature"
     )
     objets = [
+        # Cadre principal volontairement moins haut que la page complète
+        # (140 mm sur 297 mm) : dans un vrai modèle, l'espace au-dessus
+        # est occupé par un en-tête/logo, comme le montrent les documents
+        # réels de référence -- ce n'est pas un artifice pour forcer la
+        # pagination, c'est une mise en page réaliste.
         {
             "nom": "Cadre principal", "categorie": "special", "champ": "cadre_principal",
-            "ordre": 0, "x": 13, "y": 20, "largeur": 182, "hauteur": 250,
+            "ordre": 0, "x": 13, "y": 20, "largeur": 182, "hauteur": 140,
         },
         {
             "nom": "Corps", "categorie": "bloc_texte", "ordre": 1,
