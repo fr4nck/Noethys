@@ -219,25 +219,65 @@ def _educateurs(groupe):
     return labels, renseignees
 
 
+def _export_logo_temp(bitmap):
+    """Exporte le logo organisateur en PNG temporaire pour ReportLab."""
+    if bitmap is None:
+        return None
+    try:
+        import os
+        import tempfile
+        image = bitmap.ConvertToImage()
+        chemin = os.path.join(tempfile.gettempdir(),
+                              "noethys_convention_logo_%s.png" % os.getpid())
+        if image.SaveFile(chemin, wx.BITMAP_TYPE_PNG):
+            return chemin
+    except Exception:
+        pass
+    return None
+
+
+def _register_ar_christy():
+    """Utilise AR Christy si elle est installée sur Windows, sinon Helvetica."""
+    try:
+        import os
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        dossier = os.path.join(os.environ.get("WINDIR", r"C:\\Windows"), "Fonts")
+        for nom in os.listdir(dossier):
+            normalise = nom.lower().replace(" ", "").replace("_", "").replace("-", "")
+            if "christy" in normalise and nom.lower().endswith((".ttf", ".otf")):
+                pdfmetrics.registerFont(TTFont("ARChristy", os.path.join(dossier, nom)))
+                return "ARChristy"
+    except Exception:
+        pass
+    return "Helvetica-Bold"
+
+
 def _pdf_association(saison, structure, signataire, planning, nomDoc, afficherDoc):
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_CENTER
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
-    from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
     if sys.platform.startswith("win"):
         nomDoc = nomDoc.replace("/", "\\")
-    org = UTILS_Organisateur.GetDonnees()
+    # Demande une grande zone de travail afin de ne pas agrandir la miniature
+    # 40x40 utilisée par défaut dans Noethys.
+    org = UTILS_Organisateur.GetDonnees(tailleLogo=(600, 400))
     nom_org = org.get("nom") or u"PÊLE-MÊLE SPORTS ET LOISIRS"
     base = getSampleStyleSheet()["Normal"]
     normal = ParagraphStyle("conv", parent=base, fontName="Helvetica", fontSize=9.2, leading=12, spaceAfter=4)
     titre = ParagraphStyle("conv_titre", parent=normal, fontName="Helvetica-Bold", fontSize=14, leading=17, alignment=TA_CENTER)
     article = ParagraphStyle("conv_article", parent=normal, fontName="Helvetica-Bold", fontSize=10, spaceBefore=7, spaceAfter=4)
     petit = ParagraphStyle("conv_petit", parent=normal, fontSize=8, leading=10)
+    nom_asso = ParagraphStyle("conv_nom_asso", parent=normal,
+                              fontName=_register_ar_christy(), fontSize=15.5,
+                              leading=17, alignment=TA_CENTER)
 
     story = []
+    temp_logo = _export_logo_temp(org.get("logo"))
 
     def P(text, style=normal, after=5):
         story.append(Paragraph(text, style))
@@ -252,10 +292,57 @@ def _pdf_association(saison, structure, signataire, planning, nomDoc, afficherDo
 
     doc = SimpleDocTemplate(nomDoc, pagesize=A4, leftMargin=18*mm, rightMargin=18*mm,
                             topMargin=15*mm, bottomMargin=17*mm)
-    P(u"<b>%s</b><br/>%s - %s %s<br/>%s - %s" % (
-        _safe(nom_org), _safe(org.get("rue")), _safe(org.get("cp")), _safe(org.get("ville")),
-        _safe(org.get("tel")), _safe(org.get("mail"))), normal, 10)
-    P(_(u"CONVENTION D'ENCADREMENT SPORTIF %s") % _safe(saison), titre, 10)
+    # En-tête proche du modèle PMSL : logo à gauche, coordonnées à droite.
+    logo_cell = Paragraph(u"<b>%s</b>" % _safe(nom_org), titre)
+    if temp_logo:
+        try:
+            logo = Image(temp_logo)
+            max_w, max_h = 54 * mm, 36 * mm
+            ratio = min(max_w / float(logo.imageWidth), max_h / float(logo.imageHeight))
+            logo.drawWidth = logo.imageWidth * ratio
+            logo.drawHeight = logo.imageHeight * ratio
+            logo_cell = logo
+        except Exception:
+            pass
+
+    contact = u"%s<br/>%s %s" % (_safe(org.get("rue")),
+                                  _safe(org.get("cp")), _safe(org.get("ville")))
+    if org.get("tel"):
+        contact += u"<br/>%s" % _safe(org.get("tel"))
+    if org.get("mail"):
+        contact += u"<br/><u>%s</u>" % _safe(org.get("mail"))
+
+    coordonnees = Table([
+        [Paragraph(_safe(nom_org.upper()), nom_asso)],
+        [Paragraph(contact, ParagraphStyle("conv_coord", parent=normal,
+                                           fontName="Helvetica-Bold",
+                                           fontSize=10.2, leading=13,
+                                           alignment=TA_CENTER))],
+    ], colWidths=[86 * mm])
+    coordonnees.setStyle(TableStyle([
+        ("ALIGN", (0,0), (-1,-1), "CENTER"),
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+    ]))
+
+    entete_table = Table([[logo_cell, coordonnees]], colWidths=[78 * mm, 86 * mm])
+    entete_table.setStyle(TableStyle([
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ("ALIGN", (0,0), (0,0), "CENTER"),
+        ("BOX", (1,0), (1,0), 1.0, colors.black),
+        ("TOPPADDING", (1,0), (1,0), 8),
+        ("BOTTOMPADDING", (1,0), (1,0), 8),
+    ]))
+    story.extend([entete_table, Spacer(1, 8)])
+
+    titre_table = Table([[Paragraph(_(u"Convention d'encadrement sportif %s") %
+                                    _safe(saison.replace("-", "/")), titre)]],
+                        colWidths=[164 * mm])
+    titre_table.setStyle(TableStyle([
+        ("BOX", (0,0), (-1,-1), 1.2, colors.black),
+        ("TOPPADDING", (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+    ]))
+    story.extend([titre_table, Spacer(1, 10)])
 
     signataire_txt = _(u"Non renseigné dans Noethys")
     if signataire:
@@ -336,7 +423,15 @@ def _pdf_association(saison, structure, signataire, planning, nomDoc, afficherDo
     table.setStyle(TableStyle([("GRID",(0,0),(-1,-1),0.5,colors.grey),("FONT",(0,0),(0,-1),"Helvetica-Bold",9),("ALIGN",(1,0),(1,-1),"RIGHT"),("PADDING",(0,0),(-1,-1),5)]))
     story.append(table)
 
-    doc.build(story, onFirstPage=footer, onLaterPages=footer)
+    try:
+        doc.build(story, onFirstPage=footer, onLaterPages=footer)
+    finally:
+        if temp_logo:
+            try:
+                import os
+                os.remove(temp_logo)
+            except Exception:
+                pass
     if afficherDoc:
         FonctionsPerso.LanceFichierExterne(nomDoc)
     return {"nomDoc": nomDoc, "nbre_seances": total_seances, "volume_minutes": total_minutes, "montant": _total(planning)}
