@@ -14,7 +14,9 @@ on:
       - 'tests/test_vanilla_convention_category.py'
       - 'tests/test_vanilla_convention_champs.py'
       - 'tests/test_vanilla_convention_contract.py'
+      - 'tests/test_vanilla_convention_periodes.py'
       - 'tests/test_vanilla_convention_rendering.py'
+      - 'tests/test_vanilla_convention_scolaire.py'
       - 'tests/test_vanilla_reservations_extraction.py'
       - '.github/workflows/vanilla-convention.yml'
       - 'requirements.txt'
@@ -59,5 +61,7 @@ jobs:
           tests.test_vanilla_convention_category
           tests.test_vanilla_convention_champs
           tests.test_vanilla_convention_contract
+          tests.test_vanilla_convention_periodes
           tests.test_vanilla_convention_rendering
+          tests.test_vanilla_convention_scolaire
           tests.test_vanilla_reservations_extraction
