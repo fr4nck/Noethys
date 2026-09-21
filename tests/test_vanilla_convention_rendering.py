@@ -99,6 +99,50 @@ class GenerationPDFConventionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             UIC.Impression(IDfamille=1, IDmodele=None)
 
+    def test_texte_long_s_ecoule_automatiquement_sur_plusieurs_pages(self):
+        """ Cas scolaire (ex. La Providence) : un corps de convention
+        nettement plus long qu'une page doit se paginer automatiquement,
+        via le meme mecanisme Frame/Platypus que les factures -- aucune
+        pagination specifique aux conventions n'est ecrite ici. """
+        import sys as _sys
+        if str(NOETHYS_DIR) not in _sys.path:
+            _sys.path.insert(0, str(NOETHYS_DIR))
+        from Dlg import DLG_Noedoc
+        from reportlab.platypus.doctemplate import BaseDocTemplate
+
+        paragraphe = (
+            "Ceci est un paragraphe fictif de test pour verifier que le "
+            "texte long deborde correctement sur plusieurs pages sans "
+            "etre coupe ni superpose. "
+        ) * 6
+        corps = "\n\n".join(
+            "ARTICLE FICTIF %d\n%s" % (i, paragraphe) for i in range(1, 13)
+        )
+
+        with creer_base_association_simple() as base:
+            IDmodele = inserer_modele_document(base, "Convention longue", "convention", [
+                {"nom": "Cadre principal", "categorie": "special", "champ": "cadre_principal",
+                 "ordre": 0, "x": 13, "y": 20, "largeur": 182, "hauteur": 250},
+                {"nom": "Corps", "categorie": "bloc_texte", "ordre": 1,
+                 "x": 13, "y": 20, "largeur": 182, "texte": corps},
+            ])
+            chemin_pdf = tempfile.mktemp(suffix=".pdf")
+            try:
+                with RedirectionGestionDB(base.chemin):
+                    modeleDoc = DLG_Noedoc.ModeleDoc(IDmodele=IDmodele)
+                    cadre, objetsFlottants = UIC._SepareObjetsFixesEtFlottants(modeleDoc)
+                    story = UIC._ConstruitStory(modeleDoc, objetsFlottants, {})
+                    doc = BaseDocTemplate(chemin_pdf, pagesize=UIC.TAILLE_PAGE)
+                    doc.addPageTemplates([UIC._GabaritConvention(cadre, modeleDoc, {}, objetsFlottants)])
+                    doc.build(story)
+                    nb_pages = doc.page
+                self.assertGreater(nb_pages, 1, "le texte long doit produire plusieurs pages")
+                self.assertTrue(os.path.isfile(chemin_pdf))
+                self.assertGreater(os.path.getsize(chemin_pdf), 0)
+            finally:
+                if os.path.isfile(chemin_pdf):
+                    os.remove(chemin_pdf)
+
     def test_modele_sans_cadre_principal_echoue_proprement(self):
         with creer_base_association_simple() as base:
             IDmodele = inserer_modele_document(base, "Sans cadre", "convention", [
