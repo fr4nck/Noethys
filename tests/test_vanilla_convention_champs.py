@@ -15,6 +15,7 @@ if str(TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(TESTS_DIR))
 
 from _fixtures_noethys_db import (  # noqa: E402
+    RedirectionGestionDB,
     creer_base_association_simple,
     creer_base_ecole_simple,
     creer_base_tarif_ambigu_simple,
@@ -284,41 +285,46 @@ class GetChampsConventionOverridesTests(unittest.TestCase):
         """ Un dialogue qui ne renseigne pas une cle (valeur None) ne doit
         jamais effacer une valeur deja determinee automatiquement. """
         with creer_base_ecole_simple() as base:
-            champs, _ = CC.GetChampsConvention(
-                IDfamille=2, listeIDindividus=[20, 21, 22], DB=base.db,
-                overrides={"{CONVENTION_TARIF_HORAIRE}": None},
-            )
+            with RedirectionGestionDB(base.chemin):
+                champs, _ = CC.GetChampsConvention(
+                    IDfamille=2, listeIDindividus=[20, 21, 22], DB=base.db,
+                    overrides={"{CONVENTION_TARIF_HORAIRE}": None},
+                )
         self.assertEqual(champs["{CONVENTION_TARIF_HORAIRE}"], 20.0)
 
     def test_tarif_automatique_utilise_si_aucun_override(self):
         with creer_base_ecole_simple() as base:
-            champs, _ = CC.GetChampsConvention(
-                IDfamille=2, listeIDindividus=[20, 21, 22], DB=base.db,
-            )
+            with RedirectionGestionDB(base.chemin):
+                champs, _ = CC.GetChampsConvention(
+                    IDfamille=2, listeIDindividus=[20, 21, 22], DB=base.db,
+                )
         self.assertEqual(champs["{CONVENTION_TARIF_HORAIRE}"], 20.0)
 
     def test_tarif_override_ecrase_le_tarif_automatique(self):
         with creer_base_ecole_simple() as base:
-            champs, _ = CC.GetChampsConvention(
-                IDfamille=2, listeIDindividus=[20, 21, 22], DB=base.db,
-                overrides={"{CONVENTION_TARIF_HORAIRE}": 22.5},
-            )
+            with RedirectionGestionDB(base.chemin):
+                champs, _ = CC.GetChampsConvention(
+                    IDfamille=2, listeIDindividus=[20, 21, 22], DB=base.db,
+                    overrides={"{CONVENTION_TARIF_HORAIRE}": 22.5},
+                )
         self.assertEqual(champs["{CONVENTION_TARIF_HORAIRE}"], 22.5)
 
     def test_tarif_ambigu_reste_vide_sans_override(self):
         with creer_base_tarif_ambigu_simple() as base:
-            champs, dictDonnees = CC.GetChampsConvention(
-                IDfamille=1, listeIDindividus=[2], DB=base.db,
-            )
+            with RedirectionGestionDB(base.chemin):
+                champs, dictDonnees = CC.GetChampsConvention(
+                    IDfamille=1, listeIDindividus=[2], DB=base.db,
+                )
         self.assertEqual(CC.DetecterTarifs(dictDonnees)["mode"], "manuel")
         self.assertEqual(champs["{CONVENTION_TARIF_HORAIRE}"], u"")
 
     def test_tarif_ambigu_est_utilisable_avec_un_override_manuel(self):
         with creer_base_tarif_ambigu_simple() as base:
-            champs, _ = CC.GetChampsConvention(
-                IDfamille=1, listeIDindividus=[2], DB=base.db,
-                overrides={"{CONVENTION_TARIF_HORAIRE}": 40.0},
-            )
+            with RedirectionGestionDB(base.chemin):
+                champs, _ = CC.GetChampsConvention(
+                    IDfamille=1, listeIDindividus=[2], DB=base.db,
+                    overrides={"{CONVENTION_TARIF_HORAIRE}": 40.0},
+                )
         self.assertEqual(champs["{CONVENTION_TARIF_HORAIRE}"], 40.0)
 
     def test_override_ne_modifie_jamais_les_prestations_en_base(self):
@@ -329,10 +335,11 @@ class GetChampsConventionOverridesTests(unittest.TestCase):
             base.db.ExecuterReq("SELECT IDprestation, label, montant FROM prestations ORDER BY IDprestation;")
             avant = base.db.ResultatReq()
 
-            CC.GetChampsConvention(
-                IDfamille=2, listeIDindividus=[20, 21, 22], DB=base.db,
-                overrides={"{CONVENTION_TARIF_HORAIRE}": 999.99},
-            )
+            with RedirectionGestionDB(base.chemin):
+                CC.GetChampsConvention(
+                    IDfamille=2, listeIDindividus=[20, 21, 22], DB=base.db,
+                    overrides={"{CONVENTION_TARIF_HORAIRE}": 999.99},
+                )
 
             base.db.ExecuterReq("SELECT IDprestation, label, montant FROM prestations ORDER BY IDprestation;")
             apres = base.db.ResultatReq()
