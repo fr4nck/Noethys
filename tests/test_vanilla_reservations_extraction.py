@@ -18,8 +18,7 @@ if str(TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(TESTS_DIR))
 
 from _fixtures_noethys_db import (  # noqa: E402
-    MOTIF_INDISPONIBILITE_RESERVATIONS,
-    REPORTLAB_RESERVATIONS_COMPATIBLE,
+    BaseTest,
     creer_base_association_simple,
 )
 from Utils import UTILS_Impression_reservations as R  # noqa: E402
@@ -79,7 +78,6 @@ class GetDonneesExtractionTests(unittest.TestCase):
         self.assertAlmostEqual(total_enfants, 108.00)
         self.assertAlmostEqual(total_adultes, 109.50)
 
-    @unittest.skipUnless(REPORTLAB_RESERVATIONS_COMPATIBLE, MOTIF_INDISPONIBILITE_RESERVATIONS)
     def test_rapport_reservations_historique_reste_fonctionnel(self):
         """Le moteur Impression() historique, non modifie, doit toujours
         produire un PDF exploitable a partir des donnees fournies par la
@@ -100,6 +98,69 @@ class GetDonneesExtractionTests(unittest.TestCase):
             finally:
                 if os.path.isfile(chemin_pdf):
                     os.remove(chemin_pdf)
+
+    def test_impression_avec_dictdonnees_minimal_produit_reellement_un_pdf(self):
+        """ Non-regression du correctif "from reportlab.platypus.frames
+        import Frame, ShowBoundaryValue" -> "import Frame" (ShowBoundaryValue
+        n'etait utilise nulle part dans ce fichier et absent des versions
+        recentes de reportlab, faisant echouer cet import a chaud). Cas
+        volontairement minimal (un seul individu, une seule activite, une
+        seule seance), independant de la richesse de la fixture
+        association, pour isoler precisement Impression() elle-meme --
+        avec la version de reportlab reellement installee dans cet
+        environnement (aucune version n'est pingle ni ce test ni
+        requirements.txt). """
+        base = BaseTest()
+        try:
+            base.inserer(
+                "organisateur",
+                ["IDorganisateur", "nom", "rue", "cp", "ville", "tel", "mail"],
+                [(1, "Structure Test", "1 rue Test", "00000", "Testville", "", "")],
+            )
+            base.inserer("familles", ["IDfamille"], [(1,)])
+            base.inserer(
+                "individus", ["IDindividu", "nom", "prenom", "IDcivilite"],
+                [(1, "TEST", "Minimal", 1)],
+            )
+            base.inserer(
+                "rattachements",
+                ["IDrattachement", "IDfamille", "IDindividu", "IDcategorie", "titulaire"],
+                [(1, 1, 1, 1, 1)],
+            )
+            base.inserer("activites", ["IDactivite", "nom"], [(10, "Activité minimale")])
+            base.inserer("groupes", ["IDgroupe", "IDactivite", "nom"], [(20, 10, "Groupe")])
+            base.inserer(
+                "unites", ["IDunite", "IDactivite", "nom", "ordre", "type"],
+                [(30, 10, "Unité", 1, "Horaire")],
+            )
+            base.inserer(
+                "prestations", ["IDprestation", "label", "montant"],
+                [(100, "Prestation minimale", 10.0)],
+            )
+            base.inserer(
+                "consommations",
+                ["IDconso", "IDindividu", "IDactivite", "date", "IDunite", "heure_debut", "heure_fin", "etat", "IDgroupe", "IDprestation"],
+                [(1000, 1, 10, "2026-09-01", 30, "10:00", "11:00", "reservation", 20, 100)],
+            )
+
+            dictDonnees = R.GetDonnees(
+                listeIDindividus=[1], date_debut="2026-09-01", date_fin="2026-09-01", DB=base.db,
+            )
+            self.assertEqual(set(dictDonnees.keys()), {1})
+
+            chemin_pdf = tempfile.mktemp(suffix=".pdf")
+            try:
+                resultat = R.Impression(dictDonnees, nomDoc=chemin_pdf, afficherDoc=False)
+                self.assertIsNotNone(resultat)
+                self.assertTrue(os.path.isfile(chemin_pdf))
+                self.assertGreater(os.path.getsize(chemin_pdf), 0)
+                with open(chemin_pdf, "rb") as f:
+                    self.assertTrue(f.read(5).startswith(b"%PDF-"))
+            finally:
+                if os.path.isfile(chemin_pdf):
+                    os.remove(chemin_pdf)
+        finally:
+            base.fermer()
 
 
 if __name__ == "__main__":
