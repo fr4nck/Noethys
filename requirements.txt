@@ -13,6 +13,7 @@ xlrd
 python-dateutil
 psutil
 paramiko
+requests
 lxml
 setuptools
 matplotlib
