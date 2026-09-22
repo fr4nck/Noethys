@@ -80,6 +80,7 @@ jobs:
           tests.test_vanilla_convention_contract
           tests.test_vanilla_convention_periodes
           tests.test_vanilla_convention_rendering
+          tests.test_vanilla_convention_rendu_fidelite
           tests.test_vanilla_convention_scolaire
           tests.test_vanilla_convention_recette_modeles
           tests.test_vanilla_generation_convention_dialog

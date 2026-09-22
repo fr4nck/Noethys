@@ -43,6 +43,20 @@ from _fixtures_noethys_db import (  # noqa: E402
 from Dlg import DLG_Noedoc  # noqa: E402
 from Utils import UTILS_Convention_champs as CC  # noqa: E402
 from Utils import UTILS_Impression_convention as UIC  # noqa: E402
+from reportlab.platypus import KeepTogether  # noqa: E402
+
+
+def _AplatitStory(story):
+    """ UIC._ConstruitStory regroupe le dernier objet flottant dans un
+    KeepTogether : cet utilitaire de test retrouve la liste à plat des
+    Paragraph, quel que soit ce groupement. """
+    liste = []
+    for item in story:
+        if isinstance(item, KeepTogether):
+            liste.extend(item._content)
+        else:
+            liste.append(item)
+    return liste
 
 
 CHAMPS_A_VERIFIER = (
@@ -117,7 +131,7 @@ class ChampsHistoriquesResolusDansLeRenduTests(unittest.TestCase):
                 dictRendu.update(champs)
                 cadre, objetsFlottants = UIC._SepareObjetsFixesEtFlottants(modeleDoc)
                 story = UIC._ConstruitStory(modeleDoc, objetsFlottants, dictRendu)
-                texte_rendu = _normaliser("\n".join(p.text for p in story))
+                texte_rendu = _normaliser("\n".join(p.text for p in _AplatitStory(story)))
 
                 for champ in CHAMPS_A_VERIFIER:
                     valeur = dictRendu.get(champ)
@@ -168,7 +182,7 @@ class ChampsHistoriquesResolusDansLeRenduTests(unittest.TestCase):
                 dictRendu.update({"{ORGANISATEUR_NOM}": "VALEUR EXPLICITE DE TEST"})
                 cadre, objetsFlottants = UIC._SepareObjetsFixesEtFlottants(modeleDoc)
                 story = UIC._ConstruitStory(modeleDoc, objetsFlottants, dictRendu)
-        texte_rendu = "\n".join(p.text for p in story)
+        texte_rendu = "\n".join(p.text for p in _AplatitStory(story))
         self.assertIn("VALEUR EXPLICITE DE TEST", texte_rendu)
         self.assertNotIn("Association Test Loisirs", texte_rendu)
 

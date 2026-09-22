@@ -32,6 +32,20 @@ from _fixtures_noethys_db import (  # noqa: E402
     inserer_modele_document,
 )
 from Utils import UTILS_Impression_convention as UIC  # noqa: E402
+from reportlab.platypus import KeepTogether  # noqa: E402
+
+
+def _AplatitStory(story):
+    """ UIC._ConstruitStory regroupe le dernier objet flottant dans un
+    KeepTogether (voir sa docstring) : cet utilitaire de test retrouve
+    la liste à plat des Paragraph, quel que soit ce groupement. """
+    liste = []
+    for item in story:
+        if isinstance(item, KeepTogether):
+            liste.extend(item._content)
+        else:
+            liste.append(item)
+    return liste
 
 
 TEXTES_INTERDITS_DANS_LE_MOTEUR = (
@@ -197,7 +211,7 @@ class GenerationPDFConventionTests(unittest.TestCase):
                 story = UIC._ConstruitStory(modeleDoc, objetsFlottants, {})
 
         self.assertEqual([o.nom for o in objetsFlottants], ["Bloc A", "Bloc B", "Bloc C"])
-        self.assertEqual([p.text for p in story], ["Texte A", "Texte B", "Texte C"])
+        self.assertEqual([p.text for p in _AplatitStory(story)], ["Texte A", "Texte B", "Texte C"])
 
     def test_ancien_modele_facture_reste_generable_par_le_meme_moteur_noedoc(self):
         """ Non-regression : le moteur Noedoc (DLG_Noedoc.ModeleDoc) reste
