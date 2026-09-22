@@ -1,0 +1,272 @@
+name: Vanilla RC - build and publish
+
+# Pipeline dediee a la publication d'une Release Candidate Windows
+# (portable + Setup) depuis un commit precis, independamment de
+# maintenance/vanilla. Ne touche jamais cette branche ni la release
+# stable existante : la cible est un SHA explicite fourni au
+# declenchement, et la publication GitHub est toujours une prerelease.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: 'Commit SHA exact a construire et publier'
+        required: true
+        default: 'fd485ea62803ecdc4fdebf4ca38e2c1dfa3ddb8e'
+      version_label:
+        description: 'Etiquette de version (ex. 1.3.4.2-r3-rc1)'
+        required: true
+        default: '1.3.4.2-r3-rc1'
+      release_tag:
+        description: 'Tag Git de la release'
+        required: true
+        default: 'vanilla-1.3.4.2-r3-rc1'
+      display_title:
+        description: 'Titre affiché (BUILD-INFO.txt et release GitHub)'
+        required: true
+        default: 'Noethys Vanilla 1.3.4.2-r3 RC1'
+
+permissions:
+  contents: write
+
+jobs:
+  build_and_release:
+    name: Construire et publier la RC Vanilla
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    env:
+      TARGET_SHA: ${{ github.event.inputs.target_sha }}
+      VERSION_LABEL: ${{ github.event.inputs.version_label }}
+      RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+      DISPLAY_TITLE: ${{ github.event.inputs.display_title }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.target_sha }}
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: Préparer les dépendances Vanilla
+        shell: pwsh
+        run: |
+          Get-Content requirements.txt |
+            Where-Object { $_.Trim() -ne 'pyttsx' } |
+            Set-Content requirements-vanilla-ci.txt -Encoding UTF8
+          python -m pip install --upgrade pip wheel
+          python -m pip install -r requirements-vanilla-ci.txt
+          python -m pip install pyttsx3 wxPython==4.2.5 'pyinstaller>=6,<7'
+
+      - name: Compiler les sources
+        run: python -m compileall -q noethys tests
+
+      - name: Vérifier wxPython sous Windows
+        shell: pwsh
+        run: python -c "import wx; app=wx.App(False); print(wx.version()); app.Destroy()"
+
+      - name: Suite Vanilla (contrats candidat/crash)
+        run: python -m unittest tests.test_vanilla_crash_recipient tests.test_vanilla_candidate_contract
+
+      - name: Tests Convention (catégorie Noedoc + moteur)
+        run: >-
+          python -m unittest
+          tests.test_vanilla_convention_category
+          tests.test_vanilla_convention_champs
+          tests.test_vanilla_convention_champs_historiques
+          tests.test_vanilla_convention_contract
+          tests.test_vanilla_convention_periodes
+          tests.test_vanilla_convention_rendering
+          tests.test_vanilla_convention_scolaire
+          tests.test_vanilla_convention_recette_modeles
+          tests.test_vanilla_generation_convention_dialog
+          tests.test_vanilla_reservations_extraction
+
+      - name: Test wx.Rect runtime (non-régression crash TaskBarIcon)
+        run: python -m unittest tests.test_vanilla_rect_float_regression
+
+      - name: Construire le dossier portable
+        run: pyinstaller --noconfirm --clean packaging/vanilla-noethys.spec
+
+      - name: Vérifier le contenu du paquet
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'dist/Noethys/Noethys.exe')) { throw 'Noethys.exe absent' }
+          foreach ($resource in @('Static', 'Versions.txt', 'Licence.txt', 'Icone.ico')) {
+            if (-not (Test-Path (Join-Path 'dist/Noethys' $resource))) { throw "Ressource absente : $resource" }
+          }
+          if (Test-Path 'dist/Noethys/_internal') { throw 'Layout PyInstaller _internal incompatible' }
+
+      - name: Smoke de démarrage de Noethys.exe (portable)
+        shell: pwsh
+        run: |
+          $profileRoot = Join-Path $env:RUNNER_TEMP 'noethys-rc-portable-profile'
+          New-Item -ItemType Directory -Path $profileRoot -Force | Out-Null
+          $env:APPDATA = Join-Path $profileRoot 'Roaming'
+          $env:LOCALAPPDATA = Join-Path $profileRoot 'Local'
+          New-Item -ItemType Directory -Path $env:APPDATA -Force | Out-Null
+          New-Item -ItemType Directory -Path $env:LOCALAPPDATA -Force | Out-Null
+
+          $process = Start-Process -FilePath 'dist/Noethys/Noethys.exe' -PassThru
+          Start-Sleep -Seconds 15
+          if ($process.HasExited) {
+            throw "Noethys.exe (portable) a quitté prématurément avec le code $($process.ExitCode)"
+          }
+          $process.Refresh()
+          Stop-Process -Id $process.Id -Force
+          Write-Host 'Noethys.exe (portable) est resté actif pendant le smoke de démarrage.'
+
+      - name: Écrire BUILD-INFO.txt
+        shell: pwsh
+        run: |
+          @(
+            "$env:DISPLAY_TITLE"
+            "Commit: $env:TARGET_SHA"
+            "Python: $(python --version 2>&1)"
+            "wxPython: 4.2.5"
+            "Build UTC: $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
+            'Channel: Release Candidate'
+            'UI: interface historique Vanilla'
+            'Database schema migration: none'
+          ) | Set-Content -Path 'dist/Noethys/BUILD-INFO.txt' -Encoding UTF8
+          Get-Content 'dist/Noethys/BUILD-INFO.txt'
+
+      - name: Créer l'archive portable
+        shell: pwsh
+        run: |
+          $zip = "Noethys-Vanilla-$($env:VERSION_LABEL)-Windows-portable.zip"
+          Compress-Archive -Path 'dist/Noethys/*' -DestinationPath $zip
+          "PORTABLE_ZIP=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding UTF8
+
+      - name: Préparer le payload installable (sans Portable/)
+        shell: pwsh
+        run: |
+          Remove-Item 'dist/Noethys-installable' -Recurse -Force -ErrorAction SilentlyContinue
+          Copy-Item 'dist/Noethys' 'dist/Noethys-installable' -Recurse
+          Remove-Item 'dist/Noethys-installable/Portable' -Recurse -Force -ErrorAction SilentlyContinue
+          if (Test-Path 'dist/Noethys-installable/Portable') { throw 'Le Setup ne doit jamais contenir Portable/' }
+
+      - name: Construire le Setup Windows
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw 'ISCC.exe introuvable' }
+          & $iscc "/DMyAppVersion=$($env:VERSION_LABEL)" 'packaging\vanilla-installer.iss'
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup a échoué : $LASTEXITCODE" }
+          if (-not (Test-Path 'installer-output/Noethys-Vanilla-Setup.exe')) { throw 'Setup absent' }
+          $setup = "Noethys-Vanilla-$($env:VERSION_LABEL)-Setup.exe"
+          Move-Item 'installer-output/Noethys-Vanilla-Setup.exe' $setup
+          "SETUP_EXE=$setup" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding UTF8
+
+      - name: Tester installation silencieuse et conservation de la configuration
+        shell: pwsh
+        run: |
+          $setup = (Resolve-Path $env:SETUP_EXE).Path
+          $installRoot = Join-Path $env:RUNNER_TEMP 'noethys-rc-installed'
+          $profileRoot = Join-Path $env:RUNNER_TEMP 'noethys-rc-profile'
+          $workRoot = Join-Path $env:RUNNER_TEMP 'noethys-rc-foreign-cwd'
+          Remove-Item $installRoot,$profileRoot,$workRoot -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $installRoot,$profileRoot,$workRoot -Force | Out-Null
+
+          $roaming = Join-Path $profileRoot 'Roaming'
+          $local = Join-Path $profileRoot 'Local'
+          $configDir = Join-Path $roaming 'noethys'
+          New-Item -ItemType Directory -Path $configDir,$local -Force | Out-Null
+          $config = Join-Path $configDir 'Config.json'
+          $foreign = Join-Path $workRoot 'Config.json'
+          '{"nomFichier":"","derniersFichiers":[],"interface_mysql":"mysqldb","pool_mysql":5}' | Set-Content $config -Encoding UTF8
+          '{"nomFichier":"NE_DOIT_PAS_ETRE_MIGRE"}' | Set-Content $foreign -Encoding UTF8
+          $configBefore = (Get-FileHash $config -Algorithm SHA256).Hash
+          $foreignBefore = (Get-FileHash $foreign -Algorithm SHA256).Hash
+
+          $p = Start-Process $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$installRoot") -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Installation silencieuse en échec : $($p.ExitCode)" }
+          $exe = Join-Path $installRoot 'Noethys.exe'
+          if (-not (Test-Path $exe)) { throw 'Noethys.exe absent après installation' }
+          if (Test-Path (Join-Path $installRoot 'Portable')) { throw 'Mode Portable présent dans le Setup' }
+
+          $savedAppData = $env:APPDATA
+          $savedLocalAppData = $env:LOCALAPPDATA
+          try {
+            $env:APPDATA = $roaming
+            $env:LOCALAPPDATA = $local
+            $app = Start-Process $exe -WorkingDirectory $workRoot -PassThru
+            Start-Sleep -Seconds 10
+            if ($app.HasExited) {
+              throw "Noethys.exe (installé) a quitté prématurément avec le code $($app.ExitCode)"
+            } else {
+              Stop-Process -Id $app.Id -Force
+            }
+          }
+          finally {
+            $env:APPDATA = $savedAppData
+            $env:LOCALAPPDATA = $savedLocalAppData
+          }
+
+          if ((Get-FileHash $config -Algorithm SHA256).Hash -ne $configBefore) { throw 'Config.json utilisateur a été modifié' }
+          if ((Get-FileHash $foreign -Algorithm SHA256).Hash -ne $foreignBefore) { throw 'Config.json du CWD a été déplacé ou modifié' }
+
+      - name: Calculer les SHA256 des artefacts
+        shell: pwsh
+        run: |
+          Get-FileHash $env:PORTABLE_ZIP -Algorithm SHA256 | Format-List
+          Get-FileHash $env:SETUP_EXE -Algorithm SHA256 | Format-List
+          "SHA256_PORTABLE=$((Get-FileHash $env:PORTABLE_ZIP -Algorithm SHA256).Hash)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding UTF8
+          "SHA256_SETUP=$((Get-FileHash $env:SETUP_EXE -Algorithm SHA256).Hash)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding UTF8
+
+      - name: Préparer les notes de version
+        shell: pwsh
+        run: |
+          @'
+          # Noethys Vanilla 1.3.4.2-r3 RC1
+
+          Release Candidate de la prochaine révision de maintenance Vanilla.
+
+          Cette RC est destinée à la recette réelle avant publication stable.
+
+          Principales évolutions :
+
+          - stabilisation supplémentaire du runtime Windows / wxPython Phoenix ;
+          - correction d'un crash TaskBarIcon provoqué par des coordonnées float ;
+          - dépendances du build Windows complétées ;
+          - smoke test réel de l'exécutable ajouté à la CI ;
+          - nouvelle catégorie de modèles Noedoc "Convention" ;
+          - génération de conventions depuis une fiche Famille ;
+          - contenu des conventions piloté par les modèles .ndc, sans articles
+            juridiques codés en dur ;
+          - récupération automatique des familles, représentants, périodes,
+            séances, horaires et tarifs lorsque déterminables ;
+          - conventions courtes et multipages prises en charge ;
+          - Planning conservé comme document Réservations séparé ;
+          - aucune migration de schéma de base de données.
+
+          Précautions RC :
+
+          - effectuer une sauvegarde avant recette sur une base de production ;
+          - cette version est une Release Candidate ;
+          - signaler tout crash ou incohérence avant passage en version stable.
+          '@ | Set-Content -Path 'RELEASE-NOTES.md' -Encoding UTF8
+
+      - name: Publier la release GitHub (prerelease)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:RELEASE_TAG $env:PORTABLE_ZIP $env:SETUP_EXE `
+            --target $env:TARGET_SHA `
+            --title $env:DISPLAY_TITLE `
+            --notes-file 'RELEASE-NOTES.md' `
+            --prerelease `
+            --latest=false
+
+      - name: Résumé
+        shell: pwsh
+        run: |
+          Write-Host "Tag: $env:RELEASE_TAG"
+          Write-Host "SHA cible: $env:TARGET_SHA"
+          Write-Host "Portable: $env:PORTABLE_ZIP ($env:SHA256_PORTABLE)"
+          Write-Host "Setup: $env:SETUP_EXE ($env:SHA256_SETUP)"
