@@ -12,19 +12,51 @@ on:
       target_sha:
         description: 'Commit SHA exact a construire et publier'
         required: true
-        default: 'fd485ea62803ecdc4fdebf4ca38e2c1dfa3ddb8e'
+        default: 'b78c7a5de672f6d0206b6d5b118531911921f98b'
       version_label:
-        description: 'Etiquette de version (ex. 1.3.4.2-r3-rc1)'
+        description: 'Etiquette de version (ex. 1.3.4.2-r3-rc3)'
         required: true
-        default: '1.3.4.2-r3-rc1'
+        default: '1.3.4.2-r3-rc3'
       release_tag:
         description: 'Tag Git de la release'
         required: true
-        default: 'vanilla-1.3.4.2-r3-rc1'
+        default: 'vanilla-1.3.4.2-r3-rc3'
       display_title:
         description: 'Titre affiché (BUILD-INFO.txt et release GitHub)'
         required: true
-        default: 'Noethys Vanilla 1.3.4.2-r3 RC1'
+        default: 'Noethys Vanilla 1.3.4.2-r3 RC3'
+      release_notes_body:
+        description: 'Corps des notes de version (Markdown) -- propre a chaque RC, jamais reutilise tel quel'
+        required: true
+        default: |
+          # Noethys Vanilla 1.3.4.2-r3 RC3
+
+          Release Candidate de la prochaine révision de maintenance Vanilla.
+
+          Cette RC est destinée à la recette réelle avant publication stable.
+
+          Principales évolutions depuis RC2 :
+
+          - correctif Planning : import mort ShowBoundaryValue retiré
+            (Réservations fonctionne réellement avec les versions récentes de
+            ReportLab, sans pin ni shim) ;
+          - fiabilité Connecthys : une erreur pendant une synchronisation ne
+            bloque plus le client dans un état "prêt" inopérant -- l'état est
+            toujours remis à zéro, l'erreur est journalisée, une nouvelle
+            synchronisation reste possible ;
+          - retour à l'apparence claire historique (aucun thème sombre n'a
+            jamais été voulu pour Noethys) ;
+          - dossier d'installation à nouveau réellement sélectionnable, avec
+            proposition automatique d'une installation historique C:\Noethys
+            détectée sur le poste ;
+          - conserve toutes les améliorations Convention introduites en RC2
+            (fidélité Noedoc, styles, pagination, UTF-8 explicite).
+
+          Précautions RC :
+
+          - effectuer une sauvegarde avant recette sur une base de production ;
+          - cette version est une Release Candidate ;
+          - signaler tout crash ou incohérence avant passage en version stable.
 
 permissions:
   contents: write
@@ -88,6 +120,12 @@ jobs:
 
       - name: Test wx.Rect runtime (non-régression crash TaskBarIcon)
         run: python -m unittest tests.test_vanilla_rect_float_regression
+
+      - name: Tests Connecthys (robustesse synchronisation)
+        run: python -m unittest tests.test_vanilla_connecthys_synchro
+
+      - name: Test apparence claire historique (AUI)
+        run: python -m unittest tests.test_vanilla_apparence_claire
 
       - name: Construire le dossier portable
         run: pyinstaller --noconfirm --clean packaging/vanilla-noethys.spec
@@ -163,6 +201,26 @@ jobs:
           Move-Item 'installer-output/Noethys-Vanilla-Setup.exe' $setup
           "SETUP_EXE=$setup" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding UTF8
 
+      - name: Vérifier la proposition du dossier d'installation historique
+        shell: pwsh
+        run: |
+          # Simule une installation historique non-Inno (C:\Noethys\Noethys.exe
+          # existant mais aucune trace Inno enregistrée) et vérifie qu'une
+          # installation silencieuse SANS /DIR= explicite s'installe bien dans
+          # ce dossier proposé par défaut -- et pas dans Program Files, ce qui
+          # créerait deux installations distinctes sur le même poste (défaut
+          # réel constaté en recette). Runner CI jetable : écriture sans risque.
+          New-Item -ItemType Directory -Path 'C:\Noethys' -Force | Out-Null
+          Copy-Item 'dist\Noethys-installable\Noethys.exe' 'C:\Noethys\Noethys.exe' -Force
+
+          $setup = (Resolve-Path $env:SETUP_EXE).Path
+          $p = Start-Process $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Installation silencieuse (sans /DIR=) en échec : $($p.ExitCode)" }
+          if (-not (Test-Path 'C:\Noethys\Static')) {
+            throw "L'installation par défaut n'a pas utilisé C:\Noethys (dossier historique détecté ignoré)"
+          }
+          Write-Host 'Dossier historique C:\Noethys correctement proposé et utilisé par défaut.'
+
       - name: Tester installation silencieuse et conservation de la configuration
         shell: pwsh
         run: |
@@ -221,36 +279,14 @@ jobs:
 
       - name: Préparer les notes de version
         shell: pwsh
+        env:
+          NOTES_BODY: ${{ github.event.inputs.release_notes_body }}
         run: |
-          @'
-          # Noethys Vanilla 1.3.4.2-r3 RC1
-
-          Release Candidate de la prochaine révision de maintenance Vanilla.
-
-          Cette RC est destinée à la recette réelle avant publication stable.
-
-          Principales évolutions :
-
-          - stabilisation supplémentaire du runtime Windows / wxPython Phoenix ;
-          - correction d'un crash TaskBarIcon provoqué par des coordonnées float ;
-          - dépendances du build Windows complétées ;
-          - smoke test réel de l'exécutable ajouté à la CI ;
-          - nouvelle catégorie de modèles Noedoc "Convention" ;
-          - génération de conventions depuis une fiche Famille ;
-          - contenu des conventions piloté par les modèles .ndc, sans articles
-            juridiques codés en dur ;
-          - récupération automatique des familles, représentants, périodes,
-            séances, horaires et tarifs lorsque déterminables ;
-          - conventions courtes et multipages prises en charge ;
-          - Planning conservé comme document Réservations séparé ;
-          - aucune migration de schéma de base de données.
-
-          Précautions RC :
-
-          - effectuer une sauvegarde avant recette sur une base de production ;
-          - cette version est une Release Candidate ;
-          - signaler tout crash ou incohérence avant passage en version stable.
-          '@ | Set-Content -Path 'RELEASE-NOTES.md' -Encoding UTF8
+          # Corps entièrement paramétré (input release_notes_body), jamais
+          # recopié en dur d'une RC précédente : une release passée
+          # (RC2) contenait par erreur un corps encore titré "RC1".
+          Set-Content -Path 'RELEASE-NOTES.md' -Value $env:NOTES_BODY -Encoding UTF8
+          Get-Content 'RELEASE-NOTES.md' | Select-Object -First 3
 
       - name: Publier la release GitHub (prerelease)
         shell: pwsh
