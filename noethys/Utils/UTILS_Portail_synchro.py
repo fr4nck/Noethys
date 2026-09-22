@@ -111,28 +111,59 @@ class Synchro():
             pass
 
     def Synchro_totale(self, full_synchro=False):
+        """ Une synchronisation doit toujours se terminer -- succès ou
+        échec -- par un état cohérent visible par l'utilisateur : jamais
+        laisser une exception non gérée remonter en dehors de cette
+        méthode. Sans cela (défaut réel constaté en recette), une erreur
+        au milieu de Download_data()/Upload_data() empêchait le message
+        final "Client de synchronisation prêt" d'être écrit ET faisait
+        mourir le thread de synchronisation appelant (voir
+        CTRL_Portail_serveur.Serveur.run(), qui protège maintenant aussi
+        ce cas avec un try/finally) : plus aucune synchro, automatique ou
+        manuelle, n'était alors possible sans redémarrer Noethys, sans
+        aucun diagnostic pour l'utilisateur. Chaque étape est journalisée
+        (début/fin/durée), et une étape en échec est signalée
+        explicitement sans jamais masquer l'erreur ni interrompre les
+        étapes suivantes. """
         t1 = time.time()
         self.nbre_etapes = 26
         self.log.EcritLog(_(u"Lancement de la synchronisation..."))
 
         # Téléchargement des données en ligne
-        resultat_download = self.Download_data(full_synchro=full_synchro)
+        t_etape = time.time()
+        try :
+            resultat_download = self.Download_data(full_synchro=full_synchro)
+        except Exception as err :
+            self.log.EcritLog(_(u"Échec du téléchargement des demandes : %s") % err)
+            resultat_download = False
+        else :
+            self.log.EcritLog(_(u"Téléchargement des demandes terminé en %d secondes.") % (time.time() - t_etape))
 
         # Recherche de mises à jours logicielles Connecthys
         if self.dict_parametres["client_rechercher_updates"] == True :
-
-            # Vérifie si une update n'a pas été faite aujourd'hui avec la même version de Noethys
-            last_update = UTILS_Parametres.Parametres(mode="get", categorie="portail", nom="last_update", valeur=None)
-            version_noethys = FonctionsPerso.GetVersionLogiciel()
-            data = "%s#%s" % (str(datetime.date.today()), version_noethys)
-            if data != last_update :
-                resultat = self.Update_application()
-                # Mémorise la demande d'update
-                if resultat == True :
-                    UTILS_Parametres.Parametres(mode="set", categorie="portail", nom="last_update", valeur=data)
+            try :
+                # Vérifie si une update n'a pas été faite aujourd'hui avec la même version de Noethys
+                last_update = UTILS_Parametres.Parametres(mode="get", categorie="portail", nom="last_update", valeur=None)
+                version_noethys = FonctionsPerso.GetVersionLogiciel()
+                data = "%s#%s" % (str(datetime.date.today()), version_noethys)
+                if data != last_update :
+                    resultat = self.Update_application()
+                    # Mémorise la demande d'update
+                    if resultat == True :
+                        UTILS_Parametres.Parametres(mode="set", categorie="portail", nom="last_update", valeur=data)
+            except Exception as err :
+                self.log.EcritLog(_(u"Échec de la recherche de mise à jour : %s") % err)
 
         # Upload des données locales
-        resultat_upload = self.Upload_data(full_synchro=full_synchro)
+        t_etape = time.time()
+        try :
+            resultat_upload = self.Upload_data(full_synchro=full_synchro)
+        except Exception as err :
+            self.log.EcritLog(_(u"Échec de l'envoi des données : %s") % err)
+            resultat_upload = False
+        else :
+            self.log.EcritLog(_(u"Envoi des données terminé en %d secondes.") % (time.time() - t_etape))
+
         resultat = resultat_download is True and resultat_upload is True
         if resultat == False :
             self.log.EcritLog(_(u"Synchronisation incomplète : au moins un échange a échoué."))
