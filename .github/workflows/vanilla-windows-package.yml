@@ -43,12 +43,15 @@ jobs:
           python -m pip install pyttsx3 wxPython==4.2.5 'pyinstaller>=6,<7'
 
       - name: Compiler les sources Vanilla
-        run: python -m compileall -q noethys
+        run: python -m compileall -q noethys tests
 
       - name: Vérifier wxPython sous Windows
         shell: pwsh
         run: |
           python -c "import wx; app=wx.App(False); print(wx.version()); app.Destroy()"
+
+      - name: Tester le rendu wx (non-régression bug runtime Windows)
+        run: python -m unittest tests.test_vanilla_rect_float_regression
 
       - name: Construire le dossier portable
         run: pyinstaller --noconfirm --clean packaging/vanilla-noethys.spec

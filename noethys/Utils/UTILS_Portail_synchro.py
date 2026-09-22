@@ -104,7 +104,7 @@ class Synchro():
             self.num_etape += 1
         else :
             self.num_etape = num
-        num = 100 * self.num_etape / self.nbre_etapes
+        num = int(100 * self.num_etape / self.nbre_etapes)
         try :
             self.log.SetGauge(num)
         except :
