@@ -19,6 +19,7 @@ if str(TESTS_DIR) not in sys.path:
 
 from _fixtures_noethys_db import (  # noqa: E402
     BaseTest,
+    RedirectionGestionDB,
     creer_base_association_simple,
 )
 from Utils import UTILS_Impression_reservations as R  # noqa: E402
@@ -81,7 +82,15 @@ class GetDonneesExtractionTests(unittest.TestCase):
     def test_rapport_reservations_historique_reste_fonctionnel(self):
         """Le moteur Impression() historique, non modifie, doit toujours
         produire un PDF exploitable a partir des donnees fournies par la
-        nouvelle extraction generique."""
+        nouvelle extraction generique.
+
+        Impression() (non modifie par cette PR) appelle en interne
+        UTILS_Organisateur.GetNom() -> GestionDB.DB() sans parametre :
+        sans isolation, cela plante sur un runner CI propre (config
+        Noethys absente), exactement comme deja rencontre ailleurs dans
+        cette suite -- jamais detecte ici auparavant car ce test etait
+        neutralise par @skipUnless (ShowBoundaryValue) avant meme
+        d'atteindre ce code. """
         with creer_base_association_simple() as base:
             dictDonnees = R.GetDonnees(
                 listeIDindividus=[2, 3], date_debut="2026-09-01",
@@ -89,7 +98,8 @@ class GetDonneesExtractionTests(unittest.TestCase):
             )
             chemin_pdf = tempfile.mktemp(suffix=".pdf")
             try:
-                resultat = R.Impression(dictDonnees, nomDoc=chemin_pdf, afficherDoc=False)
+                with RedirectionGestionDB(base.chemin):
+                    resultat = R.Impression(dictDonnees, nomDoc=chemin_pdf, afficherDoc=False)
                 self.assertIsNotNone(resultat)
                 self.assertTrue(os.path.isfile(chemin_pdf))
                 self.assertGreater(os.path.getsize(chemin_pdf), 0)
@@ -150,7 +160,8 @@ class GetDonneesExtractionTests(unittest.TestCase):
 
             chemin_pdf = tempfile.mktemp(suffix=".pdf")
             try:
-                resultat = R.Impression(dictDonnees, nomDoc=chemin_pdf, afficherDoc=False)
+                with RedirectionGestionDB(base.chemin):
+                    resultat = R.Impression(dictDonnees, nomDoc=chemin_pdf, afficherDoc=False)
                 self.assertIsNotNone(resultat)
                 self.assertTrue(os.path.isfile(chemin_pdf))
                 self.assertGreater(os.path.getsize(chemin_pdf), 0)
