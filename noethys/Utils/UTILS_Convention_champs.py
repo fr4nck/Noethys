@@ -411,14 +411,32 @@ def GetChampsConvention(
         listeIDindividus=listeIDindividus, date_debut=date_debut, date_fin=date_fin, DB=DB,
     )
 
-    # Tous les champs optionnels sont explicitement initialisés à une
-    # chaîne vide : le moteur [[SI {CHAMP}=->...]] (utilisé par les
-    # modèles pour afficher un texte de repli quand une donnée n'a pas pu
-    # être déterminée) ne détecte correctement "vide" que si la clé
-    # existe dans le dict -- une clé absente ne déclenche NI la branche
-    # "<>" (rempli) NI la branche "=" (vide), le bloc [[SI ...]] entier
-    # disparaît silencieusement. Voir DLG_Saisie_formule.ResolveurFormule.
-    champs = {
+    if informations is None:
+        from Utils import UTILS_Infos_individus
+        informations = UTILS_Infos_individus.Informations(
+            qf=False, inscriptions=False, messages=False, infosMedicales=False,
+            cotisationsManquantes=False, piecesManquantes=False,
+            questionnaires=False, scolarite=False, cotisations=False,
+        )
+
+    # Champs Famille historiques ({FAMILLE_NOM}, {FAMILLE_RUE}, ...) :
+    # réutilise tel quel le même dictionnaire que les autres catégories de
+    # documents (UTILS_Infos_individus.Informations), sans reconstruire de
+    # requête SQL dédiée. Une seule instance de Informations sert à la
+    # fois à ce dictionnaire de base et à GetRepresentant() ci-dessous.
+    champs = dict(informations.GetDictValeurs(mode="famille", ID=IDfamille, formatChamp=True))
+
+    # Tous les champs optionnels {CONVENTION_*} sont explicitement
+    # initialisés à une chaîne vide : le moteur [[SI {CHAMP}=->...]]
+    # (utilisé par les modèles pour afficher un texte de repli quand une
+    # donnée n'a pas pu être déterminée) ne détecte correctement "vide"
+    # que si la clé existe dans le dict -- une clé absente ne déclenche
+    # NI la branche "<>" (rempli) NI la branche "=" (vide), le bloc
+    # [[SI ...]] entier disparaît silencieusement. Voir
+    # DLG_Saisie_formule.ResolveurFormule. Posés après le dict Famille
+    # pour que ces clés dédiées à la convention restent toujours
+    # présentes, quel que soit le contenu du dict Famille.
+    champs.update({
         "{IDFAMILLE}": IDfamille,
         "{CONVENTION_REPRESENTANT_NOM}": u"",
         "{CONVENTION_REPRESENTANT_PRENOM}": u"",
@@ -432,7 +450,7 @@ def GetChampsConvention(
         "{CONVENTION_TARIF_HORAIRE}": u"",
         "{CONVENTION_TARIF_ADULTE}": u"",
         "{CONVENTION_TARIF_ENFANT}": u"",
-    }
+    })
 
     representant = GetRepresentant(IDfamille, informations=informations)
     if representant is not None:

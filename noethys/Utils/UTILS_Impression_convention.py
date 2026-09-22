@@ -167,10 +167,24 @@ class _GabaritConvention(PageTemplate):
 def GenererPDF(IDmodele, dictChamps, nomDoc=None, afficherDoc=True):
     """ Charge le modèle Noedoc choisi et rend le PDF. Ne contient aucune
     donnée métier : dictChamps est déjà entièrement préparé par
-    l'appelant (voir Impression() ci-dessous). """
+    l'appelant (voir Impression() ci-dessous).
+
+    ModeleDoc.__init__ charge toujours modeleDoc.dictOrganisateur (source
+    historique Noedoc, {ORGANISATEUR_NOM}/{ORGANISATEUR_RUE}/...,
+    ImportationOrganisateur) : c'est la même source que pour les autres
+    catégories de documents, aucune nouvelle requête SQL. GetValeur() ne
+    résout que les clés réellement présentes dans le dict qu'on lui donne
+    (toute clé absente est silencieusement effacée du texte rendu) : sans
+    cette fusion, un modèle Convention utilisant {ORGANISATEUR_*} verrait
+    ces champs disparaître du PDF. dictChamps (calculé par
+    UTILS_Convention_champs.GetChampsConvention) reste prioritaire sur
+    dictOrganisateur en cas de clé identique. """
     modeleDoc = DLG_Noedoc.ModeleDoc(IDmodele=IDmodele)
+    dictRendu = dict(modeleDoc.dictOrganisateur)
+    dictRendu.update(dictChamps)
+
     cadre, objetsFlottants = _SepareObjetsFixesEtFlottants(modeleDoc)
-    story = _ConstruitStory(modeleDoc, objetsFlottants, dictChamps)
+    story = _ConstruitStory(modeleDoc, objetsFlottants, dictRendu)
     if not story:
         raise ValueError(_(u"Le modèle choisi ne contient aucun texte dans son cadre principal."))
 
@@ -178,7 +192,7 @@ def GenererPDF(IDmodele, dictChamps, nomDoc=None, afficherDoc=True):
         nomDoc = FonctionsPerso.GenerationNomDoc("CONVENTION", "pdf")
 
     doc = BaseDocTemplate(nomDoc, pagesize=TAILLE_PAGE)
-    doc.addPageTemplates([_GabaritConvention(cadre, modeleDoc, dictChamps, objetsFlottants)])
+    doc.addPageTemplates([_GabaritConvention(cadre, modeleDoc, dictRendu, objetsFlottants)])
     doc.build(story)
 
     if afficherDoc:
