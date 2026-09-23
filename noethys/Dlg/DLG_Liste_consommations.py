@@ -40,7 +40,6 @@ class CTRL_Activite(wx.Choice):
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
         DB.Close()
-        if len(listeDonnees) == 0 : return
         for IDactivite, nom in listeDonnees :
             self.listeNoms.append(nom)
             self.listeID.append(IDactivite)
@@ -79,7 +78,6 @@ class CTRL_Annee(wx.Choice):
         DB.ExecuterReq(req)
         listeDonnees = DB.ResultatReq()
         DB.Close()
-        if len(listeDonnees) == 0 : return
         dictAnnees = {}
         for date, nbre_conso in listeDonnees :
             dateDD = UTILS_Dates.DateEngEnDateDD(date)
