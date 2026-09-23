@@ -253,6 +253,49 @@ def DetecterTarifs(dictDonnees):
     return commun
 
 
+def CompleterIDconsosProvenance(resultatTarifs, DB=None):
+    """Complète les preuves tarifaires avec l'IDconso réel sans modifier
+    le moteur Réservations historique.
+
+    GetDonnees() expose déjà l'IDprestation utilisé pour chaque séance.
+    On s'en sert comme clé de traçabilité pour retrouver l'IDconso en
+    lecture seule. Une preuve qui ne possède pas d'IDprestation reste
+    simplement sans IDconso : aucune valeur n'est inventée.
+    """
+    preuves = resultatTarifs.get("preuves_par_activite", {})
+    ids_prestations = sorted({
+        preuve.get("IDprestation")
+        for liste in preuves.values()
+        for preuve in liste
+        if preuve.get("IDprestation") is not None
+    })
+    if not ids_prestations:
+        return resultatTarifs
+
+    fermer = DB is None
+    if DB is None:
+        import GestionDB
+        DB = GestionDB.DB()
+    try:
+        req = """SELECT IDconso, IDprestation
+        FROM consommations
+        WHERE IDprestation IN (%s)
+        ORDER BY IDconso;""" % ", ".join(str(int(ID)) for ID in ids_prestations)
+        DB.ExecuterReq(req)
+        correspondances = {}
+        for IDconso, IDprestation in DB.ResultatReq():
+            if IDprestation not in correspondances:
+                correspondances[IDprestation] = IDconso
+        for liste in preuves.values():
+            for preuve in liste:
+                if preuve.get("IDconso") is None:
+                    preuve["IDconso"] = correspondances.get(preuve.get("IDprestation"))
+    finally:
+        if fermer:
+            DB.Close()
+    return resultatTarifs
+
+
 def _format_decimal_fr(valeur):
     return (u"%.2f" % float(valeur)).replace(".", ",")
 
@@ -654,6 +697,7 @@ def GetChampsConvention(
     champs["{CONVENTION_PLANNING_TOTAL_MONTANT}"] = float(resume["total_montant"])
 
     tarifs = DetecterTarifs(dictDonnees)
+    CompleterIDconsosProvenance(tarifs, DB=DB)
     if tarifs["mode"] == "unique":
         champs["{CONVENTION_TARIF_HORAIRE}"] = float(tarifs["taux"])
         IDactivite = next(iter(tarifs["taux_par_activite"]))
