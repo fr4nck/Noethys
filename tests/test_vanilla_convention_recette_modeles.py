@@ -61,6 +61,11 @@ class RecetteModelesConventionTests(unittest.TestCase):
         self.assertNotIn("TÃ", texte)
         data = json.loads(texte)
         objets = data["objets"]
+        textes = [o.get("texte") for o in objets if isinstance(o.get("texte"), str)]
+        self.assertFalse(
+            any("\\n" in valeur for valeur in textes),
+            "Le modèle de référence ne doit pas contenir de \\n littéral : utiliser de vrais retours ligne.",
+        )
         noms = {o["nom"] for o in objets}
         self.assertIn("Logo organisateur", noms)
         logo = next(o for o in objets if o["nom"] == "Logo organisateur")
