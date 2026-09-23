@@ -68,6 +68,8 @@ class Notebook(wx.Notebook):
         self.parent = parent
         self.IDfamille = IDfamille
         self.dictPages = {}
+        self.codesPagesAffichees = []
+        self._maj_differees = []
         
         self.listePages = [
             ("informations", _(u"Informations"), u"DLG_Famille_informations.Panel(self, IDfamille=IDfamille)", "Information.png"),
@@ -104,9 +106,11 @@ class Notebook(wx.Notebook):
                 self.AddPage(getattr(self, "page%s" % index), labelPage)
                 self.SetPageImage(index, getattr(self, "img%d" % index))
                 self.dictPages[codePage] = {'ctrl': getattr(self, "page%d" % index), 'index': index}
+                self.codesPagesAffichees.append(codePage)
                 index += 1
 
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnPageChanged)
+        self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
         
     def GetPageAvecCode(self, codePage=""):
         if codePage in self.dictPages:
@@ -118,37 +122,73 @@ class Notebook(wx.Notebook):
         indexPage = self.dictPages[codePage]["index"]
         self.SetSelection(indexPage)
 
+    def _PlanifieMAJ(self, page):
+        """Planifie une MAJ sans laisser de callback viser un notebook détruit."""
+        holder = {}
+
+        def executer():
+            try:
+                page.MAJ()
+            except RuntimeError:
+                # Le parent a pu être détruit entre le changement d'onglet
+                # et l'exécution différée du callback wx.
+                pass
+            finally:
+                appel = holder.get("appel")
+                if appel in self._maj_differees:
+                    self._maj_differees.remove(appel)
+
+        appel = wx.CallLater(1, executer)
+        holder["appel"] = appel
+        self._maj_differees.append(appel)
+
+    def OnDestroy(self, event):
+        if event.GetEventObject() is self:
+            for appel in list(self._maj_differees):
+                try:
+                    appel.Stop()
+                except RuntimeError:
+                    pass
+            self._maj_differees = []
+        event.Skip()
+
     def OnPageChanged(self, event):
         """ Quand une page du notebook est sélectionnée """
         indexAnciennePage = event.GetOldSelection()
-        codePage = self.listePages[indexAnciennePage][0]
-        # Sauvegarde ancienne page si besoin
-        if indexAnciennePage!=wx.NOT_FOUND:
+        # L'index de wx.Notebook porte sur les pages réellement visibles,
+        # pas sur la liste canonique qui contient aussi les pages masquées.
+        if indexAnciennePage != wx.NOT_FOUND:
+            codePage = self.codesPagesAffichees[indexAnciennePage]
             if codePage in ("caisse", "divers") :
                 page = self.GetPage(indexAnciennePage)
                 page.Sauvegarde()
-            anciennePage = self.GetPage(indexAnciennePage)
+
         indexPage = event.GetSelection()
+        if indexPage == wx.NOT_FOUND:
+            event.Skip()
+            return
+
         page = self.GetPage(indexPage)
         if page.IsLectureAutorisee() == False :
             self.AffichePage("informations")
             UTILS_Utilisateurs.AfficheDLGInterdiction() 
             return
         self.Freeze()
-        wx.CallLater(1, page.MAJ)
+        self._PlanifieMAJ(page)
         self.Thaw()
         event.Skip()
         
     def MAJpageActive(self):
         """ MAJ la page active du notebook """
         indexPage = self.GetSelection()
-        page = self.GetPage(indexPage)
-        wx.CallLater(1, page.MAJ)
+        if indexPage != wx.NOT_FOUND:
+            page = self.GetPage(indexPage)
+            self._PlanifieMAJ(page)
     
     def MAJpage(self, codePage=""):
         if codePage in self.dictPages:
             page = self.dictPages[codePage]["ctrl"]
-            wx.CallLater(1, page.MAJ)
+            self._PlanifieMAJ(page)
 
     def GetParametres(self):
         parametres = UTILS_Config.GetParametre("fiche_famille_pages", defaut={})
