@@ -1240,7 +1240,7 @@ class CTRL_Graphique(wx.ScrolledWindow):
             # Fonction dans l'entité
             id = wx.Window.NewControlId()
             item = wx.MenuItem(menu, id, _(u"Fonction dans l'entité..."))
-            item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Contact.png"), wx.BITMAP_TYPE_PNG))
+            item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Modifier.png"), wx.BITMAP_TYPE_PNG))
             menu.AppendItem(item)
             self.Bind(wx.EVT_MENU, self.Modifier_fonction_entite_menu, id=id)
 
@@ -1658,7 +1658,7 @@ class CTRL_Liste(HTL.HyperTreeList):
             # Fonction dans l'entité
             id = wx.Window.NewControlId()
             item = wx.MenuItem(menu, id, _(u"Fonction dans l'entité..."))
-            item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Contact.png"), wx.BITMAP_TYPE_PNG))
+            item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Modifier.png"), wx.BITMAP_TYPE_PNG))
             menu.AppendItem(item)
             self.Bind(wx.EVT_MENU, self.Modifier_fonction_entite, id=id)
 
