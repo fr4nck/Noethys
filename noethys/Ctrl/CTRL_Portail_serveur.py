@@ -442,17 +442,23 @@ class Panel(wx.Panel):
             else:
                 return False
 
+    def _AppliqueGauge(self, valeur):
+        """Applique l'état visuel de la jauge depuis le thread wx principal."""
+        afficher = valeur != 0
+        if self.gauge.IsShown() != afficher:
+            self.gauge.Show(afficher)
+            self.Layout()
+        self.gauge.SetValue(valeur)
+        self.gauge.Refresh()
+
     def SetGauge(self, valeur=0, block=True):
+        # La synchronisation tourne dans Serveur(Thread). Toute lecture ou
+        # écriture d'un contrôle wx doit donc être déportée vers la boucle UI.
+        # L'ancien code appelait IsShown()/Layout() directement depuis le
+        # thread de synchro, ce qui pouvait laisser la jauge visuellement figée.
         if self.lock.acquire(block) == True:
             try:
-                if valeur == 0 :
-                    if self.gauge.IsShown() :
-                        wx.CallAfter(self.gauge.Show, False)
-                else :
-                    if not self.gauge.IsShown() :
-                        wx.CallAfter(self.gauge.Show, True)
-                self.Layout()
-                wx.CallAfter(self.gauge.SetValue, valeur)
+                wx.CallAfter(self._AppliqueGauge, valeur)
             except Exception as e:
                 self.lock.release()
                 raise e
