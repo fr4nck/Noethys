@@ -16,15 +16,15 @@ import wx
 from Ctrl import CTRL_Bouton_image
 import wx.html as html
 import FonctionsPerso
+import Identite
 import datetime
 
 
-VERSION_LOGICIEL = FonctionsPerso.GetVersionLogiciel()
 anneeActuelle = str(datetime.date.today().year)
 
 TEXTE_ACCUEIL = u"""
 <BR>
-<B><FONT SIZE=6>NOETHYS</B></FONT><BR>
+<B><FONT SIZE=6>%s</B></FONT><BR>
 <B><FONT SIZE=4>Logiciel de gestion multi-activités</B></FONT><BR>
 <FONT SIZE=2>
 <B>Version %s</B><BR><BR>
@@ -43,7 +43,7 @@ Guido van Rossum (Python), Gerhard Häring (pysqlite), <BR>
 reportLab team (reportlab), Mark Hammond (pywin32), <BR>
 Phillip Piper (ObjectListView), Armin Rigo (Psycho)...<BR>
 </FONT>
-""" % (VERSION_LOGICIEL,  anneeActuelle[2:])
+""" % (Identite.PRODUCT_NAME.upper(), Identite.PRODUCT_VERSION_DISPLAY, anneeActuelle[2:])
 
 
 class MyHtml(html.HtmlWindow):

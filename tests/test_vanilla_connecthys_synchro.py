@@ -217,5 +217,66 @@ class ServeurEffectuerCycleTests(unittest.TestCase):
         self.assertFalse(serveur.start_synchro, "une synchro déjà en cours ne doit pas en déclencher une seconde")
 
 
+class VersionEnvoyeeAConnecthysTests(unittest.TestCase):
+    """ Update_application() construit son URL avec
+    int(FonctionsPerso.GetVersionLogiciel().replace(".", "")) -- le
+    protocole Connecthys exige un entier (voir l'audit ayant motivé
+    Identite.py, séparant la version publique Noethys SL de la version de
+    compatibilité interne). Ce test vérifie explicitement que
+    l'introduction de l'identité publique n'a pas fait dériver la valeur
+    réellement envoyée au serveur : elle doit rester celle de
+    GetVersionLogiciel(), jamais Identite.PRODUCT_VERSION. """
+
+    def test_update_application_envoie_la_version_interne_numerique(self):
+        import FonctionsPerso
+        import Identite
+
+        version_interne = FonctionsPerso.GetVersionLogiciel()
+        # Garde-fou : si Versions.txt venait à contenir un suffixe non
+        # numérique, ce test doit échouer ici plutôt que de masquer un
+        # ValueError plus loin dans Update_application().
+        self.assertRegex(version_interne, r"^\d+(\.\d+)*$")
+        self.assertNotEqual(version_interne, Identite.PRODUCT_VERSION)
+
+        log = FauxLog()
+        synchro = UTILS_Portail_synchro.Synchro(
+            dict_parametres={
+                "accept_all_cert": False,
+                "client_rechercher_updates": False,
+                "serveur_type": 0,
+                "url_connecthys": "https://connecthys.example.org/",
+                "secret_key": "abc123",
+            },
+            log=log,
+        )
+
+        urls_captees = []
+
+        class FauxReponse:
+            def read(self):
+                return b'{"resultat": false}'
+
+        def faux_urlopen(req):
+            urls_captees.append(req.get_full_url())
+            return FauxReponse()
+
+        with mock.patch.object(UTILS_Portail_synchro, "urlopen", faux_urlopen):
+            resultat = synchro.Update_application()
+
+        self.assertTrue(resultat)
+        self.assertEqual(len(urls_captees), 1)
+        url_envoyee = urls_captees[0]
+
+        version_envoyee = int(version_interne.replace(".", ""))
+        self.assertIn("/update/", url_envoyee)
+        self.assertIn("/%d/" % version_envoyee, url_envoyee)
+
+        # Preuve négative explicite : la version publique (Noethys SL,
+        # forme "0.1.0-rc.1" ou son affichage "0.1.0 RC1") ne doit jamais
+        # apparaître, sous aucune forme, dans l'URL envoyée au serveur.
+        self.assertNotIn("0.1.0", url_envoyee)
+        self.assertNotIn("rc", url_envoyee.lower())
+
+
 if __name__ == "__main__":
     unittest.main()

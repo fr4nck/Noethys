@@ -54,6 +54,7 @@ import GestionDB
 from Utils import UTILS_Parametres
 
 import FonctionsPerso
+import Identite
 from Ctrl import CTRL_Accueil
 from Ctrl import CTRL_Messages
 from Ctrl import CTRL_Identification
@@ -246,7 +247,7 @@ class MainFrame(wx.Frame):
 
         # Barre des tâches
         self.CreateStatusBar()
-        self.GetStatusBar().SetStatusText(_(u"Bienvenue dans %s...") % NOM_APPLICATION)
+        self.GetStatusBar().SetStatusText(_(u"Bienvenue dans %s...") % Identite.PRODUCT_NAME)
         
         # Création de la barre des menus
         self.CreationBarreMenus()
@@ -346,7 +347,7 @@ class MainFrame(wx.Frame):
             nomFichier = _(u"Fichier réseau : %s | %s | %s") % (nomFichier, hote, user)
         if nomFichier != "" :
             nomFichier = " - [" + nomFichier + "]"
-        titreFrame = NOM_APPLICATION + " v" + VERSION_APPLICATION + nomFichier
+        titreFrame = Identite.PRODUCT_NAME + " " + Identite.PRODUCT_VERSION_DISPLAY + nomFichier
         self.SetTitle(titreFrame)
 
     def GetFichierConfig(self):
