@@ -133,7 +133,7 @@ class MainFrame(wx.Frame):
 ##        try : locale.setlocale(locale.LC_ALL, 'FR')
 ##        except : pass
 
-        theme = CUSTOMIZE.GetValeur("interface", "theme", "Vert")
+        theme = UTILS_Interface.GetTheme()
 
         # Icône
         try :
@@ -4400,6 +4400,16 @@ class MyApp(wx.App):
     #     self.ResetLocale()
 
     def OnInit(self):
+        # Noethys SL 0.1.0 reste volontairement en apparence claire.
+        # Désactiver le dark mode natif wxMSW avant de construire le moindre
+        # contrôle évite que StaticBox, boutons et autres widgets natifs
+        # reprennent des cadres/fonds noirs depuis Windows.
+        if wx.Platform == "__WXMSW__":
+            try:
+                wx.SystemOptions.SetOption("msw.dark-mode", 0)
+            except Exception:
+                pass
+
         # Adaptation pour rétrocompatibilité wx2.8
         if wx.VERSION < (2, 9, 0, 0) :
             wx.InitAllImageHandlers()
@@ -4414,7 +4424,7 @@ class MyApp(wx.App):
             dlg.Destroy()
 
         # Lit les paramètres de l'interface
-        theme = CUSTOMIZE.GetValeur("interface", "theme", "Vert")
+        theme = UTILS_Interface.GetTheme()
 
         # AdvancedSplashScreen
         splash = None
