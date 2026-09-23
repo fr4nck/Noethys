@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 """Rejoue les deux modeles .ndc de recette utilisateur commites dans
-docs/recette_conventions/ (import reel + generation PDF sur des donnees
-fictives) : si une modification du moteur les casse silencieusement,
-ce test le detecte en CI. Ces fichiers sont ceux qu'un vrai utilisateur
-importe depuis Paramétrage > Modèles de documents > Convention -- voir
-docs/recette_conventions/README.md.
+noethys/Static/ModelesConventionExemples/ (import reel + generation PDF
+sur des donnees fictives) : si une modification du moteur les casse
+silencieusement, ce test le detecte en CI. Ces fichiers sont ceux qu'un
+vrai utilisateur importe depuis Paramétrage > Modèles de documents >
+Convention -- voir docs/recette_conventions/README.md. Ils vivent sous
+noethys/Static/ (et non docs/) car c'est le seul dossier de ressources
+reellement embarque dans le portable/installateur Windows (packaging/
+vanilla-noethys.spec) : une installation reelle contient donc ces
+fichiers, sans acces au depot GitHub.
 """
 from __future__ import annotations
 
@@ -18,7 +22,7 @@ from pathlib import Path
 TESTS_DIR = Path(__file__).resolve().parent
 REPO_DIR = TESTS_DIR.parent
 NOETHYS_DIR = REPO_DIR / "noethys"
-MODELES_DIR = REPO_DIR / "docs" / "recette_conventions"
+MODELES_DIR = NOETHYS_DIR / "Static" / "ModelesConventionExemples"
 if str(TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(TESTS_DIR))
 

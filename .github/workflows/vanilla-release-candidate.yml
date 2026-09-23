@@ -149,6 +149,18 @@ jobs:
           }
           if (Test-Path 'dist/Noethys/_internal') { throw 'Layout PyInstaller _internal incompatible' }
 
+      - name: Vérifier la présence des modèles Convention d'exemple dans le paquet
+        shell: pwsh
+        run: |
+          # Recette RC1 : docs/recette_conventions/*.ndc n'etait pas
+          # embarque dans packaging/vanilla-noethys.spec -- deplaces sous
+          # noethys/Static/ModelesConventionExemples/ (seul dossier
+          # reellement embarque dans le portable/installateur).
+          foreach ($nomFichier in @('modele_convention_associative.ndc', 'modele_convention_scolaire.ndc')) {
+            $chemin = Join-Path 'dist/Noethys/Static/ModelesConventionExemples' $nomFichier
+            if (-not (Test-Path $chemin)) { throw "Modele Convention d'exemple absent du paquet construit : $chemin" }
+          }
+
       - name: Smoke de démarrage de Noethys.exe (portable)
         shell: pwsh
         run: |
@@ -197,6 +209,14 @@ jobs:
           Copy-Item 'dist/Noethys' 'dist/Noethys-installable' -Recurse
           Remove-Item 'dist/Noethys-installable/Portable' -Recurse -Force -ErrorAction SilentlyContinue
           if (Test-Path 'dist/Noethys-installable/Portable') { throw 'Le Setup ne doit jamais contenir Portable/' }
+
+          # vanilla-installer.iss copie uniquement dist/Noethys-installable/*
+          # (jamais dist/Noethys directement) : reverifie ici, sur le
+          # dossier reellement source du Setup publie.
+          foreach ($nomFichier in @('modele_convention_associative.ndc', 'modele_convention_scolaire.ndc')) {
+            $chemin = Join-Path 'dist/Noethys-installable/Static/ModelesConventionExemples' $nomFichier
+            if (-not (Test-Path $chemin)) { throw "Modele Convention d'exemple absent du payload installable : $chemin" }
+          }
 
       - name: Construire le Setup Windows
         shell: pwsh

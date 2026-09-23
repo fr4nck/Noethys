@@ -75,6 +75,24 @@ jobs:
             throw 'Layout PyInstaller _internal détecté : incompatible avec les chemins historiques de Noethys'
           }
 
+      - name: Vérifier la présence des modèles Convention d'exemple dans le paquet
+        shell: pwsh
+        run: |
+          # Recette RC1 : docs/recette_conventions/*.ndc n'était pas
+          # embarqué dans packaging/vanilla-noethys.spec -- une
+          # installation réelle n'avait donc aucun moyen d'importer un
+          # modèle Convention sans accès au dépôt GitHub. Déplacés sous
+          # noethys/Static/ModelesConventionExemples/ (seul dossier
+          # réellement embarqué) : vérifie que le résultat PyInstaller
+          # les contient bien réellement, pas seulement dans l'arbre
+          # source.
+          foreach ($nomFichier in @('modele_convention_associative.ndc', 'modele_convention_scolaire.ndc')) {
+            $chemin = Join-Path 'dist/Noethys/Static/ModelesConventionExemples' $nomFichier
+            if (-not (Test-Path $chemin)) {
+              throw "Modèle Convention d'exemple absent du paquet construit : $chemin"
+            }
+          }
+
       - name: Smoke de démarrage de l'exécutable
         shell: pwsh
         run: |

@@ -26,6 +26,7 @@ on:
       - 'tests/test_vanilla_generation_convention_dialog.py'
       - 'tests/test_vanilla_reservations_extraction.py'
       - 'docs/recette_conventions/**'
+      - 'noethys/Static/ModelesConventionExemples/**'
       - '.github/workflows/vanilla-convention.yml'
       - 'requirements.txt'
   workflow_dispatch:

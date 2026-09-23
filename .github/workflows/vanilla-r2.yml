@@ -72,6 +72,17 @@ jobs:
           }
           if (Test-Path 'dist/Noethys/_internal') { throw 'Layout PyInstaller _internal incompatible' }
 
+          # Recette RC1 : docs/recette_conventions/*.ndc n'etait pas
+          # embarque dans packaging/vanilla-noethys.spec -- deplaces sous
+          # noethys/Static/ModelesConventionExemples/ (seul dossier
+          # reellement embarque). Verifie le resultat PyInstaller ici, et
+          # a nouveau apres "Preparer le payload installable" (le
+          # dossier reellement copie par vanilla-installer.iss).
+          foreach ($nomFichier in @('modele_convention_associative.ndc', 'modele_convention_scolaire.ndc')) {
+            $chemin = Join-Path 'dist/Noethys/Static/ModelesConventionExemples' $nomFichier
+            if (-not (Test-Path $chemin)) { throw "Modele Convention d'exemple absent du paquet construit : $chemin" }
+          }
+
           @(
             'Noethys Vanilla 1.3.4.2-r2 - Windows'
             "Commit: $env:GITHUB_SHA"
@@ -88,6 +99,15 @@ jobs:
           Copy-Item 'dist/Noethys' 'dist/Noethys-installable' -Recurse
           Remove-Item 'dist/Noethys-installable/Portable' -Recurse -Force -ErrorAction SilentlyContinue
           if (Test-Path 'dist/Noethys-installable/Portable') { throw 'Le Setup ne doit jamais contenir Portable/' }
+
+          # vanilla-installer.iss copie uniquement dist/Noethys-installable/*
+          # (jamais dist/Noethys directement) : reverifie ici, sur le
+          # dossier reellement source du Setup, pas seulement sur la
+          # sortie brute de PyInstaller deja verifiee plus haut.
+          foreach ($nomFichier in @('modele_convention_associative.ndc', 'modele_convention_scolaire.ndc')) {
+            $chemin = Join-Path 'dist/Noethys-installable/Static/ModelesConventionExemples' $nomFichier
+            if (-not (Test-Path $chemin)) { throw "Modele Convention d'exemple absent du payload installable : $chemin" }
+          }
 
       - name: Construire le Setup Windows
         shell: pwsh

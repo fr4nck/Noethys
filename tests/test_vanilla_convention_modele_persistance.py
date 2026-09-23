@@ -16,12 +16,33 @@ CTRL_Choix_modele.CTRL_Choice à chaque ouverture de dialogue), plutôt que
 de le supposer depuis la lecture du code seule.
 
 Aucun bug n'a été trouvé dans ce mécanisme générique : la cause du
-symptôme observé en recette n'a donc pas pu être confirmée sans accès à
-la base réelle (voir le rapport -- requête de diagnostic en lecture
-seule fournie séparément). Un défaut latent réel et distinct A été
-trouvé et corrigé pendant cet audit dans
-UTILS_Export_documents.Importer() : voir
+symptôme observé en recette (transition réelle constatée entre deux
+tentatives le 23/09, un modèle categorie='convention' existant puis
+n'existant plus quelques minutes plus tard) N'A PAS pu être confirmée
+sans accès à la base réelle -- ce point reste ouvert, PAS clos comme
+"mécanisme sain" (voir le rapport de recette pour le détail : snapshot
+du 10/09 audité en lecture seule, ne contenant aucune ligne
+categorie='convention', ne peut pas expliquer cette transition du
+23/09). Un défaut latent réel et distinct A été trouvé et corrigé
+pendant cet audit dans UTILS_Export_documents.Importer() : voir
 test_import_objet_sans_cle_image_ne_leve_pas_et_n_ecrase_pas_le_blob_precedent.
+
+Fait supplémentaire confirmé (audit packaging) : les modèles d'exemple
+Convention (docs/recette_conventions/README.md) n'étaient PAS embarqués
+dans le portable/installateur Windows réel (absents de
+packaging/vanilla-noethys.spec, absents de
+dist/Noethys-installable/*) -- une installation réelle n'avait donc
+aucun moyen d'importer un modèle Convention sans accès au dépôt GitHub.
+Corrigé en déplaçant ces fichiers sous
+noethys/Static/ModelesConventionExemples/ (seul dossier de ressources
+réellement embarqué), et en ajoutant
+UTILS_Export_documents.ImporterModeleExempleIdempotent() (import sans
+jamais créer de doublon, jamais de modification silencieuse d'un
+modèle utilisateur existant) -- voir
+ImporterModeleExempleIdempotentTests ci-dessous. Il ne s'agit PAS encore
+du modèle "officiel" fidèle à la référence visuelle réelle : ce sont
+toujours les mêmes exemples génériques anonymisés qu'avant ce
+déplacement.
 """
 from __future__ import annotations
 
@@ -156,6 +177,97 @@ class PersistanceModeleConventionTests(unittest.TestCase):
             resultat = db.ResultatReq()
             db.Close()
             self.assertEqual(resultat, [("article_1",)])
+
+
+MODELES_EXEMPLES_DIR = NOETHYS_DIR / "Static" / "ModelesConventionExemples"
+
+
+class ImporterModeleExempleIdempotentTests(unittest.TestCase):
+    """ Item 3/5 du rapport de recette : les modèles d'exemple Convention
+    n'étaient pas embarqués dans le produit réel (absents de
+    packaging/vanilla-noethys.spec) -- "cliquer Importer" n'était donc pas
+    une stratégie suffisante, le fichier à importer n'étant pas livré.
+    Déplacés sous noethys/Static/ModelesConventionExemples/ (seul dossier
+    de ressources réellement embarqué -- voir aussi le test packaging CI
+    "Vérifier la présence des modèles Convention d'exemple dans le
+    paquet"). Ces tests prouvent, contre les VRAIS fichiers livrés (pas
+    une copie de test), que l'import est réellement idempotent : jamais
+    de doublon, jamais de modification silencieuse d'un modèle existant. """
+
+    def test_les_fichiers_exemples_existent_a_leur_emplacement_embarque(self):
+        for nom_fichier in ("modele_convention_associative.ndc", "modele_convention_scolaire.ndc"):
+            chemin = MODELES_EXEMPLES_DIR / nom_fichier
+            self.assertTrue(chemin.is_file(), "%s absent de %s" % (nom_fichier, MODELES_EXEMPLES_DIR))
+
+    def test_premier_import_cree_un_modele_categorie_convention(self):
+        chemin_ndc = MODELES_EXEMPLES_DIR / "modele_convention_associative.ndc"
+        base = BaseTest()
+        with RedirectionGestionDB(base.chemin):
+            IDmodele = UTILS_Export_documents.ImporterModeleExempleIdempotent(fichier=str(chemin_ndc))
+            self.assertIsNotNone(IDmodele)
+
+            db = GestionDB.DB(nomFichier=base.chemin, suffixe=None)
+            db.ExecuterReq("SELECT IDmodele, categorie FROM documents_modeles WHERE IDmodele=%d;" % IDmodele)
+            resultat = db.ResultatReq()
+            db.Close()
+            self.assertEqual(resultat, [(IDmodele, "convention")])
+
+    def test_reimport_ne_cree_aucun_doublon(self):
+        """ CAS central de la recommandation "import idempotent, aucun
+        doublon" : importer deux fois le même fichier d'exemple ne doit
+        créer qu'UN SEUL modèle, en base réelle, pas deux. """
+        chemin_ndc = MODELES_EXEMPLES_DIR / "modele_convention_associative.ndc"
+        base = BaseTest()
+        with RedirectionGestionDB(base.chemin):
+            IDmodele1 = UTILS_Export_documents.ImporterModeleExempleIdempotent(fichier=str(chemin_ndc))
+            IDmodele2 = UTILS_Export_documents.ImporterModeleExempleIdempotent(fichier=str(chemin_ndc))
+            self.assertEqual(IDmodele1, IDmodele2)
+
+            db = GestionDB.DB(nomFichier=base.chemin, suffixe=None)
+            db.ExecuterReq("SELECT COUNT(*) FROM documents_modeles WHERE categorie='convention';")
+            (nbre,) = db.ResultatReq()[0]
+            db.Close()
+            self.assertEqual(nbre, 1)
+
+    def test_reimport_ne_modifie_pas_un_modele_utilisateur_deja_renomme(self):
+        """ Si l'utilisateur a modifié le modèle importé (ex. renommé un
+        article, changé le texte) après un premier import, un second
+        import du même fichier source ne doit JAMAIS écraser silencieusement
+        ses modifications -- seul le nom+catégorie sert à détecter un
+        doublon, jamais le contenu des objets. """
+        chemin_ndc = MODELES_EXEMPLES_DIR / "modele_convention_associative.ndc"
+        base = BaseTest()
+        with RedirectionGestionDB(base.chemin):
+            IDmodele = UTILS_Export_documents.ImporterModeleExempleIdempotent(fichier=str(chemin_ndc))
+
+            db = GestionDB.DB(nomFichier=base.chemin, suffixe=None)
+            db.ExecuterReq("SELECT IDobjet, texte FROM documents_objets WHERE IDmodele=%d LIMIT 1;" % IDmodele)
+            IDobjet, _texte_original = db.ResultatReq()[0]
+            db.ReqMAJ("documents_objets", [("texte", "Texte modifié par l'utilisateur")], "IDobjet", IDobjet)
+            db.Close()
+
+            IDmodele2 = UTILS_Export_documents.ImporterModeleExempleIdempotent(fichier=str(chemin_ndc))
+            self.assertEqual(IDmodele, IDmodele2)
+
+            db = GestionDB.DB(nomFichier=base.chemin, suffixe=None)
+            db.ExecuterReq("SELECT texte FROM documents_objets WHERE IDobjet=%d;" % IDobjet)
+            (texte_final,) = db.ResultatReq()[0]
+            db.Close()
+            self.assertEqual(texte_final, "Texte modifié par l'utilisateur")
+
+    def test_persiste_apres_reouverture(self):
+        chemin_ndc = MODELES_EXEMPLES_DIR / "modele_convention_scolaire.ndc"
+        base = BaseTest()
+        with RedirectionGestionDB(base.chemin):
+            IDmodele = UTILS_Export_documents.ImporterModeleExempleIdempotent(fichier=str(chemin_ndc))
+
+        # Nouvelle connexion fraîche, hors du "with" -- exactement le
+        # scénario "fermeture/réouverture" demandé.
+        db = GestionDB.DB(nomFichier=base.chemin, suffixe=None)
+        db.ExecuterReq("SELECT IDmodele FROM documents_modeles WHERE categorie='convention';")
+        resultat = db.ResultatReq()
+        db.Close()
+        self.assertEqual(resultat, [(IDmodele,)])
 
 
 if __name__ == "__main__":
