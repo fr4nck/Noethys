@@ -118,15 +118,13 @@ def SetTailleTexte(valeur=100):
 
 
 def GetApparence():
-    valeur = UTILS_Config.GetParametre("interface_apparence", "systeme")
-    if valeur not in [code for code, label in APPARENCES]:
-        valeur = "systeme"
-    return valeur
+    """Noethys-SL reste temporairement en apparence claire."""
+    return "clair"
 
 
 def SetApparence(valeur="systeme"):
-    if valeur not in [code for code, label in APPARENCES]:
-        valeur = "systeme"
+    """Neutralise temporairement les demandes système/sombres."""
+    valeur = "clair"
     UTILS_Config.SetParametre("interface_apparence", valeur)
     return valeur
 
@@ -155,30 +153,30 @@ def SystemeEstSombre():
 
 
 def EstSombre(apparence=None):
-    if apparence is None:
-        apparence = GetApparence()
-    if apparence == "sombre":
-        return True
-    if apparence == "clair":
-        return False
-    return SystemeEstSombre()
+    """Le thème sombre est désactivé tant que sa recette Windows n'est pas fiable."""
+    return False
+
+
+def _NormaliseThemeNoethysSL(theme):
+    if theme in ("Vert", "Bleu"):
+        return theme
+    return "Vert"
 
 
 def GetTheme():
     InstallerGestionAffichage()
-    return UTILS_Customize.GetValeur("interface", "theme", "Vert")
+    return _NormaliseThemeNoethysSL(UTILS_Customize.GetValeur("interface", "theme", "Vert"))
 
 
 def SetTheme(theme="Vert"):
-    if theme not in [code for code, label in THEMES]:
-        theme = "Vert"
+    theme = _NormaliseThemeNoethysSL(theme)
     UTILS_Customize.SetValeur("interface", "theme", theme)
 
 
 def GetValeur(cle="", defaut="", theme=None):
     InstallerGestionAffichage()
     if theme == None :
-        theme = UTILS_Customize.GetValeur("interface", "theme", "Vert")
+        theme = GetTheme()
 
     if theme in DONNEES :
         if cle in DONNEES[theme]:
