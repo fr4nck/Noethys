@@ -703,7 +703,7 @@ def _CompleterTarifsAdulteEnfant(champs, tarifs, dictDonnees):
             )
 
 
-def GetIndividusRattaches(def GetIndividusRattaches(IDfamille, DB=None):
+def GetIndividusRattaches(IDfamille, DB=None):
     """ Individus (créneaux/cycles/personnes) rattachés à la famille.
     Fonction publique : réutilisée à la fois par GetChampsConvention() et
     par le bouton "Imprimer le planning" de DLG_Generation_convention,

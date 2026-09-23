@@ -113,7 +113,7 @@ def _PoliceReportLab(objet):
     return candidate if candidate in enregistrees else face
 
 
-ALIGNEMENTS_REPORTLAB = {ALIGNEMENTS_REPORTLAB = {
+ALIGNEMENTS_REPORTLAB = {
     "left": TA_LEFT,
     "right": TA_RIGHT,
     "center": TA_CENTER,
@@ -303,7 +303,7 @@ def _DessineObjetsFixes(canvas, modeleDoc, dictChamps, objetsFlottants, dessiner
     canvas.restoreState()
 
 
-class _GabaritConventionclass _GabaritConvention(PageTemplate):
+class _GabaritConvention(PageTemplate):
     def __init__(self, cadre, modeleDoc, dictChamps, objetsFlottants,
                  nom="convention", dessiner_objets_modele=True,
                  autoNextPageTemplate=None):
@@ -325,7 +325,7 @@ class _GabaritConventionclass _GabaritConvention(PageTemplate):
         )
 
 
-def GenererPDF(def GenererPDF(IDmodele, dictChamps, nomDoc=None, afficherDoc=True):
+def GenererPDF(IDmodele, dictChamps, nomDoc=None, afficherDoc=True):
     """ Charge le modèle Noedoc choisi et rend le PDF. Ne contient aucune
     donnée métier : dictChamps est déjà entièrement préparé par
     l'appelant (voir Impression() ci-dessous).
