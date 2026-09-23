@@ -39,6 +39,21 @@ class MailerPython3Contracts(unittest.TestCase):
         self.assertIn('decode("utf-8", errors="replace")', source)
 
 
+class SmsPython3Contracts(unittest.TestCase):
+    def test_pieces_jointes_sms_sont_ecrites_en_texte_utf8(self):
+        source = lire("noethys/Dlg/DLG_Envoi_sms.py")
+        self.assertEqual(
+            source.count('open(cheminFichier, "w", encoding="utf-8")'),
+            3,
+        )
+        self.assertNotIn('fichier.write(texte.encode("utf8"))', source)
+
+    def test_erreur_email_sms_ne_decode_plus_un_str(self):
+        source = lire("noethys/Dlg/DLG_Envoi_sms.py")
+        self.assertNotIn('str(err).decode("utf8")', source)
+        self.assertIn("UTILS_Envoi_email._TexteUtf8(err)", source)
+
+
 class NomadhysWxThreadContracts(unittest.TestCase):
     def test_image_journal_et_gauge_sont_deportes_vers_la_boucle_wx(self):
         path = "noethys/Ctrl/CTRL_Serveur_nomade.py"
