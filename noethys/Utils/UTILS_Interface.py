@@ -119,7 +119,7 @@ def SetTailleTexte(valeur=100):
 
 def GetApparence():
     """Noethys-SL reste temporairement en apparence claire."""
-    return "clair"
+    return UTILS_Config.GetParametre("interface_apparence", "systeme")
 
 
 def SetApparence(valeur="systeme"):
