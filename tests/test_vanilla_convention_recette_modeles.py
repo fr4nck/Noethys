@@ -74,6 +74,9 @@ class RecetteModelesConventionTests(unittest.TestCase):
         self.assertIn("Cadre coordonnées", noms)
         self.assertIn("Cadre titre", noms)
         self.assertIn("Cadres signatures", noms)
+        structure = next(o for o in objets if o["nom"] == "Structure partie")
+        self.assertNotIn("{FAMILLE_VILLE}", structure["texte"])
+        self.assertNotIn("]]]]", structure["texte"])
         self.assertIn("Saut page 2", noms)
         bandeaux = [o for o in objets if o["nom"].startswith("Article ") and o["nom"].endswith("titre")]
         self.assertEqual(len(bandeaux), 6)

@@ -747,7 +747,7 @@
             "afficheNumero": null,
             "IDdonnee": null,
             "champ": null,
-            "texte": "{FAMILLE_NOM} {FAMILLE_VILLE}\n{CONVENTION_ADRESSE_STRUCTURE}\n[[SI {CONVENTION_REPRESENTANT_NOM_COMPLET}<>->Représenté(e) par {CONVENTION_REPRESENTANT_NOM_COMPLET}[[SI {CONVENTION_REPRESENTANT_FONCTION}<>-> en tant que {CONVENTION_REPRESENTANT_FONCTION}]]]]",
+            "texte": "{FAMILLE_NOM}\n{CONVENTION_ADRESSE_STRUCTURE}\n[[SI {CONVENTION_REPRESENTANT_NOM_COMPLET}<>->Représenté(e) par {CONVENTION_REPRESENTANT_NOM_COMPLET}]][[SI {CONVENTION_REPRESENTANT_FONCTION}<>-> en tant que {CONVENTION_REPRESENTANT_FONCTION}]]",
             "largeur": null,
             "hauteur": null,
             "nom": "Structure partie",
