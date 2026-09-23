@@ -132,6 +132,13 @@ def Importer(fichier="", dictDonnees={}, IDfond=None, defaut=0):
     for dictObjet in listeObjets :
         dictObjet["IDmodele"] = IDmodele
 
+        # Réinitialisé à chaque objet : sans cela, un dictObjet sans clé
+        # "image" (fichier .ndc importé/édité en dehors d'Exporter(), qui
+        # inclut aujourd'hui systématiquement cette clé mais ne le
+        # garantit pas pour tout fichier .ndc possible) soit lève
+        # UnboundLocalError au premier objet sans image, soit réutilise à
+        # tort le blob de l'objet précédent pour un objet qui n'en a pas.
+        blob = None
         listeDonnees = []
         for champ, donnee in dictObjet.items() :
             if champ == "image" :
