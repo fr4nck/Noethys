@@ -26,15 +26,30 @@
 ; ce chemin mort à un utilisateur réel, AVANT même que GetDefaultDirName()
 ; ne soit consulté (UsePreviousAppDir est prioritaire sur DefaultDirName
 ; dès qu'un chemin précédent existe, quelle que soit sa validité).
-; CurPageChanged() ci-dessous intercepte la page de sélection du dossier
-; et REMPLACE la valeur qu'Inno vient d'y pré-remplir si elle est
-; suspecte (sous %TEMP%/%TMP%, ou nom de dossier de test), en retombant
-; sur GetDefaultDirName() -- jamais l'inverse : un dossier précédent
-; réellement valide reste toujours proposé en priorité, et l'utilisateur
-; peut toujours saisir n'importe quel autre dossier de son choix (la
-; page reste visible et modifiable). La logique de validation vit dans
+; CurPageChanged() ci-dessous intercepte la page de sélection du dossier et
+; REMPLACE la valeur qu'Inno vient d'y pré-remplir si elle est suspecte
+; (sous %TEMP%/%TMP%, ou nom de dossier de test), en retombant sur
+; GetDefaultDirName() -- jamais l'inverse : un dossier précédent réellement
+; valide reste toujours proposé en priorité, et l'utilisateur peut toujours
+; saisir n'importe quel autre dossier de son choix (la page reste visible et
+; modifiable). La logique de validation vit dans
 ; vanilla-installer-dirlogic.inc.iss (jamais dupliquée), testée par
 ; vanilla-installer-dirlogic.test.iss (4 cas, voir CI).
+;
+; REGRESSION CORRIGEE APRES COUP : une première version de CurPageChanged()
+; validait WizardForm.DirEdit.Text tel quel, quelle que soit son origine.
+; Or ce champ contient AUSSI la valeur d'un /DIR= explicite (installation
+; silencieuse CI) ou d'une saisie manuelle -- une installation NEUVE, qui
+; n'a par définition pas encore Noethys.exe sur place. EstCheminPrecedentValide()
+; l'exigeant, ce /DIR= explicite était systématiquement rejeté et remplacé
+; par GetDefaultDirName(), cassant toute installation vers un nouveau
+; dossier (constaté en CI : "Tester installation et conservation de la
+; configuration" échouait, Noethys.exe absent du dossier /DIR= demandé).
+; Correctif : LireCheminPrecedentDuRegistre() lit directement la valeur que
+; UsePreviousAppDir a lui-même utilisée pour pré-remplir le champ ; on ne
+; corrige le champ que si sa valeur ACTUELLE est identique à cette valeur de
+; registre ET que celle-ci est invalide -- jamais un /DIR= ou une saisie
+; utilisateur, qui diffèrent toujours de ce chemin précédent.
 
 #ifndef MyAppVersion
   #define MyAppVersion "1.3.4.2-r2"
@@ -82,15 +97,25 @@ Filename: "{app}\Noethys.exe"; Description: "Lancer Noethys"; Flags: nowait post
 #include "vanilla-installer-dirlogic.inc.iss"
 
 procedure CurPageChanged(CurPageID: Integer);
+var
+  CheminRegistrePrecedent: String;
 begin
   // UsePreviousAppDir a déjà pré-rempli WizardForm.DirEdit.Text avec la
-  // valeur trouvée dans le registre à ce stade (sans aucune validation de
-  // sa part). On ne le corrige QUE si cette valeur est suspecte : un
-  // dossier précédent réellement valide n'est jamais modifié ici, et
-  // l'utilisateur reste toujours libre de saisir un autre dossier ensuite.
+  // valeur du registre à ce stade (sans aucune validation de sa part). On
+  // ne corrige CE champ QUE si sa valeur ACTUELLE correspond exactement au
+  // chemin lu directement dans le registre (LireCheminPrecedentDuRegistre)
+  // ET que ce chemin est invalide : cela prouve qu'Inno a bien pré-rempli
+  // depuis ce chemin précédent, par opposition à un /DIR= passé en ligne de
+  // commande ou à une saisie manuelle de l'utilisateur -- ces derniers
+  // visent une installation NEUVE qui n'a par définition pas encore
+  // Noethys.exe sur place, et ne doivent donc jamais être rejetés ici.
+  // Un dossier précédent réellement valide n'est jamais modifié.
   if CurPageID = wpSelectDir then
   begin
-    if not EstCheminPrecedentValide(WizardForm.DirEdit.Text) then
+    CheminRegistrePrecedent := LireCheminPrecedentDuRegistre();
+    if (CheminRegistrePrecedent <> '') and
+       (RemoveBackslashUnlessRoot(WizardForm.DirEdit.Text) = CheminRegistrePrecedent) and
+       (not EstCheminPrecedentValide(CheminRegistrePrecedent)) then
       WizardForm.DirEdit.Text := GetDefaultDirName('');
   end;
 end;

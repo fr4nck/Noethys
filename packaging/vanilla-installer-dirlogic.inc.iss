@@ -72,3 +72,21 @@ begin
             (not EstNomDeDossierDeTest(Chemin)) and
             FileExists(AddBackslash(Chemin) + 'Noethys.exe');
 end;
+
+// Lit directement la valeur InstallLocation que UsePreviousAppDir=yes a lui
+// même utilisée pour pré-remplir la page (clé de registre Inno standard
+// HKLM\...\Uninstall\<AppId>_is1 ; redirigée transparemment vers
+// WOW6432Node par Windows puisque le Setup tourne en 32 bits). Sert
+// UNIQUEMENT à distinguer "Inno a pré-rempli le champ depuis un chemin
+// précédent enregistré" d'un /DIR= explicite ou d'une saisie utilisateur :
+// ces derniers visent une NOUVELLE installation qui n'a par définition pas
+// encore Noethys.exe sur place, et ne doivent donc jamais être validés par
+// EstCheminPrecedentValide() (qui exige ce fichier).
+function LireCheminPrecedentDuRegistre(): String;
+var
+  Valeur: String;
+begin
+  Result := '';
+  if RegQueryStringValue(HKLM, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Noethys_is1', 'InstallLocation', Valeur) then
+    Result := RemoveBackslashUnlessRoot(Valeur);
+end;
