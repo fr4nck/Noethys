@@ -273,6 +273,8 @@ class Page_ftp(wx.Panel):
             self.ctrl_identifiant.SetValue(dictDonnees["synchro_ftp_identifiant"])
         if "synchro_ftp_mdp" in dictDonnees : 
             mdp = base64.b64decode(dictDonnees["synchro_ftp_mdp"])
+            if six.PY3:
+                mdp = mdp.decode("utf-8", errors="replace")
             self.ctrl_mdp.SetValue(mdp)
         if "synchro_ftp_repertoire" in dictDonnees : 
             self.ctrl_repertoire.SetValue(dictDonnees["synchro_ftp_repertoire"])
@@ -329,6 +331,8 @@ class Page_cryptage(wx.Panel):
             self.check_activer.SetValue(dictDonnees["synchro_cryptage_activer"])
         if "synchro_cryptage_mdp" in dictDonnees : 
             mdp = base64.b64decode(dictDonnees["synchro_cryptage_mdp"])
+            if six.PY3:
+                mdp = mdp.decode("utf-8", errors="replace")
             self.ctrl_mdp.SetValue(mdp)
 
     def Validation(self):
