@@ -2338,6 +2338,14 @@ DB_DOCUMENTS = {
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
+# Tables additives que les bases historiques peuvent légitimement ne pas
+# contenir. Les conversions local <-> réseau doivent alors créer la table
+# dans la cible mais considérer l'absence dans la source comme "aucune
+# donnée à importer", et non comme une corruption.
+TABLES_SCHEMA_OPTIONNELLES = (
+    "rattachements_fonctions",
+)
+
 DB_INDEX = {
 
     "index_photos_IDindividu": {"table": "photos", "champ": "IDindividu"},
