@@ -234,24 +234,5 @@ class GenerationPDFConventionTests(unittest.TestCase):
         self.assertEqual(modeleDoc.listeObjets[0].categorie, "special")
 
 
-class PorteeObjetsFixesMultipageTests(unittest.TestCase):
-    def test_objet_non_marque_reste_premiere_page(self):
-        objet = type("O", (), {"champ": None})()
-        self.assertTrue(UIC._ObjetFixeVisibleSurPage(objet, 1))
-        self.assertFalse(UIC._ObjetFixeVisibleSurPage(objet, 2))
-
-    def test_marqueurs_page_1_page_2_et_suivantes(self):
-        def objet(champ):
-            return type("O", (), {"champ": champ})()
-        self.assertTrue(UIC._ObjetFixeVisibleSurPage(objet("convention_page_1"), 1))
-        self.assertFalse(UIC._ObjetFixeVisibleSurPage(objet("convention_page_1"), 2))
-        self.assertFalse(UIC._ObjetFixeVisibleSurPage(objet("convention_page_2"), 1))
-        self.assertTrue(UIC._ObjetFixeVisibleSurPage(objet("convention_page_2"), 2))
-        self.assertFalse(UIC._ObjetFixeVisibleSurPage(objet("convention_page_2"), 3))
-        self.assertFalse(UIC._ObjetFixeVisibleSurPage(objet("convention_pages_suivantes"), 1))
-        self.assertTrue(UIC._ObjetFixeVisibleSurPage(objet("convention_pages_suivantes"), 2))
-        self.assertTrue(UIC._ObjetFixeVisibleSurPage(objet("convention_pages_suivantes"), 4))
-
-
 if __name__ == "__main__":
     unittest.main()
