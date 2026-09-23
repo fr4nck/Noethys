@@ -436,22 +436,20 @@ class Panel(wx.Panel):
             else:
                 return False
         elif CUSTOMIZE.GetValeur("connecthys_log", "type", "panel") == "file" :
-            file_log = open(UTILS_Fichiers.GetRepUtilisateur(CUSTOMIZE.GetValeur("connecthys_log", "file_name", "connecthys_synchro.log")), "a")
-            texte = u"\n"
+            nom_fichier = UTILS_Fichiers.GetRepUtilisateur(
+                CUSTOMIZE.GetValeur("connecthys_log", "file_name", "connecthys_synchro.log")
+            )
             if self.lock.acquire(block) == True:
-                try :
-                    texte += u"[%s] %s" % (horodatage, message)
-                    file_log.write(six.text_type(texte).encode('UTF-8'))
-                except Exception:
+                try:
                     if isinstance(message, bytes):
                         message = message.decode("utf-8", errors="replace")
                     else:
                         message = six.text_type(message)
-                    texte += u"[%s] %s" % (horodatage, message)
-                    file_log.write(six.text_type(texte).encode('UTF-8'))
-
-                file_log.close()
-                self.lock.release()
+                    texte = u"\n[%s] %s" % (horodatage, message)
+                    with open(nom_fichier, "a", encoding="utf-8") as file_log:
+                        file_log.write(texte)
+                finally:
+                    self.lock.release()
                 return True
             else:
                 return False
