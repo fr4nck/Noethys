@@ -44,16 +44,24 @@ DONNEES = {
 
 }
 
+def _NormaliseThemeVanilla(theme):
+    """Conserve les accents historiques clairs et neutralise le thème Noir."""
+    if theme in ("Vert", "Bleu"):
+        return theme
+    return "Vert"
+
+
 def GetTheme() :
-    return UTILS_Customize.GetValeur("interface", "theme", "Vert")
+    return _NormaliseThemeVanilla(UTILS_Customize.GetValeur("interface", "theme", "Vert"))
+
 
 def SetTheme(theme="Vert"):
-    UTILS_Customize.SetValeur("interface", "theme", theme)
+    UTILS_Customize.SetValeur("interface", "theme", _NormaliseThemeVanilla(theme))
 
 def GetValeur(cle="", defaut="", theme=None):
     # lecture du thème
     if theme == None :
-        theme = UTILS_Customize.GetValeur("interface", "theme", "Vert")
+        theme = GetTheme()
 
     # Lecture de la valeur
     if theme in DONNEES :
