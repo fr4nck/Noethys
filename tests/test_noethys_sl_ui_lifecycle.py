@@ -86,6 +86,17 @@ class FamilleNotebookContracts(unittest.TestCase):
         self.assertIn("self._maj_differees = []", src)
 
 
+class TickerLifecycleContracts(unittest.TestCase):
+    def test_ticker_arrete_ses_deux_timers_a_la_destruction(self):
+        src = source_methode(
+            "noethys/Ctrl/CTRL_Ticker_presents.py",
+            "CTRL",
+            "OnDestroy",
+        )
+        self.assertIn("self.timer.Stop()", src)
+        self.assertIn("self.ticker.Stop()", src)
+
+
 class RemplissageLifecycleContracts(unittest.TestCase):
     def test_maj_auto_est_stoppee_quand_le_panel_est_detruit(self):
         src = source_methode(
