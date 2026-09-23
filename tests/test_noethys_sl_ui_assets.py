@@ -83,5 +83,21 @@ class StaticImageAliasTests(unittest.TestCase):
                 self.assertTrue(chemin.endswith(os.path.normpath("Images/16x16/Inconnue.png")))
 
 
+
+
+class LightStartupContractTests(unittest.TestCase):
+    def test_noethys_desactive_le_dark_mode_natif_avant_les_controles(self):
+        source = (ROOT / "noethys" / "Noethys.py").read_text(encoding="utf-8")
+        self.assertIn('wx.SystemOptions.SetOption("msw.dark-mode", 0)', source)
+
+    def test_noethys_ne_lit_plus_directement_un_ancien_theme_noir(self):
+        source = (ROOT / "noethys" / "Noethys.py").read_text(encoding="utf-8")
+        self.assertNotIn(
+            'CUSTOMIZE.GetValeur("interface", "theme", "Vert")',
+            source,
+        )
+        self.assertGreaterEqual(source.count("UTILS_Interface.GetTheme()"), 2)
+
+
 if __name__ == "__main__":
     unittest.main()
