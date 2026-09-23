@@ -1,7 +1,16 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+import sys
 import unittest
+from pathlib import Path
+
+TESTS_DIR = Path(__file__).resolve().parent
+NOETHYS_DIR = TESTS_DIR.parent / "noethys"
+if str(TESTS_DIR) not in sys.path:
+    sys.path.insert(0, str(TESTS_DIR))
+if str(NOETHYS_DIR) not in sys.path:
+    sys.path.insert(0, str(NOETHYS_DIR))
 
 from _fixtures_noethys_db import BaseTest
 from Data import DATA_Civilites
