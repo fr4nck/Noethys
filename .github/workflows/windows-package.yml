@@ -9,6 +9,8 @@ on:
   pull_request:
     paths:
       - 'noethys/Utils/UTILS_Fichiers.py'
+      - 'noethys/Utils/UTILS_Interface.py'
+      - 'noethys/Ctrl/CTRL_ObjectListView.py'
       - 'packaging/**'
       - 'requirements*.txt'
       - 'tests/test_noe_041_portable_paths.py'
