@@ -132,7 +132,10 @@ jobs:
           $resultatAbcd = Join-Path $env:TEMP 'resultat-dirlogic.txt'
           Remove-Item $resultatAbcd -Force -ErrorAction SilentlyContinue
           $p = Start-Process $harnais -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES') -PassThru -Wait
-          if ($p.ExitCode -ne 0) { throw "Harnais CAS A-D : code inattendu $($p.ExitCode)" }
+          # InitializeSetup() renvoie toujours False ici (annulation avant
+          # toute copie de fichier) : Inno documente ce cas comme "Setup
+          # failed to initialize", code de sortie 1 -- jamais 0.
+          if ($p.ExitCode -ne 1) { throw "Harnais CAS A-D : code inattendu $($p.ExitCode)" }
           if (-not (Test-Path $resultatAbcd)) { throw "Fichier de résultats absent : $resultatAbcd" }
           $resultats = Get-Content $resultatAbcd
           Write-Host ($resultats -join "`n")
