@@ -286,22 +286,44 @@ def _ConstruitStory(modeleDoc, objetsFlottants, dictChamps):
     return story
 
 
-def _DessineObjetsFixes(canvas, modeleDoc, dictChamps, objetsFlottants, dessiner_objets_modele=True):
+def _ObjetFixeVisibleSurPage(objet, numero_page):
+    """Portée d'un objet fixe dans une convention multipage.
+
+    Par compatibilité, tout objet fixe Noedoc non marqué reste un objet
+    de première page, comme avant. Les marqueurs optionnels ci-dessous
+    permettent au MODELE (jamais au code métier) de réserver par exemple
+    des cadres de signatures à la page 2.
+    """
+    marqueur = getattr(objet, "champ", None)
+    if marqueur == "convention_page_1":
+        return numero_page == 1
+    if marqueur == "convention_page_2":
+        return numero_page == 2
+    if marqueur == "convention_pages_suivantes":
+        return numero_page >= 2
+    return numero_page == 1
+
+
+def _DessineObjetsFixes(canvas, modeleDoc, dictChamps, objetsFlottants, numero_page=1):
     canvas.saveState()
+    # Le fond de page historique reste dessiné sur toutes les pages :
+    # c'est le comportement normal de Noedoc et un fond peut porter une
+    # charte graphique générique.
     modeleDoc.DessineFond(canvas, dictChamps=dictChamps)
-    if dessiner_objets_modele:
-        ensembleFlottants = set(id(o) for o in objetsFlottants)
-        for objet in modeleDoc.listeObjets:
-            if id(objet) in ensembleFlottants:
-                continue
-            if objet.champ in ("cadre_principal", "cadre_pages_suivantes"):
-                continue
-            if objet.categorie == "special":
-                continue
-            valeur = modeleDoc.GetValeur(objet, dictChamps)
-            if valeur is False:
-                continue
-            DLG_Noedoc.DessineObjetPDF(objet, canvas, valeur=valeur)
+    ensembleFlottants = set(id(o) for o in objetsFlottants)
+    for objet in modeleDoc.listeObjets:
+        if id(objet) in ensembleFlottants:
+            continue
+        if objet.champ in ("cadre_principal", "cadre_pages_suivantes"):
+            continue
+        if objet.categorie == "special":
+            continue
+        if not _ObjetFixeVisibleSurPage(objet, numero_page):
+            continue
+        valeur = modeleDoc.GetValeur(objet, dictChamps)
+        if valeur is False:
+            continue
+        DLG_Noedoc.DessineObjetPDF(objet, canvas, valeur=valeur)
     canvas.restoreState()
 
 
@@ -323,7 +345,7 @@ class _GabaritConvention(PageTemplate):
     def _DessinePage(self, canvas, doc):
         _DessineObjetsFixes(
             canvas, self._modeleDoc, self._dictChamps, self._objetsFlottants,
-            dessiner_objets_modele=self._dessiner_objets_modele,
+            numero_page=doc.page,
         )
 
 
