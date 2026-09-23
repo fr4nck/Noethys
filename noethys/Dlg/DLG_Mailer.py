@@ -32,6 +32,20 @@ from Ol import OL_Destinataires_emails
 from Ol import OL_Pieces_jointes_emails
 
 
+def _FormateErreurMessagerie(err):
+    """Retourne un détail d'erreur affichable sous Python 3.
+
+    Certaines exceptions SMTP exposent encore un message en bytes via
+    smtp_error ; les autres sont déjà convertibles directement en str.
+    """
+    smtp_error = getattr(err, "smtp_error", None)
+    if isinstance(smtp_error, bytes):
+        return smtp_error.decode("utf-8", errors="replace")
+    if smtp_error not in (None, ""):
+        return six.text_type(smtp_error)
+    return six.text_type(err)
+
+
 class Dialog(wx.Dialog):
     def __init__(self, parent, categorie="saisie_libre", afficher_confirmation_envoi=True):
         wx.Dialog.__init__(self, parent, -1, style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER|wx.MAXIMIZE_BOX|wx.MINIMIZE_BOX)
@@ -488,10 +502,10 @@ class Dialog(wx.Dialog):
             messagerie.Connecter()
         except Exception as err:
             dlg_progress.Destroy()
-            err = str(err).decode("utf8")
+            detail_erreur = _FormateErreurMessagerie(err)
             intro = _(u"La connexion au serveur de messagerie est impossible :")
             conclusion = _(u"Vérifiez votre connexion internet ou les paramètres de votre adresse d'expédition.")
-            dlgErreur = DLG_Messagebox.Dialog(self, titre=_(u"Erreur"), introduction=intro, detail=err, conclusion=conclusion, icone=wx.ICON_ERROR, boutons=[_(u"Ok"),])
+            dlgErreur = DLG_Messagebox.Dialog(self, titre=_(u"Erreur"), introduction=intro, detail=detail_erreur, conclusion=conclusion, icone=wx.ICON_ERROR, boutons=[_(u"Ok"),])
             dlgErreur.ShowModal()
             dlgErreur.Destroy()
             return False
