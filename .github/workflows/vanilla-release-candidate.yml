@@ -201,6 +201,64 @@ jobs:
           Move-Item 'installer-output/Noethys-Vanilla-Setup.exe' $setup
           "SETUP_EXE=$setup" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding UTF8
 
+      - name: Tester la logique de détermination du dossier d'installation (4 cas)
+        shell: pwsh
+        run: |
+          # Remplace l'ancien test à scénario unique (installation silencieuse
+          # sans /DIR=) qui a produit un faux positif en recette RC3 : il
+          # validait GetDefaultDirName() en isolation, mais ne détectait pas
+          # qu'UsePreviousAppDir peut imposer un chemin périmé/temporaire
+          # depuis le registre AVANT même que cette fonction ne soit consultée.
+          # Ce test compile et exécute le VRAI harnais (vanilla-installer-dirlogic.test.iss),
+          # qui #include le même fichier de logique que le Setup distribué
+          # (vanilla-installer-dirlogic.inc.iss) : aucune duplication de code.
+          # Exécuté AVANT la création du C:\Noethys historique simulé par
+          # l'étape suivante, pour que le CAS A (aucune installation
+          # existante) reste un état réellement propre sur ce runner.
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw 'ISCC.exe introuvable' }
+          Push-Location packaging
+          try {
+            & $iscc 'vanilla-installer-dirlogic.test.iss'
+            if ($LASTEXITCODE -ne 0) { throw "Compilation du harnais de test a échoué : $LASTEXITCODE" }
+          } finally {
+            Pop-Location
+          }
+
+          $resultatPath = Join-Path $env:TEMP 'resultat-dirlogic.txt'
+          Remove-Item $resultatPath -Force -ErrorAction SilentlyContinue
+
+          $harnais = (Resolve-Path 'packaging\dirlogic-test-setup.exe').Path
+          $p = Start-Process $harnais -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES') -PassThru -Wait
+          # InitializeSetup() renvoie toujours False : l'installation est
+          # annulée avant toute copie de fichier, code de sortie attendu 0.
+          if ($p.ExitCode -ne 0) { throw "Le harnais de test a retourné un code inattendu : $($p.ExitCode)" }
+
+          if (-not (Test-Path $resultatPath)) { throw "Fichier de résultats absent : $resultatPath" }
+          $resultats = Get-Content $resultatPath
+          Write-Host ($resultats -join "`n")
+
+          function GetValeur([string[]]$Lignes, [string]$Cle) {
+            $ligne = $Lignes | Where-Object { $_ -like "$Cle=*" }
+            if (-not $ligne) { throw "Résultat manquant pour $Cle" }
+            return $ligne.Substring($Cle.Length + 1)
+          }
+
+          $attendu = @{
+            'CAS_A'          = 'C:\Program Files\Noethys'
+            'CAS_B'          = 'C:\Noethys'
+            'CAS_C'          = 'ACCEPTE'
+            'CAS_D_REJETE'   = 'OUI'
+            'CAS_D_REPLI'    = 'C:\Program Files\Noethys'
+          }
+          foreach ($cle in $attendu.Keys) {
+            $valeur = GetValeur $resultats $cle
+            if ($valeur -ne $attendu[$cle]) {
+              throw "$cle incorrect : attendu '$($attendu[$cle])', obtenu '$valeur'"
+            }
+          }
+          Write-Host 'Les 4 cas de détermination du dossier d''installation sont corrects.'
+
       - name: Vérifier la proposition du dossier d'installation historique
         shell: pwsh
         run: |

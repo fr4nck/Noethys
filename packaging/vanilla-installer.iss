@@ -13,6 +13,28 @@
 ; C:\Noethys quand ce cas est détecté ; DisableDirPage=no garantit que la
 ; page reste affichée pour que l'utilisateur garde la main (choix final
 ; toujours à l'utilisateur, rien n'est déplacé ni supprimé automatiquement).
+;
+; BUG REEL CORRIGE (recette RC3) : UsePreviousAppDir=yes fait AUSSI
+; confiance, sans la moindre validation, à la valeur "InstallLocation"
+; déjà enregistrée dans le registre pour AppId=Noethys -- y compris si
+; cette valeur provient d'une installation de TEST (silencieuse, /DIR=
+; vers un dossier temporaire) jamais désinstallée proprement. Preuve
+; directe constatée : HKLM\SOFTWARE\WOW6432Node\...\Uninstall\Noethys_is1
+; \InstallLocation pointait vers
+; "C:\Users\<utilisateur>\AppData\Local\Temp\noethys-rc3-installed-test\",
+; un dossier de recette CI qui n'existait même plus -- et Inno proposait
+; ce chemin mort à un utilisateur réel, AVANT même que GetDefaultDirName()
+; ne soit consulté (UsePreviousAppDir est prioritaire sur DefaultDirName
+; dès qu'un chemin précédent existe, quelle que soit sa validité).
+; CurPageChanged() ci-dessous intercepte la page de sélection du dossier
+; et REMPLACE la valeur qu'Inno vient d'y pré-remplir si elle est
+; suspecte (sous %TEMP%/%TMP%, ou nom de dossier de test), en retombant
+; sur GetDefaultDirName() -- jamais l'inverse : un dossier précédent
+; réellement valide reste toujours proposé en priorité, et l'utilisateur
+; peut toujours saisir n'importe quel autre dossier de son choix (la
+; page reste visible et modifiable). La logique de validation vit dans
+; vanilla-installer-dirlogic.inc.iss (jamais dupliquée), testée par
+; vanilla-installer-dirlogic.test.iss (4 cas, voir CI).
 
 #ifndef MyAppVersion
   #define MyAppVersion "1.3.4.2-r2"
@@ -57,16 +79,18 @@ Name: "desktopicon"; Description: "Créer un raccourci sur le Bureau"; GroupDesc
 Filename: "{app}\Noethys.exe"; Description: "Lancer Noethys"; Flags: nowait postinstall skipifsilent
 
 [Code]
-function GetDefaultDirName(Param: String): String;
-var
-  CheminHistorique: String;
-begin
-  // Valeur de repli normale (Program Files) -- UsePreviousAppDir=yes prend
-  // de toute façon le dessus sur ce résultat si Inno connaît déjà un
-  // dossier d'installation précédent pour cet AppId.
-  Result := ExpandConstant('{autopf}\Noethys');
+#include "vanilla-installer-dirlogic.inc.iss"
 
-  CheminHistorique := 'C:\Noethys';
-  if FileExists(CheminHistorique + '\Noethys.exe') then
-    Result := CheminHistorique;
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  // UsePreviousAppDir a déjà pré-rempli WizardForm.DirEdit.Text avec la
+  // valeur trouvée dans le registre à ce stade (sans aucune validation de
+  // sa part). On ne le corrige QUE si cette valeur est suspecte : un
+  // dossier précédent réellement valide n'est jamais modifié ici, et
+  // l'utilisateur reste toujours libre de saisir un autre dossier ensuite.
+  if CurPageID = wpSelectDir then
+  begin
+    if not EstCheminPrecedentValide(WizardForm.DirEdit.Text) then
+      WizardForm.DirEdit.Text := GetDefaultDirName('');
+  end;
 end;
