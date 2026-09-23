@@ -1624,6 +1624,7 @@ class Dialog(wx.Dialog):
         self.__set_properties()
         self.__do_layout()
 
+        self.Bind(wx.EVT_BUTTON, self.OnBoutonAide, self.bouton_aide)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonOutils, self.bouton_outils)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonEasy, self.bouton_easy)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonSite, self.bouton_site)
