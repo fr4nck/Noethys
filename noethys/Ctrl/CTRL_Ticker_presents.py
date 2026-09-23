@@ -46,6 +46,15 @@ class CTRL(wx.Panel):
         
         # Binds
         self.Bind(wx.EVT_TIMER, self.OnTimer, self.timer)
+        self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
+
+    def OnDestroy(self, event):
+        if event.GetEventObject() is self:
+            if self.timer.IsRunning():
+                self.timer.Stop()
+            if self.ticker.IsTicking():
+                self.ticker.Stop()
+        event.Skip()
         
     
     def SetTexte(self, texte=u""):
