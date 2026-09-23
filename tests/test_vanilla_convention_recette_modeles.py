@@ -63,6 +63,9 @@ class RecetteModelesConventionTests(unittest.TestCase):
         objets = data["objets"]
         noms = {o["nom"] for o in objets}
         self.assertIn("Logo organisateur", noms)
+        logo = next(o for o in objets if o["nom"] == "Logo organisateur")
+        self.assertEqual(logo.get("typeImage"), "fichier_png")
+        self.assertGreater(len(logo.get("image") or ""), 1000)
         self.assertIn("Cadre coordonnées", noms)
         self.assertIn("Cadre titre", noms)
         self.assertIn("Cadres signatures", noms)
