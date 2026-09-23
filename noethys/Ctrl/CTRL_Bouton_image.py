@@ -68,7 +68,19 @@ class CTRL(wx.Button):
         if self.cheminImage not in ("", None) :
             self.SetBitmapMargins(self.margesTexte)
         self.SetFont(wx.Font(9, wx.SWISS, wx.NORMAL, wx.BOLD))
-        self.SetInitialSize() 
+        self.SetInitialSize()
+
+        # wxPython Phoenix / Windows peut sous-estimer la taille native d'un
+        # bouton après SetBitmap(), surtout avec le DPI > 100 %. On conserve
+        # le rendu historique mais on impose assez d'espace pour que le bitmap
+        # complet et ses marges ne soient jamais rognés.
+        best = self.GetBestSize()
+        largeur_min = best.GetWidth()
+        hauteur_min = best.GetHeight()
+        if bmp.IsOk():
+            largeur_min = max(largeur_min, bmp.GetWidth() + 12)
+            hauteur_min = max(hauteur_min, bmp.GetHeight() + 8)
+        self.SetMinSize((largeur_min, hauteur_min))
         
     def SetImage(self, cheminImage=""):
         self.SetBitmap(wx.NullBitmap)
