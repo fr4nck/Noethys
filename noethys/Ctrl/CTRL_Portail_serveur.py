@@ -385,20 +385,27 @@ class Panel(wx.Panel):
         except AttributeError:
             pass
 
+    def _AppliqueImage(self, nomImage):
+        """Construit et applique le bitmap depuis le thread wx principal."""
+        bitmap = wx.Bitmap(
+            Chemins.GetStaticPath("Images/48x48/%s" % nomImage),
+            wx.BITMAP_TYPE_ANY,
+        )
+        self.ctrl_image.SetBitmap(bitmap)
+        self.ctrl_image.Refresh()
+
     def SetImage(self, etat="on", block=True):
         if self.lock.acquire(block) == True:
             try:
-                if etat == "upload" : 
+                if etat == "upload":
                     nomImage = "Sync_upload.png"
-                elif etat == "download" : 
+                elif etat == "download":
                     nomImage = "Sync_download.png"
-                elif etat == "off" : 
+                elif etat == "off":
                     nomImage = "Sync_off.png"
-                elif etat == "on" : 
+                else:
                     nomImage = "Sync_on.png"
-                else :
-                    nomImage = "Sync_on.png"
-                wx.CallAfter(self.ctrl_image.SetBitmap, wx.Bitmap(Chemins.GetStaticPath("Images/48x48/%s" % nomImage), wx.BITMAP_TYPE_ANY))
+                wx.CallAfter(self._AppliqueImage, nomImage)
             except Exception as e:
                 self.lock.release()
                 raise e
@@ -408,20 +415,23 @@ class Panel(wx.Panel):
         else:
             return False
 
+    def _AjouteLogPanel(self, horodatage, message):
+        """Ajoute une ligne au journal depuis le thread wx principal."""
+        prefixe = u"\n" if len(self.log.GetValue()) > 0 else u""
+        self.log.AppendText(prefixe + u"[%s] %s" % (horodatage, message))
+
     def EcritLog(self, message="", block=True):
         horodatage = time.strftime("%d/%m/%y %H:%M:%S", time.localtime())
         if CUSTOMIZE.GetValeur("connecthys_log", "type", "panel") == "panel" :
             if self.lock.acquire(block) == True:
-                if len(self.log.GetValue()) > 0 :
-                    texte = u"\n"
-                else :
-                    texte = u""
-                try :
-                    texte += u"[%s] %s" % (horodatage, message)
-                except :
-                    texte += u"[%s] %s" % (horodatage, str(message).decode('UTF-8'))
-                wx.CallAfter(self.log.AppendText, texte)
-                self.lock.release()
+                try:
+                    if isinstance(message, bytes):
+                        message = message.decode("utf-8", errors="replace")
+                    else:
+                        message = six.text_type(message)
+                    wx.CallAfter(self._AjouteLogPanel, horodatage, message)
+                finally:
+                    self.lock.release()
                 return True
             else:
                 return False
@@ -432,8 +442,12 @@ class Panel(wx.Panel):
                 try :
                     texte += u"[%s] %s" % (horodatage, message)
                     file_log.write(six.text_type(texte).encode('UTF-8'))
-                except :
-                    texte += u"[%s] %s" % (horodatage, str(message).decode('UTF-8'))
+                except Exception:
+                    if isinstance(message, bytes):
+                        message = message.decode("utf-8", errors="replace")
+                    else:
+                        message = six.text_type(message)
+                    texte += u"[%s] %s" % (horodatage, message)
                     file_log.write(six.text_type(texte).encode('UTF-8'))
 
                 file_log.close()
