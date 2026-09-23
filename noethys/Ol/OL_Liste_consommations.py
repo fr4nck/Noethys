@@ -273,7 +273,9 @@ class ListView(FastObjectListView):
         # Demande confirmation si prestation associée
         if track.IDprestation:
             dlg = wx.MessageDialog(self, _(u"Attention, cette consommation est associée à la prestation ID%d %s. Cette prestation ne sera pas supprimée automatiquement. Souhaitez-vous tout de même continuer ?") % (track.IDprestation, track.label_prestation), _(u"Avertissement"), wx.YES_NO|wx.NO_DEFAULT|wx.CANCEL|wx.ICON_EXCLAMATION)
-            if dlg.ShowModal() != wx.ID_YES:
+            reponse = dlg.ShowModal()
+            dlg.Destroy()
+            if reponse != wx.ID_YES:
                 return False
 
         # Demande de confirmation de suppression
