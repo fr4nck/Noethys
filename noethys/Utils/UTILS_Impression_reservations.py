@@ -67,7 +67,7 @@ def GetDonnees(listeIDindividus=[], date_debut=None, date_fin=None, DB=None):
 
     placeholders = ", ".join(str(int(IDindividu)) for IDindividu in listeIDindividus)
     req = """
-        SELECT consommations.IDindividu, consommations.IDactivite, consommations.date,
+        SELECT consommations.IDconso, consommations.IDindividu, consommations.IDactivite, consommations.date,
             consommations.IDunite, consommations.heure_debut, consommations.heure_fin,
             consommations.etat, consommations.IDgroupe, consommations.IDprestation,
             individus.nom, individus.prenom, individus.date_naiss, individus.IDcivilite,
@@ -104,7 +104,7 @@ def GetDonnees(listeIDindividus=[], date_debut=None, date_fin=None, DB=None):
         return None
 
     dictDonnees = {}
-    for (IDindividu, IDactivite, date, IDunite, heure_debut, heure_fin, etat, IDgroupe,
+    for (IDconso, IDindividu, IDactivite, date, IDunite, heure_debut, heure_fin, etat, IDgroupe,
          IDprestation, nom, prenom, date_naiss, IDcivilite, nomActivite, nomUnite,
          ordreUnite, typeUnite, montant, label) in listeConsommations:
 
@@ -140,6 +140,7 @@ def GetDonnees(listeIDindividus=[], date_debut=None, date_fin=None, DB=None):
             prestation = None
 
         dictUnites[IDunite].append({
+            "IDconso": IDconso,
             "nomUnite": nomUnite, "ordreUnite": ordreUnite, "etat": LabelEtat(etat),
             "IDgroupe": IDgroupe, "IDprestation": IDprestation, "prestation": prestation,
             "type": typeUnite, "heure_debut": heure_debut, "heure_fin": heure_fin,
@@ -258,187 +259,3 @@ def Impression(dictDonnees={}, nomDoc=FonctionsPerso.GenerationNomDoc("RESERVATI
 
             if texteActivite != None:
                 dataTableau = []
-                dataTableau.append([texteActivite,])
-                tableau = Table(dataTableau, [largeurContenu,])
-                listeStyles = [
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('FONT', (0, 0), (-1, -1), "Helvetica", 6),
-                    ('GRID', (0, 0), (-1, -1), 0.25, colors.black),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('BACKGROUND', (0, 0), (-1, 0), couleurFondActivite),
-                ]
-                tableau.setStyle(TableStyle(listeStyles))
-                story.append(tableau)
-
-            # Colonnes : Date, Consos, Etat, Prestations, Montant
-            dataTableau = []
-            largeursColonnes = [55, 165, 80, 160, 60]
-            dataTableau.append([_(u"Date"), _(u"Consommations"), _(
-                u"Etat"), _(u"Prestations"), _(u"Total")])
-
-            paraStyle = ParagraphStyle(name="standard",
-                                       fontName="Helvetica",
-                                       fontSize=8,
-                                       leading=10,
-                                       # spaceBefore=8,
-                                       spaceAfter=0,
-                                       )
-
-            # lignes DATES
-            listeDates = []
-            for date, dictDates in dictActivite["dates"].items():
-                listeDates.append(date)
-            listeDates.sort()
-
-            for date in listeDates:
-                dictDate = dictActivite["dates"][date]
-                listeLigne = []
-
-                # Insertion de la date
-                texteDate = Paragraph(DateEngFr(str(date)), paraStyle)
-
-                # Insertion des consommations
-                listeEtats = []
-                listeEtatsTemp = []
-                listeConso = []
-                listePrestations = []
-                for IDunite, liste_unites in dictDate["unites"].items():
-                    for dictUnite in liste_unites:
-                        etat = dictUnite["etat"]
-                        nomUnite = dictUnite["nomUnite"]
-                        if dictUnite["evenement"]:
-                            nomUnite = dictUnite["evenement"].nom
-
-                        if etat != None:
-                            labelUnite = nomUnite
-                            afficher_horaires = UTILS_Customize.GetValeur(
-                                "impression_consommations", "afficher_horaires", "1", ajouter_si_manquant=False) in ("1", None)
-                            if afficher_horaires:
-                                if dictUnite["type"] == "Horaire" or (dictUnite["type"] == "Evenement" and dictUnite["heure_debut"] and dictUnite["heure_fin"] and dictUnite["heure_debut"] != "00:00" and dictUnite["heure_fin"] != "00:00"):
-                                    heure_debut = dictUnite["heure_debut"]
-                                    if heure_debut == None:
-                                        heure_debut = u"?"
-                                    heure_debut = heure_debut.replace(":", "h")
-                                    heure_fin = dictUnite["heure_fin"]
-                                    if heure_fin == None:
-                                        heure_fin = u"?"
-                                    heure_fin = heure_fin.replace(":", "h")
-                                    labelUnite += _(u" (%s-%s)") % (
-                                        heure_debut, heure_fin)
-                            listeConso.append(labelUnite)
-
-                            if etat not in listeEtatsTemp:
-                                if etat == "Attente":
-                                    listeEtats.append(ParagraphAndImage(Paragraph(etat, paraStyle), Image(Chemins.GetStaticPath(
-                                        "Images/16x16/Attention.png"), width=8, height=8), xpad=1, ypad=1, side="left"))
-                                else:
-                                    listeEtats.append(
-                                        Paragraph(etat, paraStyle))
-                                listeEtatsTemp.append(etat)
-
-                            IDprestation = dictUnite["IDprestation"]
-                            if dictUnite["prestation"] != None and IDprestation not in listePrestationsUtilisees:
-                                listePrestations.append(
-                                    dictUnite["prestation"])
-                                listePrestationsUtilisees.append(IDprestation)
-
-                texteConsos = Paragraph("<br/>".join(listeConso), paraStyle)
-
-                # Insertion de l'état
-                texteEtat = listeEtats
-
-                # Insertion des prestations et montants
-                textePrestations = []
-                texteMontants = []
-                for dictPrestation in listePrestations:
-                    montant = dictPrestation["montant"]
-                    label = dictPrestation["label"]
-                    paye = dictPrestation["paye"]
-                    textePrestations.append(Paragraph(label, paraStyle))
-                    texteMontants.append(Paragraph(
-                        u"<para align='right'>%.02f %s</para>" % (montant, SYMBOLE), paraStyle))
-
-                    # Pour le total par individu :
-                    if montant != None:
-                        totalFacturationIndividu += montant
-                        totalFacturationFamille += montant
-
-                if len(listeConso) > 0:
-                    dataTableau.append(
-                        [texteDate, texteConsos, texteEtat, textePrestations, texteMontants])
-
-            if len(dataTableau) == 1:
-                dlg = wx.MessageDialog(None, _(u"Il n'y a aucune consommation à imprimer !"), _(
-                    u"Erreur"), wx.OK | wx.ICON_INFORMATION)
-                dlg.ShowModal()
-                dlg.Destroy()
-                return
-
-            tableau = Table(dataTableau, largeursColonnes)
-            listeStyles = [
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 0.25, colors.black),
-
-                ('FONT', (0, 0), (-1, 0), "Helvetica", 6),
-                ('ALIGN', (0, 0), (-1, 0), 'CENTRE'),
-
-                ('FONT', (0, 1), (-1, 1), "Helvetica", 8),
-            ]
-            tableau.setStyle(TableStyle(listeStyles))
-            story.append(tableau)
-
-        # Insertion du total par individu
-        dataTableau = []
-        montantIndividu = Paragraph(
-            u"<para align='right'>%.02f %s</para>" % (totalFacturationIndividu, SYMBOLE), paraStyle)
-        dataTableau.append(
-            [Paragraph(_(u"<para align='right'>Total :</para>"), paraStyle), montantIndividu])
-
-        listeStyles = [
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('FONT', (0, 0), (-1, -1), "Helvetica", 8),
-            ('GRID', (-1, -1), (-1, -1), 0.25, colors.black),
-            ('ALIGN', (-1, -1), (-1, -1), 'CENTRE'),
-            ('BACKGROUND', (-1, -1), (-1, -1), couleurFond),
-        ]
-
-        # Création du tableau
-        largeursColonnesTotal = [460, 60]
-        tableau = Table(dataTableau, largeursColonnesTotal)
-        tableau.setStyle(TableStyle(listeStyles))
-        story.append(tableau)
-        story.append(Spacer(0, 12))
-
-    # Total facturation Famille
-    nbreIndividus = len(dictDonnees)
-    if nbreIndividus > 1:
-        dataTableau = []
-        montantFamille = Paragraph(
-            u"<para align='right'>%.02f %s</para>" % (totalFacturationFamille, SYMBOLE), paraStyle)
-        dataTableau.append(
-            [Paragraph(_(u"<para align='right'>TOTAL :</para>"), paraStyle), montantFamille])
-        largeursColonnesTotal = [460, 60]
-        tableau = Table(dataTableau, largeursColonnesTotal)
-        tableau.setStyle(TableStyle(listeStyles))
-        story.append(tableau)
-
-    # Champs pour fusion Email
-    dictChampsFusion["{SOLDE}"] = u"%.02f %s" % (
-        totalFacturationFamille, SYMBOLE)
-
-    # Enregistrement et ouverture du PDF
-    try:
-        doc.build(story)
-    except Exception as err:
-        print("Erreur dans ouverture PDF :", err)
-        if "Permission denied" in err:
-            dlg = wx.MessageDialog(None, _(
-                u"Noethys ne peut pas créer le PDF.\n\nVeuillez vérifier qu'un autre PDF n'est pas déjà ouvert en arrière-plan..."), _(u"Erreur d'édition"), wx.OK | wx.ICON_ERROR)
-            dlg.ShowModal()
-            dlg.Destroy()
-            return False
-
-    if afficherDoc == True:
-        FonctionsPerso.LanceFichierExterne(nomDoc)
-
-    return dictChampsFusion
