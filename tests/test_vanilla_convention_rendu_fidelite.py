@@ -144,6 +144,15 @@ class EncodageChaineTemoinTests(unittest.TestCase):
             if os.path.isfile(chemin):
                 os.remove(chemin)
 
+    def test_modele_deja_mojibake_est_refuse_explicitement(self):
+        with creer_base_association_simple() as base:
+            IDmodele = _modele_temoin(base, u"TÃ©l. — ReprÃ©sentÃ©e")
+            with RedirectionGestionDB(base.chemin):
+                modeleDoc = DLG_Noedoc.ModeleDoc(IDmodele=IDmodele)
+                _cadre, objetsFlottants = UIC._SepareObjetsFixesEtFlottants(modeleDoc)
+                with self.assertRaisesRegex(ValueError, "mal encodé"):
+                    UIC._ConstruitStory(modeleDoc, objetsFlottants, {})
+
     def test_symbole_euro_seul(self):
         with creer_base_association_simple() as base:
             IDmodele = _modele_temoin(base, u"Tarif : 24,00 €/h")
