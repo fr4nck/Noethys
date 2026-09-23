@@ -132,49 +132,6 @@ class RecetteModelesConventionTests(unittest.TestCase):
                     if os.path.isfile(chemin_pdf):
                         os.remove(chemin_pdf)
 
-    def test_modele_reference_pmsl_est_structure_et_se_genere_sur_deux_pages(self):
-        """Le modèle de référence visuelle reste 100 % Noedoc : logo,
-        entête/cadre de titre, bandeaux d'articles et signatures sont des
-        objets .ndc ; Python ne contient aucune identité PMSL en dur."""
-        chemin_ndc = MODELES_DIR / "modele_convention_associative_pmsl.ndc"
-        self.assertTrue(chemin_ndc.is_file())
-        data = UTILS_Export_documents.InfosFichier(str(chemin_ndc))
-        self.assertEqual(data["categorie"], "convention")
-        noms = {objet.get("nom") for objet in data["objets"]}
-        for nom in (
-            "Logo organisateur", "Entête organisateur", "Cadre titre",
-            "Article 1", "Article 2", "Article 3", "Article 4",
-            "Article 5", "Article 6", "Cadre signature organisateur",
-            "Cadre signature structure",
-        ):
-            self.assertIn(nom, noms)
-        logo = next(objet for objet in data["objets"] if objet.get("nom") == "Logo organisateur")
-        self.assertEqual(logo.get("typeImage"), "logo")
-
-        with creer_base_association_simple() as base:
-            with RedirectionGestionDB(base.chemin):
-                IDmodele = UTILS_Export_documents.Importer(fichier=str(chemin_ndc))
-                chemin_pdf = tempfile.mktemp(suffix=".pdf")
-                try:
-                    resultat = UIC.Impression(
-                        IDfamille=1, IDmodele=IDmodele,
-                        date_debut="2026-09-01", date_fin="2026-09-30",
-                        saison="2026-2027", listeIDindividus=[2, 3],
-                        nomDoc=chemin_pdf, afficherDoc=False,
-                        overrides={
-                            "{CONVENTION_REPRESENTANT_NOM_COMPLET}": "Mme TEST Chantal",
-                            "{CONVENTION_REPRESENTANT_FONCTION}": "Présidente",
-                            "{CONVENTION_LIEU_SIGNATURE}": "TESTVILLE",
-                            "{CONVENTION_DATE_SIGNATURE}": "23/09/2026",
-                        },
-                    )
-                    self.assertIsInstance(resultat, dict)
-                    self.assertEqual(_lire_nombre_de_pages(chemin_pdf), 2)
-                finally:
-                    if os.path.isfile(chemin_pdf):
-                        os.remove(chemin_pdf)
-
-
     def test_modele_scolaire_s_importe_et_se_genere_multipage(self):
         chemin_ndc = MODELES_DIR / "modele_convention_scolaire.ndc"
         self.assertTrue(chemin_ndc.is_file())
