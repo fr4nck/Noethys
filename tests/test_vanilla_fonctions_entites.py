@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+import unittest.mock
 from pathlib import Path
 
 TESTS_DIR = Path(__file__).resolve().parent
@@ -12,7 +13,7 @@ if str(TESTS_DIR) not in sys.path:
 if str(NOETHYS_DIR) not in sys.path:
     sys.path.insert(0, str(NOETHYS_DIR))
 
-from _fixtures_noethys_db import BaseTest
+from _fixtures_noethys_db import BaseTest, RedirectionGestionDB
 from Data import DATA_Civilites
 from Data import DATA_Fonctions_entites
 from Utils import UTILS_Fonctions_entites as FE
@@ -125,6 +126,32 @@ class FonctionsEntitesTest(unittest.TestCase):
         fonctions = DATA_Fonctions_entites.GetFonctions("ecole", sexe="F")
         self.assertIn("Directrice", fonctions)
         self.assertIn("Enseignante", fonctions)
+
+    def test_dialogue_enregistre_une_fonction_et_ses_usages(self):
+        import wx
+        from Dlg import DLG_Fonction_entite
+
+        app = wx.GetApp() or wx.App(False)
+        with self._base_deux_entites() as base:
+            with RedirectionGestionDB(base.chemin):
+                dlg = DLG_Fonction_entite.Dialog(None, IDrattachement=101)
+                self.assertIn("Présidente", list(dlg.ctrl_fonction.GetItems()))
+                dlg.ctrl_fonction.SetValue("Présidente")
+                dlg.ctrl_representant.SetValue(True)
+                dlg.ctrl_signataire.SetValue(True)
+                dlg.ctrl_defaut.SetValue(True)
+                with unittest.mock.patch.object(dlg, "EndModal") as fin:
+                    dlg.OnBoutonOk(None)
+                    fin.assert_called_once_with(wx.ID_OK)
+                dlg.Destroy()
+
+            valeur = FE.GetFonctionRattachement(101, DB=base.db)
+            self.assertEqual(valeur["fonction"], "Présidente")
+            self.assertEqual(valeur["representant"], 1)
+            self.assertEqual(valeur["signataire"], 1)
+            self.assertEqual(valeur["defaut"], 1)
+
+        self.assertIsNotNone(app)
 
 
 if __name__ == "__main__":
