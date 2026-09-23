@@ -12,6 +12,7 @@ on:
       - 'noethys/Data/DATA_Civilites.py'
       - 'noethys/Data/DATA_Fonctions_entites.py'
       - 'noethys/Data/DATA_Tables.py'
+      - 'noethys/GestionDB.py'
       - 'noethys/Utils/UTILS_Fonctions_entites.py'
       - 'noethys/Utils/UTILS_Impression_convention.py'
       - 'noethys/Utils/UTILS_Convention_champs.py'
