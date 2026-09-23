@@ -109,24 +109,17 @@ ID_TB_UTILISATEUR = wx.Window.NewControlId()
 
 
 def ForceApparenceClaireAUI(art):
-    """ Noethys Vanilla conserve volontairement l'interface historique
-    claire (aucune refonte UI/UX, aucun thème sombre). aui.ModernDockArt
-    calcule pourtant tout le fond/sash/gripper/bordure entre les
-    panneaux à partir d'une seule "couleur de base" lue dans les
-    couleurs système Windows (wx.lib.agw.aui.aui_utilities.GetBaseColour,
-    basée sur wx.SYS_COLOUR_3DFACE) : correcte quand Windows est en mode
-    clair, mais rendue sombre/noire si l'utilisateur a activé le mode
-    sombre des applications Windows -- Noethys n'a jamais eu de thème
-    sombre, ce n'est qu'une conséquence du réglage système.
+    """Noethys SL 0.1.0 reste volontairement en apparence claire.
 
-    Correction au niveau le plus bas et le plus générique possible : un
-    seul point (ici, juste après la création de l'art provider AUI),
-    plutôt que des SetBackgroundColour ajoutés fenêtre par fenêtre. Ne
-    change rien du tout quand le système est en mode clair (cas normal
-    aujourd'hui) : uniquement un filet de sécurité pour le mode sombre. """
+    ModernDockArt dérive sinon ses fonds, séparateurs et bordures des
+    couleurs système Windows. Selon la version de wxPython et le thème
+    Windows, la détection IsDark() peut ne pas refléter les couleurs
+    réellement fournies aux contrôles. On fixe donc explicitement la
+    couleur de base AUI, en clair comme en sombre, afin d'éviter toute
+    surface noire parasite pendant la stabilisation de Noethys SL.
+    """
     try:
-        if wx.SystemSettings.GetAppearance().IsDark():
-            art.SetDefaultColours(base_colour=wx.Colour(240, 240, 240))
+        art.SetDefaultColours(base_colour=wx.Colour(240, 240, 240))
     except Exception:
         pass
 
