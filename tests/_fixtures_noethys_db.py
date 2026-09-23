@@ -68,6 +68,7 @@ class RedirectionGestionDB:
 
 TABLES_REQUISES = (
     "organisateur", "familles", "individus", "rattachements",
+    "rattachements_fonctions",
     "activites", "groupes", "unites", "consommations", "prestations",
     "agrements", "documents_modeles", "documents_objets",
     # Tables interrogees sans condition par UTILS_Infos_individus.Informations

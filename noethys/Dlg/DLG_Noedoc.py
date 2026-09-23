@@ -1068,16 +1068,23 @@ class Convention():
             (_(u"Téléphone de l'organisateur"), u"01.98.01.02.03", "{ORGANISATEUR_TEL}"),
             (_(u"Mail de l'organisateur"), _(u"noethys") + u"@gmail.com", "{ORGANISATEUR_MAIL}"),
 
-            # Alias stables du représentant de la structure cocontractante :
-            # alimentés par le fournisseur de champs Convention (voir
-            # Utils/UTILS_Convention_champs.py) à partir du même mécanisme
-            # historique {REPRESENTANT_RATTACHE_x_*}, sans redéfinir de
-            # deuxième source de données ni imposer à l'utilisateur de
-            # connaître un index "x".
+            # Le représentant/signataire structuré est lu depuis le
+            # rattachement individu <-> entité lorsqu'il est renseigné.
+            # Les bases historiques conservent le repli sur
+            # {REPRESENTANT_RATTACHE_x_*}.
             (_(u"Nom du représentant de la structure"), _(u"DUPOND"), "{CONVENTION_REPRESENTANT_NOM}"),
             (_(u"Prénom du représentant de la structure"), _(u"Gérard"), "{CONVENTION_REPRESENTANT_PRENOM}"),
             (_(u"Nom complet du représentant de la structure"), _(u"M. DUPOND Gérard"), "{CONVENTION_REPRESENTANT_NOM_COMPLET}"),
             (_(u"Fonction du représentant de la structure"), _(u"Président"), "{CONVENTION_REPRESENTANT_FONCTION}"),
+
+            # Référent facturation : deuxième rôle indépendant. Il peut
+            # être la même personne que le représentant ou une autre.
+            (_(u"Nom du référent facturation"), _(u"MARTIN"), "{CONVENTION_REFERENT_FACTURATION_NOM}"),
+            (_(u"Prénom du référent facturation"), _(u"Claire"), "{CONVENTION_REFERENT_FACTURATION_PRENOM}"),
+            (_(u"Nom complet du référent facturation"), _(u"Mme MARTIN Claire"), "{CONVENTION_REFERENT_FACTURATION_NOM_COMPLET}"),
+            (_(u"Fonction du référent facturation"), _(u"Trésorière"), "{CONVENTION_REFERENT_FACTURATION_FONCTION}"),
+            (_(u"Email du référent facturation"), u"facturation@example.org", "{CONVENTION_REFERENT_FACTURATION_EMAIL}"),
+            (_(u"Téléphone du référent facturation"), u"01.02.03.04.05", "{CONVENTION_REFERENT_FACTURATION_TELEPHONE}"),
 
             (_(u"Saison de la convention"), _(u"2026-2027"), "{CONVENTION_SAISON}"),
             (_(u"Date de début de la période"), u"01/09/2026", "{CONVENTION_DATE_DEBUT}"),

@@ -184,6 +184,25 @@ DB_DATA = {
                        u"=1 si l'individu est titulaire de la fiche famille"),
                       ],  # Les rattachements à une ou plusieurs familles
 
+    "rattachements_fonctions": [
+                      ("IDfonction_rattachement", "INTEGER PRIMARY KEY AUTOINCREMENT",
+                       u"ID de la fonction portée par le rattachement"),
+                      ("IDrattachement", "INTEGER",
+                       u"Rattachement individu <-> famille/entité concerné"),
+                      ("fonction", "VARCHAR(200)",
+                       u"Fonction de l'individu dans l'entité"),
+                      ("representant", "INTEGER",
+                       u"=1 si l'individu représente l'entité"),
+                      ("signataire", "INTEGER",
+                       u"=1 si l'individu peut signer les documents de l'entité"),
+                      ("facturation", "INTEGER",
+                       u"=1 si l'individu est référent pour la facturation"),
+                      ("planning", "INTEGER",
+                       u"=1 si l'individu est référent pour le planning"),
+                      ("defaut", "INTEGER",
+                       u"=1 si ce contact est préféré par défaut pour ses usages"),
+                      ],  # Métadonnées métier du rattachement, sans modifier rattachements
+
     "types_maladies": [("IDtype_maladie", "INTEGER PRIMARY KEY AUTOINCREMENT", u"ID type_maladie"),
                        ("nom", "VARCHAR(100)", u"Nom de la maladie"),
                        ("vaccin_obligatoire", "INTEGER",
@@ -2318,6 +2337,14 @@ DB_DOCUMENTS = {
 }
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# Tables additives que les bases historiques peuvent légitimement ne pas
+# contenir. Les conversions local <-> réseau doivent alors créer la table
+# dans la cible mais considérer l'absence dans la source comme "aucune
+# donnée à importer", et non comme une corruption.
+TABLES_SCHEMA_OPTIONNELLES = (
+    "rattachements_fonctions",
+)
 
 DB_INDEX = {
 

@@ -7,6 +7,13 @@ on:
       - 'noethys/Dlg/DLG_Modeles_docs.py'
       - 'noethys/Dlg/DLG_Famille.py'
       - 'noethys/Dlg/DLG_Generation_convention.py'
+      - 'noethys/Dlg/DLG_Fonction_entite.py'
+      - 'noethys/Ctrl/CTRL_Composition.py'
+      - 'noethys/Data/DATA_Civilites.py'
+      - 'noethys/Data/DATA_Fonctions_entites.py'
+      - 'noethys/Data/DATA_Tables.py'
+      - 'noethys/GestionDB.py'
+      - 'noethys/Utils/UTILS_Fonctions_entites.py'
       - 'noethys/Utils/UTILS_Impression_convention.py'
       - 'noethys/Utils/UTILS_Convention_champs.py'
       - 'noethys/Utils/UTILS_Impression_reservations.py'
@@ -24,6 +31,8 @@ on:
       - 'tests/test_vanilla_convention_recette_modeles.py'
       - 'tests/test_vanilla_convention_modele_persistance.py'
       - 'tests/test_vanilla_generation_convention_dialog.py'
+      - 'tests/test_vanilla_fonctions_entites.py'
+      - 'tests/test_vanilla_convention_contacts_entites.py'
       - 'tests/test_vanilla_reservations_extraction.py'
       - 'tests/generate_convention_reference_pdf.py'
       - 'docs/recette_conventions/**'
@@ -79,6 +88,8 @@ jobs:
           tests.test_vanilla_convention_recette_modeles
           tests.test_vanilla_convention_modele_persistance
           tests.test_vanilla_generation_convention_dialog
+          tests.test_vanilla_fonctions_entites
+          tests.test_vanilla_convention_contacts_entites
           tests.test_vanilla_reservations_extraction
 
       - name: Générer le PDF de référence visuelle Atout Sports
