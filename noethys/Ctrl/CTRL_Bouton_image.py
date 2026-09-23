@@ -50,16 +50,22 @@ class CTRL(wx.Button):
     def MAJ(self):
         # Redimensionne et ajoute des marges autour de l'image
         if self.cheminImage not in ("", None) :
-            img = Image.open(Chemins.GetStaticPath(self.cheminImage))
             try:
-                # Pillow >= 10.0.0
-                img = img.resize(self.tailleImage, Image.Resampling.LANCZOS)
-            except AttributeError:
-                # Pillow < 10.0.0
-                img = img.resize(self.tailleImage, Image.LANCZOS)
-            img = ImageOps.expand(img, border=self.margesImage)
-            img = PILtoWx(img) 
-            bmp = img.ConvertToBitmap()
+                img = Image.open(Chemins.GetStaticPath(self.cheminImage))
+            except (OSError, ValueError):
+                # Une ressource décorative absente ne doit pas rendre le
+                # bouton — et donc l'action métier — inutilisable.
+                bmp = wx.NullBitmap
+            else:
+                try:
+                    # Pillow >= 10.0.0
+                    img = img.resize(self.tailleImage, Image.Resampling.LANCZOS)
+                except AttributeError:
+                    # Pillow < 10.0.0
+                    img = img.resize(self.tailleImage, Image.LANCZOS)
+                img = ImageOps.expand(img, border=self.margesImage)
+                img = PILtoWx(img)
+                bmp = img.ConvertToBitmap()
         else :
             bmp = wx.NullBitmap
             
