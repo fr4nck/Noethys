@@ -8,7 +8,7 @@ ORGANISATEUR = ROOT / "noethys" / "Utils" / "UTILS_Organisateur.py"
 
 def test_accueil_reuses_existing_organisateur_logo_pipeline():
     source = ACCUEIL.read_text(encoding="utf-8")
-    assert "UTILS_Organisateur.GetDonnees(tailleLogo=(80, 80))" in source
+    assert "UTILS_Organisateur.GetDonnees(tailleLogo=(80, 80), fondLogoBlanc=False)" in source
     assert '.get("logo")' in source
     assert "self.logo_organisateur.IsOk()" in source
 
@@ -27,3 +27,12 @@ def test_logo_is_not_upscaled_when_already_smaller_than_target():
     assert "if max(largeur, hauteur) > tailleMaxi" in source
     assert "largeur = int(largeur)" in source
     assert "hauteur = int(hauteur)" in source
+
+
+def test_accueil_preserves_logo_alpha_instead_of_baking_white_background():
+    accueil = ACCUEIL.read_text(encoding="utf-8")
+    organisateur = ORGANISATEUR.read_text(encoding="utf-8")
+    assert "fondLogoBlanc=False" in accueil
+    assert "if fondBlanc or not img.HasAlpha()" in organisateur
+    assert "canvas.InitAlpha()" in organisateur
+    assert "canvas.Paste(img, position[0], position[1])" in organisateur
