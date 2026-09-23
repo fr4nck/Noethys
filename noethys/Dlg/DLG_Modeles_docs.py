@@ -32,6 +32,7 @@ LISTE_CATEGORIES = [
     ("location", _(u"Location")),
     ("location_demande", _(u"Demande de location")),
     ("devis", _(u"Devis")),
+    ("convention", _(u"Convention")),
     ]
 
 

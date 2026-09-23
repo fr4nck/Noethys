@@ -45,4 +45,6 @@ Aucune migration implicite. Tester les changements SQL, sauvegarde, configuratio
 
 Cockpit GitHub : issue #120.
 
+Roadmap fonctionnelle post-stabilisation (entités et fonctions, saisons, questionnaires, historique documentaire, signatures/cachets, QR/espace entité, messagerie et délivrabilité) : issue #382.
+
 La gouvernance générale du dépôt est maintenue sur `master` dans `docs/governance/`.

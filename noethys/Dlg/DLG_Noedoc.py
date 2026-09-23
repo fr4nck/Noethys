@@ -1051,6 +1051,104 @@ class Devis():
 
 # ----------------------------------------------------------------------------------------------------------------------------------
 
+class Convention():
+    def __init__(self):
+        self.nom = _(u"Convention")
+        self.code = "convention"
+
+        self.photosIndividuelles = False
+
+        self.champs = [
+            (_(u"Numéro ID de la famille"), u"2582", "{IDFAMILLE}"),
+
+            (_(u"Nom de l'organisateur"), _(u"Association Noethys"), "{ORGANISATEUR_NOM}"),
+            (_(u"Rue de l'organisateur"), _(u"Avenue des Lilas"), "{ORGANISATEUR_RUE}"),
+            (_(u"Code postal de l'organisateur"), u"29870", "{ORGANISATEUR_CP}"),
+            (_(u"Ville de l'organisateur"), _(u"LANNILIS"), "{ORGANISATEUR_VILLE}"),
+            (_(u"Téléphone de l'organisateur"), u"01.98.01.02.03", "{ORGANISATEUR_TEL}"),
+            (_(u"Mail de l'organisateur"), _(u"noethys") + u"@gmail.com", "{ORGANISATEUR_MAIL}"),
+
+            # Alias stables du représentant de la structure cocontractante :
+            # alimentés par le fournisseur de champs Convention (voir
+            # Utils/UTILS_Convention_champs.py) à partir du même mécanisme
+            # historique {REPRESENTANT_RATTACHE_x_*}, sans redéfinir de
+            # deuxième source de données ni imposer à l'utilisateur de
+            # connaître un index "x".
+            (_(u"Nom du représentant de la structure"), _(u"DUPOND"), "{CONVENTION_REPRESENTANT_NOM}"),
+            (_(u"Prénom du représentant de la structure"), _(u"Gérard"), "{CONVENTION_REPRESENTANT_PRENOM}"),
+            (_(u"Nom complet du représentant de la structure"), _(u"M. DUPOND Gérard"), "{CONVENTION_REPRESENTANT_NOM_COMPLET}"),
+            (_(u"Fonction du représentant de la structure"), _(u"Président"), "{CONVENTION_REPRESENTANT_FONCTION}"),
+
+            (_(u"Saison de la convention"), _(u"2026-2027"), "{CONVENTION_SAISON}"),
+            (_(u"Date de début de la période"), u"01/09/2026", "{CONVENTION_DATE_DEBUT}"),
+            (_(u"Date de fin de la période"), u"30/06/2027", "{CONVENTION_DATE_FIN}"),
+
+            # Signature : toujours saisis manuellement dans le générateur
+            # (DLG_Generation_convention) -- rien dans Noethys ne permet
+            # de déterminer automatiquement une date ou un lieu de
+            # signature.
+            (_(u"Date de signature"), u"01/09/2026", "{CONVENTION_DATE_SIGNATURE}"),
+            (_(u"Lieu de signature"), _(u"LANNILIS"), "{CONVENTION_LIEU_SIGNATURE}"),
+
+            # Résumé du planning calculé depuis les données Noethys
+            # (consommations/prestations réellement enregistrées) : voir
+            # UTILS_Convention_champs.GetResumePlanning().
+            (_(u"Résumé du planning (créneaux/périodes)"), _(u"Lundi de 19h30 à 20h30 : Fitness"), "{CONVENTION_PLANNING_DETAIL}"),
+            (_(u"Nombre total de séances"), u"34", "{CONVENTION_PLANNING_NBRE_SEANCES}"),
+            (_(u"Volume horaire total"), _(u"51h00"), "{CONVENTION_PLANNING_TOTAL_HEURES}"),
+            (_(u"Créneaux compacts de la convention"), _(u"Lundi de 19h30 à 20h30 : Fitness"), "{CONVENTION_PLANNING_CRENEAUX}"),
+            (_(u"Montant total prévisionnel"), u"1224.00 €", "{CONVENTION_PLANNING_TOTAL_MONTANT}"),
+            (_(u"Adresse de la structure sans doublon CP/ville"), _(u"1 rue de Test\n00000 TESTVILLE"), "{CONVENTION_ADRESSE_STRUCTURE}"),
+
+            # Tarifs : automatiquement déterminés depuis les prestations
+            # réellement facturées quand un taux horaire unique et non
+            # ambigu existe (voir UTILS_Convention_champs.DetecterTarifs) ;
+            # sinon laissés à la saisie manuelle dans le générateur.
+            (_(u"Tarif horaire (si un seul taux)"), u"20.00 €", "{CONVENTION_TARIF_HORAIRE}"),
+            (_(u"Tarif horaire adulte"), u"36.50 €", "{CONVENTION_TARIF_ADULTE}"),
+            (_(u"Tarif horaire enfant"), u"24.00 €", "{CONVENTION_TARIF_ENFANT}"),
+            (_(u"Tarif unique formaté"), u"20,00 €", "{CONVENTION_TARIF_HORAIRE_AFFICHE}"),
+            (_(u"Tarif adulte formaté"), u"36,50 €", "{CONVENTION_TARIF_ADULTE_AFFICHE}"),
+            (_(u"Tarif enfant formaté"), u"24,00 €", "{CONVENTION_TARIF_ENFANT_AFFICHE}"),
+            (_(u"Provenance du tarif unique"), _(u"20,00 € / 1h00 = 20,00 €/h"), "{CONVENTION_TARIF_HORAIRE_PROVENANCE}"),
+            (_(u"Provenance du tarif adulte"), _(u"36,50 € / 1h00 = 36,50 €/h"), "{CONVENTION_TARIF_ADULTE_PROVENANCE}"),
+            (_(u"Provenance du tarif enfant"), _(u"36,00 € / 1h30 = 24,00 €/h"), "{CONVENTION_TARIF_ENFANT_PROVENANCE}"),
+            ]
+
+        self.champs.extend(UTILS_Infos_individus.GetNomsChampsPossibles(mode="famille"))
+
+        self.codesbarres = []
+
+        self.speciaux = [
+            {"nom": _(u"Cadre principal"), "champ": _(u"cadre_principal"), "obligatoire": True,
+             "nbreMax": 1, "x": None, "y": None, "verrouillageX": False, "verrouillageY": False,
+             "Xmodifiable": True, "Ymodifiable": True, "largeur": 100, "hauteur": 150,
+             "largeurModifiable": True, "hauteurModifiable": True, "largeurMin": 80,
+             "largeurMax": 1000, "hauteurMin": 80, "hauteurMax": 1000,
+             "verrouillageLargeur": False, "verrouillageHauteur": False,
+             "verrouillageProportions": False, "interditModifProportions": False},
+            {"nom": _(u"Cadre pages suivantes"), "champ": _(u"cadre_pages_suivantes"), "obligatoire": False,
+             "nbreMax": 1, "x": None, "y": None, "largeur": 100, "hauteur": 250,
+             "largeurModifiable": True, "hauteurModifiable": True, "verrouillageLargeur": False,
+             "verrouillageHauteur": False, "interditModifProportions": False},
+            {"nom": _(u"Saut de page"), "champ": _(u"saut_page"), "obligatoire": False,
+             "x": None, "y": None, "largeur": 5, "hauteur": 5, "largeurModifiable": False,
+             "hauteurModifiable": False, "verrouillageLargeur": True, "verrouillageHauteur": True,
+             "interditModifProportions": True},
+            {"nom": _(u"Espace vertical"), "champ": _(u"espace_vertical"), "obligatoire": False,
+             "x": None, "y": None, "largeur": 5, "hauteur": 10, "largeurModifiable": False,
+             "hauteurModifiable": True, "verrouillageLargeur": True, "verrouillageHauteur": False,
+             "interditModifProportions": False},
+        ]
+
+        # Questionnaires (facultatifs : voir UTILS_Convention_champs, la
+        # génération ne dépend jamais d'une réponse de questionnaire)
+        self.champs.extend(GetQuestions("famille"))
+        self.codesbarres.extend(GetCodesBarresQuestionnaires("famille"))
+
+
+# ----------------------------------------------------------------------------------------------------------------------------------
+
 
 
 
@@ -5228,6 +5326,7 @@ class Dialog(wx.Dialog):
         if categorie == "location" : self.infosCategorie = Location()
         if categorie == "location_demande" : self.infosCategorie = Location_demande()
         if categorie == "devis": self.infosCategorie = Devis()
+        if categorie == "convention": self.infosCategorie = Convention()
 
         self._mgr = aui.AuiManager()
         self._mgr.SetManagedWindow(self)
@@ -5742,6 +5841,9 @@ def ImportationObjets(IDmodele=None, InForeground=True):
                     IDdonnee=objet["IDdonnee"],
                     )
         
+        if objet["categorie"] in ("ligne_texte", "bloc_texte") and objet.get("nomPolice"):
+            objetCanvas.FaceName = objet["nomPolice"]
+
         listeObjetsCanvas.append(objetCanvas)
 
     return listeObjetsCanvas
@@ -5959,15 +6061,30 @@ def DessineObjetPDF(objet, canvas, valeur=None):
         canvas.setFillColorRGB(r, g, b)
     
     def GetPolice(objet):
-        police = "Arial"
-        if objet.Weight == wx.BOLD : police = "Arial-Bold"
-        if objet.Style == wx.ITALIC : police = "Arial-Oblique"
-        if objet.Style == wx.ITALIC and objet.Weight == wx.BOLD : police = "Arial-BoldOblique"
-##        police = "Helvetica"
-##        if objet.Weight == wx.BOLD : police = "Helvetica-Bold"
-##        if objet.Style == wx.ITALIC : police = "Helvetica-Oblique"
-##        if objet.Style == wx.ITALIC and objet.Weight == wx.BOLD : police = "Helvetica-BoldOblique"
-        return police
+        from reportlab.pdfbase import pdfmetrics
+        face = (getattr(objet, "FaceName", None) or u"").strip()
+        if face.lower() in ("arial", "arial regular"):
+            face = "Arial"
+        enregistrees = set(pdfmetrics.getRegisteredFontNames())
+        if face not in enregistrees:
+            face = "Arial"
+        if face == "Arial":
+            if objet.Style == wx.ITALIC and objet.Weight == wx.BOLD:
+                return "Arial-BoldOblique"
+            if objet.Weight == wx.BOLD:
+                return "Arial-Bold"
+            if objet.Style == wx.ITALIC:
+                return "Arial-Oblique"
+            return "Arial"
+        suffixe = ""
+        if objet.Style == wx.ITALIC and objet.Weight == wx.BOLD:
+            suffixe = "-BoldOblique"
+        elif objet.Weight == wx.BOLD:
+            suffixe = "-Bold"
+        elif objet.Style == wx.ITALIC:
+            suffixe = "-Oblique"
+        candidate = face + suffixe if suffixe else face
+        return candidate if candidate in enregistrees else face
 
     canvas.saveState() 
     

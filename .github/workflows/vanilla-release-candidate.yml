@@ -1,0 +1,430 @@
+name: Vanilla RC - build and publish
+
+# Pipeline dediee a la publication d'une Release Candidate Windows
+# (portable + Setup) depuis un commit precis, independamment de
+# maintenance/vanilla. Ne touche jamais cette branche ni la release
+# stable existante : la cible est un SHA explicite fourni au
+# declenchement, et la publication GitHub est toujours une prerelease.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: 'Commit SHA exact a construire et publier'
+        required: true
+        default: '1f6db9e3cff3dcd6424771ce663f19c728b27e8d'
+      version_label:
+        description: 'Etiquette de version publique (ex. 0.1.0-rc.1)'
+        required: true
+        default: '0.1.0-rc.1'
+      release_tag:
+        description: 'Tag Git de la release'
+        required: true
+        default: 'noethys-sl-0.1.0-rc.1'
+      display_title:
+        description: 'Titre affiché (BUILD-INFO.txt et release GitHub)'
+        required: true
+        default: 'Noethys SL 0.1.0 RC1'
+      release_notes_body:
+        description: 'Corps des notes de version (Markdown) -- propre a chaque RC, jamais reutilise tel quel'
+        required: true
+        default: |
+          # Noethys SL 0.1.0 RC1
+
+          Première Release Candidate sous la nouvelle identité publique
+          Noethys SL. La version de compatibilité interne (migrations de
+          base, protocole Connecthys) reste inchangée à 1.3.4.2 -- voir
+          noethys/Identite.py : seule l'identité affichée (fenêtre, à
+          propos, écran d'accueil, nom de l'installateur) change. AppId
+          Inno inchangé (Noethys), aucune migration des données
+          utilisateur existantes (%APPDATA%\noethys).
+
+          Cette RC est destinée à la recette réelle avant publication stable.
+
+          Principales évolutions depuis la dernière RC Vanilla :
+
+          - identité publique Noethys SL (fenêtre, à propos, écran
+            d'accueil, installateur) -- version de compatibilité interne
+            1.3.4.2 inchangée, protocole Connecthys inchangé ;
+          - dossier d'installation proposé par défaut : validation
+            réellement exercée face à un chemin précédent invalide
+            (résidu de test/TEMP), sans jamais toucher un /DIR= explicite
+            ni une saisie manuelle de l'utilisateur (6 cas testés en CI) ;
+          - correctif Planning : import mort ShowBoundaryValue retiré
+            (Réservations fonctionne réellement avec les versions récentes de
+            ReportLab, sans pin ni shim) ;
+          - fiabilité Connecthys : une erreur pendant une synchronisation ne
+            bloque plus le client dans un état "prêt" inopérant -- l'état est
+            toujours remis à zéro, l'erreur est journalisée, une nouvelle
+            synchronisation reste possible ;
+          - retour à l'apparence claire historique (aucun thème sombre n'a
+            jamais été voulu pour Noethys) ;
+          - conserve toutes les améliorations Convention introduites
+            précédemment (fidélité Noedoc, styles, pagination, UTF-8 explicite).
+
+          Précautions RC :
+
+          - effectuer une sauvegarde avant recette sur une base de production ;
+          - cette version est une Release Candidate ;
+          - signaler tout crash ou incohérence avant passage en version stable.
+
+permissions:
+  contents: write
+
+jobs:
+  build_and_release:
+    name: Construire et publier la RC Vanilla
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    env:
+      TARGET_SHA: ${{ github.event.inputs.target_sha }}
+      VERSION_LABEL: ${{ github.event.inputs.version_label }}
+      RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+      DISPLAY_TITLE: ${{ github.event.inputs.display_title }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.target_sha }}
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: Préparer les dépendances Vanilla
+        shell: pwsh
+        run: |
+          Get-Content requirements.txt |
+            Where-Object { $_.Trim() -ne 'pyttsx' } |
+            Set-Content requirements-vanilla-ci.txt -Encoding UTF8
+          python -m pip install --upgrade pip wheel
+          python -m pip install -r requirements-vanilla-ci.txt
+          python -m pip install pyttsx3 wxPython==4.2.5 'pyinstaller>=6,<7'
+
+      - name: Compiler les sources
+        run: python -m compileall -q noethys tests
+
+      - name: Vérifier wxPython sous Windows
+        shell: pwsh
+        run: python -c "import wx; app=wx.App(False); print(wx.version()); app.Destroy()"
+
+      - name: Suite Vanilla (contrats candidat/crash)
+        run: python -m unittest tests.test_vanilla_crash_recipient tests.test_vanilla_candidate_contract
+
+      - name: Tests Convention (catégorie Noedoc + moteur)
+        run: >-
+          python -m unittest
+          tests.test_vanilla_convention_category
+          tests.test_vanilla_convention_champs
+          tests.test_vanilla_convention_champs_historiques
+          tests.test_vanilla_convention_contract
+          tests.test_vanilla_convention_periodes
+          tests.test_vanilla_convention_rendering
+          tests.test_vanilla_convention_rendu_fidelite
+          tests.test_vanilla_convention_scolaire
+          tests.test_vanilla_convention_recette_modeles
+          tests.test_vanilla_generation_convention_dialog
+          tests.test_vanilla_reservations_extraction
+
+      - name: Test wx.Rect runtime (non-régression crash TaskBarIcon)
+        run: python -m unittest tests.test_vanilla_rect_float_regression
+
+      - name: Tests Connecthys (robustesse synchronisation) et identité Noethys SL
+        run: python -m unittest tests.test_vanilla_connecthys_synchro tests.test_vanilla_identite_noethys_sl
+
+      - name: Test apparence claire historique (AUI)
+        run: python -m unittest tests.test_vanilla_apparence_claire
+
+      - name: Construire le dossier portable
+        run: pyinstaller --noconfirm --clean packaging/vanilla-noethys.spec
+
+      - name: Vérifier le contenu du paquet
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'dist/Noethys/Noethys.exe')) { throw 'Noethys.exe absent' }
+          foreach ($resource in @('Static', 'Versions.txt', 'Licence.txt', 'Icone.ico')) {
+            if (-not (Test-Path (Join-Path 'dist/Noethys' $resource))) { throw "Ressource absente : $resource" }
+          }
+          if (Test-Path 'dist/Noethys/_internal') { throw 'Layout PyInstaller _internal incompatible' }
+
+      - name: Vérifier la présence des modèles Convention d'exemple dans le paquet
+        shell: pwsh
+        run: |
+          # Recette RC1 : docs/recette_conventions/*.ndc n'etait pas
+          # embarque dans packaging/vanilla-noethys.spec -- deplaces sous
+          # noethys/Static/ModelesConventionExemples/ (seul dossier
+          # reellement embarque dans le portable/installateur).
+          foreach ($nomFichier in @('modele_convention_associative.ndc', 'modele_convention_scolaire.ndc')) {
+            $chemin = Join-Path 'dist/Noethys/Static/ModelesConventionExemples' $nomFichier
+            if (-not (Test-Path $chemin)) { throw "Modele Convention d'exemple absent du paquet construit : $chemin" }
+          }
+
+      - name: Smoke de démarrage de Noethys.exe (portable)
+        shell: pwsh
+        run: |
+          $profileRoot = Join-Path $env:RUNNER_TEMP 'noethys-rc-portable-profile'
+          New-Item -ItemType Directory -Path $profileRoot -Force | Out-Null
+          $env:APPDATA = Join-Path $profileRoot 'Roaming'
+          $env:LOCALAPPDATA = Join-Path $profileRoot 'Local'
+          New-Item -ItemType Directory -Path $env:APPDATA -Force | Out-Null
+          New-Item -ItemType Directory -Path $env:LOCALAPPDATA -Force | Out-Null
+
+          $process = Start-Process -FilePath 'dist/Noethys/Noethys.exe' -PassThru
+          Start-Sleep -Seconds 15
+          if ($process.HasExited) {
+            throw "Noethys.exe (portable) a quitté prématurément avec le code $($process.ExitCode)"
+          }
+          $process.Refresh()
+          Stop-Process -Id $process.Id -Force
+          Write-Host 'Noethys.exe (portable) est resté actif pendant le smoke de démarrage.'
+
+      - name: Écrire BUILD-INFO.txt
+        shell: pwsh
+        run: |
+          @(
+            "$env:DISPLAY_TITLE"
+            "Commit: $env:TARGET_SHA"
+            "Python: $(python --version 2>&1)"
+            "wxPython: 4.2.5"
+            "Build UTC: $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
+            'Channel: Release Candidate'
+            'UI: interface historique Vanilla'
+            'Database schema migration: none'
+          ) | Set-Content -Path 'dist/Noethys/BUILD-INFO.txt' -Encoding UTF8
+          Get-Content 'dist/Noethys/BUILD-INFO.txt'
+
+      - name: Créer l'archive portable
+        shell: pwsh
+        run: |
+          $zip = "Noethys-SL-$($env:VERSION_LABEL)-Windows-portable.zip"
+          Compress-Archive -Path 'dist/Noethys/*' -DestinationPath $zip
+          "PORTABLE_ZIP=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding UTF8
+
+      - name: Préparer le payload installable (sans Portable/)
+        shell: pwsh
+        run: |
+          Remove-Item 'dist/Noethys-installable' -Recurse -Force -ErrorAction SilentlyContinue
+          Copy-Item 'dist/Noethys' 'dist/Noethys-installable' -Recurse
+          Remove-Item 'dist/Noethys-installable/Portable' -Recurse -Force -ErrorAction SilentlyContinue
+          if (Test-Path 'dist/Noethys-installable/Portable') { throw 'Le Setup ne doit jamais contenir Portable/' }
+
+          # vanilla-installer.iss copie uniquement dist/Noethys-installable/*
+          # (jamais dist/Noethys directement) : reverifie ici, sur le
+          # dossier reellement source du Setup publie.
+          foreach ($nomFichier in @('modele_convention_associative.ndc', 'modele_convention_scolaire.ndc')) {
+            $chemin = Join-Path 'dist/Noethys-installable/Static/ModelesConventionExemples' $nomFichier
+            if (-not (Test-Path $chemin)) { throw "Modele Convention d'exemple absent du payload installable : $chemin" }
+          }
+
+      - name: Construire le Setup Windows
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw 'ISCC.exe introuvable' }
+          & $iscc "/DMyAppVersion=$($env:VERSION_LABEL)" 'packaging\vanilla-installer.iss'
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup a échoué : $LASTEXITCODE" }
+          if (-not (Test-Path 'installer-output/Noethys-Vanilla-Setup.exe')) { throw 'Setup absent' }
+          $setup = "Noethys-SL-$($env:VERSION_LABEL)-Setup.exe"
+          Move-Item 'installer-output/Noethys-Vanilla-Setup.exe' $setup
+          "SETUP_EXE=$setup" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding UTF8
+
+      - name: Tester la logique de détermination du dossier d'installation (6 cas)
+        shell: pwsh
+        run: |
+          # CAS A-D : exercice direct des fonctions partagées
+          # (vanilla-installer-dirlogic.inc.iss) via InitializeSetup(),
+          # sans afficher de page. CAS E-F (ajoutés après le faux positif
+          # RC3, cf. commit history) : l'assistant progresse réellement
+          # jusqu'à wpSelectDir (CurPageChanged/NextButtonClick), exerçant
+          # exactement le même code que vanilla-installer.iss -- aucune
+          # duplication. Exécuté AVANT la création du C:\Noethys historique
+          # simulé par l'étape suivante, pour que CAS A (aucune installation
+          # existante) et CAS E/F (aucun chemin précédent enregistré)
+          # restent des états réellement propres sur ce runner.
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw 'ISCC.exe introuvable' }
+          Push-Location packaging
+          try {
+            & $iscc 'vanilla-installer-dirlogic.test.iss'
+            if ($LASTEXITCODE -ne 0) { throw "Compilation du harnais de test a échoué : $LASTEXITCODE" }
+          } finally {
+            Pop-Location
+          }
+          $harnais = (Resolve-Path 'packaging\dirlogic-test-setup.exe').Path
+
+          function GetValeur([string[]]$Lignes, [string]$Cle) {
+            $ligne = $Lignes | Where-Object { $_ -like "$Cle=*" }
+            if (-not $ligne) { throw "Résultat manquant pour $Cle" }
+            return $ligne.Substring($Cle.Length + 1)
+          }
+
+          # CAS A-D
+          $resultatAbcd = Join-Path $env:TEMP 'resultat-dirlogic.txt'
+          Remove-Item $resultatAbcd -Force -ErrorAction SilentlyContinue
+          $p = Start-Process $harnais -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES') -PassThru -Wait
+          # InitializeSetup() renvoie toujours False ici (annulation avant
+          # toute copie de fichier) : Inno documente ce cas comme "Setup
+          # failed to initialize", code de sortie 1 -- jamais 0.
+          if ($p.ExitCode -ne 1) { throw "Harnais CAS A-D : code inattendu $($p.ExitCode)" }
+          if (-not (Test-Path $resultatAbcd)) { throw "Fichier de résultats absent : $resultatAbcd" }
+          $resultats = Get-Content $resultatAbcd
+          Write-Host ($resultats -join "`n")
+          # {autopf} resout vers "Program Files (x86)" et non "Program Files" :
+          # ni vanilla-installer.iss ni ce harnais ne declarent
+          # ArchitecturesInstallIn64BitMode, donc Inno Setup tourne en 32 bits
+          # (comportement par defaut) meme si Noethys.exe est reellement
+          # compile en 64 bits par PyInstaller sur ce runner. Constat reel,
+          # pre-existant, hors perimetre de ce correctif -- signale
+          # separement, non corrige ici.
+          $attenduAbcd = @{
+            'CAS_A'        = 'C:\Program Files (x86)\Noethys'
+            'CAS_B'        = 'C:\Noethys'
+            'CAS_C'        = 'ACCEPTE'
+            'CAS_D_REJETE' = 'OUI'
+            'CAS_D_REPLI'  = 'C:\Program Files (x86)\Noethys'
+          }
+          foreach ($cle in $attenduAbcd.Keys) {
+            $valeur = GetValeur $resultats $cle
+            if ($valeur -ne $attenduAbcd[$cle]) { throw "$cle incorrect : attendu '$($attenduAbcd[$cle])', obtenu '$valeur'" }
+          }
+
+          # CAS E : /DIR= explicite vers un nouveau dossier -> jamais réécrit
+          $resultatEf = Join-Path $env:TEMP 'resultat-dirlogic-ef.txt'
+          $cheminE = Join-Path $env:RUNNER_TEMP 'noethys-dirlogic-cas-e'
+          Remove-Item $cheminE -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $resultatEf -Force -ErrorAction SilentlyContinue
+          $env:NOETHYS_DIRLOGIC_MODE = 'EF'
+          $env:NOETHYS_DIRLOGIC_CAS = 'E'
+          $dirArgE = "/DIR=" + $cheminE
+          $p = Start-Process $harnais -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',$dirArgE) -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Harnais CAS E : code inattendu $($p.ExitCode)" }
+          $resultatsE = Get-Content $resultatEf
+          Write-Host ($resultatsE -join "`n")
+          $valeurE = GetValeur $resultatsE 'CAS_E'
+          if ($valeurE -ne $cheminE) { throw "CAS_E incorrect : attendu '$cheminE', obtenu '$valeurE'" }
+
+          # CAS F : saisie manuelle simulée après affichage de la page -> jamais réécrite
+          $cheminF = Join-Path $env:RUNNER_TEMP 'noethys-dirlogic-cas-f'
+          Remove-Item $cheminF -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $resultatEf -Force -ErrorAction SilentlyContinue
+          $env:NOETHYS_DIRLOGIC_CAS = 'F'
+          $env:NOETHYS_DIRLOGIC_CHEMIN_UTILISATEUR = $cheminF
+          $p = Start-Process $harnais -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Harnais CAS F : code inattendu $($p.ExitCode)" }
+          $resultatsF = Get-Content $resultatEf
+          Write-Host ($resultatsF -join "`n")
+          $valeurF = GetValeur $resultatsF 'CAS_F'
+          if ($valeurF -ne $cheminF) { throw "CAS_F incorrect : attendu '$cheminF', obtenu '$valeurF'" }
+
+          Remove-Item Env:\NOETHYS_DIRLOGIC_MODE, Env:\NOETHYS_DIRLOGIC_CAS, Env:\NOETHYS_DIRLOGIC_CHEMIN_UTILISATEUR -ErrorAction SilentlyContinue
+          Write-Host 'Les 6 cas de détermination du dossier d''installation sont corrects.'
+
+      - name: Vérifier la proposition du dossier d'installation historique
+        shell: pwsh
+        run: |
+          # Simule une installation historique non-Inno (C:\Noethys\Noethys.exe
+          # existant mais aucune trace Inno enregistrée) et vérifie qu'une
+          # installation silencieuse SANS /DIR= explicite s'installe bien dans
+          # ce dossier proposé par défaut -- et pas dans Program Files, ce qui
+          # créerait deux installations distinctes sur le même poste (défaut
+          # réel constaté en recette). Runner CI jetable : écriture sans risque.
+          New-Item -ItemType Directory -Path 'C:\Noethys' -Force | Out-Null
+          Copy-Item 'dist\Noethys-installable\Noethys.exe' 'C:\Noethys\Noethys.exe' -Force
+
+          $setup = (Resolve-Path $env:SETUP_EXE).Path
+          $p = Start-Process $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Installation silencieuse (sans /DIR=) en échec : $($p.ExitCode)" }
+          if (-not (Test-Path 'C:\Noethys\Static')) {
+            throw "L'installation par défaut n'a pas utilisé C:\Noethys (dossier historique détecté ignoré)"
+          }
+          Write-Host 'Dossier historique C:\Noethys correctement proposé et utilisé par défaut.'
+
+      - name: Tester installation silencieuse et conservation de la configuration
+        shell: pwsh
+        run: |
+          $setup = (Resolve-Path $env:SETUP_EXE).Path
+          $installRoot = Join-Path $env:RUNNER_TEMP 'noethys-rc-installed'
+          $profileRoot = Join-Path $env:RUNNER_TEMP 'noethys-rc-profile'
+          $workRoot = Join-Path $env:RUNNER_TEMP 'noethys-rc-foreign-cwd'
+          Remove-Item $installRoot,$profileRoot,$workRoot -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $installRoot,$profileRoot,$workRoot -Force | Out-Null
+
+          $roaming = Join-Path $profileRoot 'Roaming'
+          $local = Join-Path $profileRoot 'Local'
+          $configDir = Join-Path $roaming 'noethys'
+          New-Item -ItemType Directory -Path $configDir,$local -Force | Out-Null
+          $config = Join-Path $configDir 'Config.json'
+          $foreign = Join-Path $workRoot 'Config.json'
+          '{"nomFichier":"","derniersFichiers":[],"interface_mysql":"mysqldb","pool_mysql":5}' | Set-Content $config -Encoding UTF8
+          '{"nomFichier":"NE_DOIT_PAS_ETRE_MIGRE"}' | Set-Content $foreign -Encoding UTF8
+          $configBefore = (Get-FileHash $config -Algorithm SHA256).Hash
+          $foreignBefore = (Get-FileHash $foreign -Algorithm SHA256).Hash
+
+          $p = Start-Process $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$installRoot") -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Installation silencieuse en échec : $($p.ExitCode)" }
+          $exe = Join-Path $installRoot 'Noethys.exe'
+          if (-not (Test-Path $exe)) { throw 'Noethys.exe absent après installation' }
+          if (Test-Path (Join-Path $installRoot 'Portable')) { throw 'Mode Portable présent dans le Setup' }
+
+          $savedAppData = $env:APPDATA
+          $savedLocalAppData = $env:LOCALAPPDATA
+          try {
+            $env:APPDATA = $roaming
+            $env:LOCALAPPDATA = $local
+            $app = Start-Process $exe -WorkingDirectory $workRoot -PassThru
+            Start-Sleep -Seconds 10
+            if ($app.HasExited) {
+              throw "Noethys.exe (installé) a quitté prématurément avec le code $($app.ExitCode)"
+            } else {
+              Stop-Process -Id $app.Id -Force
+            }
+          }
+          finally {
+            $env:APPDATA = $savedAppData
+            $env:LOCALAPPDATA = $savedLocalAppData
+          }
+
+          if ((Get-FileHash $config -Algorithm SHA256).Hash -ne $configBefore) { throw 'Config.json utilisateur a été modifié' }
+          if ((Get-FileHash $foreign -Algorithm SHA256).Hash -ne $foreignBefore) { throw 'Config.json du CWD a été déplacé ou modifié' }
+
+      - name: Calculer les SHA256 des artefacts
+        shell: pwsh
+        run: |
+          Get-FileHash $env:PORTABLE_ZIP -Algorithm SHA256 | Format-List
+          Get-FileHash $env:SETUP_EXE -Algorithm SHA256 | Format-List
+          "SHA256_PORTABLE=$((Get-FileHash $env:PORTABLE_ZIP -Algorithm SHA256).Hash)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding UTF8
+          "SHA256_SETUP=$((Get-FileHash $env:SETUP_EXE -Algorithm SHA256).Hash)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding UTF8
+
+      - name: Préparer les notes de version
+        shell: pwsh
+        env:
+          NOTES_BODY: ${{ github.event.inputs.release_notes_body }}
+        run: |
+          # Corps entièrement paramétré (input release_notes_body), jamais
+          # recopié en dur d'une RC précédente : une release passée
+          # (RC2) contenait par erreur un corps encore titré "RC1".
+          Set-Content -Path 'RELEASE-NOTES.md' -Value $env:NOTES_BODY -Encoding UTF8
+          Get-Content 'RELEASE-NOTES.md' | Select-Object -First 3
+
+      - name: Publier la release GitHub (prerelease)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:RELEASE_TAG $env:PORTABLE_ZIP $env:SETUP_EXE `
+            --target $env:TARGET_SHA `
+            --title $env:DISPLAY_TITLE `
+            --notes-file 'RELEASE-NOTES.md' `
+            --prerelease `
+            --latest=false
+
+      - name: Résumé
+        shell: pwsh
+        run: |
+          Write-Host "Tag: $env:RELEASE_TAG"
+          Write-Host "SHA cible: $env:TARGET_SHA"
+          Write-Host "Portable: $env:PORTABLE_ZIP ($env:SHA256_PORTABLE)"
+          Write-Host "Setup: $env:SETUP_EXE ($env:SHA256_SETUP)"

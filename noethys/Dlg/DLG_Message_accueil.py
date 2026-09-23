@@ -16,15 +16,14 @@ import wx
 from Ctrl import CTRL_Bouton_image
 import wx.html as html
 import FonctionsPerso
+import Identite
 
-
-VERSION_LOGICIEL = FonctionsPerso.GetVersionLogiciel()
 
 TEXTE_ACCUEIL = u"""
 <CENTER><IMG SRC="%s">
 <BR>
 <FONT SIZE=2>
-<B>Bienvenue dans Noethys</B><BR>
+<B>Bienvenue dans %s</B><BR>
 <B>Version %s</B>
 <BR><BR>
 Noethys est un logiciel gratuit de gestion multi-activités pour les accueils de 
@@ -37,7 +36,7 @@ sur le forum dédié :
 <A HREF="Saisie">Cliquez ici pour accéder au forum</A>.
 </FONT>
 </CENTER>
-""" % (Chemins.GetStaticPath("Images/80x80/Logo.png"), VERSION_LOGICIEL)
+""" % (Chemins.GetStaticPath("Images/80x80/Logo.png"), Identite.PRODUCT_NAME, Identite.PRODUCT_VERSION_DISPLAY)
 
 #Si vous jugez que ce logiciel vous apporte un service appréciable au quotidien et 
 #que vous souhaitez participez au développement du logiciel, vous pouvez apporter 

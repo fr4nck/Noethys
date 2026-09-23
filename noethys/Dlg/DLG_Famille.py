@@ -463,6 +463,13 @@ class Dialog(wx.Dialog):
         menuPop.AppendItem(item)
         self.Bind(wx.EVT_MENU, self.MenuListeDevis, id=20)
 
+        # Item Convention
+        item = wx.MenuItem(menuPop, 16, _(u"Générer une convention"))
+        bmp = wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Generation.png"), wx.BITMAP_TYPE_PNG)
+        item.SetBitmap(bmp)
+        menuPop.AppendItem(item)
+        self.Bind(wx.EVT_MENU, self.MenuGenererConvention, id=16)
+
         menuPop.AppendSeparator()
 
         # Item Editer Lettre de rappel
@@ -635,6 +642,56 @@ class Dialog(wx.Dialog):
         dlg = DLG_Liste_devis.Dialog(self, IDfamille=self.IDfamille)
         dlg.ShowModal()
         dlg.Destroy()
+
+    def MenuGenererConvention(self, event):
+        """ Génère une convention pour la famille, à partir d'un modèle de
+        catégorie "convention" choisi par l'utilisateur et de la période
+        sélectionnée. Aucune donnée n'est requise au préalable dans un
+        questionnaire : ce qui n'est pas déterminable automatiquement
+        reste simplement vide dans le PDF généré. """
+        if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("familles_devis", "creer") == False :
+            return
+
+        if self.Sauvegarde() == False :
+            return
+
+        from Dlg import DLG_Generation_convention
+        dlg = DLG_Generation_convention.Dialog(self, IDfamille=self.IDfamille)
+        if dlg.ShowModal() != wx.ID_OK :
+            dlg.Destroy()
+            return
+        IDmodele = dlg.GetIDmodele()
+        date_debut = dlg.GetDateDebut()
+        date_fin = dlg.GetDateFin()
+        saison = dlg.GetSaison()
+        overrides = dlg.GetOverrides()
+        dlg.Destroy()
+
+        if IDmodele is None :
+            dlg = wx.MessageDialog(
+                self, _(u"Aucun modèle de convention n'est disponible. Créez-en un depuis Paramétrage > Modèles de documents."),
+                _(u"Convention"), wx.OK | wx.ICON_EXCLAMATION,
+            )
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
+
+        from Utils import UTILS_Impression_convention
+        resultat = UTILS_Impression_convention.Impression(
+            IDfamille=self.IDfamille, IDmodele=IDmodele,
+            date_debut=date_debut, date_fin=date_fin, saison=saison,
+            overrides=overrides,
+        )
+
+        if resultat :
+            try :
+                UTILS_Historique.InsertActions([{
+                    "IDfamille" : self.IDfamille,
+                    "IDcategorie" : 4,
+                    "action" : _(u"Génération d'une convention"),
+                    },])
+            except :
+                pass
 
     def MenuGenererRappel(self, event):
         if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("familles_lettre_rappel", "creer") == False : return

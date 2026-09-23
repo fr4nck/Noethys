@@ -69,47 +69,66 @@ class Serveur(Thread):
 
     def run(self):
         while self.keepGoing:
-
             if self.active == True :
                 try :
-
-                    if self.parent.last_synchro == None :
-                        # Lance une synchro quelques secondes après le démarrage
-                        if self.parent.synchro_ouverture == True :
-                            self.parent.last_synchro = datetime.datetime.now()
-                            time.sleep(30)
-                            self.start_synchro = True
-                        else :
-                            self.parent.last_synchro = datetime.datetime.now()
-                    else :
-                        # Vérifie si une synchro est nécessaire selon le délai choisi
-                        if datetime.datetime.now() >= self.GetHeureProchaineSynchro() :
-                            self.start_synchro = True
-
-
-                    # Lancement de la procédure de synchronisation
-                    if self.start_synchro == True and self.synchro_en_cours == False :
-
-                        self.start_synchro = False
-
-                        # Mémorise l'heure de la dernière synchro
-                        self.parent.last_synchro = datetime.datetime.now()
-
-                        # Effectue la synchro
-                        self.parent.SetImage("upload")
-                        self.synchro_en_cours = True
-                        synchro = UTILS_Portail_synchro.Synchro(log=self.parent)
-                        synchro.Synchro_totale()
-                        self.synchro_en_cours = False
-                        self.parent.SetImage("on")
-                        self.parent.MAJ_bouton()
-
+                    self.EffectuerCycle()
                 except Exception as err :
                     if not str(err).startswith("The C++ part"):
-                        raise
+                        # Journalise (jamais masqué) au lieu de laisser
+                        # l'exception tuer définitivement ce thread : sinon
+                        # keepGoing restait à True (IsRunning() mentait,
+                        # croyant le thread encore vivant) alors que le
+                        # thread était déjà mort, rendant toute synchro
+                        # future impossible sans redémarrer Noethys.
+                        try :
+                            self.parent.EcritLog(_(u"Erreur inattendue dans le client de synchronisation : %s") % err)
+                        except Exception :
+                            pass
 
             # Attends 1 seconde
             time.sleep(1)
+
+    def EffectuerCycle(self):
+        """ Un seul passage de la boucle de run() : extrait pour pouvoir
+        être testé directement (appel synchrone, sans thread ni boucle
+        infinie). Comportement strictement identique à l'ancien corps de
+        run(), aucun changement de logique. """
+        if self.parent.last_synchro == None :
+            # Lance une synchro quelques secondes après le démarrage
+            if self.parent.synchro_ouverture == True :
+                self.parent.last_synchro = datetime.datetime.now()
+                time.sleep(30)
+                self.start_synchro = True
+            else :
+                self.parent.last_synchro = datetime.datetime.now()
+        else :
+            # Vérifie si une synchro est nécessaire selon le délai choisi
+            if datetime.datetime.now() >= self.GetHeureProchaineSynchro() :
+                self.start_synchro = True
+
+        # Lancement de la procédure de synchronisation
+        if self.start_synchro == True and self.synchro_en_cours == False :
+
+            self.start_synchro = False
+
+            # Mémorise l'heure de la dernière synchro
+            self.parent.last_synchro = datetime.datetime.now()
+
+            # Effectue la synchro. try/finally : sans lui, une
+            # exception non geree pendant Synchro_totale()
+            # laissait synchro_en_cours a True pour toujours
+            # (plus aucune synchro, automatique ou manuelle,
+            # n'etait alors possible) et l'icone bloquee sur
+            # "upload", sans aucun diagnostic pour l'utilisateur.
+            self.parent.SetImage("upload")
+            self.synchro_en_cours = True
+            try:
+                synchro = UTILS_Portail_synchro.Synchro(log=self.parent)
+                synchro.Synchro_totale()
+            finally:
+                self.synchro_en_cours = False
+                self.parent.SetImage("on")
+                self.parent.MAJ_bouton()
 
 
     def abort(self):

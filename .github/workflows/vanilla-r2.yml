@@ -72,6 +72,17 @@ jobs:
           }
           if (Test-Path 'dist/Noethys/_internal') { throw 'Layout PyInstaller _internal incompatible' }
 
+          # Recette RC1 : docs/recette_conventions/*.ndc n'etait pas
+          # embarque dans packaging/vanilla-noethys.spec -- deplaces sous
+          # noethys/Static/ModelesConventionExemples/ (seul dossier
+          # reellement embarque). Verifie le resultat PyInstaller ici, et
+          # a nouveau apres "Preparer le payload installable" (le
+          # dossier reellement copie par vanilla-installer.iss).
+          foreach ($nomFichier in @('modele_convention_associative.ndc', 'modele_convention_scolaire.ndc')) {
+            $chemin = Join-Path 'dist/Noethys/Static/ModelesConventionExemples' $nomFichier
+            if (-not (Test-Path $chemin)) { throw "Modele Convention d'exemple absent du paquet construit : $chemin" }
+          }
+
           @(
             'Noethys Vanilla 1.3.4.2-r2 - Windows'
             "Commit: $env:GITHUB_SHA"
@@ -89,6 +100,15 @@ jobs:
           Remove-Item 'dist/Noethys-installable/Portable' -Recurse -Force -ErrorAction SilentlyContinue
           if (Test-Path 'dist/Noethys-installable/Portable') { throw 'Le Setup ne doit jamais contenir Portable/' }
 
+          # vanilla-installer.iss copie uniquement dist/Noethys-installable/*
+          # (jamais dist/Noethys directement) : reverifie ici, sur le
+          # dossier reellement source du Setup, pas seulement sur la
+          # sortie brute de PyInstaller deja verifiee plus haut.
+          foreach ($nomFichier in @('modele_convention_associative.ndc', 'modele_convention_scolaire.ndc')) {
+            $chemin = Join-Path 'dist/Noethys-installable/Static/ModelesConventionExemples' $nomFichier
+            if (-not (Test-Path $chemin)) { throw "Modele Convention d'exemple absent du payload installable : $chemin" }
+          }
+
       - name: Construire le Setup Windows
         shell: pwsh
         run: |
@@ -98,6 +118,99 @@ jobs:
           & $iscc '/DMyAppVersion=1.3.4.2-r2' 'packaging\vanilla-installer.iss'
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup a échoué : $LASTEXITCODE" }
           if (-not (Test-Path 'installer-output/Noethys-Vanilla-Setup.exe')) { throw 'Setup absent' }
+
+      - name: Tester la logique de détermination du dossier d'installation (6 cas)
+        shell: pwsh
+        run: |
+          # CAS A-D : exercice direct des fonctions partagées
+          # (vanilla-installer-dirlogic.inc.iss), sans afficher de page,
+          # via InitializeSetup(). CAS E-F : l'assistant progresse
+          # réellement jusqu'à wpSelectDir (CurPageChanged/NextButtonClick),
+          # exerçant exactement le même code que vanilla-installer.iss --
+          # aucune duplication. Exécuté AVANT toute installation réelle de
+          # Noethys sur ce runner (C:\Noethys, registre AppId=Noethys),
+          # pour que CAS A (aucune installation) et CAS E/F (aucun chemin
+          # précédent enregistré) restent des états réellement propres.
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw 'ISCC.exe introuvable' }
+          Push-Location packaging
+          try {
+            & $iscc 'vanilla-installer-dirlogic.test.iss'
+            if ($LASTEXITCODE -ne 0) { throw "Compilation du harnais de test a échoué : $LASTEXITCODE" }
+          } finally {
+            Pop-Location
+          }
+          $harnais = (Resolve-Path 'packaging\dirlogic-test-setup.exe').Path
+
+          function GetValeur([string[]]$Lignes, [string]$Cle) {
+            $ligne = $Lignes | Where-Object { $_ -like "$Cle=*" }
+            if (-not $ligne) { throw "Résultat manquant pour $Cle" }
+            return $ligne.Substring($Cle.Length + 1)
+          }
+
+          # CAS A-D
+          $resultatAbcd = Join-Path $env:TEMP 'resultat-dirlogic.txt'
+          Remove-Item $resultatAbcd -Force -ErrorAction SilentlyContinue
+          $p = Start-Process $harnais -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES') -PassThru -Wait
+          # InitializeSetup() renvoie toujours False ici (annulation avant
+          # toute copie de fichier) : Inno documente ce cas comme "Setup
+          # failed to initialize", code de sortie 1 -- jamais 0.
+          if ($p.ExitCode -ne 1) { throw "Harnais CAS A-D : code inattendu $($p.ExitCode)" }
+          if (-not (Test-Path $resultatAbcd)) { throw "Fichier de résultats absent : $resultatAbcd" }
+          $resultats = Get-Content $resultatAbcd
+          Write-Host ($resultats -join "`n")
+          # {autopf} resout vers "Program Files (x86)" et non "Program Files" :
+          # ni vanilla-installer.iss ni ce harnais ne declarent
+          # ArchitecturesInstallIn64BitMode, donc Inno Setup tourne en 32 bits
+          # (comportement par defaut) meme si Noethys.exe est reellement
+          # compile en 64 bits par PyInstaller sur ce runner. Constat reel,
+          # pre-existant, hors perimetre de ce correctif -- signale
+          # separement, non corrige ici.
+          $attenduAbcd = @{
+            'CAS_A'        = 'C:\Program Files (x86)\Noethys'
+            'CAS_B'        = 'C:\Noethys'
+            'CAS_C'        = 'ACCEPTE'
+            'CAS_D_REJETE' = 'OUI'
+            'CAS_D_REPLI'  = 'C:\Program Files (x86)\Noethys'
+          }
+          foreach ($cle in $attenduAbcd.Keys) {
+            $valeur = GetValeur $resultats $cle
+            if ($valeur -ne $attenduAbcd[$cle]) { throw "$cle incorrect : attendu '$($attenduAbcd[$cle])', obtenu '$valeur'" }
+          }
+
+          # CAS E : /DIR= explicite vers un nouveau dossier -> jamais réécrit
+          $resultatEf = Join-Path $env:TEMP 'resultat-dirlogic-ef.txt'
+          $cheminE = Join-Path $env:RUNNER_TEMP 'noethys-dirlogic-cas-e'
+          Remove-Item $cheminE -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $resultatEf -Force -ErrorAction SilentlyContinue
+          $env:NOETHYS_DIRLOGIC_MODE = 'EF'
+          $env:NOETHYS_DIRLOGIC_CAS = 'E'
+          $dirArgE = "/DIR=" + $cheminE
+          $p = Start-Process $harnais -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',$dirArgE) -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Harnais CAS E : code inattendu $($p.ExitCode)" }
+          $resultatsE = Get-Content $resultatEf
+          Write-Host ($resultatsE -join "`n")
+          $valeurE = GetValeur $resultatsE 'CAS_E'
+          if ($valeurE -ne $cheminE) { throw "CAS_E incorrect : attendu '$cheminE', obtenu '$valeurE'" }
+
+          # CAS F : saisie manuelle simulée après affichage de la page -> jamais réécrite
+          $cheminF = Join-Path $env:RUNNER_TEMP 'noethys-dirlogic-cas-f'
+          Remove-Item $cheminF -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $resultatEf -Force -ErrorAction SilentlyContinue
+          $env:NOETHYS_DIRLOGIC_CAS = 'F'
+          $env:NOETHYS_DIRLOGIC_CHEMIN_UTILISATEUR = $cheminF
+          $p = Start-Process $harnais -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Harnais CAS F : code inattendu $($p.ExitCode)" }
+          $resultatsF = Get-Content $resultatEf
+          Write-Host ($resultatsF -join "`n")
+          $valeurF = GetValeur $resultatsF 'CAS_F'
+          if ($valeurF -ne $cheminF) { throw "CAS_F incorrect : attendu '$cheminF', obtenu '$valeurF'" }
+
+          Remove-Item Env:\NOETHYS_DIRLOGIC_MODE, Env:\NOETHYS_DIRLOGIC_CAS, Env:\NOETHYS_DIRLOGIC_CHEMIN_UTILISATEUR -ErrorAction SilentlyContinue
+          Write-Host 'Les 6 cas de détermination du dossier d''installation sont corrects.'
+
+      - name: Tester la robustesse Connecthys et l'identité Noethys SL
+        run: python -m unittest tests.test_vanilla_connecthys_synchro tests.test_vanilla_identite_noethys_sl
 
       - name: Tester installation et conservation de la configuration
         shell: pwsh
