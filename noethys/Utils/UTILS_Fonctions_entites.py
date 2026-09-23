@@ -104,6 +104,51 @@ def GetSuggestionsFonctions(IDfamille, sexe=None, DB=None):
     )
 
 
+def GetInfosRattachement(IDrattachement, DB=None):
+    """Retourne l'identité minimale liée à un rattachement, même si
+    aucune fonction n'a encore été enregistrée."""
+    fermer = DB is None
+    if DB is None:
+        import GestionDB
+        DB = GestionDB.DB()
+    try:
+        DB.ExecuterReq(
+            """SELECT rattachements.IDrattachement, rattachements.IDfamille,
+            rattachements.IDindividu, rattachements.IDcategorie,
+            rattachements.titulaire, individus.IDcivilite,
+            individus.nom, individus.prenom
+            FROM rattachements
+            LEFT JOIN individus ON individus.IDindividu = rattachements.IDindividu
+            WHERE rattachements.IDrattachement=%d;""" % int(IDrattachement)
+        )
+        lignes = DB.ResultatReq()
+        if not lignes:
+            return None
+        (
+            IDrattachement, IDfamille, IDindividu, IDcategorie, titulaire,
+            IDcivilite, nom, prenom,
+        ) = lignes[0]
+        sexe = None
+        try:
+            sexe = DATA_Civilites.GetDictCivilites()[IDcivilite]["sexe"]
+        except Exception:
+            pass
+        return {
+            "IDrattachement": IDrattachement,
+            "IDfamille": IDfamille,
+            "IDindividu": IDindividu,
+            "IDcategorie": IDcategorie,
+            "titulaire": _bool_int(titulaire),
+            "IDcivilite": IDcivilite,
+            "nom": (nom or u"").strip(),
+            "prenom": (prenom or u"").strip(),
+            "nom_complet": _nom_complet(IDcivilite, nom, prenom),
+            "sexe": sexe,
+        }
+    finally:
+        _fermer_si_besoin(DB, fermer)
+
+
 def GetFonctionRattachement(IDrattachement, DB=None):
     """Retourne le paramétrage d'un rattachement, sans créer de table."""
     valeur_vide = {
