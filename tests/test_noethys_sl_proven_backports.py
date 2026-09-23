@@ -49,7 +49,7 @@ class ExportComptaBackportTests(unittest.TestCase):
     def test_mode_uses_its_own_accounting_code(self):
         src = source_methode(
             "noethys/Dlg/DLG_Export_compta.py",
-            "Analyse",
+            "Donnees",
             "GetReglements_Modes",
         )
         self.assertIn('"code_compta" : dictMode["code_compta"]', src)
