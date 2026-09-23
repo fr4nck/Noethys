@@ -36,3 +36,12 @@ def test_accueil_preserves_logo_alpha_instead_of_baking_white_background():
     assert "if fondBlanc or not img.HasAlpha()" in organisateur
     assert "canvas.InitAlpha()" in organisateur
     assert "canvas.Paste(img, position[0], position[1])" in organisateur
+
+
+def test_logo_readability_threshold_distinguishes_usable_borderline_and_too_small():
+    source = ORGANISATEUR.read_text(encoding="utf-8")
+    assert "def EvaluerLisibiliteLogo" in source
+    assert 'return "exploitable"' in source
+    assert 'return "limite"' in source
+    assert 'return "trop_petit"' in source
+    assert "dimension_min < seuilDimension" in source
