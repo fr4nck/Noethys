@@ -127,7 +127,7 @@ class Panel(wx.Panel):
         # centralisés par Noethys. L'absence de logo conserve l'accueil actuel.
         self.logo_organisateur = None
         try:
-            self.logo_organisateur = UTILS_Organisateur.GetDonnees(tailleLogo=(80, 80)).get("logo")
+            self.logo_organisateur = UTILS_Organisateur.GetDonnees(tailleLogo=(80, 80), fondLogoBlanc=False).get("logo")
         except Exception:
             self.logo_organisateur = None
 
