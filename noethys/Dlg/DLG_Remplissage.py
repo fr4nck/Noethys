@@ -222,6 +222,17 @@ class Panel(wx.Panel):
             
         self.__set_properties()
         self.__do_layout()
+        self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
+
+    def OnDestroy(self, event):
+        global MAJ_AUTO_EN_ATTENTE
+        if event.GetEventObject() is self and MAJ_AUTO_EN_ATTENTE is not None:
+            try:
+                MAJ_AUTO_EN_ATTENTE.Stop()
+            except RuntimeError:
+                pass
+            MAJ_AUTO_EN_ATTENTE = None
+        event.Skip()
 
     def __set_properties(self):
         pass
