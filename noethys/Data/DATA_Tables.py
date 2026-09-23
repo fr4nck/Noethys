@@ -184,6 +184,23 @@ DB_DATA = {
                        u"=1 si l'individu est titulaire de la fiche famille"),
                       ],  # Les rattachements à une ou plusieurs familles
 
+    "rattachements_fonctions": [
+                      ("IDfonction_rattachement", "INTEGER PRIMARY KEY AUTOINCREMENT",
+                       u"ID de la fonction portée par le rattachement"),
+                      ("IDrattachement", "INTEGER",
+                       u"Rattachement individu <-> famille/entité concerné"),
+                      ("fonction", "VARCHAR(200)",
+                       u"Fonction de l'individu dans l'entité"),
+                      ("representant", "INTEGER",
+                       u"=1 si l'individu représente l'entité"),
+                      ("signataire", "INTEGER",
+                       u"=1 si l'individu peut signer les documents de l'entité"),
+                      ("facturation", "INTEGER",
+                       u"=1 si l'individu est référent pour la facturation"),
+                      ("planning", "INTEGER",
+                       u"=1 si l'individu est référent pour le planning"),
+                      ],  # Métadonnées métier du rattachement, sans modifier rattachements
+
     "types_maladies": [("IDtype_maladie", "INTEGER PRIMARY KEY AUTOINCREMENT", u"ID type_maladie"),
                        ("nom", "VARCHAR(100)", u"Nom de la maladie"),
                        ("vaccin_obligatoire", "INTEGER",
