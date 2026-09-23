@@ -12,7 +12,7 @@ on:
       target_sha:
         description: 'Commit SHA exact a construire et publier'
         required: true
-        default: 'b78c7a5de672f6d0206b6d5b118531911921f98b'
+        default: '1f6db9e3cff3dcd6424771ce663f19c728b27e8d'
       version_label:
         description: 'Etiquette de version publique (ex. 0.1.0-rc.1)'
         required: true
