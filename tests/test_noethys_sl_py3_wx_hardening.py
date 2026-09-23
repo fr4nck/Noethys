@@ -54,6 +54,20 @@ class SmsPython3Contracts(unittest.TestCase):
         self.assertIn("UTILS_Envoi_email._TexteUtf8(err)", source)
 
 
+class ExportHeliosPython3Contracts(unittest.TestCase):
+    def test_export_helios_ecrit_du_texte_utf8(self):
+        source = lire("noethys/Dlg/DLG_Export_helios.py")
+        self.assertIn('open(cheminFichier, "w", encoding="utf-8")', source)
+        self.assertIn("fichier.write(texte)", source)
+        self.assertNotIn('f.write(texte.encode("utf8"))', source)
+
+    def test_dialogue_ecrasement_est_detruit_avant_le_retour(self):
+        source = lire("noethys/Dlg/DLG_Export_helios.py")
+        self.assertIn("reponse = dlg.ShowModal()", source)
+        self.assertIn("dlg.Destroy()", source)
+        self.assertNotIn("return False\n                dlg.Destroy()", source)
+
+
 class NomadhysWxThreadContracts(unittest.TestCase):
     def test_image_journal_et_gauge_sont_deportes_vers_la_boucle_wx(self):
         path = "noethys/Ctrl/CTRL_Serveur_nomade.py"
