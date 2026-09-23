@@ -36,6 +36,8 @@ class BoutonImageContractTests(unittest.TestCase):
         self.assertIn("bmp.GetWidth() + 12", src)
         self.assertIn("bmp.GetHeight() + 8", src)
         self.assertIn("self.SetMinSize((largeur_min, hauteur_min))", src)
+        self.assertIn("except (OSError, ValueError):", src)
+        self.assertIn("bmp = wx.NullBitmap", src)
 
 
 class StaticImageAliasTests(unittest.TestCase):
