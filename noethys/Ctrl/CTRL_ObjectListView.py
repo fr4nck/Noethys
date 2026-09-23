@@ -63,8 +63,7 @@ class ObjectListView(OLV.ObjectListView):
             self.stEmptyListMsg.SetBackgroundColour(self.GetBackgroundColour())
         else :
             self.Enable(False)
-            couleur = wx.SystemSettings.GetColour(wx.SYS_COLOUR_FRAMEBK)# self.stEmptyListMsg.GetBackgroundColour()
-            self.stEmptyListMsg.SetBackgroundColour(couleur)
+            # Vanilla reste clair même si Windows utilise un thème sombre :\n            # réutiliser la surface effective de la liste au lieu de la palette système.\n            self.stEmptyListMsg.SetBackgroundColour(self.GetBackgroundColour())
         self.stEmptyListMsg.Refresh()
 
     def SetColumns(self, columns, repopulate=True):
