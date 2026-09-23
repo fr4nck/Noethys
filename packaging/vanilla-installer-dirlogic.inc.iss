@@ -90,3 +90,27 @@ begin
   if RegQueryStringValue(HKLM, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Noethys_is1', 'InstallLocation', Valeur) then
     Result := RemoveBackslashUnlessRoot(Valeur);
 end;
+
+// Corrige, si nécessaire, le champ de sélection du dossier d'installation
+// tel qu'Inno vient de le pré-remplir. Factorisé ici (et non écrit
+// directement dans CurPageChanged() de vanilla-installer.iss) pour que
+// l'installateur réel ET le harnais de test (CAS E/F, vérifiant qu'un
+// /DIR= explicite ou une saisie manuelle ne sont jamais réécrits) exercent
+// exactement le même code, jamais une copie.
+procedure AppliquerGardeFouDossierPropose(Champ: TNewEdit);
+var
+  CheminRegistrePrecedent: String;
+begin
+  CheminRegistrePrecedent := LireCheminPrecedentDuRegistre();
+  // On ne corrige CE champ QUE si sa valeur ACTUELLE correspond exactement
+  // au chemin lu directement dans le registre ET que ce chemin est
+  // invalide : cela prouve qu'Inno a bien pré-rempli depuis ce chemin
+  // précédent, par opposition à un /DIR= passé en ligne de commande ou à
+  // une saisie manuelle de l'utilisateur -- ces derniers visent une
+  // installation NEUVE qui n'a par définition pas encore Noethys.exe sur
+  // place, et ne doivent donc jamais être rejetés ici.
+  if (CheminRegistrePrecedent <> '') and
+     (RemoveBackslashUnlessRoot(Champ.Text) = CheminRegistrePrecedent) and
+     (not EstCheminPrecedentValide(CheminRegistrePrecedent)) then
+    Champ.Text := GetDefaultDirName('');
+end;

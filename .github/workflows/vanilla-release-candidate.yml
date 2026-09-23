@@ -14,29 +14,42 @@ on:
         required: true
         default: 'b78c7a5de672f6d0206b6d5b118531911921f98b'
       version_label:
-        description: 'Etiquette de version (ex. 1.3.4.2-r3-rc3)'
+        description: 'Etiquette de version publique (ex. 0.1.0-rc.1)'
         required: true
-        default: '1.3.4.2-r3-rc3'
+        default: '0.1.0-rc.1'
       release_tag:
         description: 'Tag Git de la release'
         required: true
-        default: 'vanilla-1.3.4.2-r3-rc3'
+        default: 'noethys-sl-0.1.0-rc.1'
       display_title:
         description: 'Titre affiché (BUILD-INFO.txt et release GitHub)'
         required: true
-        default: 'Noethys Vanilla 1.3.4.2-r3 RC3'
+        default: 'Noethys SL 0.1.0 RC1'
       release_notes_body:
         description: 'Corps des notes de version (Markdown) -- propre a chaque RC, jamais reutilise tel quel'
         required: true
         default: |
-          # Noethys Vanilla 1.3.4.2-r3 RC3
+          # Noethys SL 0.1.0 RC1
 
-          Release Candidate de la prochaine révision de maintenance Vanilla.
+          Première Release Candidate sous la nouvelle identité publique
+          Noethys SL. La version de compatibilité interne (migrations de
+          base, protocole Connecthys) reste inchangée à 1.3.4.2 -- voir
+          noethys/Identite.py : seule l'identité affichée (fenêtre, à
+          propos, écran d'accueil, nom de l'installateur) change. AppId
+          Inno inchangé (Noethys), aucune migration des données
+          utilisateur existantes (%APPDATA%\noethys).
 
           Cette RC est destinée à la recette réelle avant publication stable.
 
-          Principales évolutions depuis RC2 :
+          Principales évolutions depuis la dernière RC Vanilla :
 
+          - identité publique Noethys SL (fenêtre, à propos, écran
+            d'accueil, installateur) -- version de compatibilité interne
+            1.3.4.2 inchangée, protocole Connecthys inchangé ;
+          - dossier d'installation proposé par défaut : validation
+            réellement exercée face à un chemin précédent invalide
+            (résidu de test/TEMP), sans jamais toucher un /DIR= explicite
+            ni une saisie manuelle de l'utilisateur (6 cas testés en CI) ;
           - correctif Planning : import mort ShowBoundaryValue retiré
             (Réservations fonctionne réellement avec les versions récentes de
             ReportLab, sans pin ni shim) ;
@@ -46,11 +59,8 @@ on:
             synchronisation reste possible ;
           - retour à l'apparence claire historique (aucun thème sombre n'a
             jamais été voulu pour Noethys) ;
-          - dossier d'installation à nouveau réellement sélectionnable, avec
-            proposition automatique d'une installation historique C:\Noethys
-            détectée sur le poste ;
-          - conserve toutes les améliorations Convention introduites en RC2
-            (fidélité Noedoc, styles, pagination, UTF-8 explicite).
+          - conserve toutes les améliorations Convention introduites
+            précédemment (fidélité Noedoc, styles, pagination, UTF-8 explicite).
 
           Précautions RC :
 
@@ -121,8 +131,8 @@ jobs:
       - name: Test wx.Rect runtime (non-régression crash TaskBarIcon)
         run: python -m unittest tests.test_vanilla_rect_float_regression
 
-      - name: Tests Connecthys (robustesse synchronisation)
-        run: python -m unittest tests.test_vanilla_connecthys_synchro
+      - name: Tests Connecthys (robustesse synchronisation) et identité Noethys SL
+        run: python -m unittest tests.test_vanilla_connecthys_synchro tests.test_vanilla_identite_noethys_sl
 
       - name: Test apparence claire historique (AUI)
         run: python -m unittest tests.test_vanilla_apparence_claire
@@ -176,7 +186,7 @@ jobs:
       - name: Créer l'archive portable
         shell: pwsh
         run: |
-          $zip = "Noethys-Vanilla-$($env:VERSION_LABEL)-Windows-portable.zip"
+          $zip = "Noethys-SL-$($env:VERSION_LABEL)-Windows-portable.zip"
           Compress-Archive -Path 'dist/Noethys/*' -DestinationPath $zip
           "PORTABLE_ZIP=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding UTF8
 
@@ -197,24 +207,23 @@ jobs:
           & $iscc "/DMyAppVersion=$($env:VERSION_LABEL)" 'packaging\vanilla-installer.iss'
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup a échoué : $LASTEXITCODE" }
           if (-not (Test-Path 'installer-output/Noethys-Vanilla-Setup.exe')) { throw 'Setup absent' }
-          $setup = "Noethys-Vanilla-$($env:VERSION_LABEL)-Setup.exe"
+          $setup = "Noethys-SL-$($env:VERSION_LABEL)-Setup.exe"
           Move-Item 'installer-output/Noethys-Vanilla-Setup.exe' $setup
           "SETUP_EXE=$setup" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding UTF8
 
-      - name: Tester la logique de détermination du dossier d'installation (4 cas)
+      - name: Tester la logique de détermination du dossier d'installation (6 cas)
         shell: pwsh
         run: |
-          # Remplace l'ancien test à scénario unique (installation silencieuse
-          # sans /DIR=) qui a produit un faux positif en recette RC3 : il
-          # validait GetDefaultDirName() en isolation, mais ne détectait pas
-          # qu'UsePreviousAppDir peut imposer un chemin périmé/temporaire
-          # depuis le registre AVANT même que cette fonction ne soit consultée.
-          # Ce test compile et exécute le VRAI harnais (vanilla-installer-dirlogic.test.iss),
-          # qui #include le même fichier de logique que le Setup distribué
-          # (vanilla-installer-dirlogic.inc.iss) : aucune duplication de code.
-          # Exécuté AVANT la création du C:\Noethys historique simulé par
-          # l'étape suivante, pour que le CAS A (aucune installation
-          # existante) reste un état réellement propre sur ce runner.
+          # CAS A-D : exercice direct des fonctions partagées
+          # (vanilla-installer-dirlogic.inc.iss) via InitializeSetup(),
+          # sans afficher de page. CAS E-F (ajoutés après le faux positif
+          # RC3, cf. commit history) : l'assistant progresse réellement
+          # jusqu'à wpSelectDir (CurPageChanged/NextButtonClick), exerçant
+          # exactement le même code que vanilla-installer.iss -- aucune
+          # duplication. Exécuté AVANT la création du C:\Noethys historique
+          # simulé par l'étape suivante, pour que CAS A (aucune installation
+          # existante) et CAS E/F (aucun chemin précédent enregistré)
+          # restent des états réellement propres sur ce runner.
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { throw 'ISCC.exe introuvable' }
           Push-Location packaging
@@ -224,19 +233,7 @@ jobs:
           } finally {
             Pop-Location
           }
-
-          $resultatPath = Join-Path $env:TEMP 'resultat-dirlogic.txt'
-          Remove-Item $resultatPath -Force -ErrorAction SilentlyContinue
-
           $harnais = (Resolve-Path 'packaging\dirlogic-test-setup.exe').Path
-          $p = Start-Process $harnais -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES') -PassThru -Wait
-          # InitializeSetup() renvoie toujours False : l'installation est
-          # annulée avant toute copie de fichier, code de sortie attendu 0.
-          if ($p.ExitCode -ne 0) { throw "Le harnais de test a retourné un code inattendu : $($p.ExitCode)" }
-
-          if (-not (Test-Path $resultatPath)) { throw "Fichier de résultats absent : $resultatPath" }
-          $resultats = Get-Content $resultatPath
-          Write-Host ($resultats -join "`n")
 
           function GetValeur([string[]]$Lignes, [string]$Cle) {
             $ligne = $Lignes | Where-Object { $_ -like "$Cle=*" }
@@ -244,20 +241,56 @@ jobs:
             return $ligne.Substring($Cle.Length + 1)
           }
 
-          $attendu = @{
-            'CAS_A'          = 'C:\Program Files\Noethys'
-            'CAS_B'          = 'C:\Noethys'
-            'CAS_C'          = 'ACCEPTE'
-            'CAS_D_REJETE'   = 'OUI'
-            'CAS_D_REPLI'    = 'C:\Program Files\Noethys'
+          # CAS A-D
+          $resultatAbcd = Join-Path $env:TEMP 'resultat-dirlogic.txt'
+          Remove-Item $resultatAbcd -Force -ErrorAction SilentlyContinue
+          $p = Start-Process $harnais -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES') -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Harnais CAS A-D : code inattendu $($p.ExitCode)" }
+          if (-not (Test-Path $resultatAbcd)) { throw "Fichier de résultats absent : $resultatAbcd" }
+          $resultats = Get-Content $resultatAbcd
+          Write-Host ($resultats -join "`n")
+          $attenduAbcd = @{
+            'CAS_A'        = 'C:\Program Files\Noethys'
+            'CAS_B'        = 'C:\Noethys'
+            'CAS_C'        = 'ACCEPTE'
+            'CAS_D_REJETE' = 'OUI'
+            'CAS_D_REPLI'  = 'C:\Program Files\Noethys'
           }
-          foreach ($cle in $attendu.Keys) {
+          foreach ($cle in $attenduAbcd.Keys) {
             $valeur = GetValeur $resultats $cle
-            if ($valeur -ne $attendu[$cle]) {
-              throw "$cle incorrect : attendu '$($attendu[$cle])', obtenu '$valeur'"
-            }
+            if ($valeur -ne $attenduAbcd[$cle]) { throw "$cle incorrect : attendu '$($attenduAbcd[$cle])', obtenu '$valeur'" }
           }
-          Write-Host 'Les 4 cas de détermination du dossier d''installation sont corrects.'
+
+          # CAS E : /DIR= explicite vers un nouveau dossier -> jamais réécrit
+          $resultatEf = Join-Path $env:TEMP 'resultat-dirlogic-ef.txt'
+          $cheminE = Join-Path $env:RUNNER_TEMP 'noethys-dirlogic-cas-e'
+          Remove-Item $cheminE -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $resultatEf -Force -ErrorAction SilentlyContinue
+          $env:NOETHYS_DIRLOGIC_MODE = 'EF'
+          $env:NOETHYS_DIRLOGIC_CAS = 'E'
+          $dirArgE = "/DIR=" + $cheminE
+          $p = Start-Process $harnais -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',$dirArgE) -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Harnais CAS E : code inattendu $($p.ExitCode)" }
+          $resultatsE = Get-Content $resultatEf
+          Write-Host ($resultatsE -join "`n")
+          $valeurE = GetValeur $resultatsE 'CAS_E'
+          if ($valeurE -ne $cheminE) { throw "CAS_E incorrect : attendu '$cheminE', obtenu '$valeurE'" }
+
+          # CAS F : saisie manuelle simulée après affichage de la page -> jamais réécrite
+          $cheminF = Join-Path $env:RUNNER_TEMP 'noethys-dirlogic-cas-f'
+          Remove-Item $cheminF -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $resultatEf -Force -ErrorAction SilentlyContinue
+          $env:NOETHYS_DIRLOGIC_CAS = 'F'
+          $env:NOETHYS_DIRLOGIC_CHEMIN_UTILISATEUR = $cheminF
+          $p = Start-Process $harnais -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Harnais CAS F : code inattendu $($p.ExitCode)" }
+          $resultatsF = Get-Content $resultatEf
+          Write-Host ($resultatsF -join "`n")
+          $valeurF = GetValeur $resultatsF 'CAS_F'
+          if ($valeurF -ne $cheminF) { throw "CAS_F incorrect : attendu '$cheminF', obtenu '$valeurF'" }
+
+          Remove-Item Env:\NOETHYS_DIRLOGIC_MODE, Env:\NOETHYS_DIRLOGIC_CAS, Env:\NOETHYS_DIRLOGIC_CHEMIN_UTILISATEUR -ErrorAction SilentlyContinue
+          Write-Host 'Les 6 cas de détermination du dossier d''installation sont corrects.'
 
       - name: Vérifier la proposition du dossier d'installation historique
         shell: pwsh

@@ -50,6 +50,16 @@
 ; corrige le champ que si sa valeur ACTUELLE est identique à cette valeur de
 ; registre ET que celle-ci est invalide -- jamais un /DIR= ou une saisie
 ; utilisateur, qui diffèrent toujours de ce chemin précédent.
+;
+; IDENTITE PUBLIQUE (Noethys SL) : AppName ci-dessous porte le nom visible
+; (assistant, "Programmes et fonctionnalités"), mais AppId reste
+; volontairement "Noethys" -- c'est cette valeur, jamais AppName, qui fixe
+; la clé de registre HKLM\...\Uninstall\<AppId>_is1 utilisée par
+; UsePreviousAppDir et par toute la logique de dossier ci-dessus. La
+; changer romprait la détection d'une installation existante pour tous les
+; postes déjà installés. Voir noethys/Identite.py pour la même règle côté
+; application (VERSION_APPLICATION interne inchangée, PRODUCT_NAME/
+; PRODUCT_VERSION affichés séparément).
 
 #ifndef MyAppVersion
   #define MyAppVersion "1.3.4.2-r2"
@@ -57,7 +67,7 @@
 
 [Setup]
 AppId=Noethys
-AppName=Noethys
+AppName=Noethys SL
 AppVersion={#MyAppVersion}
 AppPublisher=Noethys
 DefaultDirName={code:GetDefaultDirName}
@@ -97,25 +107,10 @@ Filename: "{app}\Noethys.exe"; Description: "Lancer Noethys"; Flags: nowait post
 #include "vanilla-installer-dirlogic.inc.iss"
 
 procedure CurPageChanged(CurPageID: Integer);
-var
-  CheminRegistrePrecedent: String;
 begin
-  // UsePreviousAppDir a déjà pré-rempli WizardForm.DirEdit.Text avec la
-  // valeur du registre à ce stade (sans aucune validation de sa part). On
-  // ne corrige CE champ QUE si sa valeur ACTUELLE correspond exactement au
-  // chemin lu directement dans le registre (LireCheminPrecedentDuRegistre)
-  // ET que ce chemin est invalide : cela prouve qu'Inno a bien pré-rempli
-  // depuis ce chemin précédent, par opposition à un /DIR= passé en ligne de
-  // commande ou à une saisie manuelle de l'utilisateur -- ces derniers
-  // visent une installation NEUVE qui n'a par définition pas encore
-  // Noethys.exe sur place, et ne doivent donc jamais être rejetés ici.
-  // Un dossier précédent réellement valide n'est jamais modifié.
+  // La logique de correction vit dans AppliquerGardeFouDossierPropose()
+  // (vanilla-installer-dirlogic.inc.iss), partagée avec le harnais de test
+  // (CAS E/F) : jamais une copie de ce code ici.
   if CurPageID = wpSelectDir then
-  begin
-    CheminRegistrePrecedent := LireCheminPrecedentDuRegistre();
-    if (CheminRegistrePrecedent <> '') and
-       (RemoveBackslashUnlessRoot(WizardForm.DirEdit.Text) = CheminRegistrePrecedent) and
-       (not EstCheminPrecedentValide(CheminRegistrePrecedent)) then
-      WizardForm.DirEdit.Text := GetDefaultDirName('');
-  end;
+    AppliquerGardeFouDossierPropose(WizardForm.DirEdit);
 end;

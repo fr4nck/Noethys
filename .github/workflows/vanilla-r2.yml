@@ -99,6 +99,89 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup a échoué : $LASTEXITCODE" }
           if (-not (Test-Path 'installer-output/Noethys-Vanilla-Setup.exe')) { throw 'Setup absent' }
 
+      - name: Tester la logique de détermination du dossier d'installation (6 cas)
+        shell: pwsh
+        run: |
+          # CAS A-D : exercice direct des fonctions partagées
+          # (vanilla-installer-dirlogic.inc.iss), sans afficher de page,
+          # via InitializeSetup(). CAS E-F : l'assistant progresse
+          # réellement jusqu'à wpSelectDir (CurPageChanged/NextButtonClick),
+          # exerçant exactement le même code que vanilla-installer.iss --
+          # aucune duplication. Exécuté AVANT toute installation réelle de
+          # Noethys sur ce runner (C:\Noethys, registre AppId=Noethys),
+          # pour que CAS A (aucune installation) et CAS E/F (aucun chemin
+          # précédent enregistré) restent des états réellement propres.
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw 'ISCC.exe introuvable' }
+          Push-Location packaging
+          try {
+            & $iscc 'vanilla-installer-dirlogic.test.iss'
+            if ($LASTEXITCODE -ne 0) { throw "Compilation du harnais de test a échoué : $LASTEXITCODE" }
+          } finally {
+            Pop-Location
+          }
+          $harnais = (Resolve-Path 'packaging\dirlogic-test-setup.exe').Path
+
+          function GetValeur([string[]]$Lignes, [string]$Cle) {
+            $ligne = $Lignes | Where-Object { $_ -like "$Cle=*" }
+            if (-not $ligne) { throw "Résultat manquant pour $Cle" }
+            return $ligne.Substring($Cle.Length + 1)
+          }
+
+          # CAS A-D
+          $resultatAbcd = Join-Path $env:TEMP 'resultat-dirlogic.txt'
+          Remove-Item $resultatAbcd -Force -ErrorAction SilentlyContinue
+          $p = Start-Process $harnais -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES') -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Harnais CAS A-D : code inattendu $($p.ExitCode)" }
+          if (-not (Test-Path $resultatAbcd)) { throw "Fichier de résultats absent : $resultatAbcd" }
+          $resultats = Get-Content $resultatAbcd
+          Write-Host ($resultats -join "`n")
+          $attenduAbcd = @{
+            'CAS_A'        = 'C:\Program Files\Noethys'
+            'CAS_B'        = 'C:\Noethys'
+            'CAS_C'        = 'ACCEPTE'
+            'CAS_D_REJETE' = 'OUI'
+            'CAS_D_REPLI'  = 'C:\Program Files\Noethys'
+          }
+          foreach ($cle in $attenduAbcd.Keys) {
+            $valeur = GetValeur $resultats $cle
+            if ($valeur -ne $attenduAbcd[$cle]) { throw "$cle incorrect : attendu '$($attenduAbcd[$cle])', obtenu '$valeur'" }
+          }
+
+          # CAS E : /DIR= explicite vers un nouveau dossier -> jamais réécrit
+          $resultatEf = Join-Path $env:TEMP 'resultat-dirlogic-ef.txt'
+          $cheminE = Join-Path $env:RUNNER_TEMP 'noethys-dirlogic-cas-e'
+          Remove-Item $cheminE -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $resultatEf -Force -ErrorAction SilentlyContinue
+          $env:NOETHYS_DIRLOGIC_MODE = 'EF'
+          $env:NOETHYS_DIRLOGIC_CAS = 'E'
+          $dirArgE = "/DIR=" + $cheminE
+          $p = Start-Process $harnais -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',$dirArgE) -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Harnais CAS E : code inattendu $($p.ExitCode)" }
+          $resultatsE = Get-Content $resultatEf
+          Write-Host ($resultatsE -join "`n")
+          $valeurE = GetValeur $resultatsE 'CAS_E'
+          if ($valeurE -ne $cheminE) { throw "CAS_E incorrect : attendu '$cheminE', obtenu '$valeurE'" }
+
+          # CAS F : saisie manuelle simulée après affichage de la page -> jamais réécrite
+          $cheminF = Join-Path $env:RUNNER_TEMP 'noethys-dirlogic-cas-f'
+          Remove-Item $cheminF -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item $resultatEf -Force -ErrorAction SilentlyContinue
+          $env:NOETHYS_DIRLOGIC_CAS = 'F'
+          $env:NOETHYS_DIRLOGIC_CHEMIN_UTILISATEUR = $cheminF
+          $p = Start-Process $harnais -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Harnais CAS F : code inattendu $($p.ExitCode)" }
+          $resultatsF = Get-Content $resultatEf
+          Write-Host ($resultatsF -join "`n")
+          $valeurF = GetValeur $resultatsF 'CAS_F'
+          if ($valeurF -ne $cheminF) { throw "CAS_F incorrect : attendu '$cheminF', obtenu '$valeurF'" }
+
+          Remove-Item Env:\NOETHYS_DIRLOGIC_MODE, Env:\NOETHYS_DIRLOGIC_CAS, Env:\NOETHYS_DIRLOGIC_CHEMIN_UTILISATEUR -ErrorAction SilentlyContinue
+          Write-Host 'Les 6 cas de détermination du dossier d''installation sont corrects.'
+
+      - name: Tester la robustesse Connecthys et l'identité Noethys SL
+        run: python -m unittest tests.test_vanilla_connecthys_synchro tests.test_vanilla_identite_noethys_sl
+
       - name: Tester installation et conservation de la configuration
         shell: pwsh
         run: |

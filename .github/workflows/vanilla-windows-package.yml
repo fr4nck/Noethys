@@ -53,8 +53,8 @@ jobs:
       - name: Tester le rendu wx (non-régression bug runtime Windows)
         run: python -m unittest tests.test_vanilla_rect_float_regression
 
-      - name: Tester la robustesse Connecthys et l'apparence claire historique
-        run: python -m unittest tests.test_vanilla_connecthys_synchro tests.test_vanilla_apparence_claire
+      - name: Tester la robustesse Connecthys, l'apparence claire et l'identité Noethys SL
+        run: python -m unittest tests.test_vanilla_connecthys_synchro tests.test_vanilla_apparence_claire tests.test_vanilla_identite_noethys_sl
 
       - name: Construire le dossier portable
         run: pyinstaller --noconfirm --clean packaging/vanilla-noethys.spec
