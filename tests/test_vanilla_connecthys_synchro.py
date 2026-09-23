@@ -29,8 +29,14 @@ NOETHYS_DIR = Path(__file__).resolve().parents[1] / "noethys"
 if str(NOETHYS_DIR) not in sys.path:
     sys.path.insert(0, str(NOETHYS_DIR))
 
+TESTS_DIR = Path(__file__).resolve().parent
+if str(TESTS_DIR) not in sys.path:
+    sys.path.insert(0, str(TESTS_DIR))
+
 from Ctrl import CTRL_Portail_serveur  # noqa: E402
 from Utils import UTILS_Portail_synchro  # noqa: E402
+
+from _fixtures_noethys_db import BaseTest, RedirectionGestionDB  # noqa: E402
 
 
 class FauxLog:
@@ -414,10 +420,18 @@ class UploadDataEchecChargementModelsTests(unittest.TestCase):
         log = FauxLog()
         synchro = self._synchro_ssh(log)
         faux_ftp = mock.Mock()
-        with mock.patch.object(synchro, "Connexion", return_value=(faux_ftp, None)), \
-             mock.patch.object(synchro, "Upload_config", return_value=True), \
-             mock.patch.object(synchro, "TelechargeFichier", return_value=(r"C:\chemin\inexistant", "models.py")) :
-            resultat = synchro.Upload_data()
+        base = BaseTest()
+        with RedirectionGestionDB(base.chemin) :
+            # Upload_data() lit last_synchro via UTILS_Parametres, qui
+            # appelle en interne GestionDB.DB() sans argument injectable :
+            # nécessite une vraie base ouverte sur un runner CI propre
+            # (sans fichier Noethys local), comme les autres tests de ce
+            # fichier qui exercent Upload_data()/Synchro_totale() pour de
+            # vrai.
+            with mock.patch.object(synchro, "Connexion", return_value=(faux_ftp, None)), \
+                 mock.patch.object(synchro, "Upload_config", return_value=True), \
+                 mock.patch.object(synchro, "TelechargeFichier", return_value=(r"C:\chemin\inexistant", "models.py")) :
+                resultat = synchro.Upload_data()
 
         self.assertFalse(resultat)
         faux_ftp.close.assert_called_once()
@@ -433,10 +447,12 @@ class UploadDataEchecChargementModelsTests(unittest.TestCase):
         synchro = self._synchro_ssh(log)
         synchro.Download_data = lambda full_synchro=False : True
         faux_ftp = mock.Mock()
-        with mock.patch.object(synchro, "Connexion", return_value=(faux_ftp, None)), \
-             mock.patch.object(synchro, "Upload_config", return_value=True), \
-             mock.patch.object(synchro, "TelechargeFichier", return_value=(r"C:\chemin\inexistant", "models.py")) :
-            resultat = synchro.Synchro_totale()
+        base = BaseTest()
+        with RedirectionGestionDB(base.chemin) :
+            with mock.patch.object(synchro, "Connexion", return_value=(faux_ftp, None)), \
+                 mock.patch.object(synchro, "Upload_config", return_value=True), \
+                 mock.patch.object(synchro, "TelechargeFichier", return_value=(r"C:\chemin\inexistant", "models.py")) :
+                resultat = synchro.Synchro_totale()
 
         self.assertFalse(resultat)
         self.assertIn(u"Client de synchronisation prêt", log.logs)
