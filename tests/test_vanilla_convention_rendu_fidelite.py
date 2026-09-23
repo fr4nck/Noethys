@@ -197,6 +197,22 @@ class StyleNoedocRestitueTests(unittest.TestCase):
         paragraphe = _AplatitStory(story)[0]
         self.assertIn("<u>", paragraphe.text)
 
+    def test_nom_police_stocke_est_restaure_sur_objet_noedoc(self):
+        with creer_base_association_simple() as base:
+            IDmodele = inserer_modele_document(base, "Police stockée", "convention", [
+                {"nom": "Cadre principal", "categorie": "special", "champ": "cadre_principal",
+                 "ordre": 0, "x": 13, "y": 20, "largeur": 182, "hauteur": 250},
+                {"nom": "Corps", "categorie": "bloc_texte", "ordre": 1,
+                 "x": 13, "y": 20, "largeur": 182, "texte": "Police témoin",
+                 "nomPolice": "Arial"},
+            ])
+            with RedirectionGestionDB(base.chemin):
+                modeleDoc = DLG_Noedoc.ModeleDoc(IDmodele=IDmodele)
+                objet = next(o for o in modeleDoc.listeObjets if o.nom == "Corps")
+                self.assertEqual(objet.FaceName, "Arial")
+                style = UIC._StyleReportLab(objet)
+        self.assertEqual(style.fontName, "Arial")
+
     def test_proprietes_non_definies_ninventent_ni_bordure_ni_fond(self):
         """ Modèle fictif existant, sans couleurTrait/couleurFond définis
         (valeurs par défaut None) : aucune bordure ni fond ne doit être
