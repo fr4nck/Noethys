@@ -16,7 +16,6 @@ from Utils import UTILS_Customize
 THEMES = [
     ("Vert", _(u"Vert (Par défaut)")),
     ("Bleu", _(u"Bleu")),
-    ("Noir", _(u"Noir")),
 ]
 
 DONNEES = {
@@ -44,16 +43,31 @@ DONNEES = {
 
 }
 
+def _NormaliseThemeNoethysSL(theme):
+    """Noethys SL 0.1.0 ne propose pas de thème sombre.
+
+    Les profils historiques ayant mémorisé "Noir" restent lisibles mais
+    reviennent sur l'accent Vert au lieu de réinjecter des surfaces noires.
+    """
+    if theme in ("Vert", "Bleu"):
+        return theme
+    return "Vert"
+
+
 def GetTheme() :
-    return UTILS_Customize.GetValeur("interface", "theme", "Vert")
+    return _NormaliseThemeNoethysSL(
+        UTILS_Customize.GetValeur("interface", "theme", "Vert")
+    )
 
 def SetTheme(theme="Vert"):
-    UTILS_Customize.SetValeur("interface", "theme", theme)
+    UTILS_Customize.SetValeur("interface", "theme", _NormaliseThemeNoethysSL(theme))
 
 def GetValeur(cle="", defaut="", theme=None):
     # lecture du thème
     if theme == None :
-        theme = UTILS_Customize.GetValeur("interface", "theme", "Vert")
+        theme = GetTheme()
+    else:
+        theme = _NormaliseThemeNoethysSL(theme)
 
     # Lecture de la valeur
     if theme in DONNEES :
