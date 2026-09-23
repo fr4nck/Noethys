@@ -50,6 +50,13 @@ class ConnecthysWxThreadContractTests(unittest.TestCase):
         self.assertIn("wx.Bitmap(", image)
         self.assertIn("self.log.GetValue()", log)
 
+    def test_journal_fichier_ecrit_du_texte_utf8_sous_python3(self):
+        src = source_methode("EcritLog")
+        self.assertIn('open(nom_fichier, "a", encoding="utf-8")', src)
+        self.assertIn("file_log.write(texte)", src)
+        self.assertNotIn(".encode('UTF-8')", src)
+        self.assertNotIn('.encode("UTF-8")', src)
+
 
 if __name__ == "__main__":
     unittest.main()
