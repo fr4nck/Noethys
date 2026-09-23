@@ -30,6 +30,7 @@ from Utils import UTILS_Interface
 
 ##from Dlg import DLG_Individu_liens
 from Utils import UTILS_Utilisateurs
+from Utils import UTILS_Fonctions_entites
 
 DICT_TYPES_LIENS = Liens.DICT_TYPES_LIENS
 
@@ -104,7 +105,29 @@ class GetValeurs() :
         # Intégration de ces premiéres valeurs dans le dictValeurs
         for IDrattachement, IDindividu, IDcategorie, titulaire in listeRattachements :
             listeIDindividus.append(IDindividu)
-            dictInfos[IDindividu] = {"categorie" : IDcategorie, "titulaire" : titulaire, "IDrattachement" : IDrattachement}
+            dictInfos[IDindividu] = {
+                "categorie" : IDcategorie,
+                "titulaire" : titulaire,
+                "IDrattachement" : IDrattachement,
+                "fonction_entite" : u"",
+                "role_representant" : 0,
+                "role_signataire" : 0,
+                "role_facturation" : 0,
+                "role_planning" : 0,
+                "role_defaut" : 0,
+            }
+
+        # Fonctions métier portées par le rattachement. Une base ancienne
+        # dépourvue de la table additive reste parfaitement lisible.
+        for contact in UTILS_Fonctions_entites.GetContactsFamille(self.IDfamille, DB=DB) :
+            IDindividu = contact["IDindividu"]
+            if IDindividu in dictInfos :
+                dictInfos[IDindividu]["fonction_entite"] = contact["fonction"]
+                dictInfos[IDindividu]["role_representant"] = contact["representant"]
+                dictInfos[IDindividu]["role_signataire"] = contact["signataire"]
+                dictInfos[IDindividu]["role_facturation"] = contact["facturation"]
+                dictInfos[IDindividu]["role_planning"] = contact["planning"]
+                dictInfos[IDindividu]["role_defaut"] = contact["defaut"]
 
         # Recherche des liens existants dans la base
         if len(listeIDindividus) == 1 : condition = "(%d)" % listeIDindividus[0]
@@ -275,6 +298,9 @@ class GetValeurs() :
             # Ligne NOM
             nomComplet1 = self.dictInfosIndividus[IDindividu]["nomComplet1"]
             listeLignes.append((nomComplet1, 8, "bold"))
+            fonction_entite = self.dictInfosIndividus[IDindividu].get("fonction_entite") or u""
+            if fonction_entite :
+                listeLignes.append((fonction_entite, 7, "normal"))
             # Ligne Date de naissance
             if self.dictInfosIndividus[IDindividu]["categorie"] == 2 :
                 txtDatenaiss = self.dictInfosIndividus[IDindividu]["datenaissComplet"]
@@ -315,6 +341,11 @@ class GetValeurs() :
             dictCadres[IDindividu]["photo"] = self.dictInfosIndividus[IDindividu]["photo"]
             dictCadres[IDindividu]["deces"] = self.dictInfosIndividus[IDindividu]["deces"]
             dictCadres[IDindividu]["etat"] = self.dictInfosIndividus[IDindividu]["etat"]
+            dictCadres[IDindividu]["fonction_entite"] = self.dictInfosIndividus[IDindividu].get("fonction_entite", u"")
+            dictCadres[IDindividu]["role_representant"] = self.dictInfosIndividus[IDindividu].get("role_representant", 0)
+            dictCadres[IDindividu]["role_signataire"] = self.dictInfosIndividus[IDindividu].get("role_signataire", 0)
+            dictCadres[IDindividu]["role_facturation"] = self.dictInfosIndividus[IDindividu].get("role_facturation", 0)
+            dictCadres[IDindividu]["role_planning"] = self.dictInfosIndividus[IDindividu].get("role_planning", 0)
 
         return dictCadres
     
@@ -325,6 +356,9 @@ class GetValeurs() :
             # Ligne NOM
             nomComplet2 = self.dictInfosIndividus[IDindividu]["nomComplet2"]
             txtInfoBulle += u"----------- %s -----------\n\n" % nomComplet2
+            fonction_entite = self.dictInfosIndividus[IDindividu].get("fonction_entite") or u""
+            if fonction_entite :
+                txtInfoBulle += _(u"Fonction : %s\n\n") % fonction_entite
             # Ligne Date de naissance
             if self.dictInfosIndividus[IDindividu]["date_naiss"] != None :
                 txtDatenaiss = self.dictInfosIndividus[IDindividu]["datenaissComplet"]
@@ -1203,6 +1237,13 @@ class CTRL_Graphique(wx.ScrolledWindow):
             menu.AppendItem(item)
             self.Bind(wx.EVT_MENU, self.Modifier_menu, id=id)
             
+            # Fonction dans l'entité
+            id = wx.Window.NewControlId()
+            item = wx.MenuItem(menu, id, _(u"Fonction dans l'entité..."))
+            item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Contact.png"), wx.BITMAP_TYPE_PNG))
+            menu.AppendItem(item)
+            self.Bind(wx.EVT_MENU, self.Modifier_fonction_entite_menu, id=id)
+
             # Détacher ou supprimer
             id = wx.Window.NewControlId()
             item = wx.MenuItem(menu, id, _(u"Détacher ou supprimer"))
@@ -1344,6 +1385,21 @@ class CTRL_Graphique(wx.ScrolledWindow):
         DB.Close()
         return True
     
+    def Modifier_fonction_entite_menu(self, event):
+        IDindividu = self.IDindividu_menu
+        self.Modifier_fonction_entite(IDindividu)
+
+    def Modifier_fonction_entite(self, IDindividu=None):
+        if IDindividu is None :
+            return
+        IDrattachement = self.dictCadres[IDindividu]["IDrattachement"]
+        from Dlg import DLG_Fonction_entite
+        dlg = DLG_Fonction_entite.Dialog(self, IDrattachement=IDrattachement)
+        if dlg.ShowModal() == wx.ID_OK :
+            self.MAJ()
+            self.MAJnotebook()
+        dlg.Destroy()
+
     def Modifier_menu(self, event):
         """ Modifier une fiche é partir du menu contextuel """
         IDindividu = self.IDindividu_menu
@@ -1463,6 +1519,9 @@ class CTRL_Liste(HTL.HyperTreeList):
         self.AddColumn(_(u"Téléphones"))
         self.SetColumnWidth(4, 180)
 
+        self.AddColumn(_(u"Fonction"))
+        self.SetColumnWidth(5, 170)
+
         # Création des branches
         self.SetMainColumn(0)
         self.root = self.AddRoot(_(u"Composition"))
@@ -1555,6 +1614,9 @@ class CTRL_Liste(HTL.HyperTreeList):
                 if dictIndividu["travail_tel_complet"] != None : listeTelephones.append(dictIndividu["travail_tel_complet"])
                 self.SetItemText(brancheIndividu, u"\n".join(listeTelephones), 4)
 
+                # Fonction dans l'entité
+                self.SetItemText(brancheIndividu, dictIndividu.get("fonction_entite") or u"", 5)
+
             self.Expand(brancheCategorie) 
         
     def GetSelectionIndividu(self, event):
@@ -1593,6 +1655,13 @@ class CTRL_Liste(HTL.HyperTreeList):
             menu.AppendItem(item)
             self.Bind(wx.EVT_MENU, self.Modifier, id=id)
             
+            # Fonction dans l'entité
+            id = wx.Window.NewControlId()
+            item = wx.MenuItem(menu, id, _(u"Fonction dans l'entité..."))
+            item.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Contact.png"), wx.BITMAP_TYPE_PNG))
+            menu.AppendItem(item)
+            self.Bind(wx.EVT_MENU, self.Modifier_fonction_entite, id=id)
+
             # Détacher ou supprimer
             id = wx.Window.NewControlId()
             item = wx.MenuItem(menu, id, _(u"Détacher ou supprimer"))
@@ -1643,6 +1712,21 @@ class CTRL_Liste(HTL.HyperTreeList):
         # Finalisation du menu
         self.PopupMenu(menu)
         menu.Destroy()
+
+    def Modifier_fonction_entite(self, event=None):
+        if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("individus_fiche", "modifier") == False : return
+        item = self.GetSelection()
+        dictItem = self.GetMainWindow().GetItemPyData(item)
+        if dictItem == None or dictItem.get("type") != "individu" :
+            return
+        IDindividu = dictItem["IDindividu"]
+        IDrattachement = self.donnees.dictInfosIndividus[IDindividu]["IDrattachement"]
+        from Dlg import DLG_Fonction_entite
+        dlg = DLG_Fonction_entite.Dialog(self, IDrattachement=IDrattachement)
+        if dlg.ShowModal() == wx.ID_OK :
+            self.MAJ()
+            self.MAJnotebook()
+        dlg.Destroy()
 
     def Calendrier_selection(self):
         self.OuvrirCalendrier()
