@@ -14,6 +14,7 @@ import wx
 import datetime
 import sqlite3
 from Utils import UTILS_Interface
+from Utils import UTILS_Organisateur
 from wx.lib.wordwrap import wordwrap
 import six
 
@@ -122,6 +123,14 @@ class Panel(wx.Panel):
             nom_fichier = "Fond_2019.jpg"
         self.image_fond = wx.Bitmap(Chemins.GetStaticPath("Images/Interface/%s/%s" % (theme, nom_fichier)), wx.BITMAP_TYPE_ANY)
 
+        # Logo de l'organisateur : réutilise la donnée et le recadrage déjà
+        # centralisés par Noethys. L'absence de logo conserve l'accueil actuel.
+        self.logo_organisateur = None
+        try:
+            self.logo_organisateur = UTILS_Organisateur.GetDonnees(tailleLogo=(80, 80), fondLogoBlanc=False).get("logo")
+        except Exception:
+            self.logo_organisateur = None
+
         # Binds
         self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.Bind(wx.EVT_ERASE_BACKGROUND, lambda x:None)
@@ -141,6 +150,14 @@ class Panel(wx.Panel):
 
         # Dessine le fond
         dc.DrawBitmap(self.image_fond, 0, 0)
+
+        # Affiche le logo configuré pour l'organisateur dans la bannière
+        # d'accueil, sans modifier le rendu lorsqu'aucun logo n'est défini.
+        if self.logo_organisateur != None and self.logo_organisateur.IsOk():
+            largeur_fond = self.image_fond.GetWidth()
+            largeur_logo, hauteur_logo = self.logo_organisateur.GetSize()
+            x_logo = max(10, largeur_fond - largeur_logo - 20)
+            dc.DrawBitmap(self.logo_organisateur, int(x_logo), 20, True)
 
         # Récupére l'annonce
         dictAnnonce = GetAnnonce()

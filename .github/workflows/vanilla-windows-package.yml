@@ -5,6 +5,7 @@ on:
     branches:
       - maintenance/vanilla
       - build/vanilla-windows-portable
+      - fix/vanilla-no-black
     paths:
       - '.github/workflows/vanilla-windows-package.yml'
       - 'packaging/vanilla-noethys.spec'
@@ -13,6 +14,7 @@ on:
   pull_request:
     branches:
       - maintenance/vanilla
+      - release/vanilla-1.3.4.3
   workflow_dispatch:
 
 permissions:
