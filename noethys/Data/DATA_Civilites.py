@@ -29,6 +29,7 @@ LISTE_CIVILITES = (
         (7, u"Association", None,  "Organisme.png", None),
         (8, u"Organisme", None, "Organisme.png", None),
         (9, u"Entreprise", None, "Organisme.png", None),
+        (10, u"École", None, "Organisme.png", None),
         )),
     ) # Rubrique > (ID, CiviliteLong, CiviliteAbrege, nomImage, Masculin/Féminin)
 
