@@ -790,6 +790,23 @@ class DB:
                 print("La connexion avec la base de donnees MYSQL a importer a echouee : \nErreur detectee :%s" % err)
                 return (False, "La connexion avec la base de donnees MYSQL a importer a echouee : \nErreur detectee :%s" % err)
 
+        # Une table additive récente peut être absente d'une base
+        # historique saine. La cible vient d'être créée depuis le schéma
+        # courant : il n'y a simplement aucune ligne à importer.
+        if nomTable in getattr(Tables, "TABLES_SCHEMA_OPTIONNELLES", ()):
+            if mode == "local":
+                cursor.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?;",
+                    (nomTable,),
+                )
+                table_source_existe = cursor.fetchone() is not None
+            else:
+                cursor.execute("SHOW TABLES;")
+                table_source_existe = nomTable in [ligne[0] for ligne in cursor.fetchall()]
+            if not table_source_existe:
+                connexionDefaut.close()
+                return (True, None)
+
         # Recherche des noms de champs de la table
         req = "SELECT * FROM %s" % nomTable
         cursor.execute(req)
@@ -852,6 +869,14 @@ class DB:
         except Exception as err:
             print("La connexion avec la base de donnees MYSQL a importer a echouee : \nErreur detectee :%s" % err)
             return (False, "La connexion avec la base de donnees MYSQL a importer a echouee : \nErreur detectee :%s" % err)
+
+        # Même compatibilité pour une source MySQL ancienne.
+        if nomTable in getattr(Tables, "TABLES_SCHEMA_OPTIONNELLES", ()):
+            cursor.execute("SHOW TABLES;")
+            table_source_existe = nomTable in [ligne[0] for ligne in cursor.fetchall()]
+            if not table_source_existe:
+                connexionDefaut.close()
+                return (True, None)
 
         # Recherche des noms de champs de la table
         req = "SELECT * FROM %s" % nomTable
