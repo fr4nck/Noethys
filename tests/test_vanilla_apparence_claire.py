@@ -1,20 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Non-regression : Noethys Vanilla garde l'interface historique claire
-(aucun theme sombre n'a jamais ete voulu). Une recette reelle Windows a
-montre de larges bandes noires entre les panneaux du decoupage AUI
-(grille consommations, calendrier, panneau reseau/Connecthys, liste
-Individus, zone d'informations) sur un poste ou le mode sombre des
-applications Windows est active.
+"""Non-regression : Noethys SL 0.1.0 reste en apparence claire.
 
-Cause identifiee : wx.lib.agw.aui.ModernDockArt calcule tout le fond/
-sash/gripper/bordure entre panneaux a partir d'une seule "couleur de
-base" lue via les couleurs systeme Windows (SYS_COLOUR_3DFACE), qui
-devient sombre/noire si Windows est en mode sombre -- Noethys n'a
-jamais eu de logique de theme, c'est une consequence pure du reglage
-systeme. Noethys.ForceApparenceClaireAUI() ne force une couleur claire
-que si le systeme est reellement detecte en mode sombre (mecanisme
-officiel wx.SystemSettings.GetAppearance().IsDark()) ; en mode clair
-(cas normal), rien ne change.
+ModernDockArt derive les fonds, separations et bordures des couleurs
+systeme Windows. Pendant la stabilisation de Noethys SL, l'application
+force donc sa base AUI claire independamment du theme Windows et
+neutralise les anciens profils ayant memorise l'accent Noir.
 """
 from __future__ import annotations
 
@@ -32,40 +22,38 @@ import wx  # noqa: E402
 _APP = wx.App(False)
 
 import Noethys  # noqa: E402
+from Utils import UTILS_Interface  # noqa: E402
 
 
 class ForceApparenceClaireAUITests(unittest.TestCase):
-    def test_ne_touche_a_rien_en_mode_clair(self):
+    def test_force_une_couleur_claire_meme_si_windows_est_clair(self):
         art = mock.Mock()
-        with mock.patch.object(wx.SystemSettings, "GetAppearance") as faux_appearance:
-            faux_appearance.return_value.IsDark.return_value = False
-            Noethys.ForceApparenceClaireAUI(art)
-        art.SetDefaultColours.assert_not_called()
-
-    def test_force_une_couleur_claire_en_mode_sombre(self):
-        art = mock.Mock()
-        with mock.patch.object(wx.SystemSettings, "GetAppearance") as faux_appearance:
-            faux_appearance.return_value.IsDark.return_value = True
-            Noethys.ForceApparenceClaireAUI(art)
+        Noethys.ForceApparenceClaireAUI(art)
         art.SetDefaultColours.assert_called_once()
         _args, kwargs = art.SetDefaultColours.call_args
         couleur = kwargs["base_colour"]
-        # La couleur forcée doit être réellement claire (composantes
-        # hautes), pas une valeur sombre par erreur.
         self.assertGreater(couleur.Red(), 200)
         self.assertGreater(couleur.Green(), 200)
         self.assertGreater(couleur.Blue(), 200)
 
     def test_une_exception_de_lart_provider_ne_remonte_jamais(self):
-        """ ForceApparenceClaireAUI est appelée depuis un bloc déjà
-        try/except dans Noethys.py, mais elle ne doit de toute façon
-        jamais lever -- une erreur ici ne doit jamais empêcher le
-        démarrage de l'application. """
         art = mock.Mock()
         art.SetDefaultColours.side_effect = RuntimeError("erreur inattendue")
-        with mock.patch.object(wx.SystemSettings, "GetAppearance") as faux_appearance:
-            faux_appearance.return_value.IsDark.return_value = True
-            Noethys.ForceApparenceClaireAUI(art)  # ne doit pas lever
+        Noethys.ForceApparenceClaireAUI(art)  # ne doit pas lever
+
+
+class ThemeNoethysSLTests(unittest.TestCase):
+    def test_ancien_theme_noir_est_normalise_vers_vert(self):
+        with mock.patch.object(
+            UTILS_Interface.UTILS_Customize,
+            "GetValeur",
+            return_value="Noir",
+        ):
+            self.assertEqual(UTILS_Interface.GetTheme(), "Vert")
+
+    def test_les_accents_clairs_restent_disponibles(self):
+        self.assertEqual(UTILS_Interface._NormaliseThemeNoethysSL("Vert"), "Vert")
+        self.assertEqual(UTILS_Interface._NormaliseThemeNoethysSL("Bleu"), "Bleu")
 
 
 if __name__ == "__main__":
