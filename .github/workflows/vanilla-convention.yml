@@ -25,6 +25,7 @@ on:
       - 'tests/test_vanilla_convention_modele_persistance.py'
       - 'tests/test_vanilla_generation_convention_dialog.py'
       - 'tests/test_vanilla_reservations_extraction.py'
+      - 'tests/generate_convention_reference_pdf.py'
       - 'docs/recette_conventions/**'
       - 'noethys/Static/ModelesConventionExemples/**'
       - '.github/workflows/vanilla-convention.yml'
@@ -79,3 +80,13 @@ jobs:
           tests.test_vanilla_convention_modele_persistance
           tests.test_vanilla_generation_convention_dialog
           tests.test_vanilla_reservations_extraction
+
+      - name: Générer le PDF de référence visuelle Atout Sports
+        run: python tests/generate_convention_reference_pdf.py artifacts/convention-reference-atout-sports.pdf
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: convention-reference-atout-sports
+          path: artifacts/convention-reference-atout-sports.pdf
+          if-no-files-found: error
+          retention-days: 14
