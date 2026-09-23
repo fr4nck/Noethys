@@ -252,12 +252,19 @@ jobs:
           if (-not (Test-Path $resultatAbcd)) { throw "Fichier de résultats absent : $resultatAbcd" }
           $resultats = Get-Content $resultatAbcd
           Write-Host ($resultats -join "`n")
+          # {autopf} resout vers "Program Files (x86)" et non "Program Files" :
+          # ni vanilla-installer.iss ni ce harnais ne declarent
+          # ArchitecturesInstallIn64BitMode, donc Inno Setup tourne en 32 bits
+          # (comportement par defaut) meme si Noethys.exe est reellement
+          # compile en 64 bits par PyInstaller sur ce runner. Constat reel,
+          # pre-existant, hors perimetre de ce correctif -- signale
+          # separement, non corrige ici.
           $attenduAbcd = @{
-            'CAS_A'        = 'C:\Program Files\Noethys'
+            'CAS_A'        = 'C:\Program Files (x86)\Noethys'
             'CAS_B'        = 'C:\Noethys'
             'CAS_C'        = 'ACCEPTE'
             'CAS_D_REJETE' = 'OUI'
-            'CAS_D_REPLI'  = 'C:\Program Files\Noethys'
+            'CAS_D_REPLI'  = 'C:\Program Files (x86)\Noethys'
           }
           foreach ($cle in $attenduAbcd.Keys) {
             $valeur = GetValeur $resultats $cle
