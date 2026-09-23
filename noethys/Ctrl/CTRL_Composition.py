@@ -1390,6 +1390,7 @@ class CTRL_Graphique(wx.ScrolledWindow):
         self.Modifier_fonction_entite(IDindividu)
 
     def Modifier_fonction_entite(self, IDindividu=None):
+        if UTILS_Utilisateurs.VerificationDroitsUtilisateurActuel("individus_fiche", "modifier") == False : return
         if IDindividu is None :
             return
         IDrattachement = self.dictCadres[IDindividu]["IDrattachement"]
