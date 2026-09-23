@@ -195,7 +195,9 @@ def _SepareObjetsFixesEtFlottants(modeleDoc):
         if objet.categorie == "special" and objet.champ in ("saut_page", "espace_vertical"):
             objetsFlottants.append(objet)
             continue
-        if objet.categorie == "image" and _ObjetDansCadre(modeleDoc, objet, cadre):
+        if (objet.categorie == "image"
+                and objet.champ == "convention_flow_image"
+                and _ObjetDansCadre(modeleDoc, objet, cadre)):
             objetsFlottants.append(objet)
             continue
         if "texte" in objet.categorie and _ObjetDansCadre(modeleDoc, objet, cadre):

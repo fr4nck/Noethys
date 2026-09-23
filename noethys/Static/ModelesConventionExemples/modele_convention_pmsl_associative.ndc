@@ -1796,7 +1796,7 @@
             "norme": null,
             "afficheNumero": null,
             "IDdonnee": null,
-            "champ": null,
+            "champ": "convention_flow_image",
             "texte": null,
             "largeur": null,
             "hauteur": 31,
