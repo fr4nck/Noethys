@@ -226,6 +226,7 @@ def DetecterTarifs(dictDonnees):
                             "duree_minutes": int(round(duree * 60)),
                             "montant": montant,
                             "taux": taux,
+                            "IDconso": conso.get("IDconso"),
                             "IDprestation": conso.get("IDprestation"),
                             "label": prestation.get("label") or u"",
                         })
@@ -284,6 +285,8 @@ def FormateProvenanceTarif(IDactivite, taux, resultatTarifs):
         details.append(activite)
     if date:
         details.append(date)
+    if preuve.get("IDconso") is not None:
+        details.append(_(u"consommation #%s") % preuve["IDconso"])
     if preuve.get("IDprestation") is not None:
         details.append(_(u"prestation #%s") % preuve["IDprestation"])
     if details:
