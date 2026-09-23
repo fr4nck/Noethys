@@ -235,13 +235,30 @@ class Dialog(wx.Dialog):
             [_(u"Automatique / saisie manuelle")] +
             [self._LabelContact(c) for c in self._representants_disponibles]
         )
-        self.ctrl_representant_choix.SetSelection(0)
+        if self._representants_disponibles:
+            # La liste est déjà triée avec le contact marqué "défaut"
+            # en premier. On montre donc immédiatement le choix réel à
+            # l'utilisateur plutôt qu'un libellé abstrait "automatique".
+            self.ctrl_representant_choix.SetSelection(1)
+            self._representant_selectionne = self._representants_disponibles[0]
+            self.ctrl_representant_nom_complet.SetValue(
+                self._representant_selectionne.get("nom_complet") or u""
+            )
+            self.ctrl_representant_fonction.SetValue(
+                self._representant_selectionne.get("fonction") or u""
+            )
+        else:
+            self.ctrl_representant_choix.SetSelection(0)
 
         self.ctrl_facturation_choix.SetItems(
             [_(u"Automatique (référent par défaut)")] +
             [self._LabelContact(c) for c in self._referents_facturation_disponibles]
         )
-        self.ctrl_facturation_choix.SetSelection(0)
+        if self._referents_facturation_disponibles:
+            self.ctrl_facturation_choix.SetSelection(1)
+            self._referent_facturation_selectionne = self._referents_facturation_disponibles[0]
+        else:
+            self.ctrl_facturation_choix.SetSelection(0)
 
     def OnChoixRepresentant(self, event=None):
         index = self.ctrl_representant_choix.GetSelection()
