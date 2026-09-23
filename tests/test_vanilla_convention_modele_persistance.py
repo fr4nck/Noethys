@@ -270,5 +270,35 @@ class ImporterModeleExempleIdempotentTests(unittest.TestCase):
         self.assertEqual(resultat, [(IDmodele,)])
 
 
+
+class EncodageHistoriqueNdcTests(unittest.TestCase):
+    def test_ancien_open_windows_cp1252_reproduit_exactement_le_mojibake(self):
+        """Le loader historique ouvrait le JSON sans encoding explicite.
+
+        Sur Windows français, un .ndc UTF-8 était donc décodé en cp1252 :
+        c'est exactement la transformation observée en recette.
+        """
+        import json
+        import tempfile
+        from pathlib import Path
+        from Utils import UTILS_Json
+
+        texte_source = u"Tél. — Représentée — DURÉE"
+        with tempfile.TemporaryDirectory() as rep:
+            chemin = Path(rep) / "modele.ndc"
+            chemin.write_text(
+                json.dumps({"texte": texte_source}, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            # Reproduction déterministe du comportement Windows historique.
+            ancien = json.loads(chemin.read_text(encoding="cp1252"))
+            self.assertEqual(ancien["texte"], u"TÃ©l. â€” ReprÃ©sentÃ©e â€” DURÃ‰E")
+
+            # Le chemin actuel explicite UTF-8 et conserve les caractères.
+            actuel = UTILS_Json.Lire(str(chemin))
+            self.assertEqual(actuel["texte"], texte_source)
+
+
 if __name__ == "__main__":
     unittest.main()
