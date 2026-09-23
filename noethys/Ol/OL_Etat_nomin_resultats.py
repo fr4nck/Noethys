@@ -287,8 +287,12 @@ class Track(object):
         for champ in listeChamps :
             if champ.type == "QUESTION" :
                 IDquestion = int(champ.code[len(champ.type):])
-                if champ.categorie == "Individu" : IDtemp = IDindividu
-                if champ.categorie == "Famille" : IDtemp = IDfamille
+                if champ.categorie == _(u"Individu") :
+                    IDtemp = IDindividu
+                elif champ.categorie == _(u"Famille") :
+                    IDtemp = IDfamille
+                else :
+                    continue
                 setattr(self, champ.code, GetReponse(IDquestion, IDtemp))
 
         # Regroupement des conso par UNITE puis PERIODE
