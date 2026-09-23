@@ -127,18 +127,23 @@ def ComposerAdresseConvention(rue=None, cp=None, ville=None):
 # Représentant : réutilise le mécanisme historique {REPRESENTANT_RATTACHE_x_*}
 # ---------------------------------------------------------------------------
 
-def GetRepresentant(IDfamille, informations=None):
-    """ Retourne {"nom", "prenom", "nom_complet"} du premier représentant
-    rattaché réellement nommé (une personne physique, donc avec un
-    prénom), en réutilisant le dict {REPRESENTANT_RATTACHE_x_*} déjà
-    calculé par UTILS_Infos_individus.Informations pour la fiche Famille.
+def GetRepresentant(IDfamille, informations=None, DB=None):
+    """ Retourne le représentant/signataire structuré lorsqu'il existe,
+    puis retombe sur le mécanisme historique du premier représentant
+    nommé. La fonction métier n'est donc inventée dans aucun cas.
 
-    Renvoie None si aucun représentant nommé n'est rattaché : c'est le
-    cas, par exemple, d'une famille qui ne représente qu'une structure
-    (titulaire sans prénom, aucun contact secondaire) -- l'identité du
-    représentant doit alors être saisie manuellement, elle n'existe nulle
-    part dans Noethys pour cette famille.
+    Retour : {"nom", "prenom", "nom_complet", "fonction", ...} ou None.
+    Le stockage structuré est porté par le rattachement individu <->
+    entité (UTILS_Fonctions_entites) : une même personne peut donc avoir
+    des fonctions différentes dans plusieurs entités. Une base ancienne
+    sans cette table continue d'utiliser le mécanisme historique.
     """
+    from Utils import UTILS_Fonctions_entites
+
+    contact = UTILS_Fonctions_entites.GetRepresentantConvention(IDfamille, DB=DB)
+    if contact is not None and contact.get("prenom"):
+        return contact
+
     if informations is None:
         from Utils import UTILS_Infos_individus
         informations = UTILS_Infos_individus.Informations(
@@ -161,8 +166,36 @@ def GetRepresentant(IDfamille, informations=None):
             continue
         nom = (dictValeurs.get("{%s_NOM}" % prefixe) or u"").strip()
         nom_complet = (dictValeurs.get("{%s_NOM_COMPLET}" % prefixe) or u"").strip()
-        return {"nom": nom, "prenom": prenom, "nom_complet": nom_complet}
+        return {
+            "nom": nom,
+            "prenom": prenom,
+            "nom_complet": nom_complet,
+            "fonction": u"",
+            "IDindividu": None,
+        }
     return None
+
+
+def GetRepresentantsDisponibles(IDfamille, DB=None):
+    """Liste les représentants/signataires structurés proposés dans le
+    menu déroulant du générateur de convention."""
+    from Utils import UTILS_Fonctions_entites
+    contacts = UTILS_Fonctions_entites.GetContactsFamille(IDfamille, DB=DB)
+    resultat = []
+    for contact in contacts:
+        if (contact.get("signataire") or contact.get("representant")) and contact.get("prenom"):
+            resultat.append(contact)
+    return resultat
+
+
+def GetReferentsFacturationDisponibles(IDfamille, DB=None):
+    from Utils import UTILS_Fonctions_entites
+    return [
+        contact for contact in UTILS_Fonctions_entites.GetContactsFamille(
+            IDfamille, usage="facturation", DB=DB
+        )
+        if contact.get("prenom")
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -655,6 +688,12 @@ def GetChampsConvention(
         "{CONVENTION_REPRESENTANT_PRENOM}": u"",
         "{CONVENTION_REPRESENTANT_NOM_COMPLET}": u"",
         "{CONVENTION_REPRESENTANT_FONCTION}": u"",
+        "{CONVENTION_REFERENT_FACTURATION_NOM}": u"",
+        "{CONVENTION_REFERENT_FACTURATION_PRENOM}": u"",
+        "{CONVENTION_REFERENT_FACTURATION_NOM_COMPLET}": u"",
+        "{CONVENTION_REFERENT_FACTURATION_FONCTION}": u"",
+        "{CONVENTION_REFERENT_FACTURATION_EMAIL}": u"",
+        "{CONVENTION_REFERENT_FACTURATION_TELEPHONE}": u"",
         "{CONVENTION_SAISON}": u"",
         "{CONVENTION_DATE_DEBUT}": u"",
         "{CONVENTION_DATE_FIN}": u"",
@@ -676,11 +715,22 @@ def GetChampsConvention(
         champs.get("{FAMILLE_RUE}"), champs.get("{FAMILLE_CP}"), champs.get("{FAMILLE_VILLE}")
     )
 
-    representant = GetRepresentant(IDfamille, informations=informations)
+    representant = GetRepresentant(IDfamille, informations=informations, DB=DB)
     if representant is not None:
         champs["{CONVENTION_REPRESENTANT_NOM}"] = representant["nom"]
         champs["{CONVENTION_REPRESENTANT_PRENOM}"] = representant["prenom"]
         champs["{CONVENTION_REPRESENTANT_NOM_COMPLET}"] = representant["nom_complet"]
+        champs["{CONVENTION_REPRESENTANT_FONCTION}"] = representant.get("fonction") or u""
+
+    from Utils import UTILS_Fonctions_entites
+    referent_facturation = UTILS_Fonctions_entites.GetReferentFacturation(IDfamille, DB=DB)
+    if referent_facturation is not None:
+        champs["{CONVENTION_REFERENT_FACTURATION_NOM}"] = referent_facturation["nom"]
+        champs["{CONVENTION_REFERENT_FACTURATION_PRENOM}"] = referent_facturation["prenom"]
+        champs["{CONVENTION_REFERENT_FACTURATION_NOM_COMPLET}"] = referent_facturation["nom_complet"]
+        champs["{CONVENTION_REFERENT_FACTURATION_FONCTION}"] = referent_facturation.get("fonction") or u""
+        champs["{CONVENTION_REFERENT_FACTURATION_EMAIL}"] = referent_facturation.get("mail") or u""
+        champs["{CONVENTION_REFERENT_FACTURATION_TELEPHONE}"] = referent_facturation.get("telephone") or u""
 
     if saison:
         champs["{CONVENTION_SAISON}"] = saison
