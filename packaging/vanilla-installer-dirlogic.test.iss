@@ -41,7 +41,13 @@ UsePreviousAppDir=yes
 OutputDir=.
 OutputBaseFilename=dirlogic-test-setup
 DisableDirPage=no
-PrivilegesRequired=lowest
+; PrivilegesRequired=admin (et non lowest) : {autopf} dans GetDefaultDirName()
+; se resout differemment selon ce reglage (Program Files machine si admin,
+; {localappdata}\Programs par utilisateur sinon). vanilla-installer.iss
+; distribue est PrivilegesRequired=admin -- le harnais doit reproduire
+; exactement le meme contexte pour que les CAS A/D_REPLI (qui attendent
+; {autopf}\Noethys) testent reellement le comportement de production.
+PrivilegesRequired=admin
 
 [Files]
 Source: "vanilla-installer-dirlogic.inc.iss"; DestDir: "{app}"; Flags: dontcopy
