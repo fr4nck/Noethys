@@ -199,6 +199,8 @@ DB_DATA = {
                        u"=1 si l'individu est référent pour la facturation"),
                       ("planning", "INTEGER",
                        u"=1 si l'individu est référent pour le planning"),
+                      ("defaut", "INTEGER",
+                       u"=1 si ce contact est préféré par défaut pour ses usages"),
                       ],  # Métadonnées métier du rattachement, sans modifier rattachements
 
     "types_maladies": [("IDtype_maladie", "INTEGER PRIMARY KEY AUTOINCREMENT", u"ID type_maladie"),
