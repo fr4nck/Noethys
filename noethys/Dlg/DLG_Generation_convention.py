@@ -9,11 +9,11 @@ type de structure n'est rendu obligatoire ici : c'est une saisie
 ponctuelle facultative qui préremplit {CONVENTION_SAISON}, laissée
 vide si l'utilisateur ne la renseigne pas.
 
-Ce dialogue permet aussi de renseigner les champs qui ne peuvent JAMAIS
-être déterminés automatiquement depuis Noethys (fonction du
-représentant, date/lieu de signature), et de corriger les valeurs
-préremplies automatiquement (nom du représentant, tarif horaire)
-lorsque l'auto-détection est absente ou ambiguë. Ces saisies ne sont
+Ce dialogue propose les représentants/signataires et référents
+facturation explicitement définis sur les rattachements de l'entité.
+Le choix reste corrigeable manuellement et les anciennes bases sans
+fonction structurée conservent le repli historique. La date et le lieu
+de signature restent des saisies ponctuelles. Ces saisies ne sont
 que des overrides de génération transmis à
 Utils.UTILS_Convention_champs.GetChampsConvention : rien n'est jamais
 enregistré dans les données Noethys (prestations, tarifs,
@@ -46,6 +46,11 @@ class Dialog(wx.Dialog):
         # l'utilisateur a corrigé manuellement une valeur préremplie --
         # voir RecalculerValeursAutomatiques ci-dessous).
         self._auto_representant = u""
+        self._auto_representant_fonction = u""
+        self._representant_selectionne = None
+        self._referent_facturation_selectionne = None
+        self._representants_disponibles = []
+        self._referents_facturation_disponibles = []
         self._auto_tarif = u""
         self._auto_tarif_adulte = u""
         self._auto_tarif_enfant = u""
@@ -86,14 +91,26 @@ class Dialog(wx.Dialog):
                 saison_initiale = u""
         self.ctrl_saison = wx.TextCtrl(self, -1, saison_initiale)
 
-        # --- Représentant ---------------------------------------------
-        label_representant = wx.StaticText(self, -1, _(u"Représentant de la structure :"))
+        # --- Représentant / signataire --------------------------------
+        label_representant_choix = wx.StaticText(self, -1, _(u"Représentant / signataire :"))
+        self.ctrl_representant_choix = wx.Choice(self, -1)
+
+        label_representant = wx.StaticText(self, -1, _(u"Nom retenu :"))
         self.ctrl_representant_nom_complet = wx.TextCtrl(self, -1, u"")
         self.ctrl_representant_nom_complet.SetToolTip(wx.ToolTip(
-            _(u"Préremplit automatiquement depuis le représentant rattaché à la famille. Corrigez uniquement si nécessaire.")))
+            _(u"Prérempli depuis le contact choisi. La saisie reste modifiable pour un cas exceptionnel.")))
 
-        label_fonction = wx.StaticText(self, -1, _(u"Fonction (facultatif) :"))
+        label_fonction = wx.StaticText(self, -1, _(u"Fonction :"))
         self.ctrl_representant_fonction = wx.TextCtrl(self, -1, u"")
+
+        # --- Référent facturation --------------------------------------
+        label_facturation = wx.StaticText(self, -1, _(u"Référent facturation :"))
+        self.ctrl_facturation_choix = wx.Choice(self, -1)
+        self.ctrl_facturation_choix.SetToolTip(wx.ToolTip(
+            _(u"Choisissez un référent facturation enregistré sur l'entité. "
+              u"Le contact par défaut reste sélectionné automatiquement si vous ne changez rien.")))
+
+        self.ChargerContactsDisponibles()
 
         # --- Signature ------------------------------------------------
         label_date_signature = wx.StaticText(self, -1, _(u"Date et lieu de signature :"))
@@ -134,6 +151,8 @@ class Dialog(wx.Dialog):
         bouton_annuler = wx.Button(self, wx.ID_CANCEL, _(u"Annuler"))
 
         self.Bind(wx.EVT_BUTTON, self.OnBoutonPlanning, self.bouton_planning)
+        self.Bind(wx.EVT_CHOICE, self.OnChoixRepresentant, self.ctrl_representant_choix)
+        self.Bind(wx.EVT_CHOICE, self.OnChoixReferentFacturation, self.ctrl_facturation_choix)
 
         # --- Mise en page ------------------------------------------------
         sizer_periode_ligne = wx.BoxSizer(wx.HORIZONTAL)
@@ -163,8 +182,10 @@ class Dialog(wx.Dialog):
             (label_modele, self.ctrl_modele),
             (label_periode, sizer_periode),
             (label_saison, self.ctrl_saison),
+            (label_representant_choix, self.ctrl_representant_choix),
             (label_representant, self.ctrl_representant_nom_complet),
             (label_fonction, self.ctrl_representant_fonction),
+            (label_facturation, self.ctrl_facturation_choix),
             (label_date_signature, sizer_signature),
             (label_tarifs, sizer_tarifs),
         ):
@@ -182,6 +203,66 @@ class Dialog(wx.Dialog):
         # Préremplissage initial des valeurs automatiques (représentant,
         # tarif) pour la période sélectionnée par défaut.
         self.RecalculerValeursAutomatiques()
+
+    # ------------------------------------------------------------------
+    # Contacts de l'entité
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _LabelContact(contact):
+        nom = contact.get("nom_complet") or u""
+        fonction = contact.get("fonction") or u""
+        if fonction:
+            return u"%s — %s" % (nom, fonction)
+        return nom
+
+    def ChargerContactsDisponibles(self):
+        """Charge les menus sans créer/modifier aucune donnée."""
+        self._representants_disponibles = []
+        self._referents_facturation_disponibles = []
+        if self.IDfamille is not None:
+            try:
+                from Utils import UTILS_Convention_champs as CC
+                self._representants_disponibles = CC.GetRepresentantsDisponibles(self.IDfamille)
+                self._referents_facturation_disponibles = CC.GetReferentsFacturationDisponibles(self.IDfamille)
+            except Exception:
+                # Une base ancienne sans métadonnées de fonction doit
+                # continuer à fonctionner exactement comme avant.
+                self._representants_disponibles = []
+                self._referents_facturation_disponibles = []
+
+        self.ctrl_representant_choix.SetItems(
+            [_(u"Automatique / saisie manuelle")] +
+            [self._LabelContact(c) for c in self._representants_disponibles]
+        )
+        self.ctrl_representant_choix.SetSelection(0)
+
+        self.ctrl_facturation_choix.SetItems(
+            [_(u"Automatique (référent par défaut)")] +
+            [self._LabelContact(c) for c in self._referents_facturation_disponibles]
+        )
+        self.ctrl_facturation_choix.SetSelection(0)
+
+    def OnChoixRepresentant(self, event=None):
+        index = self.ctrl_representant_choix.GetSelection()
+        if index <= 0:
+            self._representant_selectionne = None
+            self.ctrl_representant_nom_complet.SetValue(u"")
+            self.ctrl_representant_fonction.SetValue(u"")
+            self.RecalculerValeursAutomatiques()
+            return
+
+        contact = self._representants_disponibles[index - 1]
+        self._representant_selectionne = contact
+        self.ctrl_representant_nom_complet.SetValue(contact.get("nom_complet") or u"")
+        self.ctrl_representant_fonction.SetValue(contact.get("fonction") or u"")
+
+    def OnChoixReferentFacturation(self, event=None):
+        index = self.ctrl_facturation_choix.GetSelection()
+        if index <= 0:
+            self._referent_facturation_selectionne = None
+            return
+        self._referent_facturation_selectionne = self._referents_facturation_disponibles[index - 1]
 
     # ------------------------------------------------------------------
     # Rafraîchissement des valeurs automatiques (représentant, tarif)
@@ -218,10 +299,18 @@ class Dialog(wx.Dialog):
             return
 
         nouveau_representant = champs.get("{CONVENTION_REPRESENTANT_NOM_COMPLET}") or u""
-        valeurActuelle = self.ctrl_representant_nom_complet.GetValue().strip()
-        if valeurActuelle in (u"", self._auto_representant):
-            self.ctrl_representant_nom_complet.SetValue(nouveau_representant)
+        nouvelle_fonction = champs.get("{CONVENTION_REPRESENTANT_FONCTION}") or u""
+        if self._representant_selectionne is None:
+            valeurActuelle = self.ctrl_representant_nom_complet.GetValue().strip()
+            if valeurActuelle in (u"", self._auto_representant):
+                self.ctrl_representant_nom_complet.SetValue(nouveau_representant)
+
+            fonctionActuelle = self.ctrl_representant_fonction.GetValue().strip()
+            if fonctionActuelle in (u"", self._auto_representant_fonction):
+                self.ctrl_representant_fonction.SetValue(nouvelle_fonction)
+
         self._auto_representant = nouveau_representant
+        self._auto_representant_fonction = nouvelle_fonction
 
         def MajTarif(ctrl, attribut, code):
             tarif = champs.get(code)
@@ -309,6 +398,17 @@ class Dialog(wx.Dialog):
             "{CONVENTION_DATE_SIGNATURE}": self.ctrl_date_signature.GetDate().strftime("%d/%m/%Y"),
             "{CONVENTION_LIEU_SIGNATURE}": self.ctrl_lieu_signature.GetValue().strip(),
         }
+        if self._referent_facturation_selectionne is not None:
+            contact = self._referent_facturation_selectionne
+            overrides.update({
+                "{CONVENTION_REFERENT_FACTURATION_NOM}": contact.get("nom") or u"",
+                "{CONVENTION_REFERENT_FACTURATION_PRENOM}": contact.get("prenom") or u"",
+                "{CONVENTION_REFERENT_FACTURATION_NOM_COMPLET}": contact.get("nom_complet") or u"",
+                "{CONVENTION_REFERENT_FACTURATION_FONCTION}": contact.get("fonction") or u"",
+                "{CONVENTION_REFERENT_FACTURATION_EMAIL}": contact.get("mail") or u"",
+                "{CONVENTION_REFERENT_FACTURATION_TELEPHONE}": contact.get("telephone") or u"",
+            })
+
         for code, ctrl in (
             ("{CONVENTION_TARIF_HORAIRE}", self.ctrl_tarif_horaire),
             ("{CONVENTION_TARIF_ADULTE}", self.ctrl_tarif_adulte),
