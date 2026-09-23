@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+import os
+import sqlite3
 import sys
+import tempfile
 import unittest
 import unittest.mock
 from pathlib import Path
@@ -126,6 +129,26 @@ class FonctionsEntitesTest(unittest.TestCase):
         fonctions = DATA_Fonctions_entites.GetFonctions("ecole", sexe="F")
         self.assertIn("Directrice", fonctions)
         self.assertIn("Enseignante", fonctions)
+
+    def test_conversion_accepte_une_base_ancienne_sans_table_de_fonctions(self):
+        fd, chemin = tempfile.mkstemp(suffix=".dat")
+        os.close(fd)
+        try:
+            connexion = sqlite3.connect(chemin)
+            connexion.execute("CREATE TABLE familles (IDfamille INTEGER PRIMARY KEY)")
+            connexion.commit()
+            connexion.close()
+
+            with self._base_deux_entites() as base:
+                resultat = base.db.Importation_table(
+                    "rattachements_fonctions", nomFichierdefault=chemin, mode="local"
+                )
+            self.assertEqual(resultat, (True, None))
+        finally:
+            try:
+                os.remove(chemin)
+            except OSError:
+                pass
 
     def test_dialogue_enregistre_une_fonction_et_ses_usages(self):
         import wx
