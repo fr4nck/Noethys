@@ -43,6 +43,13 @@ from Outils import mail
 # Import pour permettre compilation windows
 from Outils.mail import base, smtp
 
+def _TexteUtf8(valeur):
+    """Normalise en texte Python 3 sans masquer l'erreur d'origine."""
+    if isinstance(valeur, bytes):
+        return valeur.decode("utf-8", errors="replace")
+    return six.text_type(valeur)
+
+
 
 
 def EnvoiEmailFamille(parent=None, IDfamille=None, nomDoc="", categorie="", listeAdresses=[], visible=True, log=None, CreationPDF=None, IDmodele=None):
@@ -641,10 +648,7 @@ class SmtpV2(Base_messagerie):
         for message in messages:
             while True:
                 adresse = message.GetLabelDestinataires()
-                try:
-                    labelAdresse = adresse.decode("utf8")
-                except:
-                    labelAdresse = adresse
+                labelAdresse = _TexteUtf8(adresse)
                 label = _(u"Envoi %d/%d : %s...") % (index, len(messages), labelAdresse)
 
                 # Si la dlg_progress a été fermée, on la réouvre
@@ -750,10 +754,7 @@ class SmtpV2(Base_messagerie):
             lignes = []
             for message, erreur in listeAnomalies:
                 adresse = message.GetLabelDestinataires()
-                try:
-                    lignes.append(u"- %s : %s" % (adresse.decode("utf8"), erreur))
-                except:
-                    lignes.append(u"- %s : %s" % (adresse, erreur))
+                lignes.append(u"- %s : %s" % (_TexteUtf8(adresse), _TexteUtf8(erreur)))
             dlg = DLG_Messagebox.Dialog(None, titre=_(u"Compte-rendu de l'envoi"), introduction=intro,
                                         detail="\n".join(lignes), icone=wx.ICON_INFORMATION, boutons=[_(u"Ok"), ])
             dlg.ShowModal()
@@ -971,10 +972,7 @@ class Mailjet(Base_messagerie):
         for message in messages:
             while True:
                 adresse = message.GetLabelDestinataires()
-                try:
-                    labelAdresse = adresse.decode("utf8")
-                except:
-                    labelAdresse = adresse
+                labelAdresse = _TexteUtf8(adresse)
                 label = _(u"Envoi %d/%d : %s...") % (index, len(messages), labelAdresse)
 
                 # Si la dlg_progress a été fermée, on la réouvre
@@ -989,7 +987,7 @@ class Mailjet(Base_messagerie):
                     self.Envoyer(message)
                     listeSucces.append(message)
                 except Exception as err:
-                    err = str(err).decode("utf8")
+                    err = _TexteUtf8(err)
                     listeAnomalies.append((message, err))
                     print(("Erreur dans l'envoi d'un mail : %s..." % err))
                     traceback.print_exc(file=sys.stdout)
@@ -1050,10 +1048,7 @@ class Mailjet(Base_messagerie):
             lignes = []
             for message, erreur in listeAnomalies:
                 adresse = message.GetLabelDestinataires()
-                try:
-                    lignes.append(u"- %s : %s" % (adresse.decode("utf8"), erreur))
-                except:
-                    lignes.append(u"- %s : %s" % (adresse, erreur))
+                lignes.append(u"- %s : %s" % (_TexteUtf8(adresse), _TexteUtf8(erreur)))
             dlg = DLG_Messagebox.Dialog(None, titre=_(u"Compte-rendu de l'envoi"), introduction=intro, detail="\n".join(lignes), icone=wx.ICON_INFORMATION, boutons=[_(u"Ok"), ])
             dlg.ShowModal()
             dlg.Destroy()

@@ -369,41 +369,47 @@ class Panel(wx.Panel):
     def OnBoutonOptions(self, event=None):
         print("options")
     
+    def _AppliqueImage(self, nomImage):
+        bitmap = wx.Bitmap(
+            Chemins.GetStaticPath("Images/48x48/%s" % nomImage),
+            wx.BITMAP_TYPE_ANY,
+        )
+        self.ctrl_image.SetBitmap(bitmap)
+        self.ctrl_image.Refresh()
+
     def SetImage(self, etat="on"):
-        if etat == "upload" : 
+        if etat == "upload":
             nomImage = "Sync_upload.png"
-        elif etat == "download" : 
+        elif etat == "download":
             nomImage = "Sync_download.png"
-        elif etat == "off" : 
+        elif etat == "off":
             nomImage = "Sync_off.png"
-        elif etat == "on" : 
+        else:
             nomImage = "Sync_on.png"
-        else :
-            nomImage = "Sync_on.png"
-        self.ctrl_image.SetBitmap(wx.Bitmap(Chemins.GetStaticPath("Images/48x48/%s" % nomImage), wx.BITMAP_TYPE_ANY))
-        
+        wx.CallAfter(self._AppliqueImage, nomImage)
+
+    def _AjouteLog(self, horodatage, message):
+        prefixe = u"\n" if len(self.log.GetValue()) > 0 else u""
+        self.log.AppendText(prefixe + u"[%s] %s" % (horodatage, message))
+
     def EcritLog(self, message=""):
         horodatage = time.strftime("%d/%m/%y %H:%M:%S", time.localtime())
-        if len(self.log.GetValue()) >0 :
-            texte = u"\n"
-        else :
-            texte = u""
-        try :
-            texte += u"[%s] %s" % (horodatage, message)
-        except :
-            texte += u"[%s] %s" % (horodatage, str(message).decode("utf8"))
-        self.log.AppendText(texte)
-        
-    def SetGauge(self, valeur=0):
-        if valeur == 0 :
-            if self.gauge.IsShown() :
-                self.gauge.Show(False)
-                self.Layout() 
-        else :
-            if not self.gauge.IsShown() :
-                self.gauge.Show(True)
-                self.Layout() 
+        if isinstance(message, bytes):
+            message = message.decode("utf-8", errors="replace")
+        else:
+            message = six.text_type(message)
+        wx.CallAfter(self._AjouteLog, horodatage, message)
+
+    def _AppliqueGauge(self, valeur):
+        afficher = valeur != 0
+        if self.gauge.IsShown() != afficher:
+            self.gauge.Show(afficher)
+            self.Layout()
         self.gauge.SetValue(valeur)
+        self.gauge.Refresh()
+
+    def SetGauge(self, valeur=0):
+        wx.CallAfter(self._AppliqueGauge, valeur)
         
 
         

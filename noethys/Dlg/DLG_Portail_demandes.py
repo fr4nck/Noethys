@@ -68,10 +68,11 @@ class CTRL_Log(wx.TextCtrl):
             texte = u"\n"
         else :
             texte = u""
-        try :
-            texte += u"[%s] %s " % (horodatage, message)
-        except :
-            texte += u"[%s] %s " % (horodatage, str(message).decode("utf8"))
+        if isinstance(message, bytes):
+            message = message.decode("utf-8", errors="replace")
+        else:
+            message = str(message)
+        texte += u"[%s] %s " % (horodatage, message)
         self.AppendText(texte)
 
         # Surlignage des erreurs

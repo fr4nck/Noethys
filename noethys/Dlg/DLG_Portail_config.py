@@ -1624,6 +1624,7 @@ class Dialog(wx.Dialog):
         self.__set_properties()
         self.__do_layout()
 
+        self.Bind(wx.EVT_BUTTON, self.OnBoutonAide, self.bouton_aide)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonOutils, self.bouton_outils)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonEasy, self.bouton_easy)
         self.Bind(wx.EVT_BUTTON, self.OnBoutonSite, self.bouton_site)
@@ -1714,10 +1715,11 @@ class Dialog(wx.Dialog):
             texte = u"\n"
         else :
             texte = u""
-        try :
-            texte += u"[%s] %s" % (horodatage, message)
-        except :
-            texte += u"[%s] %s" % (horodatage, str(message).decode('UTF-8'))
+        if isinstance(message, bytes):
+            message = message.decode("utf-8", errors="replace")
+        else:
+            message = str(message)
+        texte += u"[%s] %s" % (horodatage, message)
         self.log.AppendText(texte)
 
     def SetGauge(self, valeur=0):

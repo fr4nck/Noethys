@@ -386,16 +386,14 @@ class Dialog(wx.Dialog):
         # Le fichier de destination existe déjà :
         if os.path.isfile(cheminFichier) == True :
             dlg = wx.MessageDialog(None, _(u"Un fichier portant ce nom existe déjà. \n\nVoulez-vous le remplacer ?"), "Attention !", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_EXCLAMATION)
-            if dlg.ShowModal() == wx.ID_NO :
+            reponse = dlg.ShowModal()
+            dlg.Destroy()
+            if reponse == wx.ID_NO :
                 return False
-                dlg.Destroy()
-            else:
-                dlg.Destroy()
 
         # Création du fichier texte
-        f = open(cheminFichier, "w")
-        f.write(texte.encode("utf8"))
-        f.close()
+        with open(cheminFichier, "w", encoding="utf-8") as fichier:
+            fichier.write(texte)
         
         # Confirmation de création du fichier et demande d'ouverture directe dans Excel
         txtMessage = _(u"Le fichier a été créé avec succès.\n\nSouhaitez-vous l'ouvrir dès maintenant ?")
