@@ -11,6 +11,7 @@ profils ayant memorise l'accent Noir.
 """
 from __future__ import annotations
 
+import inspect
 import sys
 import unittest
 from pathlib import Path
@@ -270,6 +271,140 @@ class NoethysSLAuiManagerCaptureLostTests(unittest.TestCase):
         mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()
         self.addCleanup(mgr.UnInit)
         self.assertIsInstance(mgr, aui.AuiManager)
+
+
+class NoethysSLAuiManagerCaptureLostRobustnessTests(unittest.TestCase):
+    """OnCaptureLost() ne doit jamais lever d'exception au seul motif que
+    les guides de dockage n'existent pas (encore), ont déjà été détruites
+    via DestroyGuideWindows(), ou qu'une fenêtre-hôte de guide a été
+    détruite indépendamment de AuiManager (ex. fermeture de la fenêtre
+    gérée pendant un drag, avant que le prochain drag ne la referme)."""
+
+    def setUp(self):
+        self.frame = wx.Frame(None)
+        self.addCleanup(self.frame.Destroy)
+        self.mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()
+        self.mgr.SetManagedWindow(self.frame)
+        self.addCleanup(self.mgr.UnInit)
+        self.mgr._action = aui.actionDragFloatingPane
+
+    def test_aui_manager_brut_ne_touche_jamais_a_guides_dans_oncapturelost(self):
+        """Caractérise : aui.AuiManager brut n'accède jamais à self._guides
+        dans OnCaptureLost() (il se contente de HideHint()) -- ce risque de
+        RuntimeError sur guide détruit est donc propre à notre surcharge,
+        pas hérité de wxAGW."""
+        source = inspect.getsource(aui.AuiManager.OnCaptureLost)
+        self.assertNotIn("_guides", source)
+
+    def test_guides_jamais_creees_ne_leve_pas(self):
+        self.assertEqual(self.mgr._guides, [])
+        self.mgr.OnCaptureLost(wx.MouseCaptureLostEvent())
+
+    def test_destroyguidewindows_deja_appele_ne_leve_pas(self):
+        self.mgr.CreateGuideWindows()
+        aui.ShowDockingGuides(self.mgr._guides, True)
+        self.mgr.DestroyGuideWindows()
+        self.assertEqual(self.mgr._guides, [])
+
+        self.mgr.OnCaptureLost(wx.MouseCaptureLostEvent())
+
+    def test_guide_detruit_independamment_du_manager_ne_leve_pas(self):
+        """Simule une fenêtre-hôte de guide détruite par wx sans passer par
+        DestroyGuideWindows() (ex. fermeture de la fenêtre gérée pendant un
+        drag) : self._guides référence alors un objet C++ déjà supprimé."""
+        self.mgr.CreateGuideWindows()
+        aui.ShowDockingGuides(self.mgr._guides, True)
+        for guide in self.mgr._guides:
+            guide.host.Destroy()
+        wx.SafeYield()
+
+        try:
+            self.mgr.OnCaptureLost(wx.MouseCaptureLostEvent())
+        except RuntimeError as erreur:
+            self.fail("OnCaptureLost() ne doit pas lever RuntimeError sur un guide déjà détruit : %s" % erreur)
+        finally:
+            # Les hôtes sont déjà détruits : ne pas repasser par
+            # DestroyGuideWindows(), qui y accéderait de nouveau.
+            self.mgr._guides = []
+
+    def test_gestionnaire_en_cours_de_fermeture_uninit_ne_leve_pas(self):
+        """UnInit() ne détruit pas les guides (vérifié en lisant
+        framemanager.AuiManager.UnInit()) : elles peuvent donc rester
+        gérées, visibles, au moment où une perte de capture survient
+        pendant la fermeture du gestionnaire."""
+        self.mgr.CreateGuideWindows()
+        aui.ShowDockingGuides(self.mgr._guides, True)
+
+        self.mgr.UnInit()
+
+        self.mgr.OnCaptureLost(wx.MouseCaptureLostEvent())
+        self.addCleanup(self.mgr.DestroyGuideWindows)
+
+
+class NoethysSLAuiManagerMinimizeToolbarArtTests(unittest.TestCase):
+    """La AuiToolBar automatiquement créée par MinimizePane() pour le
+    pane-outil "<nom>_min" n'est ni l'une des trois barres d'outils
+    applicatives câblées explicitement dans Noethys.py (Noethys.py:538,
+    564, 622), ni construite par du code Noethys SL : rien ne la
+    verrouille en apparence claire. Caractérisation mécanique (vérifiée à
+    l'exécution) : avec aui.AuiManager brut, cette toolbar utilise
+    AuiDefaultToolBarArt, couleur de base dérivée de wx.SystemSettings
+    (base_colour=(220, 220, 220) sous ce thème Windows de test) -- sous
+    thème sombre, elle serait rendue sombre, incohérente avec le reste de
+    l'interface verrouillée en clair."""
+
+    NOMS_PANES = ["ephemeride", "messages", "effectifs"]
+
+    def setUp(self):
+        self.frame = wx.Frame(None)
+        self.addCleanup(self.frame.Destroy)
+
+    def _construire_panes(self, mgr):
+        mgr.SetManagedWindow(self.frame)
+        self.addCleanup(mgr.UnInit)
+        for nom in self.NOMS_PANES:
+            mgr.AddPane(wx.Panel(self.frame), aui.AuiPaneInfo().Name(nom).Caption(nom).Left())
+        mgr.Update()
+
+    def test_aui_manager_brut_utilise_auidefaulttoolbarart_couleurs_systeme(self):
+        """Caractérise le défaut sur aui.AuiManager brut (wxAGW, non
+        modifié) : ce test échouerait si un jour wx.lib.agw.aui appliquait
+        lui-même un art provider dédié à cette toolbar."""
+        mgr = aui.AuiManager()
+        self._construire_panes(mgr)
+
+        mgr.MinimizePane(mgr.GetPane("ephemeride"))
+        art = mgr.GetPane("ephemeride_min").window.GetArtProvider()
+
+        self.assertIsInstance(art, aui.AuiDefaultToolBarArt)
+        self.assertNotIsInstance(art, UTILS_AUI_Apparence.NoethysSLToolBarArt)
+
+    def test_noethys_sl_aui_manager_pose_noethysSLToolBarArt_sur_la_toolbar_auto_creee(self):
+        mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()
+        self._construire_panes(mgr)
+
+        for nom in self.NOMS_PANES:
+            with self.subTest(pane=nom):
+                mgr.MinimizePane(mgr.GetPane(nom))
+                pane_min = mgr.GetPane(nom + "_min")
+                self.assertTrue(pane_min.IsOk())
+
+                art = pane_min.window.GetArtProvider()
+                self.assertIsInstance(art, UTILS_AUI_Apparence.NoethysSLToolBarArt)
+                self.assertTrue(_est_clair(art._base_colour), "base_colour=%s" % (art._base_colour,))
+
+    def test_pose_lart_provider_apres_super_minimizepane_sans_le_reimplementer(self):
+        """La surcharge ne doit rien changer d'autre que l'art provider :
+        la toolbar créée reste une vraie AuiToolBar gérée normalement."""
+        mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()
+        self._construire_panes(mgr)
+
+        mgr.MinimizePane(mgr.GetPane("ephemeride"))
+
+        pane = mgr.GetPane("ephemeride")
+        self.assertTrue(pane.IsMinimized())
+        pane_min = mgr.GetPane("ephemeride_min")
+        self.assertIsInstance(pane_min.window, aui.AuiToolBar)
 
 
 class ThemeNoethysSLTests(unittest.TestCase):

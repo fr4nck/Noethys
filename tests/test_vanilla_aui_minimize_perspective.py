@@ -222,5 +222,67 @@ class NoethysSLAuiManagerLoadPerspectiveMinimizeTests(unittest.TestCase):
         self.assertEqual(self._panes_min_geres(), [])
 
 
+class NoethysSLAuiManagerAucuneAccumulationDeToolbarTests(unittest.TestCase):
+    """AuiManager.DetachPane() (wx.lib.agw.aui, wxPython 4.2.5) ne détruit
+    jamais la fenêtre détachée : elle reste enfant de la fenêtre gérée,
+    cachée mais vivante. Sans destruction explicite, répéter
+    minimize -> LoadPerspective(...) accumule indéfiniment des AuiToolBar
+    orphelines (jamais gérées, jamais détruites) -- vérifié mécaniquement
+    avant tout correctif : 20 cycles -> 20 AuiToolBar orphelines.
+
+    Le correctif honore IsDestroyOnClose() (posé systématiquement par
+    MinimizePane() sur le pane-outil "_min" qu'elle crée) après
+    DetachPane(), exactement comme le fait déjà AuiManager.ClosePane()
+    pour tout pane ainsi marqué -- pas une destruction inventée."""
+
+    NB_CYCLES = 20
+
+    def setUp(self):
+        self.frame = wx.Frame(None)
+        self.addCleanup(self.frame.Destroy)
+        self.mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()
+        self.mgr.SetManagedWindow(self.frame)
+        self.addCleanup(self.mgr.UnInit)
+
+        self.panneau = wx.Panel(self.frame)
+        self.mgr.AddPane(self.panneau, aui.AuiPaneInfo().Name("ephemeride").Caption("Ephéméride").Left())
+        self.mgr.Update()
+
+    def _toolbars_enfants_de_la_fenetre_geree(self):
+        return [fenetre for fenetre in self.frame.GetChildren() if isinstance(fenetre, aui.AuiToolBar)]
+
+    def test_pas_daccumulation_de_toolbar_apres_cycles_repetes(self):
+        perspective_defaut = self.mgr.SavePerspective()
+
+        for _ in range(self.NB_CYCLES):
+            self.mgr.MinimizePane(self.mgr.GetPane("ephemeride"))
+            self.mgr.LoadPerspective(perspective_defaut)
+
+        # Un seul pane géré au total (le pane métier lui-même) : aucun
+        # pane-outil "_min" ne doit rester géré entre deux cycles.
+        self.assertEqual(len(self.mgr._panes), 1)
+        self.assertEqual(self.mgr._panes[0].name, "ephemeride")
+
+        # Aucune AuiToolBar fantôme ne doit rester enfant de la fenêtre
+        # gérée : DetachPane() seul les aurait laissées vivantes, cachées.
+        self.assertEqual(
+            self._toolbars_enfants_de_la_fenetre_geree(), [],
+            "des AuiToolBar orphelines se sont accumulées après %d cycles" % self.NB_CYCLES,
+        )
+
+    def test_ne_detruit_pas_le_pane_metier_encore_utilise(self):
+        """Le correctif ne doit détruire que les pane-outils "_min"
+        auto-créés (DestroyOnClose() posé par MinimizePane() lui-même),
+        jamais un pane métier -- même minimisé, même après rechargement."""
+        perspective_defaut = self.mgr.SavePerspective()
+
+        self.mgr.MinimizePane(self.mgr.GetPane("ephemeride"))
+        self.mgr.LoadPerspective(perspective_defaut)
+
+        self.assertFalse(self.mgr.GetPane("ephemeride").IsDestroyOnClose())
+        self.assertTrue(self.panneau)  # objet C++ vivant : bool() ne lève pas
+        self.assertIs(self.mgr.GetPane("ephemeride").window, self.panneau)
+
+
 if __name__ == "__main__":
     unittest.main()
