@@ -488,7 +488,17 @@ class Dialog(wx.Dialog):
             messagerie.Connecter()
         except Exception as err:
             dlg_progress.Destroy()
-            err = str(err).decode("utf8")
+            # Python 2 : str(err) peut être une chaîne d'octets à décoder.
+            # Python 3 : str(err) est déjà une chaîne unicode -- .decode()
+            # n'existe pas dessus et lèverait une seconde exception
+            # (AttributeError) qui masquerait l'erreur d'origine (ex.
+            # ModuleNotFoundError si un backend comme Mailjet n'est pas
+            # installé). Même motif déjà utilisé dans
+            # UTILS_Envoi_email.SmtpV2.Envoyer_lot().
+            if six.PY2 :
+                err = str(err).decode("utf8")
+            else :
+                err = six.text_type(err)
             intro = _(u"La connexion au serveur de messagerie est impossible :")
             conclusion = _(u"Vérifiez votre connexion internet ou les paramètres de votre adresse d'expédition.")
             dlgErreur = DLG_Messagebox.Dialog(self, titre=_(u"Erreur"), introduction=intro, detail=err, conclusion=conclusion, icone=wx.ICON_ERROR, boutons=[_(u"Ok"),])

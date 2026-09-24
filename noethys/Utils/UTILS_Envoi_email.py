@@ -989,7 +989,15 @@ class Mailjet(Base_messagerie):
                     self.Envoyer(message)
                     listeSucces.append(message)
                 except Exception as err:
-                    err = str(err).decode("utf8")
+                    # Même motif que SmtpV2.Envoyer_lot() plus haut dans ce
+                    # fichier : str(err) est déjà une chaîne unicode en
+                    # Python 3, .decode() n'existe pas dessus et lèverait
+                    # une seconde exception (AttributeError) qui masquerait
+                    # l'erreur d'origine.
+                    if six.PY2 :
+                        err = str(err).decode("utf8")
+                    else :
+                        err = six.text_type(err)
                     listeAnomalies.append((message, err))
                     print(("Erreur dans l'envoi d'un mail : %s..." % err))
                     traceback.print_exc(file=sys.stdout)
