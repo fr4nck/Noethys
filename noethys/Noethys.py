@@ -46,6 +46,7 @@ from Utils import UTILS_Sauvegarde_auto
 from Utils import UTILS_Rapport_bugs
 from Utils import UTILS_Utilisateurs
 from Utils import UTILS_Interface
+from Utils import UTILS_AUI_Apparence
 from Utils import UTILS_Fichiers
 from Utils import UTILS_Json
 
@@ -106,22 +107,6 @@ ID_TB_BADGEAGE = wx.Window.NewControlId()
 ID_TB_REGLER_FACTURE = wx.Window.NewControlId()
 ID_TB_CALCULATRICE = wx.Window.NewControlId()
 ID_TB_UTILISATEUR = wx.Window.NewControlId()
-
-
-def ForceApparenceClaireAUI(art):
-    """Noethys SL 0.1.0 reste volontairement en apparence claire.
-
-    ModernDockArt dérive sinon ses fonds, séparateurs et bordures des
-    couleurs système Windows. Selon la version de wxPython et le thème
-    Windows, la détection IsDark() peut ne pas refléter les couleurs
-    réellement fournies aux contrôles. On fixe donc explicitement la
-    couleur de base AUI, en clair comme en sombre, afin d'éviter toute
-    surface noire parasite pendant la stabilisation de Noethys SL.
-    """
-    try:
-        art.SetDefaultColours(base_colour=wx.Colour(240, 240, 240))
-    except Exception:
-        pass
 
 
 class MainFrame(wx.Frame):
@@ -231,9 +216,7 @@ class MainFrame(wx.Frame):
         self._mgr = aui.AuiManager()
         if "linux" not in sys.platform :
             try :
-                art = aui.ModernDockArt(self)
-                self._mgr.SetArtProvider(art)
-                ForceApparenceClaireAUI(art)
+                self._mgr.SetArtProvider(UTILS_AUI_Apparence.NoethysSLDockArt())
             except :
                 pass
         self._mgr.SetManagedWindow(self)
@@ -552,6 +535,11 @@ class MainFrame(wx.Frame):
         
         # Barre raccourcis --------------------------------------------------
         tb = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, agwStyle=aui.AUI_TB_DEFAULT_STYLE | aui.AUI_TB_OVERFLOW | aui.AUI_TB_TEXT | aui.AUI_TB_HORZ_TEXT)
+        if "linux" not in sys.platform :
+            try :
+                tb.SetArtProvider(UTILS_AUI_Apparence.NoethysSLToolBarArt())
+            except :
+                pass
         tb.SetToolBitmapSize(wx.Size(16, 16))
         tb.AddSimpleTool(ID_TB_GESTIONNAIRE, _(u"Gestionnaire des conso."), wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Calendrier.png"), wx.BITMAP_TYPE_PNG), _(u"Accéder au gestionnaire des consommations"))
         tb.AddSimpleTool(ID_TB_LISTE_CONSO, _(u"Liste des conso."), wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Imprimante.png"), wx.BITMAP_TYPE_PNG), _(u"Imprimer une liste de consommations"))
@@ -573,6 +561,11 @@ class MainFrame(wx.Frame):
         
         # Barre Utilisateur --------------------------------------------------
         tb = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, agwStyle=aui.AUI_TB_DEFAULT_STYLE | aui.AUI_TB_OVERFLOW | aui.AUI_TB_TEXT | aui.AUI_TB_HORZ_TEXT)
+        if "linux" not in sys.platform :
+            try :
+                tb.SetArtProvider(UTILS_AUI_Apparence.NoethysSLToolBarArt())
+            except :
+                pass
         tb.SetToolBitmapSize(wx.Size(16, 16))
         self.ctrl_identification = CTRL_Identification.CTRL(tb, listeUtilisateurs=self.listeUtilisateurs, size=(80, -1))
         tb.AddControl(self.ctrl_identification)
@@ -626,6 +619,11 @@ class MainFrame(wx.Frame):
         # Init ToolBar
         if ctrl == None :
             tb = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, agwStyle=agwStyle)
+            if "linux" not in sys.platform :
+                try :
+                    tb.SetArtProvider(UTILS_AUI_Apparence.NoethysSLToolBarArt())
+                except :
+                    pass
             tb.SetToolBitmapSize(wx.Size(16, 16))
         else :
             tb = ctrl
