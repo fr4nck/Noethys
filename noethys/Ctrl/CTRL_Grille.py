@@ -2951,6 +2951,7 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                                     nbreIndividus = len(listeIndividusPresents)
                                     
                                     # Recherche le tarif à appliquer à chaque individu
+                                    montant_tarif_tmp = 0.0
                                     if "degr" in methode_calcul :
                                         # Si tarif dégressif différent pour chaque individu
                                         tarifsDegr = []
@@ -2976,8 +2977,52 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
                                     for IDprestation, dictValeurs in self.dictPrestations.items() :
                                         if IDprestation != IDtarifPrestationSupprimee and dictValeurs["date"] == date and dictValeurs["IDfamille"] == IDfamille and dictValeurs["IDtarif"] == IDtarifTmp and dictValeurs["IDindividu"] != IDindividu :
                                             
+                                            # Pour les tarifs horaires selon le nombre d'individus,
+                                            # chaque prestation restante conserve sa propre tranche horaire.
+                                            ligne_calcul_horaire = None
+                                            if "horaire" in methode_calcul :
+                                                heure_debut = None
+                                                heure_fin = None
+                                                dictConsoDate = self.dictConsoIndividus.get(dictValeurs["IDindividu"], {}).get(date, {})
+                                                for IDuniteTmp, listeConsoTmp in dictConsoDate.items() :
+                                                    for consoTmp in listeConsoTmp :
+                                                        if consoTmp.IDprestation == IDprestation and consoTmp.heure_debut not in (None, "") and consoTmp.heure_fin not in (None, "") :
+                                                            heure_debut_temp = HeureStrEnTime(consoTmp.heure_debut)
+                                                            heure_fin_temp = HeureStrEnTime(consoTmp.heure_fin)
+                                                            if heure_debut == None or heure_debut_temp < heure_debut :
+                                                                heure_debut = heure_debut_temp
+                                                            if heure_fin == None or heure_fin_temp > heure_fin :
+                                                                heure_fin = heure_fin_temp
+
+                                                if heure_debut != None and heure_fin != None :
+                                                    for ligneCalculTmp in lignes_calcul :
+                                                        heure_debut_min = HeureStrEnTime(ligneCalculTmp["heure_debut_min"])
+                                                        heure_debut_max = HeureStrEnTime(ligneCalculTmp["heure_debut_max"])
+                                                        heure_fin_min = HeureStrEnTime(ligneCalculTmp["heure_fin_min"])
+                                                        heure_fin_max = HeureStrEnTime(ligneCalculTmp["heure_fin_max"])
+                                                        if heure_debut_min <= heure_debut <= heure_debut_max and heure_fin_min <= heure_fin <= heure_fin_max :
+                                                            ligne_calcul_horaire = ligneCalculTmp
+                                                            break
+
                                             # Recherche du tarif à appliquer aux autres individus de la famille
-                                            if "degr" in methode_calcul :
+                                            if "horaire" in methode_calcul and ligne_calcul_horaire == None :
+                                                montantTmp = 0.0
+                                            elif ligne_calcul_horaire != None :
+                                                montants_horaire = [ligne_calcul_horaire["montant_enfant_%d" % rang] for rang in range(1, 7)]
+                                                if "degr" in methode_calcul :
+                                                    tarifsDegrTmp = []
+                                                    for montantTmpHoraire in montants_horaire :
+                                                        if montantTmpHoraire != None and montantTmpHoraire != 0.0 :
+                                                            tarifsDegrTmp.append(montantTmpHoraire)
+                                                    for x in range(0, 20) :
+                                                        tarifsDegrTmp.append(0.0)
+                                                    montantTmp = tarifsDegrTmp[index]
+                                                else:
+                                                    rangFamille = min(max(nbreIndividus, 1), 6) - 1
+                                                    montantTmp = montants_horaire[rangFamille]
+                                                    if montantTmp == None or montantTmp == "" :
+                                                        montantTmp = 0.0
+                                            elif "degr" in methode_calcul :
                                                 montantTmp = 0.0
                                                 try :
                                                     montantTmp = tarifsDegr[index]
@@ -3864,6 +3909,12 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         if "nbre_ind" in methode_calcul :
             montant_tarif = 0.0
             lignes_calcul = dictTarif["lignes_calcul"]
+            montant_enfant_1 = None
+            montant_enfant_2 = None
+            montant_enfant_3 = None
+            montant_enfant_4 = None
+            montant_enfant_5 = None
+            montant_enfant_6 = None
             
             if "montant_unique" in methode_calcul  :
                 # Montant unique
@@ -3894,6 +3945,12 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
 
             if "horaire" in methode_calcul  :
                 tarifFound = False
+                montant_enfant_1 = None
+                montant_enfant_2 = None
+                montant_enfant_3 = None
+                montant_enfant_4 = None
+                montant_enfant_5 = None
+                montant_enfant_6 = None
 
                 # Recherche des heures debut et fin des unités cochées
                 heure_debut = None
