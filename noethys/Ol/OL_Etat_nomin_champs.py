@@ -112,8 +112,12 @@ class Champs():
         # Champs QUESTIONNAIRES
         listeQuestions = self.ImportationQuestions() 
         for IDquestion, label, type, controle in listeQuestions :
-            if type == "individu" : categorie = _(u"Individu")
-            if type == "famille" : categorie = _(u"Famille")
+            if type == "individu" :
+                categorie = _(u"Individu")
+            elif type == "famille" :
+                categorie = _(u"Famille")
+            else :
+                continue
             dictTemp = {"IDchamp":None, "code":"QUESTION%d" % IDquestion, "label":label, "type":"QUESTION", "categorie":categorie, "titre":label, "formule":None}
             listeListeView.append(Track(dictTemp))
             
