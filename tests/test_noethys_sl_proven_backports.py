@@ -59,7 +59,7 @@ class BadgeageBackportTests(unittest.TestCase):
     def test_open_consumption_is_the_one_reused(self):
         src = source_methode(
             "noethys/Dlg/DLG_Badgeage_interface.py",
-            "Dialog",
+            "CTRL_Interface",
             "Procedure_enregistrer",
         )
         self.assertIn("heureDebut = conso_a_modifier.heure_debut", src)
@@ -81,7 +81,7 @@ class EtatNominatifBackportTests(unittest.TestCase):
     def test_unsupported_questionnaire_types_are_skipped(self):
         src = source_methode(
             "noethys/Ol/OL_Etat_nomin_champs.py",
-            "ListView",
+            "Champs",
             "GetTracks",
         )
         self.assertIn('elif type == "famille"', src)
