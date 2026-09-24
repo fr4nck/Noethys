@@ -213,7 +213,7 @@ class MainFrame(wx.Frame):
         self.SetTitleFrame(nomFichier="")
 
         # Création du AUI de la fenêtre
-        self._mgr = aui.AuiManager()
+        self._mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()
         if "linux" not in sys.platform :
             try :
                 self._mgr.SetArtProvider(UTILS_AUI_Apparence.NoethysSLDockArt())

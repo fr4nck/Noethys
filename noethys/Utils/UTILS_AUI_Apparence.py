@@ -44,6 +44,23 @@ COULEUR_FOND_CLAIRE = wx.Colour(240, 240, 240)
 COULEUR_TEXTE_LEGENDE = wx.Colour(30, 30, 30)
 
 
+def _FenetreEncoreVivante(fenetre):
+    """True si `fenetre` est un wx.Window dont l'objet C++ sous-jacent
+    existe encore. Aucune API publique wx (Phoenix) n'expose directement
+    cet état côté Python : accéder à un attribut d'un objet dont le C++ a
+    été détruit lève RuntimeError ("wrapped C/C++ object ... has been
+    deleted"), vérifié à l'exécution -- c'est le seul moyen de le
+    détecter. Garde ciblée, pas un filet de sécurité générique : ne
+    capture que ce cas précis."""
+    if fenetre is None:
+        return False
+    try:
+        fenetre.IsShown()
+    except RuntimeError:
+        return False
+    return True
+
+
 class NoethysSLDockArt(aui.AuiDefaultDockArt):
     """Art provider wxAUI du AuiManager principal de Noethys SL wx.
 
@@ -80,6 +97,119 @@ class NoethysSLDockArt(aui.AuiDefaultDockArt):
         self.SetDefaultPaneBitmaps(wx.Platform == "__WXMAC__")
         self.SetColor(aui.AUI_DOCKART_ACTIVE_CAPTION_COLOUR, COULEUR_FOND_CLAIRE)
         self.SetColor(aui.AUI_DOCKART_ACTIVE_CAPTION_GRADIENT_COLOUR, COULEUR_FOND_CLAIRE)
+
+
+class NoethysSLAuiManager(aui.AuiManager):
+    """AuiManager principal de Noethys SL wx.
+
+    Corrige deux défauts de wx.lib.agw.aui.framemanager.AuiManager
+    (wxPython 4.2.5) par simple surcharge des points d'entrée publics
+    concernés, sans jamais réimplémenter leur logique interne :
+
+    - OnCaptureLost() (déclenché par wx.EVT_MOUSE_CAPTURE_LOST, notamment
+      lors d'un Alt+Tab pendant un drag de pane non terminé) se contente
+      d'annuler l'action en cours et d'appeler HideHint() : il n'appelle
+      jamais ShowDockingGuides(self._guides, False), contrairement à la
+      fin normale d'un drag (OnLeftUp_DragFloatingPane, qui appelle
+      systématiquement les deux). Les fenêtres de guides de dockage sont
+      des wx.Frame de premier niveau (style wx.FRAME_TOOL_WINDOW |
+      wx.STAY_ON_TOP) : en cas de perte de capture, elles restent donc
+      affichées au-dessus de toutes les fenêtres, y compris d'applications
+      tierces, jusqu'au prochain drag.
+
+    - LoadPerspective() voir la méthode ci-dessous.
+    """
+
+    def OnCaptureLost(self, event):
+        super().OnCaptureLost(event)
+        # self._guides est toujours une liste (jamais None, y compris avant
+        # tout CreateGuideWindows() ou après un DestroyGuideWindows() --
+        # les deux la remettent à [], vérifié à l'exécution) : le seul
+        # risque réel est qu'une fenêtre-hôte de guide ait été détruite
+        # indépendamment de AuiManager (ex. fermeture de la fenêtre gérée
+        # pendant un drag) sans passer par DestroyGuideWindows() -- y
+        # accéder lève alors RuntimeError ("wrapped C/C++ object ... has
+        # been deleted"), reproduit à l'exécution. On filtre donc les
+        # guides encore vivants avant de les transmettre à la fonction
+        # publique ShowDockingGuides(), sans réimplémenter sa logique.
+        guides_vivants = [guide for guide in self._guides if _FenetreEncoreVivante(guide.host)]
+        aui.ShowDockingGuides(guides_vivants, False)
+
+    def LoadPerspective(self, layout, update=True, restorecaption=False, restoreminimize=False):
+        # wx.lib.agw.aui.framemanager.AuiManager.LoadPerspective() ne
+        # modifie que les panes présents dans la perspective chargée (elle
+        # ignore silencieusement tout pane-outil "<nom>_min" auto-créé par
+        # MinimizePane() après la sauvegarde de cette perspective : il
+        # reste géré tel quel, caché). Si le pane d'origine "<nom>" est
+        # minimisé dans la perspective chargée, LoadPerspective() recrée
+        # elle-même un nouveau pane-outil "<nom>_min" (même mécanisme que
+        # MinimizePane()) : AddPane1() détecte alors la collision de nom
+        # avec l'ancien pane-outil resté géré et émet l'avertissement
+        # "A pane with the name '<nom>_min' already exists in the
+        # manager!", tout en laissant un second pane-outil fantôme (renommé
+        # aléatoirement) géré en plus du premier -- reproduit et vérifié
+        # mécaniquement avec wx.lib.agw.aui réel, avec et sans pane
+        # minimisé dans la perspective rechargée.
+        #
+        # On détache donc systématiquement, avant tout LoadPerspective(),
+        # tout pane-outil "_min" encore géré. LoadPerspective() recrée
+        # ensuite elle-même, proprement, le pane-outil "_min" pour chaque
+        # pane resté minimisé dans la nouvelle perspective. Générique :
+        # basé uniquement sur le suffixe "_min" propre à MinimizePane(),
+        # jamais sur un nom de pane particulier ; ne touche aucun pane
+        # métier.
+        #
+        # AuiManager.DetachPane() ne détruit jamais la fenêtre : elle reste
+        # enfant de la fenêtre gérée, cachée mais vivante -- sur ce seul
+        # point, on ne reproduit PAS RestoreMinimizedPane() (qui a le même
+        # comportement, potentiellement déjà imparfait dans wxAGW lui-même)
+        # mais AuiManager.ClosePane(), qui elle honore explicitement
+        # IsDestroyOnClose() après DetachPane() (framemanager.py
+        # ~4864-4887). Or MinimizePane() pose systématiquement ce flag sur
+        # le pane-outil "_min" qu'elle crée (.DestroyOnClose(), ~ligne
+        # 9944-9962) : c'est un signal explicite et générique de la
+        # bibliothèque elle-même comme quoi ce pane-outil doit être détruit
+        # une fois détaché, jamais posé sur un pane métier. Sans cela,
+        # répéter minimize -> LoadPerspective(...) accumule indéfiniment
+        # des AuiToolBar cachées mais jamais détruites (vérifié à
+        # l'exécution : 20 cycles -> 20 AuiToolBar orphelines, non gérées,
+        # jamais collectées).
+        for pane in list(self._panes):
+            if pane.IsToolbar() and pane.window is not None \
+                    and isinstance(pane.window, aui.AuiToolBar) \
+                    and pane.name.endswith("_min"):
+                fenetre = pane.window
+                detruire_apres_detachement = pane.IsDestroyOnClose()
+                fenetre.Show(False)
+                self.DetachPane(fenetre)
+                if detruire_apres_detachement:
+                    fenetre.Destroy()
+
+        return super().LoadPerspective(
+            layout, update=update, restorecaption=restorecaption, restoreminimize=restoreminimize,
+        )
+
+    def MinimizePane(self, paneInfo, mgrUpdate=True):
+        super().MinimizePane(paneInfo, mgrUpdate)
+        # MinimizePane() crée toujours elle-même le AuiToolBar du
+        # pane-outil "<nom>_min" avec AuiDefaultToolBarArt (couleurs
+        # système) -- vérifié à l'exécution : base_colour=(220, 220, 220),
+        # dérivée de wx.SystemSettings, jamais NoethysSLToolBarArt. Ce
+        # n'est ni l'une des trois barres d'outils applicatives câblées
+        # explicitement dans Noethys.py, ni construite par du code
+        # Noethys SL : rien ne la verrouille en apparence claire. Sous
+        # thème Windows sombre, elle resterait donc rendue avec des
+        # couleurs système sombres, incohérentes avec le reste de
+        # l'interface. On ne réimplémente pas MinimizePane() : on la
+        # laisse créer sa toolbar, puis on pose l'art provider Noethys SL
+        # par-dessus, exactement comme le fait déjà le câblage des trois
+        # barres d'outils applicatives dans Noethys.py. Générique : basé
+        # uniquement sur le suffixe "_min" propre à MinimizePane(), jamais
+        # sur un nom de pane particulier.
+        pane_min = self.GetPane(paneInfo.name + "_min")
+        if pane_min.IsOk() and isinstance(pane_min.window, aui.AuiToolBar):
+            pane_min.window.SetArtProvider(NoethysSLToolBarArt())
+            pane_min.window.Refresh()
 
 
 class NoethysSLToolBarArt(aui.AuiDefaultToolBarArt):

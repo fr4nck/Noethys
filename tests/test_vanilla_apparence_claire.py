@@ -11,6 +11,7 @@ profils ayant memorise l'accent Noir.
 """
 from __future__ import annotations
 
+import inspect
 import sys
 import unittest
 from pathlib import Path
@@ -187,6 +188,10 @@ class NoethysCablageAUITests(unittest.TestCase):
     def test_le_aui_manager_principal_utilise_noethysSLDockArt(self):
         self.assertIn("self._mgr.SetArtProvider(UTILS_AUI_Apparence.NoethysSLDockArt())", self.source)
 
+    def test_le_aui_manager_principal_est_bien_noethysSLAuiManager(self):
+        self.assertIn("self._mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()", self.source)
+        self.assertNotIn("self._mgr = aui.AuiManager()", self.source)
+
     def test_les_trois_barres_outils_utilisent_noethysSLToolBarArt_hors_linux(self):
         motif = "tb.SetArtProvider(UTILS_AUI_Apparence.NoethysSLToolBarArt())"
         occurrences = []
@@ -205,6 +210,201 @@ class NoethysCablageAUITests(unittest.TestCase):
 
     def test_le_module_apparence_est_importe(self):
         self.assertIn("from Utils import UTILS_AUI_Apparence", self.source)
+
+
+class NoethysSLAuiManagerCaptureLostTests(unittest.TestCase):
+    """Guides de dockage fantômes après perte de capture souris (Alt+Tab
+    pendant un drag de pane non terminé) : mécanisme confirmé dans
+    wx.lib.agw.aui.framemanager (wxPython 4.2.5) -- AuiManager.
+    OnCaptureLost() (ligne ~9055) se contente d'annuler l'action en cours
+    et d'appeler HideHint() ; il n'appelle jamais
+    ShowDockingGuides(self._guides, False), contrairement à la fin normale
+    d'un drag (OnLeftUp_DragFloatingPane, ligne ~9467, qui appelle
+    systématiquement les deux). Les guides sont des wx.Frame de premier
+    niveau (style wx.FRAME_TOOL_WINDOW | wx.STAY_ON_TOP,
+    AuiSingleDockingGuide/AuiCenterDockingGuide) : ils restent donc
+    affichés au-dessus de toutes les fenêtres, y compris d'applications
+    tierces, tant qu'aucun nouveau drag ne les referme.
+    """
+
+    def setUp(self):
+        self.frame = wx.Frame(None)
+        self.addCleanup(self.frame.Destroy)
+
+    def _guides_visibles(self, mgr):
+        return [guide for guide in mgr._guides if guide.host.IsShown()]
+
+    def _mettre_en_etat_drag_avec_guides_visibles(self, mgr):
+        mgr.SetManagedWindow(self.frame)
+        self.addCleanup(mgr.DestroyGuideWindows)
+        self.addCleanup(mgr.UnInit)
+        mgr.CreateGuideWindows()
+        aui.ShowDockingGuides(mgr._guides, True)
+        mgr._action = aui.actionDragFloatingPane
+        self.assertTrue(self._guides_visibles(mgr), "précondition : au moins un guide visible avant la perte de capture")
+
+    def test_aui_manager_brut_laisse_les_guides_visibles_apres_perte_de_capture(self):
+        """Caractérise le défaut de aui.AuiManager brut (wxAGW, non modifié).
+        Ce test échouerait si un jour wx.lib.agw.aui corrigeait lui-même
+        OnCaptureLost() -- ce qui serait une bonne nouvelle, pas une
+        régression Noethys SL."""
+        mgr = aui.AuiManager()
+        self._mettre_en_etat_drag_avec_guides_visibles(mgr)
+
+        mgr.OnCaptureLost(wx.MouseCaptureLostEvent())
+
+        self.assertTrue(self._guides_visibles(mgr), "aui.AuiManager brut est censé laisser les guides visibles ici")
+
+    def test_noethys_sl_aui_manager_ferme_les_guides_apres_perte_de_capture(self):
+        mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()
+        self._mettre_en_etat_drag_avec_guides_visibles(mgr)
+
+        mgr.OnCaptureLost(wx.MouseCaptureLostEvent())
+
+        self.assertEqual(self._guides_visibles(mgr), [], "aucun guide de dockage ne doit rester visible après une perte de capture")
+        self.assertEqual(mgr._action, aui.actionNone)
+
+    def test_noethys_sl_aui_manager_reste_un_aui_manager_standard(self):
+        """La surcharge ne doit rien changer d'autre : pas de réimplémentation
+        de OnCaptureLost, uniquement un appel à la version parente suivi
+        d'une fermeture explicite des guides."""
+        mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()
+        self.addCleanup(mgr.UnInit)
+        self.assertIsInstance(mgr, aui.AuiManager)
+
+
+class NoethysSLAuiManagerCaptureLostRobustnessTests(unittest.TestCase):
+    """OnCaptureLost() ne doit jamais lever d'exception au seul motif que
+    les guides de dockage n'existent pas (encore), ont déjà été détruites
+    via DestroyGuideWindows(), ou qu'une fenêtre-hôte de guide a été
+    détruite indépendamment de AuiManager (ex. fermeture de la fenêtre
+    gérée pendant un drag, avant que le prochain drag ne la referme)."""
+
+    def setUp(self):
+        self.frame = wx.Frame(None)
+        self.addCleanup(self.frame.Destroy)
+        self.mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()
+        self.mgr.SetManagedWindow(self.frame)
+        self.addCleanup(self.mgr.UnInit)
+        self.mgr._action = aui.actionDragFloatingPane
+
+    def test_aui_manager_brut_ne_touche_jamais_a_guides_dans_oncapturelost(self):
+        """Caractérise : aui.AuiManager brut n'accède jamais à self._guides
+        dans OnCaptureLost() (il se contente de HideHint()) -- ce risque de
+        RuntimeError sur guide détruit est donc propre à notre surcharge,
+        pas hérité de wxAGW."""
+        source = inspect.getsource(aui.AuiManager.OnCaptureLost)
+        self.assertNotIn("_guides", source)
+
+    def test_guides_jamais_creees_ne_leve_pas(self):
+        self.assertEqual(self.mgr._guides, [])
+        self.mgr.OnCaptureLost(wx.MouseCaptureLostEvent())
+
+    def test_destroyguidewindows_deja_appele_ne_leve_pas(self):
+        self.mgr.CreateGuideWindows()
+        aui.ShowDockingGuides(self.mgr._guides, True)
+        self.mgr.DestroyGuideWindows()
+        self.assertEqual(self.mgr._guides, [])
+
+        self.mgr.OnCaptureLost(wx.MouseCaptureLostEvent())
+
+    def test_guide_detruit_independamment_du_manager_ne_leve_pas(self):
+        """Simule une fenêtre-hôte de guide détruite par wx sans passer par
+        DestroyGuideWindows() (ex. fermeture de la fenêtre gérée pendant un
+        drag) : self._guides référence alors un objet C++ déjà supprimé."""
+        self.mgr.CreateGuideWindows()
+        aui.ShowDockingGuides(self.mgr._guides, True)
+        for guide in self.mgr._guides:
+            guide.host.Destroy()
+        wx.SafeYield()
+
+        try:
+            self.mgr.OnCaptureLost(wx.MouseCaptureLostEvent())
+        except RuntimeError as erreur:
+            self.fail("OnCaptureLost() ne doit pas lever RuntimeError sur un guide déjà détruit : %s" % erreur)
+        finally:
+            # Les hôtes sont déjà détruits : ne pas repasser par
+            # DestroyGuideWindows(), qui y accéderait de nouveau.
+            self.mgr._guides = []
+
+    def test_gestionnaire_en_cours_de_fermeture_uninit_ne_leve_pas(self):
+        """UnInit() ne détruit pas les guides (vérifié en lisant
+        framemanager.AuiManager.UnInit()) : elles peuvent donc rester
+        gérées, visibles, au moment où une perte de capture survient
+        pendant la fermeture du gestionnaire."""
+        self.mgr.CreateGuideWindows()
+        aui.ShowDockingGuides(self.mgr._guides, True)
+
+        self.mgr.UnInit()
+
+        self.mgr.OnCaptureLost(wx.MouseCaptureLostEvent())
+        self.addCleanup(self.mgr.DestroyGuideWindows)
+
+
+class NoethysSLAuiManagerMinimizeToolbarArtTests(unittest.TestCase):
+    """La AuiToolBar automatiquement créée par MinimizePane() pour le
+    pane-outil "<nom>_min" n'est ni l'une des trois barres d'outils
+    applicatives câblées explicitement dans Noethys.py (Noethys.py:538,
+    564, 622), ni construite par du code Noethys SL : rien ne la
+    verrouille en apparence claire. Caractérisation mécanique (vérifiée à
+    l'exécution) : avec aui.AuiManager brut, cette toolbar utilise
+    AuiDefaultToolBarArt, couleur de base dérivée de wx.SystemSettings
+    (base_colour=(220, 220, 220) sous ce thème Windows de test) -- sous
+    thème sombre, elle serait rendue sombre, incohérente avec le reste de
+    l'interface verrouillée en clair."""
+
+    NOMS_PANES = ["ephemeride", "messages", "effectifs"]
+
+    def setUp(self):
+        self.frame = wx.Frame(None)
+        self.addCleanup(self.frame.Destroy)
+
+    def _construire_panes(self, mgr):
+        mgr.SetManagedWindow(self.frame)
+        self.addCleanup(mgr.UnInit)
+        for nom in self.NOMS_PANES:
+            mgr.AddPane(wx.Panel(self.frame), aui.AuiPaneInfo().Name(nom).Caption(nom).Left())
+        mgr.Update()
+
+    def test_aui_manager_brut_utilise_auidefaulttoolbarart_couleurs_systeme(self):
+        """Caractérise le défaut sur aui.AuiManager brut (wxAGW, non
+        modifié) : ce test échouerait si un jour wx.lib.agw.aui appliquait
+        lui-même un art provider dédié à cette toolbar."""
+        mgr = aui.AuiManager()
+        self._construire_panes(mgr)
+
+        mgr.MinimizePane(mgr.GetPane("ephemeride"))
+        art = mgr.GetPane("ephemeride_min").window.GetArtProvider()
+
+        self.assertIsInstance(art, aui.AuiDefaultToolBarArt)
+        self.assertNotIsInstance(art, UTILS_AUI_Apparence.NoethysSLToolBarArt)
+
+    def test_noethys_sl_aui_manager_pose_noethysSLToolBarArt_sur_la_toolbar_auto_creee(self):
+        mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()
+        self._construire_panes(mgr)
+
+        for nom in self.NOMS_PANES:
+            with self.subTest(pane=nom):
+                mgr.MinimizePane(mgr.GetPane(nom))
+                pane_min = mgr.GetPane(nom + "_min")
+                self.assertTrue(pane_min.IsOk())
+
+                art = pane_min.window.GetArtProvider()
+                self.assertIsInstance(art, UTILS_AUI_Apparence.NoethysSLToolBarArt)
+                self.assertTrue(_est_clair(art._base_colour), "base_colour=%s" % (art._base_colour,))
+
+    def test_pose_lart_provider_apres_super_minimizepane_sans_le_reimplementer(self):
+        """La surcharge ne doit rien changer d'autre que l'art provider :
+        la toolbar créée reste une vraie AuiToolBar gérée normalement."""
+        mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()
+        self._construire_panes(mgr)
+
+        mgr.MinimizePane(mgr.GetPane("ephemeride"))
+
+        pane = mgr.GetPane("ephemeride")
+        self.assertTrue(pane.IsMinimized())
+        pane_min = mgr.GetPane("ephemeride_min")
+        self.assertIsInstance(pane_min.window, aui.AuiToolBar)
 
 
 class ThemeNoethysSLTests(unittest.TestCase):
