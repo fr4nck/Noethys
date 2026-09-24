@@ -44,6 +44,84 @@ COULEUR_FOND_CLAIRE = wx.Colour(240, 240, 240)
 COULEUR_TEXTE_LEGENDE = wx.Colour(30, 30, 30)
 
 
+class NoethysSLAuiManager(aui.AuiManager):
+    """AuiManager local de Noethys SL wx avec deux garde-fous AGW 4.2.5.
+
+    AGW 4.2.5 laisse les docking guides visibles si la capture souris est
+    perdue pendant un drag, et peut désynchroniser l'état d'un pane minimisé
+    de sa barre automatique <name>_min lors d'un changement de perspective
+    ou d'une maximisation d'un autre pane.
+
+    Les corrections restent locales à Noethys SL : aucune modification de
+    wxPython, aucun monkey-patch et aucune logique métier.
+    """
+
+    def OnCaptureLost(self, event):
+        """Annule le drag comme AGW puis masque toujours ses guides."""
+        aui.AuiManager.OnCaptureLost(self, event)
+        aui.ShowDockingGuides(self._guides, False)
+        self._action_window = None
+
+    def RestoreManagedMinimizedPane(self, pane_info):
+        """Restaure un pane minimisé par le chemin officiel AGW."""
+        if not pane_info.IsOk() or not pane_info.IsMinimized():
+            return False
+
+        position = pane_info.minimize_mode & aui.AUI_MINIMIZE_POS_MASK
+        if position == aui.AUI_MINIMIZE_POS_TOOLBAR:
+            self.RestoreMinimizedPane(pane_info)
+            return not pane_info.IsMinimized()
+
+        toolbar = self.GetPane(pane_info.name + "_min")
+        if not toolbar.IsOk():
+            return False
+
+        self.RestoreMinimizedPane(toolbar)
+        return not pane_info.IsMinimized()
+
+    def LoadPerspective(self, layout, update=True, restorecaption=False,
+                        restoreminimize=False):
+        """Nettoie les minimisations actives avant de laisser AGW recharger."""
+        for pane in list(self.GetAllPanes()):
+            if not pane.IsToolbar() and pane.IsMinimized():
+                self.RestoreManagedMinimizedPane(pane)
+
+        return aui.AuiManager.LoadPerspective(
+            self,
+            layout,
+            update=update,
+            restorecaption=restorecaption,
+            restoreminimize=restoreminimize,
+        )
+
+    def MaximizePane(self, pane_info, savesizes=True):
+        """Préserve le flag Minimized des autres panes autour du bug AGW."""
+        minimized_names = [
+            pane.name for pane in list(self.GetAllPanes())
+            if pane is not pane_info and not pane.IsToolbar() and pane.IsMinimized()
+        ]
+
+        if pane_info.IsMinimized():
+            self.RestoreManagedMinimizedPane(pane_info)
+
+        aui.AuiManager.MaximizePane(self, pane_info, savesizes=savesizes)
+
+        for name in minimized_names:
+            pane = self.GetPane(name)
+            toolbar = self.GetPane(name + "_min")
+            if pane.IsOk() and toolbar.IsOk():
+                pane.Minimize()
+
+    def MinimizePane(self, pane_info, mgrUpdate=True):
+        """Écarte proprement une éventuelle barre automatique orpheline."""
+        if not pane_info.IsToolbar() and not pane_info.IsMinimized():
+            toolbar = self.GetPane(pane_info.name + "_min")
+            if toolbar.IsOk():
+                self.ClosePane(toolbar)
+
+        return aui.AuiManager.MinimizePane(self, pane_info, mgrUpdate=mgrUpdate)
+
+
 class NoethysSLDockArt(aui.AuiDefaultDockArt):
     """Art provider wxAUI du AuiManager principal de Noethys SL wx.
 
