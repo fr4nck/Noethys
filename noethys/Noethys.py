@@ -213,7 +213,7 @@ class MainFrame(wx.Frame):
         self.SetTitleFrame(nomFichier="")
 
         # Création du AUI de la fenêtre
-        self._mgr = aui.AuiManager()
+        self._mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()
         if "linux" not in sys.platform :
             try :
                 self._mgr.SetArtProvider(UTILS_AUI_Apparence.NoethysSLDockArt())
@@ -2497,6 +2497,10 @@ class MainFrame(wx.Frame):
         panneau = self._mgr.GetPane(self.listePanneaux[index]["code"])
         if panneau.IsShown() :
             panneau.Hide()
+        elif panneau.IsMinimized():
+            # Un pane minimisé possède une toolbar AGW de restauration :
+            # un simple Show() désynchroniserait les deux états.
+            self._mgr.RestoreManagedMinimizedPane(panneau)
         else:
             panneau.Show()
         self._mgr.Update()
