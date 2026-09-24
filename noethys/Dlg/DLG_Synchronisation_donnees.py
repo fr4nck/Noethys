@@ -21,6 +21,7 @@ from Ctrl import CTRL_Bandeau
 import GestionDB
 from Ol import OL_Synchronisation_donnees
 
+import threading
 from threading import Thread 
 from Dlg import DLG_Badgeage_grille
 from Dlg import DLG_Messagebox
@@ -308,6 +309,42 @@ class Dialog(wx.Dialog):
 class Abort(Exception): 
     pass 
 
+
+def AppelSynchroneUI(fonction, *args, **kwds):
+    """ Exécute fonction sur le thread wx et attend son résultat.
+    L'exception levée par fonction est propagée à l'appelant. """
+    if wx.IsMainThread():
+        return fonction(*args, **kwds)
+
+    termine = threading.Event()
+    retour = {}
+
+    def Executer():
+        try:
+            retour["resultat"] = fonction(*args, **kwds)
+        except BaseException as err:
+            retour["erreur"] = err
+        finally:
+            termine.set()
+
+    wx.CallAfter(Executer)
+    # Attente bloquante : le délai ne sert qu'à détecter l'arrêt de l'application
+    while not termine.wait(0.5):
+        if not threading.main_thread().is_alive():
+            raise RuntimeError(u"Thread wx arrêté avant l'exécution de %r" % fonction)
+    if "erreur" in retour:
+        raise retour["erreur"]
+    return retour["resultat"]
+
+
+def EstVivant(fenetre):
+    """ Indique si la fenêtre wx existe encore et n'est pas en cours de destruction """
+    try:
+        return bool(fenetre) and not fenetre.IsBeingDeleted()
+    except RuntimeError:
+        return False
+
+
 class Traitement(Thread): 
     def __init__(self, parent): 
         Thread.__init__(self) 
@@ -344,12 +381,11 @@ class Traitement(Thread):
 
                 # Affichage
                 texteIntro = u"[%d/%d] %s" % (self.index+1, len(self.parent.listeTracks), track.detail)
-                self.parent.label_intro.SetLabel(texteIntro)
-                self.parent.ctrl_gauge.SetValue(self.index+1)
+                AppelSynchroneUI(self.parent.AfficherProgression, texteIntro, self.index+1)
 
                 if track.anomalie != False :
-                    self.parent.parent.EcritLog(track.anomalie)
-                    self.parent.parent.SetStatut(track, "erreur")
+                    AppelSynchroneUI(self.parent.EcritLog, track.anomalie)
+                    AppelSynchroneUI(self.parent.SetStatut, track, "erreur")
                     listeAnomalies.append(track.anomalie)
 
                 else :
@@ -358,9 +394,7 @@ class Traitement(Thread):
                     if track.categorie == "consommation" :
 
                         # Initialisation de la grille
-                        self.parent.ctrl_grille.InitGrille(IDindividu=track.IDindividu, IDfamille=track.IDfamille, IDactivite=track.IDactivite, date=track.date)
-                        if 'phoenix' not in wx.PlatformInfo:
-                            wx.Yield()
+                        AppelSynchroneUI(self.parent.AppelGrille, "InitGrille", IDindividu=track.IDindividu, IDfamille=track.IDfamille, IDactivite=track.IDactivite, date=track.date)
 
                         if track.etat == "reservation" : mode, etat = "reservation", "reservation"
                         if track.etat == "attente" : mode, etat = "attente", "reservation"
@@ -373,19 +407,19 @@ class Traitement(Thread):
                         heure_fin = self.ConvertitHeure(track.heure_fin)
 
                         if track.action == "ajouter" or track.action == "modifier" :
-                            resultat = self.parent.ctrl_grille.SaisieConso(IDunite=track.IDunite, mode=mode, etat=etat, heure_debut=heure_debut, heure_fin=heure_fin, quantite=track.quantite)
+                            resultat = AppelSynchroneUI(self.parent.AppelGrille, "SaisieConso", IDunite=track.IDunite, mode=mode, etat=etat, heure_debut=heure_debut, heure_fin=heure_fin, quantite=track.quantite)
                         if track.action == "supprimer" :
-                            resultat = self.parent.ctrl_grille.SupprimeConso(IDunite=track.IDunite, date=track.date)
+                            resultat = AppelSynchroneUI(self.parent.AppelGrille, "SupprimeConso", IDunite=track.IDunite, date=track.date)
 
                         # Sauvegarde de la grille des conso + Ecrit log
                         if resultat == True :
-                            self.parent.ctrl_grille.Sauvegarde()
-                            self.parent.parent.EcritLog(track.detail + u" -> ok")
-                            self.parent.parent.SetStatut(track, "ok")
+                            AppelSynchroneUI(self.parent.AppelGrille, "Sauvegarde")
+                            AppelSynchroneUI(self.parent.EcritLog, track.detail + u" -> ok")
+                            AppelSynchroneUI(self.parent.SetStatut, track, "ok")
                         else :
                             texte = track.detail + u" -> " + resultat
-                            self.parent.parent.EcritLog(texte)
-                            self.parent.parent.SetStatut(track, "erreur")
+                            AppelSynchroneUI(self.parent.EcritLog, texte)
+                            AppelSynchroneUI(self.parent.SetStatut, track, "erreur")
                             listeAnomalies.append(texte)
 
 
@@ -413,8 +447,8 @@ class Traitement(Thread):
 
                         DB.Close()
 
-                        self.parent.parent.EcritLog(track.detail + u" -> ok")
-                        self.parent.parent.SetStatut(track, "ok")
+                        AppelSynchroneUI(self.parent.EcritLog, track.detail + u" -> ok")
+                        AppelSynchroneUI(self.parent.SetStatut, track, "ok")
                         
                 # Arrête le traitement si bouton arrêter enfoncé
                 if self.stop:
@@ -430,12 +464,12 @@ class Traitement(Thread):
 
         except Abort as KeyBoardInterrupt:
             if self.succes == True :
-                self.parent.label_intro.SetLabel(_(u"Traitement terminé")) 
-                self.parent.parent.EcritLog(_(u"Traitement terminé")) 
-                self.parent.Fermer(forcer=True) 
+                AppelSynchroneUI(self.parent.AfficherProgression, _(u"Traitement terminé"))
+                AppelSynchroneUI(self.parent.EcritLog, _(u"Traitement terminé"))
+                AppelSynchroneUI(self.parent.Fermer, forcer=True)
             else:
-                self.parent.label_intro.SetLabel(_(u"Traitement interrompu par l'utilisateur"))
-                self.parent.parent.EcritLog(_(u"Traitement interrompu par l'utilisateur")) 
+                AppelSynchroneUI(self.parent.AfficherProgression, _(u"Traitement interrompu par l'utilisateur"))
+                AppelSynchroneUI(self.parent.EcritLog, _(u"Traitement interrompu par l'utilisateur"))
                 # self.parent.bouton_fermer.SetBitmap(wx.Bitmap(Chemins.GetStaticPath(u"Images/BoutonsImages/Fermer_L72.png"), wx.BITMAP_TYPE_ANY))
         except Exception as err : 
             self.stop = True
@@ -443,19 +477,24 @@ class Traitement(Thread):
             raise 
         
         # Message de confirmation de fin de traitement
-        if len(listeAnomalies) > 0 :
-            introduction = _(u"%d actions ont été importées avec succès et %d anomalies ont été trouvées :") % (nbre_tracks - len(listeAnomalies), len(listeAnomalies))
-            conclusion = u""
-            dlg = DLG_Messagebox.Dialog(None, titre=_(u"Information"), introduction=introduction, detail=u"\n".join(listeAnomalies), conclusion=conclusion, icone=wx.ICON_EXCLAMATION, boutons=[_(u"Ok"),])
-            reponse = dlg.ShowModal() 
-            dlg.Destroy() 
-        else :
-            dlg = wx.MessageDialog(None, _(u"Les %d actions ont été importées avec succès !") % nbre_tracks, _(u"Information"), wx.OK | wx.ICON_INFORMATION)
-            dlg.ShowModal()
-            dlg.Destroy()
+        AppelSynchroneUI(AfficherBilan, nbre_tracks, listeAnomalies)
 
     def abort(self): 
         self.stop = True
+
+
+def AfficherBilan(nbre_tracks, listeAnomalies):
+    """ Message de fin de traitement (thread wx uniquement) """
+    if len(listeAnomalies) > 0 :
+        introduction = _(u"%d actions ont été importées avec succès et %d anomalies ont été trouvées :") % (nbre_tracks - len(listeAnomalies), len(listeAnomalies))
+        conclusion = u""
+        dlg = DLG_Messagebox.Dialog(None, titre=_(u"Information"), introduction=introduction, detail=u"\n".join(listeAnomalies), conclusion=conclusion, icone=wx.ICON_EXCLAMATION, boutons=[_(u"Ok"),])
+        reponse = dlg.ShowModal()
+        dlg.Destroy()
+    else :
+        dlg = wx.MessageDialog(None, _(u"Les %d actions ont été importées avec succès !") % nbre_tracks, _(u"Information"), wx.OK | wx.ICON_INFORMATION)
+        dlg.ShowModal()
+        dlg.Destroy()
 
 
 
@@ -523,6 +562,10 @@ class Dialog_Traitement(wx.Dialog):
         self.Fermer() 
         
     def Fermer(self, forcer=False):
+        # Fenêtre déjà détruite (appel tardif depuis le traitement)
+        if not EstVivant(self):
+            return
+
         # On vérifie si le thread n'a jamais été lancé avant :
         try:
             TraitmentEnCours = self.traitement.is_alive()
@@ -547,6 +590,32 @@ class Dialog_Traitement(wx.Dialog):
         time.sleep(1)
         self.EndModal(wx.ID_CANCEL)
     
+    # Opérations wx demandées par le Traitement via AppelSynchroneUI (thread wx uniquement)
+
+    def AfficherProgression(self, texte=u"", valeur=None):
+        if not EstVivant(self):
+            return
+        self.label_intro.SetLabel(texte)
+        if valeur != None :
+            self.ctrl_gauge.SetValue(valeur)
+
+    def EcritLog(self, message=u""):
+        if EstVivant(self.parent):
+            self.parent.EcritLog(message)
+
+    def SetStatut(self, track=None, statut=None):
+        if EstVivant(self.parent):
+            self.parent.SetStatut(track, statut)
+        else :
+            track.statut = statut
+
+    def AppelGrille(self, nomMethode, **kwds):
+        """ InitGrille, SaisieConso, SupprimeConso ou Sauvegarde sur la grille des conso """
+        if not EstVivant(self.ctrl_grille):
+            # Fenêtre fermée : rien n'a été sauvegardé pour cette action
+            raise Abort
+        return getattr(self.ctrl_grille, nomMethode)(**kwds)
+
     def OnBoutonOk(self, event):
         self.Demarrer() 
     
