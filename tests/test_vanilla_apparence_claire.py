@@ -187,6 +187,10 @@ class NoethysCablageAUITests(unittest.TestCase):
     def test_le_aui_manager_principal_utilise_noethysSLDockArt(self):
         self.assertIn("self._mgr.SetArtProvider(UTILS_AUI_Apparence.NoethysSLDockArt())", self.source)
 
+    def test_le_aui_manager_principal_est_bien_noethysSLAuiManager(self):
+        self.assertIn("self._mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()", self.source)
+        self.assertNotIn("self._mgr = aui.AuiManager()", self.source)
+
     def test_les_trois_barres_outils_utilisent_noethysSLToolBarArt_hors_linux(self):
         motif = "tb.SetArtProvider(UTILS_AUI_Apparence.NoethysSLToolBarArt())"
         occurrences = []
@@ -205,6 +209,67 @@ class NoethysCablageAUITests(unittest.TestCase):
 
     def test_le_module_apparence_est_importe(self):
         self.assertIn("from Utils import UTILS_AUI_Apparence", self.source)
+
+
+class NoethysSLAuiManagerCaptureLostTests(unittest.TestCase):
+    """Guides de dockage fantômes après perte de capture souris (Alt+Tab
+    pendant un drag de pane non terminé) : mécanisme confirmé dans
+    wx.lib.agw.aui.framemanager (wxPython 4.2.5) -- AuiManager.
+    OnCaptureLost() (ligne ~9055) se contente d'annuler l'action en cours
+    et d'appeler HideHint() ; il n'appelle jamais
+    ShowDockingGuides(self._guides, False), contrairement à la fin normale
+    d'un drag (OnLeftUp_DragFloatingPane, ligne ~9467, qui appelle
+    systématiquement les deux). Les guides sont des wx.Frame de premier
+    niveau (style wx.FRAME_TOOL_WINDOW | wx.STAY_ON_TOP,
+    AuiSingleDockingGuide/AuiCenterDockingGuide) : ils restent donc
+    affichés au-dessus de toutes les fenêtres, y compris d'applications
+    tierces, tant qu'aucun nouveau drag ne les referme.
+    """
+
+    def setUp(self):
+        self.frame = wx.Frame(None)
+        self.addCleanup(self.frame.Destroy)
+
+    def _guides_visibles(self, mgr):
+        return [guide for guide in mgr._guides if guide.host.IsShown()]
+
+    def _mettre_en_etat_drag_avec_guides_visibles(self, mgr):
+        mgr.SetManagedWindow(self.frame)
+        self.addCleanup(mgr.DestroyGuideWindows)
+        self.addCleanup(mgr.UnInit)
+        mgr.CreateGuideWindows()
+        aui.ShowDockingGuides(mgr._guides, True)
+        mgr._action = aui.actionDragFloatingPane
+        self.assertTrue(self._guides_visibles(mgr), "précondition : au moins un guide visible avant la perte de capture")
+
+    def test_aui_manager_brut_laisse_les_guides_visibles_apres_perte_de_capture(self):
+        """Caractérise le défaut de aui.AuiManager brut (wxAGW, non modifié).
+        Ce test échouerait si un jour wx.lib.agw.aui corrigeait lui-même
+        OnCaptureLost() -- ce qui serait une bonne nouvelle, pas une
+        régression Noethys SL."""
+        mgr = aui.AuiManager()
+        self._mettre_en_etat_drag_avec_guides_visibles(mgr)
+
+        mgr.OnCaptureLost(wx.MouseCaptureLostEvent())
+
+        self.assertTrue(self._guides_visibles(mgr), "aui.AuiManager brut est censé laisser les guides visibles ici")
+
+    def test_noethys_sl_aui_manager_ferme_les_guides_apres_perte_de_capture(self):
+        mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()
+        self._mettre_en_etat_drag_avec_guides_visibles(mgr)
+
+        mgr.OnCaptureLost(wx.MouseCaptureLostEvent())
+
+        self.assertEqual(self._guides_visibles(mgr), [], "aucun guide de dockage ne doit rester visible après une perte de capture")
+        self.assertEqual(mgr._action, aui.actionNone)
+
+    def test_noethys_sl_aui_manager_reste_un_aui_manager_standard(self):
+        """La surcharge ne doit rien changer d'autre : pas de réimplémentation
+        de OnCaptureLost, uniquement un appel à la version parente suivi
+        d'une fermeture explicite des guides."""
+        mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()
+        self.addCleanup(mgr.UnInit)
+        self.assertIsInstance(mgr, aui.AuiManager)
 
 
 class ThemeNoethysSLTests(unittest.TestCase):

@@ -82,6 +82,67 @@ class NoethysSLDockArt(aui.AuiDefaultDockArt):
         self.SetColor(aui.AUI_DOCKART_ACTIVE_CAPTION_GRADIENT_COLOUR, COULEUR_FOND_CLAIRE)
 
 
+class NoethysSLAuiManager(aui.AuiManager):
+    """AuiManager principal de Noethys SL wx.
+
+    Corrige deux défauts de wx.lib.agw.aui.framemanager.AuiManager
+    (wxPython 4.2.5) par simple surcharge des points d'entrée publics
+    concernés, sans jamais réimplémenter leur logique interne :
+
+    - OnCaptureLost() (déclenché par wx.EVT_MOUSE_CAPTURE_LOST, notamment
+      lors d'un Alt+Tab pendant un drag de pane non terminé) se contente
+      d'annuler l'action en cours et d'appeler HideHint() : il n'appelle
+      jamais ShowDockingGuides(self._guides, False), contrairement à la
+      fin normale d'un drag (OnLeftUp_DragFloatingPane, qui appelle
+      systématiquement les deux). Les fenêtres de guides de dockage sont
+      des wx.Frame de premier niveau (style wx.FRAME_TOOL_WINDOW |
+      wx.STAY_ON_TOP) : en cas de perte de capture, elles restent donc
+      affichées au-dessus de toutes les fenêtres, y compris d'applications
+      tierces, jusqu'au prochain drag.
+
+    - LoadPerspective() voir la méthode ci-dessous.
+    """
+
+    def OnCaptureLost(self, event):
+        super().OnCaptureLost(event)
+        aui.ShowDockingGuides(self._guides, False)
+
+    def LoadPerspective(self, layout, update=True, restorecaption=False, restoreminimize=False):
+        # wx.lib.agw.aui.framemanager.AuiManager.LoadPerspective() ne
+        # modifie que les panes présents dans la perspective chargée (elle
+        # ignore silencieusement tout pane-outil "<nom>_min" auto-créé par
+        # MinimizePane() après la sauvegarde de cette perspective : il
+        # reste géré tel quel, caché). Si le pane d'origine "<nom>" est
+        # minimisé dans la perspective chargée, LoadPerspective() recrée
+        # elle-même un nouveau pane-outil "<nom>_min" (même mécanisme que
+        # MinimizePane()) : AddPane1() détecte alors la collision de nom
+        # avec l'ancien pane-outil resté géré et émet l'avertissement
+        # "A pane with the name '<nom>_min' already exists in the
+        # manager!", tout en laissant un second pane-outil fantôme (renommé
+        # aléatoirement) géré en plus du premier -- reproduit et vérifié
+        # mécaniquement avec wx.lib.agw.aui réel, avec et sans pane
+        # minimisé dans la perspective rechargée.
+        #
+        # On détache donc systématiquement, avant tout LoadPerspective(),
+        # tout pane-outil "_min" encore géré -- exactement comme le fait
+        # déjà RestoreMinimizedPane() sur son chemin normal (Show(False)
+        # puis DetachPane()). LoadPerspective() recrée ensuite elle-même,
+        # proprement, le pane-outil "_min" pour chaque pane resté minimisé
+        # dans la nouvelle perspective. Générique : basé uniquement sur le
+        # suffixe "_min" propre à MinimizePane(), jamais sur un nom de pane
+        # particulier ; ne touche aucun pane métier.
+        for pane in list(self._panes):
+            if pane.IsToolbar() and pane.window is not None \
+                    and isinstance(pane.window, aui.AuiToolBar) \
+                    and pane.name.endswith("_min"):
+                pane.window.Show(False)
+                self.DetachPane(pane.window)
+
+        return super().LoadPerspective(
+            layout, update=update, restorecaption=restorecaption, restoreminimize=restoreminimize,
+        )
+
+
 class NoethysSLToolBarArt(aui.AuiDefaultToolBarArt):
     """Art provider wxAUI des AuiToolBar de Noethys SL wx.
 
