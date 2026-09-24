@@ -46,6 +46,7 @@ from Utils import UTILS_Sauvegarde_auto
 from Utils import UTILS_Rapport_bugs
 from Utils import UTILS_Utilisateurs
 from Utils import UTILS_Interface
+from Utils import UTILS_AUI_Apparence
 from Utils import UTILS_Fichiers
 from Utils import UTILS_Json
 
@@ -108,29 +109,6 @@ ID_TB_CALCULATRICE = wx.Window.NewControlId()
 ID_TB_UTILISATEUR = wx.Window.NewControlId()
 
 
-def ForceApparenceClaireAUI(art):
-    """ Noethys Vanilla conserve volontairement l'interface historique
-    claire (aucune refonte UI/UX, aucun thème sombre). aui.ModernDockArt
-    calcule pourtant tout le fond/sash/gripper/bordure entre les
-    panneaux à partir d'une seule "couleur de base" lue dans les
-    couleurs système Windows (wx.lib.agw.aui.aui_utilities.GetBaseColour,
-    basée sur wx.SYS_COLOUR_3DFACE) : correcte quand Windows est en mode
-    clair, mais rendue sombre/noire si l'utilisateur a activé le mode
-    sombre des applications Windows -- Noethys n'a jamais eu de thème
-    sombre, ce n'est qu'une conséquence du réglage système.
-
-    Correction au niveau le plus bas et le plus générique possible : un
-    seul point (ici, juste après la création de l'art provider AUI),
-    plutôt que des SetBackgroundColour ajoutés fenêtre par fenêtre. Ne
-    change rien du tout quand le système est en mode clair (cas normal
-    aujourd'hui) : uniquement un filet de sécurité pour le mode sombre. """
-    try:
-        if wx.SystemSettings.GetAppearance().IsDark():
-            art.SetDefaultColours(base_colour=wx.Colour(240, 240, 240))
-    except Exception:
-        pass
-
-
 class MainFrame(wx.Frame):
     def __init__(self, parent):
         wx.Frame.__init__(self, parent, -1, title=_(u"Noethys"), name="general", style=wx.DEFAULT_FRAME_STYLE)
@@ -140,7 +118,7 @@ class MainFrame(wx.Frame):
 ##        try : locale.setlocale(locale.LC_ALL, 'FR')
 ##        except : pass
 
-        theme = CUSTOMIZE.GetValeur("interface", "theme", "Vert")
+        theme = UTILS_Interface.GetTheme()
 
         # Icône
         try :
@@ -235,12 +213,10 @@ class MainFrame(wx.Frame):
         self.SetTitleFrame(nomFichier="")
 
         # Création du AUI de la fenêtre
-        self._mgr = aui.AuiManager()
+        self._mgr = UTILS_AUI_Apparence.NoethysSLAuiManager()
         if "linux" not in sys.platform :
             try :
-                art = aui.ModernDockArt(self)
-                self._mgr.SetArtProvider(art)
-                ForceApparenceClaireAUI(art)
+                self._mgr.SetArtProvider(UTILS_AUI_Apparence.NoethysSLDockArt())
             except :
                 pass
         self._mgr.SetManagedWindow(self)
@@ -559,6 +535,11 @@ class MainFrame(wx.Frame):
         
         # Barre raccourcis --------------------------------------------------
         tb = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, agwStyle=aui.AUI_TB_DEFAULT_STYLE | aui.AUI_TB_OVERFLOW | aui.AUI_TB_TEXT | aui.AUI_TB_HORZ_TEXT)
+        if "linux" not in sys.platform :
+            try :
+                tb.SetArtProvider(UTILS_AUI_Apparence.NoethysSLToolBarArt())
+            except :
+                pass
         tb.SetToolBitmapSize(wx.Size(16, 16))
         tb.AddSimpleTool(ID_TB_GESTIONNAIRE, _(u"Gestionnaire des conso."), wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Calendrier.png"), wx.BITMAP_TYPE_PNG), _(u"Accéder au gestionnaire des consommations"))
         tb.AddSimpleTool(ID_TB_LISTE_CONSO, _(u"Liste des conso."), wx.Bitmap(Chemins.GetStaticPath("Images/16x16/Imprimante.png"), wx.BITMAP_TYPE_PNG), _(u"Imprimer une liste de consommations"))
@@ -580,6 +561,11 @@ class MainFrame(wx.Frame):
         
         # Barre Utilisateur --------------------------------------------------
         tb = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, agwStyle=aui.AUI_TB_DEFAULT_STYLE | aui.AUI_TB_OVERFLOW | aui.AUI_TB_TEXT | aui.AUI_TB_HORZ_TEXT)
+        if "linux" not in sys.platform :
+            try :
+                tb.SetArtProvider(UTILS_AUI_Apparence.NoethysSLToolBarArt())
+            except :
+                pass
         tb.SetToolBitmapSize(wx.Size(16, 16))
         self.ctrl_identification = CTRL_Identification.CTRL(tb, listeUtilisateurs=self.listeUtilisateurs, size=(80, -1))
         tb.AddControl(self.ctrl_identification)
@@ -633,6 +619,11 @@ class MainFrame(wx.Frame):
         # Init ToolBar
         if ctrl == None :
             tb = aui.AuiToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize, agwStyle=agwStyle)
+            if "linux" not in sys.platform :
+                try :
+                    tb.SetArtProvider(UTILS_AUI_Apparence.NoethysSLToolBarArt())
+                except :
+                    pass
             tb.SetToolBitmapSize(wx.Size(16, 16))
         else :
             tb = ctrl
@@ -2506,6 +2497,10 @@ class MainFrame(wx.Frame):
         panneau = self._mgr.GetPane(self.listePanneaux[index]["code"])
         if panneau.IsShown() :
             panneau.Hide()
+        elif panneau.IsMinimized():
+            # Un pane minimisé possède une toolbar AGW de restauration :
+            # un simple Show() désynchroniserait les deux états.
+            self._mgr.RestoreManagedMinimizedPane(panneau)
         else:
             panneau.Show()
         self._mgr.Update()
@@ -4407,6 +4402,16 @@ class MyApp(wx.App):
     #     self.ResetLocale()
 
     def OnInit(self):
+        # Noethys SL 0.1.0 reste volontairement en apparence claire.
+        # Désactiver le dark mode natif wxMSW avant de construire le moindre
+        # contrôle évite que StaticBox, boutons et autres widgets natifs
+        # reprennent des cadres/fonds noirs depuis Windows.
+        if wx.Platform == "__WXMSW__":
+            try:
+                wx.SystemOptions.SetOption("msw.dark-mode", 0)
+            except Exception:
+                pass
+
         # Adaptation pour rétrocompatibilité wx2.8
         if wx.VERSION < (2, 9, 0, 0) :
             wx.InitAllImageHandlers()
@@ -4421,7 +4426,7 @@ class MyApp(wx.App):
             dlg.Destroy()
 
         # Lit les paramètres de l'interface
-        theme = CUSTOMIZE.GetValeur("interface", "theme", "Vert")
+        theme = UTILS_Interface.GetTheme()
 
         # AdvancedSplashScreen
         splash = None

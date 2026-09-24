@@ -63,8 +63,9 @@ class ObjectListView(OLV.ObjectListView):
             self.stEmptyListMsg.SetBackgroundColour(self.GetBackgroundColour())
         else :
             self.Enable(False)
-            couleur = wx.SystemSettings.GetColour(wx.SYS_COLOUR_FRAMEBK)# self.stEmptyListMsg.GetBackgroundColour()
-            self.stEmptyListMsg.SetBackgroundColour(couleur)
+            # Ne pas réinjecter SYS_COLOUR_FRAMEBK : sous Windows sombre,
+            # cette couleur peut devenir noire alors que Noethys SL reste clair.
+            self.stEmptyListMsg.SetBackgroundColour(self.GetBackgroundColour())
         self.stEmptyListMsg.Refresh()
 
     def SetColumns(self, columns, repopulate=True):
