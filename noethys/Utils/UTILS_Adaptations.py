@@ -47,6 +47,26 @@ if 'phoenix' in wx.PlatformInfo:
     wx.Image.Scale = _ImageScaleEntier
     wx.Image.Rescale = _ImageRescaleEntier
 
+    # wx.lib.agw.supertooltip.ToolTipWindowBase.CalculateBestSize() fait
+    # `largeur, hauteur = self.OnPaint(None); self.SetSize((largeur, hauteur))`.
+    # OnPaint() mélange division entière (//) et division réelle (/) selon
+    # les options du tooltip : dès qu'un bitmap de pied de page est défini
+    # (SetFooterBitmap), le calcul de la hauteur totale passe par une
+    # division réelle et devient un flottant. SetSize() reçoit alors une
+    # hauteur flottante, ce qui tronque visuellement le tooltip sous
+    # wxPython 4.2.5 (ex. hauteur ~20px au lieu de la hauteur réelle du
+    # message sur 8-10 lignes) au lieu de lever une erreur.
+    # On rejoue exactement le même calcul (OnPaint(None) est inchangé,
+    # public, et documenté pour être appelable avec event=None) en forçant
+    # des coordonnées entières, sans modifier wx.lib.agw.supertooltip.
+    import wx.lib.agw.supertooltip as _STT
+
+    def _ToolTipCalculateBestSizeEntier(self):
+        largeur, hauteur = self.OnPaint(None)
+        self.SetSize((int(largeur), int(hauteur)))
+
+    _STT.ToolTipWindowBase.CalculateBestSize = _ToolTipCalculateBestSizeEntier
+
 
 def Import(nom_module=""):
     # Essaye d'importer

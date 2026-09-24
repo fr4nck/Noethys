@@ -66,6 +66,21 @@ class NoethysSLDockArtTests(unittest.TestCase):
         # winxptheme, de ModernDockArt.
         self.assertIs(type(art).DrawCaptionBackground, aui.AuiDefaultDockArt.DrawCaptionBackground)
 
+    def test_dessin_legende_utilise_des_coordonnees_entieres(self):
+        """ModernDockArt.DrawCaption() calcule ses coordonnées de texte en
+        division réelle (`rect.height/2 - h/2 - diff`, wx/lib/agw/aui/
+        dockart.py ~1038-1040) : sous wxPython 4.2.5, dc.DrawText() lève
+        TypeError("argument 3 has unexpected type 'float'") — cause
+        probable des bandes noires en thème Windows sombre (l'exception
+        interrompt framemanager.OnRender avant la fin du rendu).
+        AuiDefaultDockArt.DrawCaption() calcule les mêmes coordonnées en
+        division entière (`//`) : en dérivant de cette classe et jamais de
+        ModernDockArt, ce chemin d'erreur est éliminé structurellement.
+        Ce test échouerait si Noethys revenait un jour à ModernDockArt."""
+        art = UTILS_AUI_Apparence.NoethysSLDockArt()
+        self.assertIs(type(art).DrawCaption, aui.AuiDefaultDockArt.DrawCaption)
+        self.assertIsNot(type(art).DrawCaption, aui.ModernDockArt.DrawCaption)
+
     def test_palette_claire_des_la_construction(self):
         art = UTILS_AUI_Apparence.NoethysSLDockArt()
         for id_couleur in (
