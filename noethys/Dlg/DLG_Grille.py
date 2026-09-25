@@ -418,6 +418,14 @@ class Dialog(wx.Dialog):
         else:
             self._mgr.LoadPerspective(self.perspective_defaut)
 
+        # Une ancienne perspective peut mémoriser l'ancienne largeur de 230 px
+        # et ré-écraser le BestSize du sélecteur. On réapplique donc ici son
+        # espace minimal après le chargement de toute perspective.
+        pane_periode = self._mgr.GetPane("periode")
+        pane_periode.MinSize((300, 170))
+        pane_periode.BestSize(wx.Size(320, 190))
+        pane_periode.Resizable(True)
+
         self._mgr.Update()
         
         self.Bind(wx.EVT_CLOSE, self.OnClose)
