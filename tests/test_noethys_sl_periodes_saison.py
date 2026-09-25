@@ -15,6 +15,7 @@ DLG_ETAT_NOMIN = ROOT / "noethys" / "Dlg" / "DLG_Etat_nomin.py"
 DLG_DEVIS = ROOT / "noethys" / "Dlg" / "DLG_Impression_devis.py"
 DLG_SYNTHESE = ROOT / "noethys" / "Dlg" / "DLG_Synthese_conso.py"
 DLG_LOT = ROOT / "noethys" / "Dlg" / "DLG_Saisie_lot_conso.py"
+DLG_PARAMETRES_REMPLISSAGE = ROOT / "noethys" / "Dlg" / "DLG_Parametres_remplissage.py"
 
 spec = importlib.util.spec_from_file_location("UTILS_PeriodesSaison", UTILS)
 periodes = importlib.util.module_from_spec(spec)
@@ -212,6 +213,24 @@ class PeriodesSaisonTests(unittest.TestCase):
         fin = source.index("class Dates(wx.Panel):", debut)
         bloc = source[debut:fin]
         self.assertNotIn("wx.EVT_KILL_FOCUS", bloc)
+
+
+
+    def test_selecteur_commun_affiche_les_cinq_onglets_sans_fleches(self):
+        source = CTRL.read_text(encoding="utf-8")
+        self.assertIn("self.notebook.SetMinSize((300, -1))", source)
+        self.assertIn("self.SetMinSize((300, -1))", source)
+
+        attentes = {
+            DLG_ETAT_NOMIN: "self.ctrl_periode.SetMinSize((300, 205))",
+            DLG_SYNTHESE: "self.ctrl_periode.SetMinSize((300, 205))",
+            DLG_PARAMETRES_REMPLISSAGE: "self.ctrl_periodes.SetMinSize((300, 230))",
+        }
+        for fichier, marqueur in attentes.items():
+            source = fichier.read_text(encoding="utf-8")
+            self.assertIn(marqueur, source, fichier.name)
+            self.assertNotIn("SetMinSize((235, 205))", source, fichier.name)
+            self.assertNotIn("SetMinSize((220, 230))", source, fichier.name)
 
 
 
