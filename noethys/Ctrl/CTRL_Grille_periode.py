@@ -585,6 +585,15 @@ class CTRL(wx.Panel):
         if dictDonnees == None : return
         self.evtActif = False
         numPage = dictDonnees["page"]
+        # Tolère une préférence mémorisée par une version possédant davantage
+        # d'onglets (par exemple Saison) sans faire planter wx.Notebook.
+        try:
+            numPage = int(numPage)
+        except Exception:
+            numPage = 0
+        if numPage < 0 or numPage >= self.notebook.GetPageCount():
+            numPage = 0
+
         annee = dictDonnees["annee"]
         listeSelections = dictDonnees["listeSelections"]
         dateDebut = dictDonnees["dateDebut"]
