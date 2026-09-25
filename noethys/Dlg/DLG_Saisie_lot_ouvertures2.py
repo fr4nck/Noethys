@@ -693,12 +693,6 @@ class Dialog(wx.Dialog):
         self.ctrl_vacances = CTRL_Jours(self, "vacances")
         self.label_semaines = wx.StaticText(self, -1, _(u"Fréquence :"))
         self.ctrl_semaines = CTRL_Semaines(self)
-        self.ctrl_vacances_dimanche = wx.CheckBox(
-            self,
-            -1,
-            _(u"Vacances sportives : du dimanche au dimanche (conserver le 1er samedi)"),
-        )
-        self.ctrl_vacances_dimanche.SetValue(False)
 
         self.bouton_aide = CTRL_Bouton_image.CTRL(self, texte=_(u"Aide"), cheminImage="Images/32x32/Aide.png")
         self.bouton_ok = CTRL_Bouton_image.CTRL(self, texte=_(u"Ok"), cheminImage="Images/32x32/Valider.png")
@@ -717,10 +711,6 @@ class Dialog(wx.Dialog):
         self.ctrl_date_debut.SetToolTip(wx.ToolTip(_(u"Sélectionnez une date de début de période cible")))
         self.ctrl_date_fin.SetToolTip(wx.ToolTip(_(u"Sélectionnez une date de fin de période cible")))
         self.ctrl_semaines.SetToolTip(wx.ToolTip(_(u"Sélectionnez une fréquence")))
-        self.ctrl_vacances_dimanche.SetToolTip(wx.ToolTip(
-            _(u"Pour les activités sportives : conserve le samedi de départ en vacances, "
-              u"puis considère la période en vacances du dimanche jusqu'au dimanche de fin.")
-        ))
         self.ctrl_feries.SetToolTip(wx.ToolTip(_(u"Cochez cette case pour modifier également les jours fériés")))
         self.bouton_aide.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour obtenir de l'aide")))
         self.bouton_ok.SetToolTip(wx.ToolTip(_(u"Cliquez ici pour valider")))
@@ -758,8 +748,6 @@ class Dialog(wx.Dialog):
         grid_sizer_jours.Add(self.ctrl_vacances, 0, wx.EXPAND, 0)
         grid_sizer_jours.Add(self.label_semaines, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 0)
         grid_sizer_jours.Add(self.ctrl_semaines, 0, wx.EXPAND, 0)
-        grid_sizer_jours.Add((5, 5), 0, 0, 0)
-        grid_sizer_jours.Add(self.ctrl_vacances_dimanche, 0, wx.EXPAND, 0)
         #grid_sizer_jours.Add(self.label_feries, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 0)
         #grid_sizer_jours.Add(self.ctrl_feries, 0, wx.EXPAND, 0)
         grid_sizer_jours.AddGrowableCol(1)
@@ -828,7 +816,6 @@ class Dialog(wx.Dialog):
 
         feries = self.ctrl_feries.GetValue()
         semaines = self.ctrl_semaines.GetValeur()
-        vacances_dimanche_dimanche = self.ctrl_vacances_dimanche.GetValue()
 
         # Mémorisation des données
         self.dictDonnees = {
@@ -839,7 +826,6 @@ class Dialog(wx.Dialog):
             "jours_vacances": jours_vacances,
             "semaines": semaines,
             "feries": feries,
-            "vacances_dimanche_dimanche": vacances_dimanche_dimanche,
             }
 
         # Validation des données
