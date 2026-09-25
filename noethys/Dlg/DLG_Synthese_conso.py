@@ -274,7 +274,7 @@ class Parametres(wx.Panel):
             selection_multiple=False,
             callback_selection=self.OnChoixDate,
         )
-        self.ctrl_periode.SetMinSize((235, 205))
+        self.ctrl_periode.SetMinSize((300, 205))
         annee = datetime.date.today().year
         self.ctrl_periode.SetDictDonnees({
             "page": 2,
