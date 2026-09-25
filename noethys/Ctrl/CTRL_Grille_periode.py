@@ -361,11 +361,9 @@ class Saison(wx.Panel):
 
         self.listePeriodes = [
             ("saison", _(u"Saison complète (sept.-août)")),
-            ("trimestre_courant", _(u"Trimestre en cours")),
             ("trimestre_1", _(u"1er trimestre (sept.-déc.)")),
             ("trimestre_2", _(u"2e trimestre (janv.-mars)")),
             ("trimestre_3", _(u"3e trimestre (avr.-août)")),
-            ("semestre_courant", _(u"Semestre en cours")),
             ("semestre_1", _(u"1er semestre (sept.-févr.)")),
             ("semestre_2", _(u"2e semestre (mars-août)")),
         ]
@@ -420,27 +418,13 @@ class Saison(wx.Panel):
             return None
         return self.listePeriodes[index][0]
 
-    def _SelectionnerCode(self, code):
-        for index, (code_periode, label) in enumerate(self.listePeriodes):
-            if code_periode == code:
-                self.ctrl_periode.SetSelection(index)
-                return
-
     def OnSelectionAnnee(self, event):
         self.ctrl_annee.Normaliser()
-        code = self._GetCodeSelectionne()
-        if code == "trimestre_courant":
-            self._SelectionnerCode(UTILS_PeriodesSaison.GetCodeTrimestreEnCours())
-        elif code == "semestre_courant":
-            self._SelectionnerCode(UTILS_PeriodesSaison.GetCodeSemestreEnCours())
         self.GetGrandParent().OnSelection()
         if event is not None:
             event.Skip()
 
     def OnSelectionPeriode(self, event):
-        code = self._GetCodeSelectionne()
-        if code in ("trimestre_courant", "semestre_courant"):
-            self.ctrl_annee.SetAnnee(UTILS_PeriodesSaison.GetAnneeDebutSaison())
         self.GetGrandParent().OnSelection()
 
     def SetSelectionIndex(self, indexSelection=None):
