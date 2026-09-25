@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 UTILS = ROOT / "noethys" / "Utils" / "UTILS_PeriodesSaison.py"
 CTRL = ROOT / "noethys" / "Ctrl" / "CTRL_Grille_periode.py"
+DLG_ETAT_GLOBAL = ROOT / "noethys" / "Dlg" / "DLG_Etat_global.py"
 
 spec = importlib.util.spec_from_file_location("UTILS_PeriodesSaison", UTILS)
 periodes = importlib.util.module_from_spec(spec)
@@ -93,6 +94,26 @@ class PeriodesSaisonTests(unittest.TestCase):
         self.assertIn('dictDonnees["page"] = 4', source)
         self.assertIn('dictDonnees["annee"] = page.ctrl_annee.GetValue()', source)
         self.assertIn('dictDonnees["listePeriodes"] = self.GetDatesSelections()', source)
+
+    def test_selecteur_commun_peut_imposer_une_selection_simple(self):
+        source = CTRL.read_text(encoding="utf-8")
+        self.assertIn("selection_multiple=True", source)
+        self.assertIn("wx.LB_EXTENDED if selection_multiple else wx.LB_SINGLE", source)
+        self.assertIn("callback_selection=None", source)
+
+    def test_etat_global_reutilise_le_selecteur_commun(self):
+        source = DLG_ETAT_GLOBAL.read_text(encoding="utf-8")
+        self.assertIn("from Ctrl import CTRL_Grille_periode", source)
+        self.assertIn("self.ctrl_periode = CTRL_Grille_periode.CTRL(", source)
+        self.assertIn("selection_multiple=False", source)
+        self.assertIn("callback_selection=self.OnChoixDate", source)
+        self.assertNotIn("CTRL_Saisie_date.Date2", source)
+
+    def test_etat_global_conserve_une_periode_continue(self):
+        source = DLG_ETAT_GLOBAL.read_text(encoding="utf-8")
+        self.assertIn("liste_periodes = self.ctrl_periode.GetDatesSelections()", source)
+        self.assertIn("if len(liste_periodes) != 1:", source)
+        self.assertIn("date_debut, date_fin = self.panel_parametres.GetPeriode()", source)
 
 
 if __name__ == "__main__":
