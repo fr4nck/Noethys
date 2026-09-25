@@ -234,5 +234,16 @@ class PeriodesSaisonTests(unittest.TestCase):
 
 
 
+    def test_listbox_ne_surcharge_pas_getselections_de_wx(self):
+        source = CTRL.read_text(encoding="utf-8")
+        debut = source.index("class CTRL_ListBox(wx.ListBox):")
+        fin = source.index("# --------------------------------------------------------------------------------------------------------", debut)
+        bloc = source[debut:fin]
+        self.assertNotIn("def GetSelections(", bloc)
+        self.assertIn("def GetSelectionIndices(self):", bloc)
+        self.assertIn("wx.ListBox.GetSelections(self)", bloc)
+
+
+
 if __name__ == "__main__":
     unittest.main()
