@@ -286,5 +286,16 @@ class PeriodesSaisonTests(unittest.TestCase):
 
 
 
+    def test_page_memorisee_hors_limites_ne_fait_pas_planter_le_notebook(self):
+        source = CTRL.read_text(encoding="utf-8")
+        debut = source.index("def SetDictDonnees")
+        fin = source.index("def GetDictDonnees", debut)
+        bloc = source[debut:fin]
+        self.assertIn("self.notebook.GetPageCount()", bloc)
+        self.assertIn("if numPage < 0 or numPage >= self.notebook.GetPageCount():", bloc)
+        self.assertIn("numPage = 0", bloc)
+
+
+
 if __name__ == "__main__":
     unittest.main()
