@@ -11,6 +11,10 @@ ROOT = Path(__file__).resolve().parents[1]
 UTILS = ROOT / "noethys" / "Utils" / "UTILS_PeriodesSaison.py"
 CTRL = ROOT / "noethys" / "Ctrl" / "CTRL_Grille_periode.py"
 DLG_ETAT_GLOBAL = ROOT / "noethys" / "Dlg" / "DLG_Etat_global.py"
+DLG_ETAT_NOMIN = ROOT / "noethys" / "Dlg" / "DLG_Etat_nomin.py"
+DLG_DEVIS = ROOT / "noethys" / "Dlg" / "DLG_Impression_devis.py"
+DLG_SYNTHESE = ROOT / "noethys" / "Dlg" / "DLG_Synthese_conso.py"
+DLG_LOT = ROOT / "noethys" / "Dlg" / "DLG_Saisie_lot_conso.py"
 
 spec = importlib.util.spec_from_file_location("UTILS_PeriodesSaison", UTILS)
 periodes = importlib.util.module_from_spec(spec)
@@ -114,6 +118,41 @@ class PeriodesSaisonTests(unittest.TestCase):
         self.assertIn("liste_periodes = self.ctrl_periode.GetDatesSelections()", source)
         self.assertIn("if len(liste_periodes) != 1:", source)
         self.assertIn("date_debut, date_fin = self.panel_parametres.GetPeriode()", source)
+
+
+    def test_ecrans_metier_reutilisent_le_selecteur_commun(self):
+        fichiers = [
+            DLG_ETAT_GLOBAL,
+            DLG_ETAT_NOMIN,
+            DLG_DEVIS,
+            DLG_SYNTHESE,
+            DLG_LOT,
+        ]
+        for fichier in fichiers:
+            source = fichier.read_text(encoding="utf-8")
+            self.assertIn("CTRL_Grille_periode", source, fichier.name)
+            self.assertIn("selection_multiple=False", source, fichier.name)
+
+    def test_anciens_selecteurs_de_periode_sont_retires(self):
+        for fichier in (DLG_ETAT_GLOBAL, DLG_DEVIS, DLG_SYNTHESE, DLG_LOT):
+            source = fichier.read_text(encoding="utf-8")
+            self.assertNotIn("ctrl_date_debut", source, fichier.name)
+            self.assertNotIn("ctrl_date_fin", source, fichier.name)
+
+        # Etat nominatif conserve volontairement les deux dates du filtre
+        # de naissance ; sa période principale passe, elle, par CTRL_Periode.
+        source = DLG_ETAT_NOMIN.read_text(encoding="utf-8")
+        debut = source.index("class CTRL_Periode")
+        fin = source.index("# -------------------------------------------------------------------------------------------------------------------------------------------------", debut)
+        bloc_periode = source[debut:fin]
+        self.assertIn("CTRL_Grille_periode.CTRL", bloc_periode)
+        self.assertNotIn("CTRL_Saisie_date.Date", bloc_periode)
+
+    def test_ecrans_continus_refusent_plusieurs_periodes(self):
+        for fichier in (DLG_ETAT_GLOBAL, DLG_ETAT_NOMIN, DLG_DEVIS, DLG_SYNTHESE, DLG_LOT):
+            source = fichier.read_text(encoding="utf-8")
+            self.assertIn("len(liste) != 1", source, fichier.name)
+
 
 
 if __name__ == "__main__":
