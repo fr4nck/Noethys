@@ -287,7 +287,7 @@ class CTRL_Saison(wx.ComboBox):
         self.SetToolTip(wx.ToolTip(
             _(u"Sélectionnez une saison ou saisissez directement son année de début")
         ))
-        self.SetValue(UTILS_PeriodesSaison.GetAnneeDebutSaison())
+        self.SetAnnee(UTILS_PeriodesSaison.GetAnneeDebutSaison())
 
     def _Formater(self, annee):
         return u"%d - %d" % (annee, annee + 1)
@@ -307,7 +307,7 @@ class CTRL_Saison(wx.ComboBox):
         fin = min(datetime.MAXYEAR - 1, annee_centre + self.NB_SAISONS_AUTOUR)
         self.Set([self._Formater(annee) for annee in range(debut, fin + 1)])
 
-    def SetValue(self, annee):
+    def SetAnnee(self, annee):
         try:
             annee = int(annee)
         except Exception:
@@ -317,16 +317,16 @@ class CTRL_Saison(wx.ComboBox):
         self._RafraichirChoix(annee)
         wx.ComboBox.SetValue(self, self._Formater(annee))
 
-    def GetValue(self):
+    def GetAnnee(self):
         annee = self._Parser(wx.ComboBox.GetValue(self))
         if annee is None:
             annee = UTILS_PeriodesSaison.GetAnneeDebutSaison()
-            self.SetValue(annee)
+            self.SetAnnee(annee)
         return annee
 
     def Normaliser(self):
-        annee = self.GetValue()
-        self.SetValue(annee)
+        annee = self.GetAnnee()
+        self.SetAnnee(annee)
         return annee
 
 
@@ -390,7 +390,7 @@ class Saison(wx.Panel):
         self.ctrl_annee.Bind(wx.EVT_KILL_FOCUS, self.OnSelectionAnnee)
         self.ctrl_periode.Bind(wx.EVT_LISTBOX, self.OnSelectionPeriode)
 
-        self.ctrl_annee.SetValue(UTILS_PeriodesSaison.GetAnneeDebutSaison())
+        self.ctrl_annee.SetAnnee(UTILS_PeriodesSaison.GetAnneeDebutSaison())
         self.ctrl_periode.SetSelection(0)
 
     def _GetCodeSelectionne(self):
@@ -419,7 +419,7 @@ class Saison(wx.Panel):
     def OnSelectionPeriode(self, event):
         code = self._GetCodeSelectionne()
         if code in ("trimestre_courant", "semestre_courant"):
-            self.ctrl_annee.SetValue(UTILS_PeriodesSaison.GetAnneeDebutSaison())
+            self.ctrl_annee.SetAnnee(UTILS_PeriodesSaison.GetAnneeDebutSaison())
         self.GetGrandParent().OnSelection()
 
     def SetSelectionIndex(self, indexSelection=None):
@@ -445,7 +445,7 @@ class Saison(wx.Panel):
         return [
             UTILS_PeriodesSaison.GetPeriodeSaison(
                 code,
-                annee_debut=self.ctrl_annee.GetValue(),
+                annee_debut=self.ctrl_annee.GetAnnee(),
             )
         ]
 
@@ -622,8 +622,7 @@ class CTRL(wx.Panel):
         if numPage == 4 :
             # Saison
             if annee != None :
-                page.ctrl_annee.SetValue(annee)
-                page.MAJ()
+                page.ctrl_annee.SetAnnee(annee)
             if len(listeSelections) > 0 :
                 page.SetSelectionIndex(listeSelections[0])
         
@@ -680,7 +679,7 @@ class CTRL(wx.Panel):
                 dictDonnees["listeSelections"] = []
             else :
                 dictDonnees["listeSelections"] = [indexSelection]
-            dictDonnees["annee"] = page.ctrl_annee.GetValue()
+            dictDonnees["annee"] = page.ctrl_annee.GetAnnee()
             dictDonnees["dateDebut"] = None
             dictDonnees["dateFin"] = None
         
