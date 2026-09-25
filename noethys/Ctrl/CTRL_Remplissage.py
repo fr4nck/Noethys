@@ -966,6 +966,12 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
     def __init__(self, parent, dictDonnees=None):
         gridlib.Grid.__init__(self, parent, -1, size=(1, 1), style=wx.WANTS_CHARS)
         glr.GridWithLabelRenderersMixin.__init__(self)
+        # Réduit le scintillement lors des reconstructions complètes sous Windows.
+        try:
+            self.SetDoubleBuffered(True)
+            self.GetGridWindow().SetDoubleBuffered(True)
+        except Exception:
+            pass
         self.listePeriodes = []
         self.listeActivites = []
         self.dictLignes = {}
@@ -1036,10 +1042,19 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         self.modeAffichage = mode
 
     def MAJ(self):
+        # wx.Grid peut repeindre entre DeleteRows/DeleteCols/InitGrid sous
+        # Windows. Le batch garde l'ancienne image à l'écran jusqu'à ce que
+        # toute la nouvelle grille soit prête.
         self.Freeze()
-        self.MAJ_donnees()
-        self.MAJ_affichage()
-        self.Thaw()
+        self.BeginBatch()
+        try:
+            self.MAJ_donnees()
+            self.MAJ_affichage()
+        finally:
+            self.EndBatch()
+            self.Thaw()
+        # Un seul repaint final, une fois la grille complètement reconstruite.
+        self.ForceRefresh()
             
     def MAJ_donnees(self):
         if self.dictDonnees != None :
@@ -1060,7 +1075,6 @@ class CTRL(gridlib.Grid, glr.GridWithLabelRenderersMixin):
             self.DeleteCols(0, self.GetNumberCols())
         self.ClearGrid()
         self.InitGrid()
-        self.Refresh()
                 
     def InitGrid(self):
         # ----------------- Création des colonnes -------------------------
