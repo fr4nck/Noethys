@@ -85,10 +85,11 @@ class CTRL_ListBox(wx.ListBox):
             self.SetToolTip(wx.ToolTip(_(u"Sélectionnez une période")))
         self.listeChoix = []
 
-    def GetSelections(self):
+    def GetSelectionIndices(self):
+        """Retourne les index sélectionnés sans surcharger l'API wx native."""
         if self.selection_multiple:
-            return wx.ListBox.GetSelections(self)
-        index = self.GetSelection()
+            return list(wx.ListBox.GetSelections(self))
+        index = wx.ListBox.GetSelection(self)
         if index == wx.NOT_FOUND:
             return []
         return [index]
@@ -96,7 +97,7 @@ class CTRL_ListBox(wx.ListBox):
     def SetListeChoix(self, listeChoix=[], conserveSelections=False):
         # Format : (nomItem, date_debut, date_fin)
         self.listeChoix = listeChoix
-        listeSelections = self.GetSelections()
+        listeSelections = self.GetSelectionIndices()
         self.Clear()
         listeItems = []
         for nomItem, date_debut, date_fin in listeChoix :
@@ -107,7 +108,7 @@ class CTRL_ListBox(wx.ListBox):
                 self.Select(indexSelection)
     
     def GetDatesSelections(self):
-        listeSelections = self.GetSelections()
+        listeSelections = self.GetSelectionIndices()
         listeDatesSelections = []
         for indexSelection in listeSelections :
             date_debut = self.listeChoix[indexSelection][1]
@@ -124,7 +125,7 @@ class CTRL_ListBox(wx.ListBox):
     
     def SetVisibleSelection(self):
         try :
-            indexSelection = self.GetSelections()[0]
+            indexSelection = self.GetSelectionIndices()[0]
             self.Select(indexSelection)
             self.EnsureVisible(indexSelection)
         except Exception as err :
@@ -666,7 +667,7 @@ class CTRL(wx.Panel):
         # Mois
         if numPage == 0 :
             dictDonnees["page"] = 0
-            dictDonnees["listeSelections"] = page.ctrl_mois.GetSelections()
+            dictDonnees["listeSelections"] = page.ctrl_mois.GetSelectionIndices()
             dictDonnees["annee"] = page.ctrl_annee.GetValue()
             dictDonnees["dateDebut"] = None
             dictDonnees["dateFin"] = None
@@ -674,7 +675,7 @@ class CTRL(wx.Panel):
         # Vacances
         if numPage == 1 :
             dictDonnees["page"] = 1
-            dictDonnees["listeSelections"] = page.ctrl_periode.GetSelections()
+            dictDonnees["listeSelections"] = page.ctrl_periode.GetSelectionIndices()
             dictDonnees["annee"] = page.ctrl_annee.GetValue()
             dictDonnees["dateDebut"] = None
             dictDonnees["dateFin"] = None
