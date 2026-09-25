@@ -1,0 +1,99 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import datetime
+import importlib.util
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+UTILS = ROOT / "noethys" / "Utils" / "UTILS_PeriodesSaison.py"
+CTRL = ROOT / "noethys" / "Ctrl" / "CTRL_Grille_periode.py"
+
+spec = importlib.util.spec_from_file_location("UTILS_PeriodesSaison", UTILS)
+periodes = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(periodes)
+
+
+class PeriodesSaisonTests(unittest.TestCase):
+    def test_saison_courante_bascule_en_septembre(self):
+        self.assertEqual(
+            periodes.GetAnneeDebutSaison(datetime.date(2026, 9, 24)),
+            2026,
+        )
+        self.assertEqual(
+            periodes.GetAnneeDebutSaison(datetime.date(2027, 8, 31)),
+            2026,
+        )
+
+    def test_bornes_saison_et_trimestres(self):
+        bornes = periodes.GetBornesPeriodesSaison(2026)
+        self.assertEqual(
+            bornes["saison"],
+            (datetime.date(2026, 9, 1), datetime.date(2027, 8, 31)),
+        )
+        self.assertEqual(
+            bornes["trimestre_1"],
+            (datetime.date(2026, 9, 1), datetime.date(2026, 12, 31)),
+        )
+        self.assertEqual(
+            bornes["trimestre_2"],
+            (datetime.date(2027, 1, 1), datetime.date(2027, 3, 31)),
+        )
+        self.assertEqual(
+            bornes["trimestre_3"],
+            (datetime.date(2027, 4, 1), datetime.date(2027, 8, 31)),
+        )
+
+    def test_bornes_semestres_et_annee_bissextile(self):
+        bornes = periodes.GetBornesPeriodesSaison(2027)
+        self.assertEqual(
+            bornes["semestre_1"],
+            (datetime.date(2027, 9, 1), datetime.date(2028, 2, 29)),
+        )
+        self.assertEqual(
+            bornes["semestre_2"],
+            (datetime.date(2028, 3, 1), datetime.date(2028, 8, 31)),
+        )
+
+    def test_raccourcis_en_cours_utilisent_la_date_reelle(self):
+        self.assertEqual(
+            periodes.GetPeriodeSaison(
+                "trimestre_courant",
+                annee_debut=2020,
+                date_reference=datetime.date(2026, 9, 24),
+            ),
+            (datetime.date(2026, 9, 1), datetime.date(2026, 12, 31)),
+        )
+        self.assertEqual(
+            periodes.GetPeriodeSaison(
+                "semestre_courant",
+                annee_debut=2020,
+                date_reference=datetime.date(2027, 3, 1),
+            ),
+            (datetime.date(2027, 3, 1), datetime.date(2027, 8, 31)),
+        )
+
+    def test_onglet_saison_est_ajoute_apres_les_quatre_onglets_historiques(self):
+        source = CTRL.read_text(encoding="utf-8")
+        marqueurs = [
+            'self.notebook.AddPage(self.page_mois, _(u"Mois"))',
+            'self.notebook.AddPage(self.page_vacances, _(u"Vacances"))',
+            'self.notebook.AddPage(self.page_annee, _(u"Année"))',
+            'self.notebook.AddPage(self.page_dates, _(u"Dates"))',
+            'self.notebook.AddPage(self.page_saison, _(u"Saison"))',
+        ]
+        positions = [source.index(marqueur) for marqueur in marqueurs]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_onglet_saison_reutilise_le_format_de_persistance_existant(self):
+        source = CTRL.read_text(encoding="utf-8")
+        self.assertIn("if numPage == 4 :", source)
+        self.assertIn('dictDonnees["page"] = 4', source)
+        self.assertIn('dictDonnees["annee"] = page.ctrl_annee.GetValue()', source)
+        self.assertIn('dictDonnees["listePeriodes"] = self.GetDatesSelections()', source)
+
+
+if __name__ == "__main__":
+    unittest.main()
