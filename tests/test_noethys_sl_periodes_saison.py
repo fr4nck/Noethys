@@ -245,5 +245,28 @@ class PeriodesSaisonTests(unittest.TestCase):
 
 
 
+    def test_saison_n_affiche_que_des_periodes_fixes(self):
+        source = CTRL.read_text(encoding="utf-8")
+        debut = source.index("class Saison(wx.Panel):")
+        fin = source.index("class Dates(wx.Panel):", debut)
+        bloc = source[debut:fin]
+
+        for code in (
+            "saison",
+            "trimestre_1",
+            "trimestre_2",
+            "trimestre_3",
+            "semestre_1",
+            "semestre_2",
+        ):
+            self.assertIn('("%s",' % code, bloc)
+
+        self.assertNotIn('"trimestre_courant"', bloc)
+        self.assertNotIn('"semestre_courant"', bloc)
+        self.assertNotIn("Trimestre en cours", bloc)
+        self.assertNotIn("Semestre en cours", bloc)
+
+
+
 if __name__ == "__main__":
     unittest.main()
