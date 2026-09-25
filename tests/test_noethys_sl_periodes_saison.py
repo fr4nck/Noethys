@@ -166,5 +166,15 @@ class PeriodesSaisonTests(unittest.TestCase):
 
 
 
+    def test_saison_affiche_une_valeur_complete_dans_un_seul_controle(self):
+        source = CTRL.read_text(encoding="utf-8")
+        self.assertIn("class CTRL_Saison(wx.Choice):", source)
+        self.assertIn("range(1977, 6001)", source)
+        self.assertIn('u"%d - %d" % (annee, annee + 1)', source)
+        self.assertIn("self.ctrl_annee = CTRL_Saison(self)", source)
+        self.assertNotIn("label_annee_fin", source)
+
+
+
 if __name__ == "__main__":
     unittest.main()
