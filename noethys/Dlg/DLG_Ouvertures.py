@@ -22,7 +22,7 @@ import calendar
 import traceback
 import copy
 import GestionDB
-from Utils import UTILS_VacancesSportives
+from Utils import UTILS_VacancesGeneration
 from Ctrl import CTRL_Bandeau
 from Utils import UTILS_Dates
 from Utils import UTILS_Parametres
@@ -1179,7 +1179,6 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         jours_scolaires = dictDonnees["jours_scolaires"]
         semaines = dictDonnees["semaines"]
         feries = dictDonnees["feries"]
-        vacances_dimanche_dimanche = dictDonnees.get("vacances_dimanche_dimanche", False)
 
         # Init calendrier
         date_debut_temp = date_debut
@@ -1210,14 +1209,13 @@ class Calendrier(gridlib.Grid, glr.GridWithLabelRenderersMixin):
         dateTemp = date
         for date in listeDates :
             
-            # Vérifie période et jour
+            # Vérifie période et jour.
+            # Pour la génération, les vacances commencent le dimanche suivant
+            # leur date officielle de début : le samedi de départ reste scolaire.
             valide = False
-            if vacances_dimanche_dimanche:
-                est_en_vacances = UTILS_VacancesSportives.EstEnVacancesSportives(
-                    date, self.listeVacances
-                )
-            else:
-                est_en_vacances = self.EstEnVacances(date)
+            est_en_vacances = UTILS_VacancesGeneration.EstEnVacancesGeneration(
+                date, self.listeVacances
+            )
 
             if est_en_vacances:
                 if date.weekday() in jours_vacances :
