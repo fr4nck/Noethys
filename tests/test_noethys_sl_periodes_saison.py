@@ -198,5 +198,22 @@ class PeriodesSaisonTests(unittest.TestCase):
 
 
 
+    def test_saison_ne_se_reconstruit_pas_a_chaque_perte_de_focus(self):
+        source = CTRL.read_text(encoding="utf-8")
+        debut = source.index("class CTRL_Saison(wx.ComboBox):")
+        fin = source.index("class Saison(wx.Panel):", debut)
+        bloc = source[debut:fin]
+        self.assertIn("def _ChoixContiennent(self, annee):", bloc)
+        self.assertIn("if self._ChoixContiennent(annee_centre):", bloc)
+        self.assertIn("self.Freeze()", bloc)
+        self.assertIn("self.Thaw()", bloc)
+
+        debut = source.index("class Saison(wx.Panel):")
+        fin = source.index("class Dates(wx.Panel):", debut)
+        bloc = source[debut:fin]
+        self.assertNotIn("wx.EVT_KILL_FOCUS", bloc)
+
+
+
 if __name__ == "__main__":
     unittest.main()
