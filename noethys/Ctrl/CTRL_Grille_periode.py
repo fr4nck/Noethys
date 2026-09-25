@@ -283,6 +283,8 @@ class CTRL_Saison(wx.ComboBox):
             choices=[],
             style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER,
         )
+        self.annee_min_choix = None
+        self.annee_max_choix = None
         self.SetMinSize((110, -1))
         self.SetToolTip(wx.ToolTip(
             _(u"Sélectionnez une saison ou saisissez directement son année de début")
@@ -302,10 +304,29 @@ class CTRL_Saison(wx.ComboBox):
             return None
         return annee
 
+    def _ChoixContiennent(self, annee):
+        return (
+            self.annee_min_choix is not None
+            and self.annee_min_choix <= annee <= self.annee_max_choix
+        )
+
     def _RafraichirChoix(self, annee_centre):
         debut = max(1, annee_centre - self.NB_SAISONS_AUTOUR)
         fin = min(datetime.MAXYEAR - 1, annee_centre + self.NB_SAISONS_AUTOUR)
-        self.Set([self._Formater(annee) for annee in range(debut, fin + 1)])
+
+        # wx.ComboBox.Set() efface brièvement la zone texte sous Windows.
+        # On ne reconstruit donc la petite liste dynamique que si la saison
+        # demandée sort réellement de la fenêtre déjà chargée.
+        if self._ChoixContiennent(annee_centre):
+            return
+
+        self.Freeze()
+        try:
+            self.Set([self._Formater(annee) for annee in range(debut, fin + 1)])
+            self.annee_min_choix = debut
+            self.annee_max_choix = fin
+        finally:
+            self.Thaw()
 
     def SetAnnee(self, annee):
         try:
@@ -387,7 +408,6 @@ class Saison(wx.Panel):
 
         self.ctrl_annee.Bind(wx.EVT_COMBOBOX, self.OnSelectionAnnee)
         self.ctrl_annee.Bind(wx.EVT_TEXT_ENTER, self.OnSelectionAnnee)
-        self.ctrl_annee.Bind(wx.EVT_KILL_FOCUS, self.OnSelectionAnnee)
         self.ctrl_periode.Bind(wx.EVT_LISTBOX, self.OnSelectionPeriode)
 
         self.ctrl_annee.SetAnnee(UTILS_PeriodesSaison.GetAnneeDebutSaison())
