@@ -116,7 +116,8 @@ class Parametres(wx.Panel):
             selection_multiple=False,
             callback_selection=self.OnChoixDate,
         )
-        self.ctrl_periode.SetMinSize((220, 205))
+        self.ctrl_periode.SetMinSize((300, 205))
+        self.SetMinSize((315, -1))
 
         # Profil
         self.staticbox_profil_staticbox = wx.StaticBox(self, -1, _(u"Profil de configuration"))
