@@ -31,7 +31,7 @@ class CTRL_Periode(wx.Panel):
         wx.Panel.__init__(self, parent, -1)
         self.parent = parent
         self.ctrl_periode = CTRL_Grille_periode.CTRL(self, selection_multiple=False)
-        self.ctrl_periode.SetMinSize((235, 205))
+        self.ctrl_periode.SetMinSize((300, 205))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.ctrl_periode, 1, wx.EXPAND, 0)
