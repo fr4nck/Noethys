@@ -96,7 +96,7 @@ class PeriodesSaisonTests(unittest.TestCase):
         source = CTRL.read_text(encoding="utf-8")
         self.assertIn("if numPage == 4 :", source)
         self.assertIn('dictDonnees["page"] = 4', source)
-        self.assertIn('dictDonnees["annee"] = page.ctrl_annee.GetValue()', source)
+        self.assertIn('dictDonnees["annee"] = page.ctrl_annee.GetAnnee()', source)
         self.assertIn('dictDonnees["listePeriodes"] = self.GetDatesSelections()', source)
 
     def test_selecteur_commun_peut_imposer_une_selection_simple(self):
@@ -173,8 +173,28 @@ class PeriodesSaisonTests(unittest.TestCase):
         self.assertIn('u"%d - %d" % (annee, annee + 1)', source)
         self.assertIn("datetime.MAXYEAR - 1", source)
         self.assertIn("self.ctrl_annee = CTRL_Saison(self)", source)
+        self.assertIn("def SetAnnee(self, annee):", source)
+        self.assertIn("def GetAnnee(self):", source)
         self.assertNotIn("range(1977, 6001)", source)
         self.assertNotIn("label_annee_fin", source)
+
+    def test_saison_ne_surcharge_pas_api_native_du_combobox(self):
+        source = CTRL.read_text(encoding="utf-8")
+        debut = source.index("class CTRL_Saison(wx.ComboBox):")
+        fin = source.index("class Saison(wx.Panel):", debut)
+        bloc = source[debut:fin]
+        self.assertNotIn("def SetValue(", bloc)
+        self.assertNotIn("def GetValue(", bloc)
+        self.assertIn("wx.ComboBox.SetValue(self,", bloc)
+        self.assertIn("wx.ComboBox.GetValue(self)", bloc)
+
+    def test_restauration_saison_n_appelle_plus_maj(self):
+        source = CTRL.read_text(encoding="utf-8")
+        debut = source.index("if numPage == 4 :")
+        fin = source.index("self.evtActif = True", debut)
+        bloc = source[debut:fin]
+        self.assertIn("page.ctrl_annee.SetAnnee(annee)", bloc)
+        self.assertNotIn("page.MAJ()", bloc)
 
 
 
