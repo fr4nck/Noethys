@@ -159,5 +159,12 @@ class PeriodesSaisonTests(unittest.TestCase):
 
 
 
+    def test_etat_global_affiche_les_cinq_onglets_sans_navigation(self):
+        source = DLG_ETAT_GLOBAL.read_text(encoding="utf-8")
+        self.assertIn("self.ctrl_periode.SetMinSize((300, 205))", source)
+        self.assertIn("self.SetMinSize((315, -1))", source)
+
+
+
 if __name__ == "__main__":
     unittest.main()
