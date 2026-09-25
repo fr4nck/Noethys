@@ -151,7 +151,11 @@ class PeriodesSaisonTests(unittest.TestCase):
     def test_ecrans_continus_refusent_plusieurs_periodes(self):
         for fichier in (DLG_ETAT_GLOBAL, DLG_ETAT_NOMIN, DLG_DEVIS, DLG_SYNTHESE, DLG_LOT):
             source = fichier.read_text(encoding="utf-8")
-            self.assertIn("len(liste) != 1", source, fichier.name)
+            self.assertIn("GetDatesSelections()", source, fichier.name)
+            self.assertTrue(
+                "len(liste) != 1" in source or "len(liste_periodes) != 1" in source,
+                fichier.name,
+            )
 
 
 
