@@ -520,6 +520,10 @@ class CTRL(wx.Panel):
         self.evtActif = True
         
         self.notebook = wx.Notebook(self, -1, style=wx.BK_TOP)
+        # Largeur minimale pour afficher simultanément :
+        # Mois | Vacances | Année | Dates | Saison, sans flèches de navigation.
+        self.notebook.SetMinSize((300, -1))
+        self.SetMinSize((300, -1))
         
         self.page_dates = Dates(self.notebook)
         self.page_annee = Annee(self.notebook)
