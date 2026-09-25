@@ -270,6 +270,37 @@ class Vacances(wx.Panel):
 
 
 
+class CTRL_Saison(wx.Choice):
+    """Choix d'une saison complète tout en persistant l'année de début."""
+
+    def __init__(self, parent):
+        self.listeAnnees = list(range(1977, 6001))
+        labels = [u"%d - %d" % (annee, annee + 1) for annee in self.listeAnnees]
+        wx.Choice.__init__(self, parent, -1, choices=labels)
+        self.SetMinSize((110, -1))
+        self.SetToolTip(wx.ToolTip(_(u"Sélectionnez une saison")))
+        self.SetValue(UTILS_PeriodesSaison.GetAnneeDebutSaison())
+
+    def SetValue(self, annee):
+        try:
+            annee = int(annee)
+        except Exception:
+            annee = UTILS_PeriodesSaison.GetAnneeDebutSaison()
+
+        if annee < self.listeAnnees[0]:
+            annee = self.listeAnnees[0]
+        if annee > self.listeAnnees[-1]:
+            annee = self.listeAnnees[-1]
+
+        self.SetSelection(self.listeAnnees.index(annee))
+
+    def GetValue(self):
+        index = self.GetSelection()
+        if index == wx.NOT_FOUND:
+            return UTILS_PeriodesSaison.GetAnneeDebutSaison()
+        return self.listeAnnees[index]
+
+
 class Saison(wx.Panel):
     """Raccourcis de période basés sur une saison de septembre à août."""
 
@@ -289,8 +320,7 @@ class Saison(wx.Panel):
         ]
 
         self.label_saison = wx.StaticText(self, -1, _(u"Saison :"))
-        self.ctrl_annee = CTRL_Annee(self)
-        self.label_annee_fin = wx.StaticText(self, -1, u"")
+        self.ctrl_annee = CTRL_Saison(self)
         self.label_periode = wx.StaticText(self, -1, _(u"Période :"))
         self.ctrl_periode = wx.ListBox(
             self,
@@ -302,18 +332,17 @@ class Saison(wx.Panel):
             wx.ToolTip(_(u"Sélectionnez une saison, un trimestre ou un semestre"))
         )
 
-        grid_sizer_saison = wx.FlexGridSizer(rows=2, cols=3, vgap=5, hgap=5)
+        grid_sizer_saison = wx.FlexGridSizer(rows=2, cols=2, vgap=5, hgap=5)
         grid_sizer_saison.Add(
             self.label_saison,
             0,
             wx.LEFT | wx.TOP | wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL,
             5,
         )
-        grid_sizer_saison.Add(self.ctrl_annee, 0, wx.TOP, 5)
         grid_sizer_saison.Add(
-            self.label_annee_fin,
+            self.ctrl_annee,
             0,
-            wx.TOP | wx.RIGHT | wx.ALIGN_CENTER_VERTICAL,
+            wx.TOP | wx.RIGHT,
             5,
         )
         grid_sizer_saison.Add(self.label_periode, 0, wx.ALIGN_RIGHT, 0)
@@ -323,17 +352,15 @@ class Saison(wx.Panel):
             wx.RIGHT | wx.BOTTOM | wx.EXPAND,
             5,
         )
-        grid_sizer_saison.Add((0, 0), 0, 0, 0)
         self.SetSizer(grid_sizer_saison)
         grid_sizer_saison.AddGrowableRow(1)
         grid_sizer_saison.AddGrowableCol(1)
 
-        self.ctrl_annee.Bind(wx.EVT_SPINCTRL, self.OnSelectionAnnee)
+        self.ctrl_annee.Bind(wx.EVT_CHOICE, self.OnSelectionAnnee)
         self.ctrl_periode.Bind(wx.EVT_LISTBOX, self.OnSelectionPeriode)
 
         self.ctrl_annee.SetValue(UTILS_PeriodesSaison.GetAnneeDebutSaison())
         self.ctrl_periode.SetSelection(0)
-        self.MAJ()
 
     def _GetCodeSelectionne(self):
         index = self.ctrl_periode.GetSelection()
@@ -353,19 +380,13 @@ class Saison(wx.Panel):
             self._SelectionnerCode(UTILS_PeriodesSaison.GetCodeTrimestreEnCours())
         elif code == "semestre_courant":
             self._SelectionnerCode(UTILS_PeriodesSaison.GetCodeSemestreEnCours())
-        self.MAJ()
         self.GetGrandParent().OnSelection()
 
     def OnSelectionPeriode(self, event):
         code = self._GetCodeSelectionne()
         if code in ("trimestre_courant", "semestre_courant"):
             self.ctrl_annee.SetValue(UTILS_PeriodesSaison.GetAnneeDebutSaison())
-            self.MAJ()
         self.GetGrandParent().OnSelection()
-
-    def MAJ(self):
-        annee_debut = self.ctrl_annee.GetValue()
-        self.label_annee_fin.SetLabel(u"- %d" % (annee_debut + 1))
 
     def SetSelectionIndex(self, indexSelection=None):
         try:
