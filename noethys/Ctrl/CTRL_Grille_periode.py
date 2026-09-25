@@ -270,16 +270,42 @@ class Vacances(wx.Panel):
 
 
 
-class CTRL_Saison(wx.Choice):
-    """Choix d'une saison complète tout en persistant l'année de début."""
+class CTRL_Saison(wx.ComboBox):
+    """Choix compact d'une saison sans table préchargée de milliers d'années."""
+
+    NB_SAISONS_AUTOUR = 10
 
     def __init__(self, parent):
-        self.listeAnnees = list(range(1977, 6001))
-        labels = [u"%d - %d" % (annee, annee + 1) for annee in self.listeAnnees]
-        wx.Choice.__init__(self, parent, -1, choices=labels)
+        wx.ComboBox.__init__(
+            self,
+            parent,
+            -1,
+            choices=[],
+            style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER,
+        )
         self.SetMinSize((110, -1))
-        self.SetToolTip(wx.ToolTip(_(u"Sélectionnez une saison")))
+        self.SetToolTip(wx.ToolTip(
+            _(u"Sélectionnez une saison ou saisissez directement son année de début")
+        ))
         self.SetValue(UTILS_PeriodesSaison.GetAnneeDebutSaison())
+
+    def _Formater(self, annee):
+        return u"%d - %d" % (annee, annee + 1)
+
+    def _Parser(self, valeur):
+        try:
+            texte = str(valeur).strip()
+            annee = int(texte.split("-")[0].strip())
+        except Exception:
+            return None
+        if annee < 1 or annee >= datetime.MAXYEAR:
+            return None
+        return annee
+
+    def _RafraichirChoix(self, annee_centre):
+        debut = max(1, annee_centre - self.NB_SAISONS_AUTOUR)
+        fin = min(datetime.MAXYEAR - 1, annee_centre + self.NB_SAISONS_AUTOUR)
+        self.Set([self._Formater(annee) for annee in range(debut, fin + 1)])
 
     def SetValue(self, annee):
         try:
@@ -287,18 +313,21 @@ class CTRL_Saison(wx.Choice):
         except Exception:
             annee = UTILS_PeriodesSaison.GetAnneeDebutSaison()
 
-        if annee < self.listeAnnees[0]:
-            annee = self.listeAnnees[0]
-        if annee > self.listeAnnees[-1]:
-            annee = self.listeAnnees[-1]
-
-        self.SetSelection(self.listeAnnees.index(annee))
+        annee = max(1, min(datetime.MAXYEAR - 1, annee))
+        self._RafraichirChoix(annee)
+        wx.ComboBox.SetValue(self, self._Formater(annee))
 
     def GetValue(self):
-        index = self.GetSelection()
-        if index == wx.NOT_FOUND:
-            return UTILS_PeriodesSaison.GetAnneeDebutSaison()
-        return self.listeAnnees[index]
+        annee = self._Parser(wx.ComboBox.GetValue(self))
+        if annee is None:
+            annee = UTILS_PeriodesSaison.GetAnneeDebutSaison()
+            self.SetValue(annee)
+        return annee
+
+    def Normaliser(self):
+        annee = self.GetValue()
+        self.SetValue(annee)
+        return annee
 
 
 class Saison(wx.Panel):
@@ -356,7 +385,9 @@ class Saison(wx.Panel):
         grid_sizer_saison.AddGrowableRow(1)
         grid_sizer_saison.AddGrowableCol(1)
 
-        self.ctrl_annee.Bind(wx.EVT_CHOICE, self.OnSelectionAnnee)
+        self.ctrl_annee.Bind(wx.EVT_COMBOBOX, self.OnSelectionAnnee)
+        self.ctrl_annee.Bind(wx.EVT_TEXT_ENTER, self.OnSelectionAnnee)
+        self.ctrl_annee.Bind(wx.EVT_KILL_FOCUS, self.OnSelectionAnnee)
         self.ctrl_periode.Bind(wx.EVT_LISTBOX, self.OnSelectionPeriode)
 
         self.ctrl_annee.SetValue(UTILS_PeriodesSaison.GetAnneeDebutSaison())
@@ -375,12 +406,15 @@ class Saison(wx.Panel):
                 return
 
     def OnSelectionAnnee(self, event):
+        self.ctrl_annee.Normaliser()
         code = self._GetCodeSelectionne()
         if code == "trimestre_courant":
             self._SelectionnerCode(UTILS_PeriodesSaison.GetCodeTrimestreEnCours())
         elif code == "semestre_courant":
             self._SelectionnerCode(UTILS_PeriodesSaison.GetCodeSemestreEnCours())
         self.GetGrandParent().OnSelection()
+        if event is not None:
+            event.Skip()
 
     def OnSelectionPeriode(self, event):
         code = self._GetCodeSelectionne()
