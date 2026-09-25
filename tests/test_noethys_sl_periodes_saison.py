@@ -15,6 +15,7 @@ DLG_ETAT_NOMIN = ROOT / "noethys" / "Dlg" / "DLG_Etat_nomin.py"
 DLG_DEVIS = ROOT / "noethys" / "Dlg" / "DLG_Impression_devis.py"
 DLG_SYNTHESE = ROOT / "noethys" / "Dlg" / "DLG_Synthese_conso.py"
 DLG_LOT = ROOT / "noethys" / "Dlg" / "DLG_Saisie_lot_conso.py"
+DLG_GRILLE = ROOT / "noethys" / "Dlg" / "DLG_Grille.py"
 DLG_PARAMETRES_REMPLISSAGE = ROOT / "noethys" / "Dlg" / "DLG_Parametres_remplissage.py"
 
 spec = importlib.util.spec_from_file_location("UTILS_PeriodesSaison", UTILS)
@@ -265,6 +266,23 @@ class PeriodesSaisonTests(unittest.TestCase):
         self.assertNotIn('"semestre_courant"', bloc)
         self.assertNotIn("Trimestre en cours", bloc)
         self.assertNotIn("Semestre en cours", bloc)
+
+
+
+    def test_grille_consommations_donne_de_l_espace_au_selecteur(self):
+        source = DLG_GRILLE.read_text(encoding="utf-8")
+        debut = source.index("self.panel_periode = CTRL_Grille_periode.CTRL(self)")
+        fin = source.index("self.panel_individus =", debut)
+        bloc = source[debut:fin]
+        self.assertIn("BestSize(wx.Size(320, 190))", bloc)
+        self.assertIn("MinSize((300, 170))", bloc)
+        self.assertNotIn("BestSize(wx.Size(230,144))", bloc)
+        self.assertNotIn(".Fixed()", bloc)
+
+        self.assertIn('pane_periode = self._mgr.GetPane("periode")', source)
+        self.assertIn("pane_periode.MinSize((300, 170))", source)
+        self.assertIn("pane_periode.BestSize(wx.Size(320, 190))", source)
+        self.assertIn("pane_periode.Resizable(True)", source)
 
 
 
